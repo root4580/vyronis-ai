@@ -108,6 +108,11 @@ import {
   type SetupCoachingInsight,
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
+import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
+import {
+  evaluateTradeRiskGuard,
+  type TradeRiskGuardResult,
+} from "@/lib/trade-risk-guard"
 
 type Trade = {
   id: string
@@ -207,6 +212,8 @@ export default function Home() {
   const [coachFeedbackRefreshKey, setCoachFeedbackRefreshKey] = useState(0)
   const [learningRefreshKey, setLearningRefreshKey] = useState(0)
   const [plannedSessions, setPlannedSessions] = useState<PlannedCoachSessionItem[]>([])
+  const [riskGuardOpen, setRiskGuardOpen] = useState(false)
+  const [riskGuardResult, setRiskGuardResult] = useState<TradeRiskGuardResult | null>(null)
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
   const [convertSessionId, setConvertSessionId] = useState<string | null>(null)
@@ -1022,7 +1029,7 @@ export default function Home() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+
     if (!form.pair || !form.direction || !form.result || !form.pnl) {
       toast({
         title: "Missing fields",
@@ -1040,6 +1047,51 @@ export default function Home() {
       })
       return
     }
+
+    const resolvedSettings = normalizeUserSettings(userSettings ?? settingsForm)
+    const guard = evaluateTradeRiskGuard({
+      form,
+      settings: resolvedSettings,
+      startingBalance:
+        userSettings?.starting_balance ?? settingsForm.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance,
+      historicalTrades: trades.map((trade) => ({
+        id: trade.id,
+        risk_percent: trade.risk_percent,
+        rule_followed: trade.rule_followed,
+        emotion: trade.emotion,
+        emotion_after: trade.emotion_after,
+        stop_loss: trade.stop_loss,
+        trade_date: trade.trade_date,
+        created_at: trade.created_at,
+        result: trade.result,
+        pnl: trade.pnl,
+        setup_classification: trade.setup_classification ?? null,
+        mistake_tags: trade.mistake_tags,
+      })),
+      editingTradeId: editingTrade?.id ?? null,
+    })
+
+    if (guard.requiresConfirmation) {
+      setRiskGuardResult(guard)
+      setRiskGuardOpen(true)
+      return
+    }
+
+    await executeTradeSubmit()
+  }
+
+  function handleRiskGuardCancel() {
+    setRiskGuardOpen(false)
+    setRiskGuardResult(null)
+  }
+
+  function handleRiskGuardConfirm() {
+    setRiskGuardOpen(false)
+    void executeTradeSubmit()
+  }
+
+  async function executeTradeSubmit() {
+    if (!user) return
 
     setIsSubmitting(true)
 
@@ -1224,6 +1276,7 @@ export default function Home() {
       }
     }
     setIsSubmitting(false)
+    setRiskGuardResult(null)
   }
 
   function handleEditTrade(trade: Trade) {
@@ -1295,6 +1348,8 @@ export default function Home() {
     setIsModalOpen(false)
     setEditingTrade(null)
     setConvertSessionId(null)
+    setRiskGuardOpen(false)
+    setRiskGuardResult(null)
     setForm(createInitialTradeForm())
   }
 
@@ -1659,6 +1714,15 @@ export default function Home() {
         <Plus className="size-5 transition-transform group-hover:rotate-90 duration-300" />
         <span className="hidden text-[14px] md:inline">New Trade</span>
       </button>
+
+      <TradeRiskGuardModal
+        open={riskGuardOpen}
+        result={riskGuardResult}
+        pairLabel={form.pair ? `${form.pair} ${form.direction}` : undefined}
+        isSubmitting={isSubmitting}
+        onCancel={handleRiskGuardCancel}
+        onConfirm={handleRiskGuardConfirm}
+      />
 
       <AddTradeModal
         open={isModalOpen}
