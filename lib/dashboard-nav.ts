@@ -2,7 +2,7 @@ import type { DashboardTab } from "@/components/dashboard/trading-components"
 
 export function getDashboardTabHref(tab: DashboardTab): string {
   if (tab === "analytics") return "/analytics"
-  if (tab === "dashboard") return "/"
+  if (tab === "dashboard") return "/?tab=dashboard"
   return `/?tab=${tab}`
 }
 
