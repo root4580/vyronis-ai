@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { AnalyticsPageSkeleton } from "@/components/analytics/analytics-skeleton"
+import { WeeklyReviewPanel } from "@/components/weekly-review/weekly-review-panel"
 import { buildDashboardAnalytics } from "@/lib/analytics/dashboard-analytics"
 import {
   fetchUserStartingBalance,
@@ -125,7 +126,10 @@ export default function AnalyticsPage() {
         {isLoading ? (
           <AnalyticsPageSkeleton />
         ) : (
-          <AnalyticsDashboard analytics={analytics} startingBalance={startingBalance} />
+          <div className="space-y-8">
+            <WeeklyReviewPanel refreshKey={analytics.tradeCount} />
+            <AnalyticsDashboard analytics={analytics} startingBalance={startingBalance} />
+          </div>
         )}
       </main>
 

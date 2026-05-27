@@ -1439,3 +1439,57 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 .analytics-fade-in {
   animation: analytics-fade-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+@keyframes weekly-review-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes weekly-review-meter-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.weekly-review-fade-in {
+  animation: weekly-review-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.weekly-review-meter {
+  animation: weekly-review-meter-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.weekly-review-terminal {
+  background: linear-gradient(
+    165deg,
+    rgba(8, 12, 20, 0.98) 0%,
+    rgba(6, 10, 16, 0.99) 45%,
+    rgba(10, 8, 18, 0.98) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.12),
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 48px rgba(34, 211, 238, 0.08);
+}
+
+.weekly-review-terminal-scan {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(34, 211, 238, 0.02) 2px,
+    rgba(34, 211, 238, 0.02) 4px
+  );
+  opacity: 0.5;
+}

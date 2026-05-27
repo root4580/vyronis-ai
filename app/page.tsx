@@ -29,7 +29,7 @@ import {
 } from "@/components/dashboard/trading-components"
 import { StrategyPerformance } from "@/components/dashboard/strategy-performance"
 import { AdvancedAnalyticsPanel } from "@/components/dashboard/advanced-analytics"
-import { WeeklyDebriefPanel } from "@/components/dashboard/weekly-debrief-panel"
+import { WeeklyReviewPanel } from "@/components/weekly-review/weekly-review-panel"
 import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
 import { MistakeAnalysisPanel } from "@/components/dashboard/mistake-analysis"
 import { TabTransition } from "@/components/dashboard/tab-transition"
@@ -1500,10 +1500,10 @@ export default function Home() {
             ) : (
               <div className="space-y-6 md:space-y-8">
                 <section className="dashboard-section">
-                  <p className="dashboard-section-title">Weekly AI Debrief</p>
+                  <p className="dashboard-section-title">Weekly AI Review</p>
                   <div className="dashboard-stagger">
-                    <WeeklyDebriefPanel
-                      refreshKey={coachFeedbackRefreshKey}
+                    <WeeklyReviewPanel
+                      refreshKey={coachFeedbackRefreshKey + learningRefreshKey}
                       onViewTrade={(tradeId) => {
                         const trade = trades.find((row) => String(row.id) === String(tradeId))
                         if (trade) setSelectedTrade(trade)
