@@ -10,6 +10,7 @@ Run in this exact order:
 |---|------|---------|
 | 1 | `trades-migration.sql` | Base journal table (`trades.id` = **uuid**) |
 | 2 | `trade-fields-migration.sql` | Entry/SL/TP/RR/emotion_after/mistakes |
+| 2b | `007-setup-score-columns.sql` | A+ setup score + classification on trades |
 | 3 | `trade-coach-migration.sql` | Coach sessions, messages, feedback (**uuid** `trade_id`) |
 | 4 | `chart-first-coach-migration.sql` | Legacy `chart_url` + `chart_analysis` |
 | 5 | `chart-vision-ai-migration.sql` | `screenshot_url`, `vision_score` |

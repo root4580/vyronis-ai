@@ -24,6 +24,9 @@ import { TradeCoachFeedbackPanel } from "@/components/dashboard/trade-coach-feed
 import { JournalIntelligencePanel } from "@/components/dashboard/journal-intelligence-panel"
 import { ExecutionReplayPanel } from "@/components/dashboard/execution-replay-panel"
 import { TradeQualityTradeSection } from "@/components/dashboard/trade-quality-trade-section"
+import { SetupScorePanel } from "@/components/dashboard/setup-score-panel"
+import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
+import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import {
   buildTradeDetailAnalysis,
   getEmotionDisplay,
@@ -57,6 +60,10 @@ export type TradeDetails = {
   take_profit?: number | null
   risk_reward?: number | null
   screenshot_url?: string | null
+  setup_score?: number | null
+  setup_classification?: string | null
+  setup_score_breakdown?: Record<string, number> | null
+  setup_coaching_insights?: Array<{ id: string; type: string; message: string }> | null
 }
 
 type TradeDetailsModalProps = {
@@ -159,10 +166,14 @@ export function TradeDetailsModal({
     () => (trade ? buildTradeDetailAnalysis(trade, maxRiskPerTrade) : null),
     [trade, maxRiskPerTrade],
   )
+  const setupScore = useMemo(
+    () => (trade ? resolveStoredSetupScore(trade) : null),
+    [trade],
+  )
   const riskReward = useMemo(() => (trade ? getTradeRiskReward(trade) : null), [trade])
   const mistakeTags = useMemo(() => (trade ? getTradeDisplayMistakeTags(trade) : []), [trade])
 
-  if (!mounted || !trade || !analysis) return null
+  if (!mounted || !trade || !analysis || !setupScore) return null
 
   const dangerousCount = mistakeTags.filter((tag) => tag.dangerous).length
   const resultTone =
@@ -250,6 +261,12 @@ export function TradeDetailsModal({
                 >
                   {trade.result}
                 </Badge>
+                <SetupScoreBadge
+                  classification={setupScore.classification}
+                  score={setupScore.score}
+                  size="md"
+                  showScore
+                />
               </div>
               <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70">
                 Trade Intelligence · Vyronis AI
@@ -394,6 +411,8 @@ export function TradeDetailsModal({
             </div>
 
             <aside className="space-y-4">
+              <SetupScorePanel result={setupScore} />
+
               <DashboardInsetPanel className="glass space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">

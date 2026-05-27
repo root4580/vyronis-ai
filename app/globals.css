@@ -1424,3 +1424,18 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   background: #070b12;
   box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
 }
+
+@keyframes analytics-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.analytics-fade-in {
+  animation: analytics-fade-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

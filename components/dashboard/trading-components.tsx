@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import { useMemo, useState, useEffect, useCallback } from "react"
 import {
   TrendingUp,
@@ -82,6 +83,8 @@ import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getTradeDisplayMistakeTags } from "@/lib/mistake-tags"
 import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
+import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
+import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import {
   buildDailyRules,
@@ -143,6 +146,10 @@ type Trade = {
   trade_notes?: string | null
   mistake_tags?: string | null
   emotion_after?: string | null
+  setup_score?: number | null
+  setup_classification?: string | null
+  setup_score_breakdown?: Record<string, number> | null
+  setup_coaching_insights?: Array<{ id: string; type: string; message: string }> | null
   created_at: string
 }
 
@@ -313,21 +320,36 @@ export function DashboardHeader({ activeTab, onTabChange, onOpenSettings }: Dash
           </div>
 
           <nav className="hidden lg:flex items-center gap-0.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-1">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onTabChange(item.id)}
-                className={`dashboard-nav-pill ${
-                  activeTab === item.id
-                    ? "dashboard-nav-pill-active text-cyan-glow"
-                    : "dashboard-nav-pill-inactive"
-                }`}
-              >
-                <item.icon className="size-3.5" />
-                <span>{item.label}</span>
-              </button>
-            ))}
+            {navItems.map((item) =>
+              item.id === "analytics" ? (
+                <Link
+                  key={item.id}
+                  href="/analytics"
+                  className={`dashboard-nav-pill ${
+                    activeTab === item.id
+                      ? "dashboard-nav-pill-active text-cyan-glow"
+                      : "dashboard-nav-pill-inactive"
+                  }`}
+                >
+                  <item.icon className="size-3.5" />
+                  <span>{item.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onTabChange(item.id)}
+                  className={`dashboard-nav-pill ${
+                    activeTab === item.id
+                      ? "dashboard-nav-pill-active text-cyan-glow"
+                      : "dashboard-nav-pill-inactive"
+                  }`}
+                >
+                  <item.icon className="size-3.5" />
+                  <span>{item.label}</span>
+                </button>
+              ),
+            )}
           </nav>
 
           <div className="flex items-center gap-2 md:gap-2.5">
@@ -376,21 +398,36 @@ export function DashboardHeader({ activeTab, onTabChange, onOpenSettings }: Dash
 
       <div className="border-t border-white/[0.04] lg:hidden">
         <nav className="flex items-center justify-around px-2 py-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onTabChange(item.id)}
-              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
-                activeTab === item.id
-                  ? "dashboard-nav-mobile-active text-cyan-glow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <item.icon className="size-[18px]" />
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </button>
-          ))}
+          {navItems.map((item) =>
+            item.id === "analytics" ? (
+              <Link
+                key={item.id}
+                href="/analytics"
+                className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
+                  activeTab === item.id
+                    ? "dashboard-nav-mobile-active text-cyan-glow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <item.icon className="size-[18px]" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </Link>
+            ) : (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onTabChange(item.id)}
+                className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
+                  activeTab === item.id
+                    ? "dashboard-nav-mobile-active text-cyan-glow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <item.icon className="size-[18px]" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            ),
+          )}
         </nav>
       </div>
     </header>
@@ -776,6 +813,7 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                 <th className="pb-3 text-left font-medium"><SortHeader label="Pair" column="pair" /></th>
                 <th className="pb-3 text-left font-medium hidden sm:table-cell">Dir</th>
                 <th className="pb-3 text-left font-medium hidden md:table-cell">Session</th>
+                <th className="pb-3 text-left font-medium hidden md:table-cell">Setup</th>
                 <th className="pb-3 text-left font-medium hidden md:table-cell">Mistakes</th>
                 <th className="pb-3 text-right font-medium hidden lg:table-cell">R:R</th>
                 <th className="pb-3 text-right font-medium"><SortHeader label="P&L" column="pnl" /></th>
@@ -789,6 +827,7 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                 {filteredTrades.map((trade) => {
                   const mistakeTags = getTradeDisplayMistakeTags(trade)
                   const tradeRR = getTradeRiskReward(trade)
+                  const setupScore = resolveStoredSetupScore(trade)
                   return (
                   <tr key={trade.id} className="dashboard-table-row group">
                     <td className="py-3.5">
@@ -799,8 +838,13 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                       >
                         <p className="font-medium tracking-tight">{trade.pair}</p>
                       </button>
-                      <div className="mt-1.5 md:hidden">
-                        <MistakeTagList tags={mistakeTags} limit={3} />
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:hidden">
+                        <SetupScoreBadge
+                          classification={setupScore.classification}
+                          score={setupScore.score}
+                          showScore
+                        />
+                        <MistakeTagList tags={mistakeTags} limit={2} />
                       </div>
                     </td>
                     <td className="py-3.5 hidden sm:table-cell">
@@ -817,6 +861,13 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                     </td>
                     <td className="py-3.5 text-[12px] text-cyan-glow/90 hidden md:table-cell">
                       {trade.session || "-"}
+                    </td>
+                    <td className="py-3.5 hidden md:table-cell">
+                      <SetupScoreBadge
+                        classification={setupScore.classification}
+                        score={setupScore.score}
+                        showScore
+                      />
                     </td>
                     <td className="py-3.5 hidden md:table-cell">
                       <MistakeTagList tags={mistakeTags} limit={4} />

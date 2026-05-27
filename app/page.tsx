@@ -99,6 +99,15 @@ import {
   withTimeout,
 } from "@/lib/dashboard-loading-debug"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import {
+  generatePatternMemory,
+  type PatternMemoryTrade,
+} from "@/lib/trade-coach/pattern-memory"
+import {
+  computeSetupScore,
+  type SetupCoachingInsight,
+  type SetupScoreBreakdown,
+} from "@/lib/trade-coach/setup-score-engine"
 
 type Trade = {
   id: string
@@ -126,6 +135,10 @@ type Trade = {
   emotion_after?: string | null
   mistake_tags?: string | null
   trade_notes?: string | null
+  setup_score?: number | null
+  setup_classification?: string | null
+  setup_score_breakdown?: SetupScoreBreakdown | null
+  setup_coaching_insights?: SetupCoachingInsight[] | null
   created_at: string
 }
 
@@ -1044,6 +1057,82 @@ export default function Home() {
 
     const normalizedResult = normalizeTradeResultForDb(form.result)
 
+    const setupScoreInput = {
+      direction: form.direction,
+      result: normalizedResult,
+      emotion: form.emotion || "Calm",
+      emotion_after: form.emotion_after.trim() || null,
+      setup: form.setup || "A+ Setup",
+      strategy_name: form.strategy_name || null,
+      risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
+      rule_followed: form.rule_followed,
+      session: form.session || null,
+      trade_date: form.trade_date || new Date().toISOString().split("T")[0],
+      confirmation_signal: form.confirmation_signal || null,
+      higher_timeframe: form.higher_timeframe || null,
+      entry_timeframe: form.entry_timeframe || null,
+      confirmation_timeframe: form.confirmation_timeframe || null,
+      mistake_tags: form.mistake_tags.length > 0 ? form.mistake_tags.join(",") : null,
+      entry_price: parseOptionalNumber(form.entry_price),
+      stop_loss: parseOptionalNumber(form.stop_loss),
+      take_profit: parseOptionalNumber(form.take_profit),
+      risk_reward: computedRiskReward,
+    }
+
+    const maxRiskPerTrade =
+      userSettings?.max_risk_per_trade ?? settingsForm.max_risk_per_trade ?? 1
+
+    const patternMemory = generatePatternMemory({
+      trades: trades.map(
+        (trade): PatternMemoryTrade => ({
+          id: trade.id,
+          direction: trade.direction,
+          result: trade.result,
+          pnl: trade.pnl,
+          emotion: trade.emotion,
+          emotion_after: trade.emotion_after,
+          strategy_name: trade.strategy_name,
+          session: trade.session,
+          risk_percent: trade.risk_percent,
+          rule_followed: trade.rule_followed,
+          mistake_tags: trade.mistake_tags,
+          confirmation_signal: trade.confirmation_signal,
+          trade_date: trade.trade_date,
+          created_at: trade.created_at,
+        }),
+      ),
+      feedback: [],
+      sessions: [],
+      maxRiskPerTrade,
+    })
+
+    const setupScore = computeSetupScore({
+      trade: setupScoreInput,
+      maxRiskPerTrade,
+      patterns: patternMemory.patterns,
+      historicalTrades: trades.map((trade) => ({
+        direction: trade.direction,
+        result: trade.result,
+        emotion: trade.emotion,
+        emotion_after: trade.emotion_after,
+        setup: trade.setup,
+        strategy_name: trade.strategy_name,
+        risk_percent: trade.risk_percent,
+        rule_followed: trade.rule_followed,
+        session: trade.session,
+        trade_date: trade.trade_date,
+        confirmation_signal: trade.confirmation_signal,
+        higher_timeframe: trade.higher_timeframe,
+        entry_timeframe: trade.entry_timeframe,
+        confirmation_timeframe: trade.confirmation_timeframe,
+        mistake_tags: trade.mistake_tags,
+        entry_price: trade.entry_price,
+        stop_loss: trade.stop_loss,
+        take_profit: trade.take_profit,
+        risk_reward: trade.risk_reward,
+      })),
+    })
+
     const tradeData = {
       pair: form.pair,
       direction: form.direction,
@@ -1062,6 +1151,10 @@ export default function Home() {
       confirmation_signal: form.confirmation_signal || null,
       session: form.session || null,
       screenshot_url: form.screenshot_url || null,
+      setup_score: setupScore.score,
+      setup_classification: setupScore.classification,
+      setup_score_breakdown: setupScore.breakdown,
+      setup_coaching_insights: setupScore.insights,
       ...extendedTradeData,
     }
 
@@ -1093,6 +1186,10 @@ export default function Home() {
         emotion_after,
         mistake_tags,
         trade_notes,
+        setup_score,
+        setup_classification,
+        setup_score_breakdown,
+        setup_coaching_insights,
         ...coreTradeData
       } = tradeData
       result = await persistTrade(coreTradeData)
@@ -1111,8 +1208,8 @@ export default function Home() {
       toast({
         title: editingTrade ? "Trade updated" : "Trade saved",
         description: usedFallbackSave
-          ? `${form.pair} saved, but extended fields need a DB migration. Run supabase/trade-fields-migration.sql in Supabase.`
-          : `${form.pair} ${form.direction} ${form.result} has been ${editingTrade ? "updated" : "saved"}.`,
+          ? `${form.pair} saved without extended DB columns. Run supabase/trade-fields-migration.sql and supabase/007-setup-score-columns.sql in Supabase.`
+          : `${form.pair} ${form.direction} ${form.result} — ${setupScore.classification} (${setupScore.score}/100).`,
         variant: usedFallbackSave ? "destructive" : "default",
       })
       setForm(createInitialTradeForm())
