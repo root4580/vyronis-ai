@@ -6,8 +6,8 @@ Concise step-by-step guide. Complete in order.
 
 ## 1. Environment variables (Vercel)
 
-**Project:** `v0-vyronis-ai-dashboard`  
-**Production URL:** `https://v0-vyronis-ai-dashboard.vercel.app`
+**Project:** `vyronis-ai`  
+**Production URL:** `https://vyronis-ai.vercel.app`
 
 **Path:** Vercel → Project → Settings → Environment Variables → **Production**
 
@@ -15,7 +15,7 @@ Concise step-by-step guide. Complete in order.
 |----------|----------|------------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | **Yes** | `https://xxxxx.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Supabase anon public key |
-| `NEXT_PUBLIC_APP_URL` | **Yes** | `https://v0-vyronis-ai-dashboard.vercel.app` (no trailing `/`) |
+| `NEXT_PUBLIC_APP_URL` | **Yes** | `https://vyronis-ai.vercel.app` (no trailing `/`) |
 | `OPENAI_API_KEY` | No | Only if AI narrative/vision enabled |
 | `AI_PROVIDER` | No | `openai` · `claude` · `gemini` · `heuristic` |
 | `CHART_VISION_PROVIDER` | No | Usually same as `AI_PROVIDER` |
@@ -37,7 +37,7 @@ Concise step-by-step guide. Complete in order.
 | Field | Value |
 |-------|--------|
 | **Site URL** | Same as `NEXT_PUBLIC_APP_URL` |
-| **Redirect URLs** | `https://v0-vyronis-ai-dashboard.vercel.app/auth/callback` |
+| **Redirect URLs** | `https://vyronis-ai.vercel.app/auth/callback` |
 | | `http://localhost:3000/auth/callback` (local dev only) |
 
 Password reset emails use `/auth/callback?next=/auth/reset-password` — the callback URL above covers this flow.
@@ -74,7 +74,7 @@ Password reset emails use `/auth/callback?next=/auth/reset-password` — the cal
 
 If localhost has features Vercel does not, read **`docs/VERCEL-LOCAL-PARITY.md`**.
 
-**Use only:** `https://v0-vyronis-ai-dashboard.vercel.app` — not `vyronis-ai.vercel.app` (duplicate project, no env vars).
+**Use only:** `https://vyronis-ai.vercel.app`
 
 ---
 

@@ -36,8 +36,7 @@ If any of these differ, Vercel will look “broken” or “missing features” 
 ## Most common causes (in order)
 
 ### 1. Wrong or stale Vercel deployment
-- **Production URL:** `https://v0-vyronis-ai-dashboard.vercel.app` (Vercel project `v0-vyronis-ai-dashboard`, linked to `root4580/vyronis-ai` on `main`).
-- A second Vercel project (`prototype` / `vyronis-ai.vercel.app`) may also exist from an import — it is **not** production unless you migrate env vars to it.
+- **Production URL:** `https://vyronis-ai.vercel.app` (Vercel project `vyronis-ai`, linked to `root4580/vyronis-ai` on `main`).
 - Set `NEXT_PUBLIC_APP_URL` to that exact URL → **Redeploy**.
 
 ### 2. Different Supabase project

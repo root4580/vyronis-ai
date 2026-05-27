@@ -5,8 +5,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ROOT}/.env.local"
-PROJECT="${1:?Project name required (e.g. v0-vyronis-ai-dashboard)}"
-APP_URL="${2:?App URL required (e.g. https://v0-vyronis-ai-dashboard.vercel.app)}"
+PROJECT="${1:?Project name required (e.g. vyronis-ai)}"
+APP_URL="${2:?App URL required (e.g. https://vyronis-ai.vercel.app)}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE"
