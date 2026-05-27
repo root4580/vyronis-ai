@@ -1,4 +1,5 @@
 import { parseMistakeTags } from "@/lib/trade-form-config"
+import { getJournalMistakeBadgeClassName } from "@/lib/journal-badges"
 import { getSignedPnL } from "@/lib/trade-utils"
 
 export type MistakeTagTrade = {
@@ -26,6 +27,7 @@ const DANGEROUS_LABELS = new Set([
   "Overrisk",
   "No Confirmation",
   "Counter Trend",
+  "Ignored Rules",
   "Early Entry",
   "Overtrading",
   "Moved Stop",
@@ -35,6 +37,7 @@ const TAG_LABEL_MAP: Record<string, string> = {
   "Revenge trade": "Revenge Trade",
   Oversized: "Overrisk",
   "No confirmation": "No Confirmation",
+  "Ignored rules": "Ignored Rules",
   "Chased price": "Early Entry",
   "Late entry": "Early Entry",
   "Moved stop": "Moved Stop",
@@ -128,11 +131,13 @@ export function getTradeDisplayMistakeTags(trade: MistakeTagTrade): DisplayMista
   return tags.sort((a, b) => Number(b.dangerous) - Number(a.dangerous))
 }
 
-export function getMistakeBadgeClassName(dangerous: boolean, className = ""): string {
-  if (dangerous) {
-    return `mistake-badge mistake-badge-danger inline-flex items-center rounded-full border border-loss/35 bg-loss/[0.12] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-loss shadow-[0_0_14px_rgba(239,68,68,0.22)] ${className}`
-  }
-  return `mistake-badge inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/[0.08] px-2 py-0.5 text-[10px] font-medium text-amber-200/90 ${className}`
+export function getMistakeBadgeClassName(
+  dangerous: boolean,
+  className = "",
+  label = "",
+  size: "sm" | "md" = "sm",
+): string {
+  return `${getJournalMistakeBadgeClassName(label, dangerous, size)} ${className}`.trim()
 }
 
 export function sumLossAmount(trades: MistakeTagTrade[], matches: (trade: MistakeTagTrade) => boolean): number {

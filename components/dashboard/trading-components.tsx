@@ -83,6 +83,8 @@ import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getTradeDisplayMistakeTags } from "@/lib/mistake-tags"
 import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
+import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
+import { cn } from "@/lib/utils"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
@@ -810,11 +812,11 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
             <table className="w-full text-[13px]">
               <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
-                <th className="pb-3 text-left font-medium"><SortHeader label="Pair" column="pair" /></th>
-                <th className="pb-3 text-left font-medium hidden sm:table-cell">Dir</th>
-                <th className="pb-3 text-left font-medium hidden md:table-cell">Session</th>
-                <th className="pb-3 text-left font-medium hidden md:table-cell">Setup</th>
-                <th className="pb-3 text-left font-medium hidden md:table-cell">Mistakes</th>
+                <th className="pb-3 text-left font-medium align-bottom"><SortHeader label="Pair" column="pair" /></th>
+                <th className="pb-3 text-left font-medium align-bottom hidden sm:table-cell">Dir</th>
+                <th className="pb-3 text-left font-medium align-bottom hidden md:table-cell">Session</th>
+                <th className="pb-3 text-left font-medium align-bottom hidden md:table-cell min-w-[7.5rem]">Setup</th>
+                <th className="pb-3 text-left font-medium align-bottom hidden md:table-cell min-w-[9rem]">Mistakes</th>
                 <th className="pb-3 text-right font-medium hidden lg:table-cell">R:R</th>
                 <th className="pb-3 text-right font-medium"><SortHeader label="P&L" column="pnl" /></th>
                 <th className="pb-3 text-right font-medium hidden sm:table-cell"><SortHeader label="Result" column="result" /></th>
@@ -830,27 +832,34 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                   const setupScore = resolveStoredSetupScore(trade)
                   return (
                   <tr key={trade.id} className="dashboard-table-row group">
-                    <td className="py-3.5">
+                    <td className="py-3.5 align-middle">
                       <button
                         type="button"
                         onClick={() => onViewTrade?.(trade)}
                         className="text-left transition-colors hover:text-cyan-glow"
                       >
-                        <p className="font-medium tracking-tight">{trade.pair}</p>
+                        <p className="font-medium tracking-tight leading-tight">{trade.pair}</p>
                       </button>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:hidden">
-                        <SetupScoreBadge
-                          classification={setupScore.classification}
-                          score={setupScore.score}
-                          showScore
+                      <div className={cn(JOURNAL_MOBILE_BADGE_STACK_CLASS, "md:hidden")}>
+                        <div className="shrink-0">
+                          <SetupScoreBadge
+                            classification={setupScore.classification}
+                            score={setupScore.score}
+                            showScore
+                          />
+                        </div>
+                        <MistakeTagList
+                          tags={mistakeTags}
+                          limit={2}
+                          compact
+                          className="min-w-0 max-w-full"
                         />
-                        <MistakeTagList tags={mistakeTags} limit={2} />
                       </div>
                     </td>
-                    <td className="py-3.5 hidden sm:table-cell">
+                    <td className="py-3.5 align-middle hidden sm:table-cell">
                       <Badge
                         variant="outline"
-                        className={`h-6 text-[10px] font-medium ${
+                        className={`inline-flex h-7 min-h-[28px] items-center px-2.5 text-[11px] font-medium ${
                           trade.direction === "BUY"
                             ? "border-profit/25 text-profit bg-profit/[0.08]"
                             : "border-loss/25 text-loss bg-loss/[0.08]"
@@ -859,18 +868,20 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                         {trade.direction}
                       </Badge>
                     </td>
-                    <td className="py-3.5 text-[12px] text-cyan-glow/90 hidden md:table-cell">
+                    <td className="py-3.5 align-middle text-[12px] leading-none text-cyan-glow/90 hidden md:table-cell">
                       {trade.session || "-"}
                     </td>
-                    <td className="py-3.5 hidden md:table-cell">
-                      <SetupScoreBadge
-                        classification={setupScore.classification}
-                        score={setupScore.score}
-                        showScore
-                      />
+                    <td className="py-3.5 align-middle hidden md:table-cell">
+                      <div className="flex min-h-[28px] items-center">
+                        <SetupScoreBadge
+                          classification={setupScore.classification}
+                          score={setupScore.score}
+                          showScore
+                        />
+                      </div>
                     </td>
-                    <td className="py-3.5 hidden md:table-cell">
-                      <MistakeTagList tags={mistakeTags} limit={4} />
+                    <td className="py-3.5 align-middle hidden md:table-cell max-w-[240px]">
+                      <MistakeTagList tags={mistakeTags} limit={4} className="max-w-[240px]" />
                     </td>
                     <td className="py-3.5 text-right text-[12px] font-medium tabular-nums text-cyan-glow/90 hidden lg:table-cell">
                       {formatRiskReward(tradeRR)}
