@@ -10,8 +10,14 @@ import {
 } from "@/lib/learning/trade-memory-engine"
 import { generateJournalIntelligence, summarizeTradeForMemory } from "@/lib/learning/journal-intelligence"
 import { buildSetupStatistics } from "@/lib/learning/winning-patterns"
-import { buildPersistedWeeklyReview, enrichWeeklyReviewWithProvider } from "@/lib/learning/weekly-review-service"
-import { filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
+import {
+  generateWeeklyReviewForUser,
+  fetchWeeklyReviews,
+} from "@/lib/weekly-review/server-service"
+import {
+  weeklyReviewReportToAiReviewRecord,
+  weeklyReviewRowToAiReviewRecord,
+} from "@/lib/weekly-review/learning-adapter"
 import type {
   AiReviewRecord,
   JournalIntelligenceResult,
@@ -272,46 +278,26 @@ export async function persistWeeklyReview(
   weekOffset = 0,
   maxRiskPerTrade = 1,
 ): Promise<{ review: AiReviewRecord; persisted: boolean; skipped?: boolean }> {
-  const trades = await loadTrades(supabase, userId)
-  const feedback = await loadFeedback(supabase, userId)
-  const weekRange = getWeekRange(new Date(), weekOffset)
-  const weekTrades = filterTradesForWeek(
-    trades as Parameters<typeof filterTradesForWeek>[0],
-    weekRange.start,
-    weekRange.end,
-  )
-  let review = buildPersistedWeeklyReview({ trades, feedback, weekOffset, maxRiskPerTrade })
-  review = await enrichWeeklyReviewWithProvider(review, weekTrades)
-
-  const { error } = await supabase.from("ai_reviews").upsert(
-    {
-      user_id: userId,
-      review_type: review.review_type,
-      week_start: review.week_start,
-      week_end: review.week_end,
-      summary: review.summary,
-      recurring_mistakes: review.recurring_mistakes,
-      emotional_trends: review.emotional_trends,
-      discipline_score: review.discipline_score,
-      most_profitable_setup: review.most_profitable_setup,
-      advice: review.advice,
-      payload: review.payload,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,review_type,week_start" },
+  const result = await generateWeeklyReviewForUser(
+    supabase,
+    userId,
+    weekOffset,
+    maxRiskPerTrade,
   )
 
-  if (error) {
-    if (isMissingLearningTableError(error)) {
-      return { review, persisted: false, skipped: true }
-    }
-    throw new Error(error.message)
+  return {
+    review: weeklyReviewReportToAiReviewRecord(result.report),
+    persisted: result.persisted,
+    skipped: result.skipped,
   }
-
-  return { review, persisted: true }
 }
 
 export async function getRecentAiReviews(supabase: SupabaseClient, userId: string, limit = 4) {
+  const weeklyRows = await fetchWeeklyReviews(supabase, userId, limit)
+  if (weeklyRows.length > 0) {
+    return weeklyRows.map(weeklyReviewRowToAiReviewRecord)
+  }
+
   const { data, error } = await supabase
     .from("ai_reviews")
     .select("*")

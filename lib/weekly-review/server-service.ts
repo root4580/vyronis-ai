@@ -14,6 +14,8 @@ import {
 } from "@/lib/weekly-review/engine"
 import type { WeeklyReviewRecord, WeeklyReviewReport } from "@/lib/weekly-review/types"
 
+export { weeklyReviewReportToAiReviewRecord, weeklyReviewRowToAiReviewRecord } from "@/lib/weekly-review/learning-adapter"
+
 export function isMissingWeeklyReviewTableError(
   error: { message?: string; code?: string } | null,
 ) {

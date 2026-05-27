@@ -17,7 +17,7 @@ import {
   DashboardInsetPanel,
 } from "@/components/dashboard/dashboard-primitives"
 import { Progress } from "@/components/ui/progress"
-import { fetchLearningDashboard, generateWeeklyLearningReview } from "@/lib/learning/api-client"
+import { fetchLearningDashboard } from "@/lib/learning/api-client"
 import type { LearningMemorySnapshot } from "@/lib/learning/types"
 import { cn } from "@/lib/utils"
 import {
@@ -74,8 +74,6 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
   const [snapshot, setSnapshot] = useState<LearningMemorySnapshot | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [weeklyAdvice, setWeeklyAdvice] = useState<string[]>([])
-  const [isGeneratingReview, setIsGeneratingReview] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -101,18 +99,6 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
       cancelled = true
     }
   }, [refreshKey])
-
-  async function handleGenerateWeeklyReview() {
-    setIsGeneratingReview(true)
-    try {
-      const result = await generateWeeklyLearningReview(0)
-      setWeeklyAdvice(result.review.advice)
-    } catch (reviewError) {
-      setError(reviewError instanceof Error ? reviewError.message : "Weekly review failed")
-    } finally {
-      setIsGeneratingReview(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -149,22 +135,10 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleGenerateWeeklyReview()}
-            disabled={isGeneratingReview}
-            className="rounded-md border border-cyan-glow/25 bg-cyan-glow/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-glow transition-colors hover:bg-cyan-glow/15 disabled:opacity-60"
-          >
-            {isGeneratingReview ? "Generating…" : "Save Weekly Review"}
-          </button>
         </div>
-        {weeklyAdvice.length > 0 && (
-          <ul className="mt-2 space-y-1 text-[10px] text-muted-foreground/80">
-            {weeklyAdvice.map((item) => (
-              <li key={item}>• {item}</li>
-            ))}
-          </ul>
-        )}
+        <p className="mt-2 text-[10px] text-muted-foreground/70">
+          Weekly reviews are generated and saved from the Weekly AI Review section above.
+        </p>
       </DashboardInsetPanel>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
