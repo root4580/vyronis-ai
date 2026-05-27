@@ -108,6 +108,7 @@ import {
   type SetupCoachingInsight,
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
+import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
 import {
   evaluateTradeRiskGuard,
@@ -1503,6 +1504,12 @@ export default function Home() {
                   tradeCount={trades.length}
                 />
 
+                <RiskGuardBanner
+                  trades={trades}
+                  settings={settingsForm}
+                  startingBalance={startingBalance}
+                />
+
                 <section className="dashboard-section">
                   <p className="dashboard-section-title">Performance</p>
                   <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
@@ -1646,8 +1653,13 @@ export default function Home() {
                 </div>
               </section>
             ) : (
-              <section className="dashboard-section">
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <section className="dashboard-section space-y-3">
+                <RiskGuardBanner
+                  trades={trades}
+                  settings={settingsForm}
+                  startingBalance={startingBalance}
+                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="dashboard-section-title mb-0">Trade Journal</p>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     {plannedSessions.some((session) => session.status === "in_progress") && (

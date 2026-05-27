@@ -99,7 +99,7 @@ function getHistoryExcludingEdit(
   return trades.filter((trade) => trade.id !== editingTradeId)
 }
 
-function countTodayImpulsiveLosses(
+export function countTodayImpulsiveLosses(
   trades: TradeRiskGuardHistoryTrade[],
   referenceDate: string,
 ): number {
@@ -117,7 +117,7 @@ function countTodayImpulsiveLosses(
   }).length
 }
 
-function getRecentLossStreak(trades: TradeRiskGuardHistoryTrade[]): number {
+export function getRecentLossStreak(trades: TradeRiskGuardHistoryTrade[]): number {
   const sorted = [...trades].sort(
     (a, b) => new Date(b.trade_date || b.created_at).getTime() - new Date(a.trade_date || a.created_at).getTime(),
   )
