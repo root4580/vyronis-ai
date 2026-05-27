@@ -2,6 +2,8 @@
 
 AI-powered trading intelligence platform for serious funded traders. Track psychology, discipline, and execution with institutional-grade analytics, trade coaching, and weekly debriefs.
 
+**Production (LIVE):** [vyronis-ai.vercel.app](https://vyronis-ai.vercel.app) · QA checklist: [`docs/PRODUCTION-QA-LAUNCH.md`](docs/PRODUCTION-QA-LAUNCH.md)
+
 ## Features
 
 - Trading journal with P&L, win rate, and equity analytics

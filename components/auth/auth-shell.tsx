@@ -64,7 +64,7 @@ export function AuthShell({
 
         {footer ?? (
           <p className="mt-6 text-center text-xs text-muted-foreground/70">
-            Secure cloud sync · Per-user data isolation · Supabase Auth
+            Secure cloud sync · Per-user data isolation · Vyronis AI
           </p>
         )}
       </div>

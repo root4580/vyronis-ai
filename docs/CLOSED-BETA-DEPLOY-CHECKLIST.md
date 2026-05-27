@@ -57,6 +57,8 @@ Password reset emails use `/auth/callback?next=/auth/reset-password` — the cal
 5. **Login fails with “Email not confirmed”** → Authentication → Providers → Email → disable “Confirm email” for closed beta, or have the user click the confirmation link first.
 6. **Localhost works but Vercel login fails** → Vercel env must use the **same** Supabase project where the account was created (or sign up again on the production URL).
 
+**Vyronis-branded auth emails:** see **`docs/SUPABASE-VYRONIS-BRANDING.md`** (templates + custom SMTP sender name).
+
 ---
 
 ## 3. Vercel deployment steps
@@ -178,9 +180,11 @@ Give testers this short list. Use 2 test accounts yourself first.
 
 **Sign-off**
 
+See **`docs/PRODUCTION-QA-LAUNCH.md`** for live status, full QA matrix, and post-launch priorities.
+
 | Field | Value |
 |-------|--------|
-| Production URL | |
-| Deploy date | |
+| Production URL | https://vyronis-ai.vercel.app |
+| Status | **LIVE** (2026-05-27) |
 | Migrations verified | ☐ |
 | Two-account test passed | ☐ |
