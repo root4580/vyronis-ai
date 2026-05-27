@@ -72,6 +72,7 @@ export default function ForgotPasswordPage() {
           title="Password reset email sent"
           description="Open the link on this device to set a new password. The link expires in about one hour."
           resendLabel="Resend reset link"
+          resendSuccessMessage="Password reset email sent again."
           resendStorageKey={`${RESEND_KEY_PREFIX}${trimmed}`}
           onResend={() => sendResetEmail(trimmed)}
         />

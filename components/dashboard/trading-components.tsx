@@ -661,24 +661,28 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
     }
   }
 
-  const [filters, setFilters] = useState<JournalFilters>(() =>
-    readStoredJournalState("vyronis-journal-filters", DEFAULT_JOURNAL_FILTERS),
-  )
-  const [sortKey, setSortKey] = useState<JournalSortKey>(() =>
-    readStoredJournalState("vyronis-journal-sort-key", "date"),
-  )
-  const [sortDir, setSortDir] = useState<JournalSortDir>(() =>
-    readStoredJournalState("vyronis-journal-sort-dir", "desc"),
-  )
+  const [filters, setFilters] = useState<JournalFilters>(DEFAULT_JOURNAL_FILTERS)
+  const [sortKey, setSortKey] = useState<JournalSortKey>("date")
+  const [sortDir, setSortDir] = useState<JournalSortDir>("desc")
+  const [journalPrefsHydrated, setJournalPrefsHydrated] = useState(false)
 
   useEffect(() => {
+    setFilters(readStoredJournalState("vyronis-journal-filters", DEFAULT_JOURNAL_FILTERS))
+    setSortKey(readStoredJournalState("vyronis-journal-sort-key", "date"))
+    setSortDir(readStoredJournalState("vyronis-journal-sort-dir", "desc"))
+    setJournalPrefsHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!journalPrefsHydrated) return
     sessionStorage.setItem("vyronis-journal-filters", JSON.stringify(filters))
-  }, [filters])
+  }, [filters, journalPrefsHydrated])
 
   useEffect(() => {
+    if (!journalPrefsHydrated) return
     sessionStorage.setItem("vyronis-journal-sort-key", JSON.stringify(sortKey))
     sessionStorage.setItem("vyronis-journal-sort-dir", JSON.stringify(sortDir))
-  }, [sortKey, sortDir])
+  }, [sortKey, sortDir, journalPrefsHydrated])
 
   const filterOptions = useMemo(() => getJournalFilterOptions(safeTrades), [safeTrades])
   const filteredTrades = useMemo(

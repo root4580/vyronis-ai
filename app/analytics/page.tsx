@@ -104,6 +104,9 @@ export default function AnalyticsPage() {
               refreshKey={analytics.tradeCount}
               trades={rawTrades}
               maxRiskPerTrade={maxRiskPerTrade}
+              onViewTrade={(tradeId) =>
+                router.push(`/?tab=journal&trade=${encodeURIComponent(tradeId)}`)
+              }
             />
           </section>
 

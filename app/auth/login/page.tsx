@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Lock, Mail } from "lucide-react"
 import {
   AuthErrorBanner,
@@ -15,6 +16,11 @@ import { getVerifyEmailPageUrl } from "@/lib/auth-email"
 import { sanitizeRedirectPath } from "@/lib/auth-routes"
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const nextQuery =
+    sanitizeRedirectPath(searchParams.get("next")) === "/"
+      ? ""
+      : `?next=${encodeURIComponent(sanitizeRedirectPath(searchParams.get("next")))}`
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -37,10 +43,7 @@ export default function LoginPage() {
       return
     }
 
-    const nextPath =
-      typeof window !== "undefined"
-        ? sanitizeRedirectPath(new URLSearchParams(window.location.search).get("next"))
-        : "/"
+    const nextPath = sanitizeRedirectPath(searchParams.get("next"))
 
     setLoading(false)
     window.location.assign(nextPath)
@@ -75,7 +78,7 @@ export default function LoginPage() {
           />
           <div className="flex justify-end">
             <Link
-              href="/auth/forgot-password"
+              href={`/auth/forgot-password${nextQuery}`}
               className="text-[11px] font-medium text-cyan-glow/90 transition-colors hover:text-cyan-glow hover:underline"
             >
               Forgot password?
@@ -99,7 +102,7 @@ export default function LoginPage() {
 
       <div className="mt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/auth/sign-up" className="font-medium text-cyan-glow hover:underline">
+        <Link href={`/auth/sign-up${nextQuery}`} className="font-medium text-cyan-glow hover:underline">
           Create Account
         </Link>
       </div>

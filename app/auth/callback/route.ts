@@ -41,6 +41,8 @@ export async function GET(request: Request) {
 
       return NextResponse.redirect(`${origin}${next}`)
     }
+
+    return NextResponse.redirect(`${origin}/auth/error?reason=exchange_failed`)
   }
 
   return NextResponse.redirect(`${origin}/auth/error`)

@@ -25,17 +25,39 @@ export function isMissingWeeklyReviewTableError(
   )
 }
 
+function isMissingColumnError(error: { message?: string; code?: string } | null) {
+  if (!error) return false
+  return error.code === "42703" || /column .* does not exist/i.test(error.message || "")
+}
+
 async function loadTrades(supabase: SupabaseClient, userId: string): Promise<WeeklyDebriefTrade[]> {
-  const { data, error } = await supabase
+  const extendedSelect =
+    "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url"
+  const basicSelect =
+    "id, pair, direction, result, pnl, emotion, setup, strategy_name, session, trade_date, created_at"
+
+  const extendedResult = await supabase
     .from("trades")
-    .select(
-      "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url",
-    )
+    .select(extendedSelect)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
-  if (error) throw new Error(error.message)
-  return (data || []) as WeeklyDebriefTrade[]
+  if (!extendedResult.error) {
+    return (extendedResult.data || []) as WeeklyDebriefTrade[]
+  }
+
+  if (!isMissingColumnError(extendedResult.error)) {
+    throw new Error(extendedResult.error.message)
+  }
+
+  const fallback = await supabase
+    .from("trades")
+    .select(basicSelect)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+
+  if (fallback.error) throw new Error(fallback.error.message)
+  return (fallback.data || []) as WeeklyDebriefTrade[]
 }
 
 async function loadFeedback(
@@ -64,25 +86,47 @@ async function loadCoachSessions(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<WeeklyDebriefCoachSession[]> {
-  const { data, error } = await supabase
+  const extendedSelect =
+    "id, trade_id, quality_score, quality_grade, recommendation, confidence_score, updated_at"
+  const basicSelect = "id, trade_id, updated_at"
+
+  const extendedResult = await supabase
     .from("trade_coach_sessions")
-    .select("id, trade_id, quality_score, quality_grade, recommendation, confidence_score, updated_at")
+    .select(extendedSelect)
     .eq("user_id", userId)
     .not("trade_id", "is", null)
 
-  if (error) {
-    if (isMissingWeeklyReviewTableError(error)) return []
-    throw new Error(error.message)
+  let rows: Record<string, unknown>[] | null = extendedResult.data as Record<string, unknown>[] | null
+
+  if (extendedResult.error) {
+    if (isMissingWeeklyReviewTableError(extendedResult.error)) return []
+
+    if (!isMissingColumnError(extendedResult.error)) {
+      throw new Error(extendedResult.error.message)
+    }
+
+    const fallback = await supabase
+      .from("trade_coach_sessions")
+      .select(basicSelect)
+      .eq("user_id", userId)
+      .not("trade_id", "is", null)
+
+    if (fallback.error) {
+      if (isMissingWeeklyReviewTableError(fallback.error)) return []
+      throw new Error(fallback.error.message)
+    }
+
+    rows = fallback.data as Record<string, unknown>[] | null
   }
 
-  return (data || []).map((row) => ({
+  return (rows || []).map((row) => ({
     id: String(row.id),
     trade_id: row.trade_id ? String(row.trade_id) : null,
-    quality_score: row.quality_score,
-    quality_grade: row.quality_grade,
-    recommendation: row.recommendation,
-    confidence_score: row.confidence_score,
-    updated_at: row.updated_at,
+    quality_score: (row.quality_score as number | null | undefined) ?? null,
+    quality_grade: (row.quality_grade as WeeklyDebriefCoachSession["quality_grade"]) ?? null,
+    recommendation: (row.recommendation as WeeklyDebriefCoachSession["recommendation"]) ?? null,
+    confidence_score: (row.confidence_score as number | null | undefined) ?? null,
+    updated_at: row.updated_at as string,
   }))
 }
 

@@ -86,6 +86,7 @@ import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeR
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
+import { AuthLoadingState } from "@/components/auth/auth-loading-state"
 import { clearClientSessionData } from "@/lib/client-session"
 import { parseTabSearchParam, readTabFromLocation } from "@/lib/dashboard-nav"
 import {
@@ -713,6 +714,17 @@ function Home() {
       persistActiveTab(tabFromUrl)
     }
   }, [searchParams, user?.id])
+
+  useEffect(() => {
+    const tradeId = searchParams.get("trade")
+    if (!tradeId || trades.length === 0) return
+
+    const trade = trades.find((row) => String(row.id) === String(tradeId))
+    if (trade) {
+      setSelectedTrade(trade)
+      setActiveTab("journal")
+    }
+  }, [searchParams, trades])
 
   useEffect(() => {
     if (activeTab !== "analytics") return
@@ -1424,6 +1436,10 @@ function Home() {
         title: "Trade deleted",
         description: `${tradeToDelete.pair} trade has been removed.`,
       })
+      if (selectedTrade?.id === tradeToDelete.id) {
+        setSelectedTrade(null)
+      }
+      setLearningRefreshKey((key) => key + 1)
       fetchTrades(user.id)
     }
 
@@ -1525,7 +1541,12 @@ function Home() {
   }
 
   if (!user && !isLoadingTrades && !dashboardLoadTimedOut) {
-    return null
+    return (
+      <AuthLoadingState
+        title="Vyronis AI"
+        subtitle="Loading your dashboard…"
+      />
+    )
   }
 
   return (

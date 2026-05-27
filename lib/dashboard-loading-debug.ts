@@ -5,6 +5,7 @@ export function logDashboardLoading(
   payload?: Record<string, unknown>,
 ) {
   if (typeof window === "undefined") return
+  if (process.env.NODE_ENV !== "development") return
   console.log(`[Vyronis Dashboard] ${event}`, payload ?? "")
 }
 

@@ -12,6 +12,7 @@ type AuthEmailSentPanelProps = {
   description: string
   resendLabel: string
   resendStorageKey: string
+  resendSuccessMessage?: string
   onResend: () => Promise<{ error: string | null }>
   backHref?: string
   backLabel?: string
@@ -23,6 +24,7 @@ export function AuthEmailSentPanel({
   description,
   resendLabel,
   resendStorageKey,
+  resendSuccessMessage = "Verification email sent again.",
   onResend,
   backHref = "/auth/login",
   backLabel = "Back to Login",
@@ -95,7 +97,7 @@ export function AuthEmailSentPanel({
 
       {resendError && <AuthErrorBanner message={resendError} />}
       {resendSuccess && (
-        <p className="text-xs text-profit">Verification email sent again.</p>
+        <p className="text-xs text-profit">{resendSuccessMessage}</p>
       )}
 
       <button
