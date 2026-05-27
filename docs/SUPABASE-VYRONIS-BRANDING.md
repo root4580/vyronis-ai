@@ -30,43 +30,25 @@ This only changes the name in the Supabase dashboard (for you), not emails.
 
 **Authentication → Email Templates**
 
-### Reset password
+Use the production HTML templates in the repo (dark theme, mobile-friendly):
 
-**Subject:**
-```
-Reset your Vyronis AI password
-```
+| Template | File |
+|----------|------|
+| **Confirm signup** | `supabase/email-templates/confirm-signup.html` |
+| **Reset password** | `supabase/email-templates/reset-password.html` |
 
-**Body (HTML):**
-```html
-<h2>Reset your password</h2>
-<p>You requested a password reset for your Vyronis AI trading journal.</p>
-<p><a href="{{ .ConfirmationURL }}">Set a new password</a></p>
-<p>This link expires in about one hour. If you did not request this, you can ignore this email.</p>
-<p>— Vyronis AI · Trading Intelligence</p>
-```
+**Subjects:**
 
-### Confirm signup
+- Confirm signup: `Confirm your Vyronis AI account`
+- Reset password: `Reset your Vyronis AI password`
 
-**Subject:**
-```
-Confirm your Vyronis AI account
-```
+Copy the full HTML from each file into the matching Supabase template editor. Supabase variables like `{{ .ConfirmationURL }}` must stay unchanged.
 
-**Body (HTML):**
-```html
-<h2>Welcome to Vyronis AI</h2>
-<p>Confirm your email to start journaling trades and tracking your edge.</p>
-<p><a href="{{ .ConfirmationURL }}">Confirm email</a></p>
-<p>— Vyronis AI · Trading Intelligence</p>
-```
+For Resend SMTP and URL configuration, see **`docs/SUPABASE-RESEND-SETUP.md`**.
 
 ### Magic link (if enabled)
 
-**Subject:**
-```
-Sign in to Vyronis AI
-```
+**Subject:** `Sign in to Vyronis AI`
 
 **Body (HTML):**
 ```html
@@ -78,23 +60,21 @@ Sign in to Vyronis AI
 
 ---
 
-## 4. Custom SMTP (recommended for Gmail delivery)
+## 4. Custom SMTP (required for production)
 
 Default Supabase mail often lands in spam and is rate-limited (~4/hour on free tier).
 
-**Authentication → SMTP Settings → Enable Custom SMTP**
+**Full Resend setup:** **`docs/SUPABASE-RESEND-SETUP.md`**
 
-Example with [Resend](https://resend.com):
+Quick reference:
 
-| Field | Example |
-|-------|---------|
-| **Sender email** | `noreply@yourdomain.com` (verified domain) |
+| Field | Value |
+|-------|--------|
 | **Sender name** | `Vyronis AI` |
 | **Host** | `smtp.resend.com` |
 | **Port** | `465` |
-| **User / Password** | From Resend API keys |
-
-Until you add a domain, Resend’s onboarding domain can work for testing.
+| **User** | `resend` |
+| **Password** | Resend API key |
 
 ---
 

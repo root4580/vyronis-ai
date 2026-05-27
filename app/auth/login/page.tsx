@@ -10,6 +10,8 @@ import {
   AuthShell,
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
+import { formatAuthError, isEmailNotConfirmedError } from "@/lib/auth-errors"
+import { getVerifyEmailPageUrl } from "@/lib/auth-email"
 import { sanitizeRedirectPath } from "@/lib/auth-routes"
 
 export default function LoginPage() {
@@ -25,12 +27,12 @@ export default function LoginPage() {
     setError(null)
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     })
 
     if (signInError) {
-      setError(signInError.message)
+      setError(formatAuthError(signInError.message))
       setLoading(false)
       return
     }
@@ -41,9 +43,10 @@ export default function LoginPage() {
         : "/"
 
     setLoading(false)
-    // Full navigation so middleware receives auth cookies on Vercel (client router alone can bounce back to login).
     window.location.assign(nextPath)
   }
+
+  const showVerifyLink = error ? isEmailNotConfirmedError(error) : false
 
   return (
     <AuthShell title="Welcome Back" subtitle="Sign in to access your trading dashboard">
@@ -81,6 +84,15 @@ export default function LoginPage() {
         </div>
 
         {error && <AuthErrorBanner message={error} />}
+
+        {showVerifyLink && (
+          <Link
+            href={getVerifyEmailPageUrl(email.trim())}
+            className="block rounded-xl border border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5 text-center text-sm font-medium text-cyan-glow hover:bg-cyan-glow/[0.1]"
+          >
+            Resend verification email
+          </Link>
+        )}
 
         <AuthSubmitButton loading={loading} loadingLabel="Authenticating..." label="Access Dashboard" />
       </form>

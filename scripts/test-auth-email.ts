@@ -1,0 +1,41 @@
+/**
+ * Auth email utility tests — run: npm run test:auth
+ */
+import assert from "node:assert/strict"
+import {
+  AUTH_RESEND_COOLDOWN_MS,
+  getAuthCallbackUrl,
+  getAuthSiteOrigin,
+  getPasswordResetRedirectUrl,
+  getResendCooldown,
+  getSignupEmailRedirectUrl,
+  getVerifyEmailPageUrl,
+} from "../lib/auth-email"
+import { formatAuthError, isEmailNotConfirmedError } from "../lib/auth-errors"
+
+process.env.NEXT_PUBLIC_APP_URL = "https://vyronis-ai.vercel.app"
+
+assert.equal(getAuthSiteOrigin(), "https://vyronis-ai.vercel.app")
+assert.equal(getSignupEmailRedirectUrl(), "https://vyronis-ai.vercel.app/auth/callback")
+assert.equal(
+  getPasswordResetRedirectUrl(),
+  "https://vyronis-ai.vercel.app/auth/callback?next=%2Fauth%2Freset-password",
+)
+assert.equal(getAuthCallbackUrl("/analytics"), "https://vyronis-ai.vercel.app/auth/callback?next=%2Fanalytics")
+
+const cooldown = getResendCooldown(Date.now() - 30_000, Date.now())
+assert.equal(cooldown.allowed, false)
+assert.ok(cooldown.secondsRemaining > 0 && cooldown.secondsRemaining <= 31)
+
+const ready = getResendCooldown(Date.now() - AUTH_RESEND_COOLDOWN_MS - 1, Date.now())
+assert.equal(ready.allowed, true)
+
+assert.match(
+  formatAuthError("Email not confirmed"),
+  /Confirm your email/i,
+)
+assert.equal(isEmailNotConfirmedError("Email not confirmed"), true)
+
+assert.match(getVerifyEmailPageUrl("a@b.com"), /verify-email\?email=a%40b.com/)
+
+console.log("✓ auth email tests passed")

@@ -4,7 +4,12 @@
  */
 export const PROTECTED_PATHS = ["/", "/analytics", "/strategy", "/profile"] as const
 
-export const AUTH_ENTRY_PATHS = ["/auth/login", "/auth/sign-up", "/auth/forgot-password"] as const
+export const AUTH_ENTRY_PATHS = [
+  "/auth/login",
+  "/auth/sign-up",
+  "/auth/forgot-password",
+  "/auth/verify-email",
+] as const
 
 export const AUTH_PUBLIC_PATHS = [
   ...AUTH_ENTRY_PATHS,

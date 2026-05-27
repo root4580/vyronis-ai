@@ -12,6 +12,8 @@ import {
   AuthSubmitButton,
   AuthSuccessBanner,
 } from "@/components/auth/auth-shell"
+import { AuthLoadingState } from "@/components/auth/auth-loading-state"
+import { formatAuthError } from "@/lib/auth-errors"
 
 type ResetPhase = "checking" | "ready" | "invalid" | "success"
 
@@ -35,7 +37,7 @@ export default function ResetPasswordPage() {
 
         if (exchangeError) {
           setPhase("invalid")
-          setError("This reset link is invalid or has expired. Request a new one.")
+          setError(formatAuthError("This reset link is invalid or has expired. Request a new one."))
           return
         }
 
@@ -94,7 +96,7 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await supabase.auth.updateUser({ password })
 
     if (updateError) {
-      setError(updateError.message)
+      setError(formatAuthError(updateError.message))
       setLoading(false)
       return
     }
@@ -106,12 +108,10 @@ export default function ResetPasswordPage() {
 
   if (phase === "checking") {
     return (
-      <AuthShell title="Reset Password" subtitle="Verifying your secure reset link">
-        <div className="flex flex-col items-center gap-3 py-6">
-          <span className="size-8 animate-spin rounded-full border-2 border-cyan-glow/30 border-t-cyan-glow" />
-          <p className="text-sm text-muted-foreground/80">Confirming session…</p>
-        </div>
-      </AuthShell>
+      <AuthLoadingState
+        title="Reset Password"
+        subtitle="Verifying your secure reset link…"
+      />
     )
   }
 

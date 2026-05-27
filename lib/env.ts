@@ -41,5 +41,17 @@ export function getServerAiEnv() {
 
 export function assertProductionEnv(): void {
   if (process.env.NODE_ENV !== "production") return
-  getPublicEnv()
+
+  const env = getPublicEnv()
+  const appUrl = env.appUrl.trim()
+
+  if (appUrl.startsWith("http://localhost")) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be your production URL in production (not localhost).",
+    )
+  }
+
+  if (!appUrl.startsWith("https://")) {
+    throw new Error("NEXT_PUBLIC_APP_URL must use https in production.")
+  }
 }

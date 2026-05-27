@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { getPasswordResetRedirectUrl } from "@/lib/auth-email"
 import {
   AuthErrorBanner,
   AuthField,
@@ -13,23 +13,31 @@ import {
 } from "@/components/auth/auth-shell"
 import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
 import { formatAuthError } from "@/lib/auth-errors"
+import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
 
-const RESEND_KEY_PREFIX = "vyronis-auth-reset-sent:"
+const RESEND_KEY_PREFIX = "vyronis-auth-signup-sent:"
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("")
+function VerifyEmailForm() {
+  const searchParams = useSearchParams()
+  const initialEmail = searchParams.get("email") ?? ""
+
+  const [email, setEmail] = useState(initialEmail)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
-  async function sendResetEmail(targetEmail: string) {
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-      redirectTo: getPasswordResetRedirectUrl(),
+  async function resendVerification(targetEmail: string) {
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: targetEmail,
+      options: {
+        emailRedirectTo: getSignupEmailRedirectUrl(),
+      },
     })
 
-    if (resetError) {
-      return { error: formatAuthError(resetError.message) }
+    if (resendError) {
+      return { error: formatAuthError(resendError.message) }
     }
 
     return { error: null }
@@ -42,12 +50,12 @@ export default function ForgotPasswordPage() {
 
     const trimmed = email.trim()
     if (!trimmed) {
-      setError("Enter the email address for your account.")
+      setError("Enter the email you used to sign up.")
       setLoading(false)
       return
     }
 
-    const result = await sendResetEmail(trimmed)
+    const result = await resendVerification(trimmed)
     if (result.error) {
       setError(result.error)
       setLoading(false)
@@ -63,17 +71,17 @@ export default function ForgotPasswordPage() {
     const trimmed = email.trim()
     return (
       <AuthShell
-        title="Check Your Email"
-        subtitle="If an account exists, we sent a password reset link"
+        title="Verification Sent"
+        subtitle="Check your inbox to activate your Vyronis AI account"
         accent="profit"
       >
         <AuthEmailSentPanel
           email={trimmed}
-          title="Password reset email sent"
-          description="Open the link on this device to set a new password. The link expires in about one hour."
-          resendLabel="Resend reset link"
+          title="Verification email sent"
+          description="Click the link in your email to confirm your account, then sign in."
+          resendLabel="Resend verification email"
           resendStorageKey={`${RESEND_KEY_PREFIX}${trimmed}`}
-          onResend={() => sendResetEmail(trimmed)}
+          onResend={() => resendVerification(trimmed)}
         />
       </AuthShell>
     )
@@ -81,8 +89,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      title="Reset Password"
-      subtitle="Enter your email and we will send a secure reset link"
+      title="Verify Your Email"
+      subtitle="Resend the confirmation link for your Vyronis AI account"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField
@@ -100,8 +108,8 @@ export default function ForgotPasswordPage() {
 
         <AuthSubmitButton
           loading={loading}
-          loadingLabel="Sending link..."
-          label="Send Reset Link"
+          loadingLabel="Sending…"
+          label="Resend Verification Email"
         />
       </form>
 
@@ -112,5 +120,13 @@ export default function ForgotPasswordPage() {
         </Link>
       </div>
     </AuthShell>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailForm />
+    </Suspense>
   )
 }

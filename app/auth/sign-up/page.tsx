@@ -3,14 +3,19 @@
 import { useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
-import { ArrowRight, Lock, Mail } from "lucide-react"
+import { Lock, Mail } from "lucide-react"
 import {
   AuthErrorBanner,
   AuthField,
   AuthShell,
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
+import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
+import { formatAuthError } from "@/lib/auth-errors"
+import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+
+const RESEND_KEY_PREFIX = "vyronis-auth-signup-sent:"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -47,6 +52,8 @@ export default function SignUpPage() {
     setLoading(true)
     setError(null)
 
+    const trimmedEmail = email.trim()
+
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
@@ -59,20 +66,16 @@ export default function SignUpPage() {
       return
     }
 
-    const redirectTo =
-      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-      `${window.location.origin}/auth/callback`
-
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: trimmedEmail,
       password,
       options: {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: getSignupEmailRedirectUrl(),
       },
     })
 
     if (signUpError) {
-      setError(signUpError.message)
+      setError(formatAuthError(signUpError.message))
       setLoading(false)
       return
     }
@@ -84,8 +87,22 @@ export default function SignUpPage() {
       return
     }
 
+    window.localStorage.setItem(`${RESEND_KEY_PREFIX}${trimmedEmail}`, String(Date.now()))
     setSuccess(true)
     setLoading(false)
+  }
+
+  async function resendSignupEmail() {
+    const trimmedEmail = email.trim()
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: trimmedEmail,
+      options: {
+        emailRedirectTo: getSignupEmailRedirectUrl(),
+      },
+    })
+
+    return { error: resendError ? formatAuthError(resendError.message) : null }
   }
 
   if (success) {
@@ -95,19 +112,14 @@ export default function SignUpPage() {
         subtitle="Confirm your email to activate your Vyronis AI account"
         accent="profit"
       >
-        <div className="text-center">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            We sent a confirmation link to{" "}
-            <span className="font-medium text-foreground">{email}</span>.
-          </p>
-          <Link
-            href="/auth/login"
-            className="mt-6 inline-flex items-center gap-2 font-medium text-cyan-glow hover:underline"
-          >
-            <ArrowRight className="size-4 rotate-180" />
-            Back to Login
-          </Link>
-        </div>
+        <AuthEmailSentPanel
+          email={email.trim()}
+          title="Verification email sent"
+          description="Open the link in your email to activate your account and access your trading dashboard."
+          resendLabel="Resend verification email"
+          resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
+          onResend={resendSignupEmail}
+        />
       </AuthShell>
     )
   }
@@ -135,6 +147,7 @@ export default function SignUpPage() {
           placeholder="••••••••"
           autoComplete="new-password"
           required
+          minLength={6}
         />
 
         <AuthField
@@ -146,6 +159,7 @@ export default function SignUpPage() {
           placeholder="••••••••"
           autoComplete="new-password"
           required
+          minLength={6}
         />
 
         {error && <AuthErrorBanner message={error} />}
