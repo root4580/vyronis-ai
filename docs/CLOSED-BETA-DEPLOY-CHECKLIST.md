@@ -42,6 +42,13 @@ Concise step-by-step guide. Complete in order.
 
 Password reset emails use `/auth/callback?next=/auth/reset-password` — the callback URL above covers this flow.
 
+**Password reset email not arriving?**
+1. Use **production** only: `https://vyronis-ai.vercel.app/auth/forgot-password` (not a `*.vercel.app` preview URL).
+2. Supabase → **Authentication** → **Users** — confirm the email exists in this project.
+3. Check **spam/promotions**; Supabase default mail can take 5–10 minutes.
+4. Supabase → **Authentication** → **Logs** — look for `user.recovery` or mail errors (free tier: ~4 auth emails/hour).
+5. For reliable delivery, configure **Custom SMTP** (Resend, SendGrid, etc.) under Authentication → SMTP.
+
 **Steps:**
 1. Set **Site URL** to your production Vercel URL.
 2. Under **Redirect URLs**, add production callback (and localhost for dev).
