@@ -122,7 +122,7 @@ function StringListEditor({
   )
 }
 
-export function StrategyPlaybookMain() {
+export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [playbooks, setPlaybooks] = useState<StrategyPlaybookRecord[]>([])
@@ -145,7 +145,9 @@ export function StrategyPlaybookMain() {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) {
-        router.replace("/auth/login?next=/strategy")
+        if (!embedded) {
+          router.replace("/auth/login?next=/strategy")
+        }
         return
       }
 
@@ -162,7 +164,7 @@ export function StrategyPlaybookMain() {
     } finally {
       setIsLoading(false)
     }
-  }, [router, supabase])
+  }, [embedded, router, supabase])
 
   useEffect(() => {
     void loadPlaybooks()
@@ -248,13 +250,15 @@ export function StrategyPlaybookMain() {
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Link
-            href="/"
-            className="mb-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/70 hover:text-cyan-glow"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to Dashboard
-          </Link>
+          {!embedded && (
+            <Link
+              href="/"
+              className="mb-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/70 hover:text-cyan-glow"
+            >
+              <ArrowLeft className="size-3.5" />
+              Back to Dashboard
+            </Link>
+          )}
           <h1 className="text-xl font-semibold tracking-tight text-foreground">Strategy Playbook</h1>
           <p className="mt-1 max-w-2xl text-[13px] text-muted-foreground/75">
             Define your trading rules so the AI Trade Coach knows what to look for in Weekly → M15

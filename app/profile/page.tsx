@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save, UserRound } from "lucide-react"
+import { Save, UserRound } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,10 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
+import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { UserProfileCardSkeleton } from "@/components/dashboard/user-profile-card"
+import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
+import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
+import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import {
   DEFAULT_USER_PROFILE,
   getProfileDisplayName,
@@ -42,6 +46,8 @@ export default function ProfileSettingsPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const { toast } = useToast()
+  const chrome = useDashboardChrome({ loginNextPath: "/profile" })
+  const settings = useAccountSettingsModal(chrome.supabase, chrome.user?.id)
 
   const [email, setEmail] = useState<string>("")
   const [profileRecord, setProfileRecord] = useState<UserProfileRecord | null>(null)
@@ -170,20 +176,28 @@ export default function ProfileSettingsPage() {
 
   const previewName = getProfileDisplayName(form, email)
 
-  return (
-    <div className="dashboard-shell min-h-screen">
-      <div className="dashboard-container px-4 py-5 md:px-6 md:py-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-cyan-glow/20 hover:text-cyan-glow"
-            >
-              <ArrowLeft className="size-4" />
-              Back to Dashboard
-            </Link>
-          </div>
+  if (chrome.isLoggingOut) {
+    return <SigningOutScreen />
+  }
 
+  if (!chrome.isAuthReady) {
+    return null
+  }
+
+  return (
+    <>
+      <DashboardChrome
+        activeTab="dashboard"
+        profileCard={chrome.profileCard}
+        showProfileEmptyHint={chrome.showProfileEmptyHint}
+        onOpenSettings={settings.openSettings}
+        onLogout={() => void chrome.handleLogout()}
+        isLoggingOut={chrome.isLoggingOut}
+        showFab
+        onFabClick={() => router.push("/?action=new-trade")}
+        mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-8 md:pb-24"
+      >
+        <div className="mx-auto max-w-2xl">
           <div className="add-trade-modal glass-card relative overflow-hidden rounded-2xl border border-cyan-glow/15">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.06] via-transparent to-profit/[0.04]" />
 
@@ -320,9 +334,20 @@ export default function ProfileSettingsPage() {
             )}
           </div>
         </div>
-      </div>
+      </DashboardChrome>
+
+      <AccountSettingsModal
+        open={settings.isOpen}
+        onClose={settings.closeSettings}
+        form={settings.form}
+        onFormChange={(updates) => settings.setForm((prev) => ({ ...prev, ...updates }))}
+        onSubmit={(event) => void settings.saveSettings(event)}
+        isSaving={settings.isSaving}
+        accountBalance={settings.form.starting_balance}
+        totalPnL={0}
+      />
 
       <Toaster />
-    </div>
+    </>
   )
 }

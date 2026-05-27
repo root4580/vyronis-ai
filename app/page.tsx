@@ -3,12 +3,11 @@
 import { Suspense, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, X, LogOut, Settings, Pencil, Trash2, Brain } from "lucide-react"
+import { X, Pencil, Trash2, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import {
-  DashboardHeader,
   StatsCards,
   EquityCurveChart,
   WeeklyPerformance,
@@ -79,9 +78,8 @@ import {
 } from "@/lib/user-profile"
 import {
   buildUserProfileCardProps,
-  UserProfileCard,
-  UserProfileCardEmptyHint,
 } from "@/components/dashboard/user-profile-card"
+import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
 import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
@@ -725,6 +723,23 @@ function Home() {
       setActiveTab("journal")
     }
   }, [searchParams, trades])
+
+  useEffect(() => {
+    if (searchParams.get("action") !== "new-trade") return
+
+    setEditingTrade(null)
+    setConvertSessionId(null)
+    setForm(createInitialTradeForm())
+    setIsModalOpen(true)
+
+    const tab = parseTabSearchParam(searchParams.get("tab")) ?? activeTab
+    const params = new URLSearchParams()
+    if (tab && tab !== "dashboard") {
+      params.set("tab", tab)
+    }
+    const next = params.toString() ? `/?${params.toString()}` : "/"
+    router.replace(next)
+  }, [activeTab, router, searchParams])
 
   useEffect(() => {
     if (activeTab !== "analytics") return
@@ -1550,52 +1565,29 @@ function Home() {
   }
 
   return (
-    <div className="dashboard-shell">
-      <DashboardHeader
-        activeTab={activeTab}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
-      
-      {user && (
-        <div className="dashboard-container px-4 pt-4 md:px-6 md:pt-5">
-          <div className="dashboard-user-bar">
-            <div className="min-w-0">
-              <UserProfileCard {...profileCard} />
-              {usingEmailFallback && <UserProfileCardEmptyHint />}
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.04] group"
-                title="Account Settings"
-              >
-                <Settings className="size-4 text-muted-foreground transition-colors group-hover:text-cyan-glow" />
-              </button>
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-loss/20 hover:bg-loss/[0.08] group"
-                title="Logout"
-              >
-                {isLoggingOut ? (
-                  <div className="size-4 animate-spin rounded-full border-2 border-loss/30 border-t-loss" />
-                ) : (
-                  <LogOut className="size-4 text-muted-foreground transition-colors group-hover:text-loss" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <main className="dashboard-container space-y-6 px-4 py-5 pb-28 md:space-y-8 md:px-6 md:py-6 md:pb-24">
-        {showLoadFallbackBanner && (
+    <>
+    <DashboardChrome
+      activeTab={activeTab}
+      profileCard={profileCard}
+      showProfileEmptyHint={usingEmailFallback}
+      onOpenSettings={() => setIsSettingsOpen(true)}
+      onLogout={() => void handleLogout()}
+      isLoggingOut={isLoggingOut}
+      showFab={Boolean(user)}
+      onFabClick={() => {
+        setEditingTrade(null)
+        setConvertSessionId(null)
+        setForm(createInitialTradeForm())
+        setIsModalOpen(true)
+      }}
+      banner={
+        showLoadFallbackBanner ? (
           <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
-            <p className="text-[12px] font-medium text-amber-200/90">
-              {tradesLoadError}
-            </p>
+            <p className="text-[12px] font-medium text-amber-200/90">{tradesLoadError}</p>
           </DashboardInsetPanel>
-        )}
+        ) : null
+      }
+    >
         <TabTransition activeTab={activeTab}>
           {activeTab === "dashboard" && (
             showTradesSkeleton ? (
@@ -1848,19 +1840,7 @@ function Home() {
             )
           )}
         </TabTransition>
-      </main>
-
-      <button
-        onClick={() => {
-          setEditingTrade(null)
-          setForm(createInitialTradeForm())
-          setIsModalOpen(true)
-        }}
-        className="dashboard-fab group"
-      >
-        <Plus className="size-5 transition-transform group-hover:rotate-90 duration-300" />
-        <span className="hidden text-[14px] md:inline">New Trade</span>
-      </button>
+    </DashboardChrome>
 
       <TradeRiskGuardModal
         open={riskGuardOpen}
@@ -2052,6 +2032,6 @@ function Home() {
       />
 
       <Toaster />
-    </div>
+    </>
   )
 }

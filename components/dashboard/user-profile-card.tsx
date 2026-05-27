@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ChevronRight, UserRound } from "lucide-react"
 import { getProfileDisplayName, getProfileInitials, getProfileSubtitle } from "@/lib/user-profile"
 
-type UserProfileCardProps = {
+export type UserProfileCardProps = {
   displayName: string
   subtitle: string
   initials: string

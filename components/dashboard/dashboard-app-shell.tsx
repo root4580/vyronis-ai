@@ -8,6 +8,9 @@ type DashboardAppShellProps = {
   onOpenSettings?: () => void
   children: ReactNode
   mainClassName?: string
+  userBar?: ReactNode
+  fab?: ReactNode
+  banner?: ReactNode
 }
 
 export function DashboardAppShell({
@@ -15,11 +18,19 @@ export function DashboardAppShell({
   onOpenSettings,
   children,
   mainClassName = "dashboard-container space-y-6 px-4 py-5 pb-28 md:space-y-8 md:px-6 md:py-6 md:pb-24",
+  userBar,
+  fab,
+  banner,
 }: DashboardAppShellProps) {
   return (
     <div className="dashboard-shell">
       <DashboardHeader activeTab={activeTab} onOpenSettings={onOpenSettings} />
-      <main className={mainClassName}>{children}</main>
+      {userBar}
+      <main className={mainClassName}>
+        {banner}
+        {children}
+      </main>
+      {fab}
     </div>
   )
 }
