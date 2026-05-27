@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { AnalyticsPageSkeleton } from "@/components/analytics/analytics-skeleton"
+import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
 import { WeeklyReviewPanel } from "@/components/weekly-review/weekly-review-panel"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
@@ -120,6 +121,11 @@ export default function AnalyticsPage() {
                   router.push(`/?tab=journal&trade=${encodeURIComponent(tradeId)}`)
                 }
               />
+            </section>
+
+            <section className="dashboard-section">
+              <p className="dashboard-section-title">Trade Memory + Learning</p>
+              <TradeLearningPanel refreshKey={analytics.tradeCount} />
             </section>
 
             <section className="dashboard-section">

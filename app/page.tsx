@@ -12,24 +12,11 @@ import {
   EquityCurveChart,
   WeeklyPerformance,
   RecentTradesTable,
-  AIPsychologyInsights,
-  DisciplineScore,
-  RiskManagement,
-  EmotionalStateTracker,
-  DailyRulesChecklist,
-  WinRateAnalytics,
-  SessionStats,
   CalendarHeatmapPlaceholder,
   AITradeCoachPlaceholder,
-  StreakTrackerPlaceholder,
-  QuantumAnalyticsPlaceholder,
   type DashboardTab,
 } from "@/components/dashboard/trading-components"
 import { StrategyPerformance } from "@/components/dashboard/strategy-performance"
-import { AdvancedAnalyticsPanel } from "@/components/dashboard/advanced-analytics"
-import { WeeklyReviewPanel } from "@/components/weekly-review/weekly-review-panel"
-import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
-import { MistakeAnalysisPanel } from "@/components/dashboard/mistake-analysis"
 import { TabTransition } from "@/components/dashboard/tab-transition"
 import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
@@ -227,7 +214,6 @@ function Home() {
     buildEmptyPlannedContext,
   )
   const [coachFeedbackRefreshKey, setCoachFeedbackRefreshKey] = useState(0)
-  const [learningRefreshKey, setLearningRefreshKey] = useState(0)
   const [plannedSessions, setPlannedSessions] = useState<PlannedCoachSessionItem[]>([])
   const [riskGuardOpen, setRiskGuardOpen] = useState(false)
   const [riskGuardResult, setRiskGuardResult] = useState<TradeRiskGuardResult | null>(null)
@@ -1384,9 +1370,7 @@ function Home() {
       setIsModalOpen(false)
       fetchTrades(activeUserId)
       if (savedTradeId) {
-        void syncTradeLearningMemory(savedTradeId)
-          .then(() => setLearningRefreshKey((current) => current + 1))
-          .catch(() => undefined)
+        void syncTradeLearningMemory(savedTradeId).catch(() => undefined)
         void finalizeCoachForTrade(savedTradeId, convertSessionId ?? coachSessionId)
       }
     }
@@ -1454,7 +1438,6 @@ function Home() {
       if (selectedTrade?.id === tradeToDelete.id) {
         setSelectedTrade(null)
       }
-      setLearningRefreshKey((key) => key + 1)
       fetchTrades(user.id)
     }
 
@@ -1679,96 +1662,6 @@ function Home() {
                 loadError={tradesLoadError}
               />
             </section>
-          )}
-
-          {activeTab === "analytics" && (
-            showTradesSkeleton ? (
-              <DashboardOverviewSkeleton />
-            ) : (
-              <div className="space-y-6 md:space-y-8">
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Weekly AI Review</p>
-                  <div className="dashboard-stagger">
-                    <WeeklyReviewPanel
-                      refreshKey={coachFeedbackRefreshKey + learningRefreshKey}
-                      trades={trades}
-                      maxRiskPerTrade={maxRiskPerTrade}
-                      onViewTrade={(tradeId) => {
-                        const trade = trades.find((row) => String(row.id) === String(tradeId))
-                        if (trade) setSelectedTrade(trade)
-                      }}
-                    />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Trade Memory + Learning</p>
-                  <div className="dashboard-stagger">
-                    <TradeLearningPanel refreshKey={learningRefreshKey + coachFeedbackRefreshKey} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Advanced Analytics</p>
-                  <div className="dashboard-stagger">
-                    <AdvancedAnalyticsPanel trades={trades} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Mistake Analysis</p>
-                  <div className="dashboard-stagger">
-                    <MistakeAnalysisPanel trades={trades} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Performance Heatmap</p>
-                  <div className="dashboard-stagger">
-                    <CalendarHeatmapPlaceholder trades={trades} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Performance Analytics</p>
-                  <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-                    <DisciplineScore
-                      settings={settingsForm}
-                      trades={trades}
-                      startingBalance={startingBalance}
-                    />
-                    <RiskManagement
-                      settings={settingsForm}
-                      trades={trades}
-                      startingBalance={startingBalance}
-                    />
-                    <EmotionalStateTracker trades={trades} />
-                    <WinRateAnalytics trades={trades} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Insights & Sessions</p>
-                  <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-                    <StreakTrackerPlaceholder trades={trades} />
-                    <QuantumAnalyticsPlaceholder trades={trades} />
-                    <SessionStats trades={trades} />
-                    <AIPsychologyInsights trades={trades} />
-                  </div>
-                </section>
-
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Discipline</p>
-                  <div className="dashboard-stagger grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                    <DailyRulesChecklist
-                      settings={settingsForm}
-                      trades={trades}
-                      startingBalance={startingBalance}
-                    />
-                  </div>
-                </section>
-              </div>
-            )
           )}
 
           {activeTab === "journal" && (
