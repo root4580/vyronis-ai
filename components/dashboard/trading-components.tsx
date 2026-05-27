@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useMemo, useState, useEffect, useCallback } from "react"
 import {
   TrendingUp,
@@ -33,6 +34,7 @@ import {
   Eye,
   Image as ImageIcon,
   X,
+  FlaskConical,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -86,6 +88,7 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
+import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
@@ -279,6 +282,8 @@ type DashboardHeaderProps = {
 }
 
 export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderProps) {
+  const pathname = usePathname()
+  const { enabled: researchLabEnabled } = useResearchLabEnabled()
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
   const [localTime, setLocalTime] = useState<string>("")
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -306,6 +311,8 @@ export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderPr
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "journal", label: "Journal", icon: BookOpen },
   ]
+
+  const researchLabActive = pathname.startsWith("/research-lab")
   
   return (
     <header className="dashboard-header">
@@ -336,6 +343,19 @@ export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderPr
                 <span>{item.label}</span>
               </Link>
             ))}
+            {researchLabEnabled ? (
+              <Link
+                href="/research-lab"
+                className={`dashboard-nav-pill ${
+                  researchLabActive
+                    ? "dashboard-nav-pill-active text-cyan-glow"
+                    : "dashboard-nav-pill-inactive"
+                }`}
+              >
+                <FlaskConical className="size-3.5" />
+                <span>Research Lab</span>
+              </Link>
+            ) : null}
           </nav>
 
           <div className="flex items-center gap-2 md:gap-2.5">
@@ -398,6 +418,19 @@ export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderPr
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
           ))}
+          {researchLabEnabled ? (
+            <Link
+              href="/research-lab"
+              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-2 py-1 transition-all duration-200 ${
+                researchLabActive
+                  ? "dashboard-nav-mobile-active text-cyan-glow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FlaskConical className="size-[18px]" />
+              <span className="text-[10px] font-medium">Lab</span>
+            </Link>
+          ) : null}
         </nav>
       </div>
     </header>
