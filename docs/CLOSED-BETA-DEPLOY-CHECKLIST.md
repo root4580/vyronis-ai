@@ -1,116 +1,159 @@
-# Vyronis 1.0 — Closed Beta Deploy Checklist
+# Vyronis 1.0 — Closed Beta Launch Runbook
 
-Use this checklist before inviting beta traders. Complete in order.
+Concise step-by-step guide. Complete in order.
+
+---
 
 ## 1. Environment variables (Vercel)
 
-| Variable | Required | Notes |
-|----------|----------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key only — never service role in Next.js |
-| `NEXT_PUBLIC_APP_URL` | Yes (prod) | e.g. `https://your-app.vercel.app` — no trailing slash |
-| `OPENAI_API_KEY` | Optional | Only if AI narrative / vision enabled |
-| `AI_PROVIDER` | Optional | `openai` \| `claude` \| `gemini` \| `heuristic` |
-| `CHART_VISION_PROVIDER` | Optional | Defaults with `AI_PROVIDER` |
-| `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` | Optional | Default `trade-screenshots` |
+**Path:** Vercel → Project → Settings → Environment Variables → **Production**
 
-**Verify:** Redeploy after changing env. Missing Supabase vars cause middleware 500 (intentional fail-fast).
+| Variable | Required | Example / values |
+|----------|----------|------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | **Yes** | `https://xxxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Supabase anon public key |
+| `NEXT_PUBLIC_APP_URL` | **Yes** | `https://your-app.vercel.app` (no trailing `/`) |
+| `OPENAI_API_KEY` | No | Only if AI narrative/vision enabled |
+| `AI_PROVIDER` | No | `openai` · `claude` · `gemini` · `heuristic` |
+| `CHART_VISION_PROVIDER` | No | Usually same as `AI_PROVIDER` |
+| `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` | No | Default: `trade-screenshots` |
 
-## 2. Supabase Auth redirects
+**Never add** `SUPABASE_SERVICE_ROLE_KEY` to Next.js env.
 
-In **Authentication → URL Configuration**:
+**Steps:**
+1. Add each variable for **Production** (and Preview if you test preview URLs).
+2. Save.
+3. Redeploy (Deployments → … → Redeploy) so vars apply.
 
-- **Site URL:** `NEXT_PUBLIC_APP_URL`
-- **Redirect URLs:**  
-  - `https://<your-domain>/auth/callback`  
-  - `http://localhost:3000/auth/callback` (dev only)
+---
 
-**Smoke test:** Login → lands on `/` with session; logout → `/auth/login`.
+## 2. Supabase Auth redirect setup
 
-## 3. Database migrations
+**Path:** Supabase Dashboard → **Authentication** → **URL Configuration**
 
-Run SQL from `supabase/MIGRATION_ORDER.md` on the **production** project.
+| Field | Value |
+|-------|--------|
+| **Site URL** | Same as `NEXT_PUBLIC_APP_URL` |
+| **Redirect URLs** | `https://your-app.vercel.app/auth/callback` |
+| | `http://localhost:3000/auth/callback` (local dev only) |
 
-Minimum for beta core:
+**Steps:**
+1. Set **Site URL** to your production Vercel URL.
+2. Under **Redirect URLs**, add production callback (and localhost for dev).
+3. Click **Save**.
+4. Confirm **Email** provider enabled if using password auth (Authentication → Providers).
+
+---
+
+## 3. Vercel deployment steps
+
+**Prerequisites:** GitHub repo connected; `main` pushed (includes stabilization commit).
+
+1. Go to [vercel.com](https://vercel.com) → **Add New** → **Project**.
+2. Import `vyronis-ai` (or your repo name).
+3. Framework: **Next.js** (auto-detected).
+4. Root directory: `.` (default).
+5. Build command: `npm run build` (default).
+6. Install command: `npm install` (default).
+7. Add env vars from **Section 1** before first deploy.
+8. Click **Deploy**.
+9. Wait for build success (green).
+10. Copy deployment URL → set as `NEXT_PUBLIC_APP_URL` if not set → **Redeploy once**.
+11. (Optional) Add custom domain → update Supabase Site URL + Redirect URLs → redeploy.
+
+---
+
+## 4. Supabase migrations (before inviting users)
+
+**Path:** Supabase → **SQL Editor** → New query
+
+Run files in order from `supabase/MIGRATION_ORDER.md`. Minimum for beta:
 
 1. `trades-migration.sql`
 2. `trade-fields-migration.sql`
 3. `007-setup-score-columns.sql`
-4. `008-weekly-reviews.sql` (optional but recommended for saved reviews)
+4. `008-weekly-reviews.sql`
 5. `trade-coach-migration.sql` (if using coach)
 6. `user-settings-migration.sql`
 7. `user-profiles-migration.sql`
 8. `storage-setup.sql`
 
-If upgrading existing DB, run repair chain `001` → `004` per `MIGRATION_ORDER.md`.
-
-**Verify:**
-
-```sql
-SELECT count(*) FROM public.trades;
-SELECT count(*) FROM public.user_settings;
-```
-
-## 4. Storage
-
-- Bucket `trade-screenshots` exists (or custom bucket matches env).
-- Policies from `storage-setup.sql` applied.
-
-**Known beta limitation:** Screenshots are **public-read** by URL. Do not share chart URLs publicly until private storage is implemented.
-
-## 5. Row Level Security
-
-Confirm RLS enabled on: `trades`, `user_settings`, `user_profiles`, coach tables, `weekly_reviews` (if migrated).
-
-**Verify:** Two test accounts cannot read each other's trades in SQL editor as authenticated user.
-
-## 6. Build & deploy
-
-```bash
-npm ci
-npx tsc --noEmit
-npm run build
-```
-
-Deploy `main` to Vercel. Confirm build log shows type checking (no `ignoreBuildErrors`).
-
-## 7. Post-deploy smoke tests (15 min)
-
-| Step | Expected |
-|------|----------|
-| Unauthenticated `/` | Redirect to login |
-| Unauthenticated `/analytics` | Redirect to login |
-| Register / login | Dashboard loads |
-| Log trade | Saves, appears in journal |
-| Logout → login as **different** user | No previous user's trades flash |
-| Primary Leak Card | Shows building state or leak with corrective action |
-| Daily ritual | Check-in → coach → log → debrief flow |
-| Repeat last trade | Loads prior setup |
-| Weekly review → Print | Opens print layout |
-| Upload screenshot | Succeeds, image displays |
-| `/analytics` | Loads with same user's data |
-
-## 8. Rollback safety
-
-- Vercel: promote previous deployment from Deployments tab.
-- Database: migrations are additive; do not drop columns in production without backup.
-- Env: revert env vars and redeploy previous build.
-
-## 9. Beta communication (trust)
-
-Tell testers explicitly:
-
-- Insights are built from **their logged trades**, not live market data.
-- Without API keys, coach/vision uses **rule-based analysis** (not GPT).
-- Vyronis is a **discipline journal**, not trade signals or execution platform.
-
-## 10. Known post-launch items (not blockers)
-
-- Private screenshot storage (signed URLs)
-- API rate limiting
-- Server-side trade pagination
-- Unified single “intelligence brain” across all widgets
+Existing production DB: run repair `001` → `004` first per `MIGRATION_ORDER.md`.
 
 ---
 
-**Sign-off:** _______________ **Date:** _______________ **Production URL:** _______________
+## 5. Post-deploy verification checklist
+
+Run on **production URL** with a real test account.
+
+- [ ] Open `/` logged out → redirects to `/auth/login`
+- [ ] Open `/analytics` logged out → redirects to login
+- [ ] Sign up or sign in → lands on dashboard
+- [ ] Stats / journal load within ~10s (no endless skeleton)
+- [ ] Log one trade → saves and appears in journal
+- [ ] Primary Leak Card visible (building state or leak)
+- [ ] Daily ritual strip visible; check-in works
+- [ ] Repeat last trade loads prior setup
+- [ ] Logout → login page; no dashboard data visible
+- [ ] **Second account:** login different user → **no flash of first user’s trades**
+- [ ] Weekly review opens; Print review opens print dialog
+- [ ] Screenshot upload works (if using charts)
+- [ ] `/profile` saves name
+- [ ] `/strategy` loads (if coach enabled)
+
+---
+
+## 6. Closed beta testing checklist
+
+Give testers this short list. Use 2 test accounts yourself first.
+
+### Onboarding
+- [ ] Sign up with email/password
+- [ ] First dashboard load feels calm (not broken/errors)
+- [ ] Understand: journal-first, not live signals
+
+### Daily discipline loop
+- [ ] Complete check-in emotion
+- [ ] Open pre-trade coach (or skip)
+- [ ] Log at least 2 trades with session + emotion + result
+- [ ] Debrief shows one corrective focus
+- [ ] Repeat-last trade saves correctly
+
+### Trust / honesty
+- [ ] Weekly review badge says **Journal rules** or **AI-assisted** (not fake “GPT” if no key)
+- [ ] Primary leak message feels specific to *their* tags
+- [ ] No SQL migration errors shown in normal use
+
+### Account safety
+- [ ] Logout on shared computer → next person cannot see trades
+- [ ] Two accounts on same browser (logout between) → data isolated
+
+### Known beta limits (tell testers)
+- Chart screenshots may be viewable if someone has the direct URL
+- Large journals (500+ trades) may feel slower
+- Coach without API keys uses rule-based analysis
+
+### Feedback to collect
+- Did the **one primary leak** feel accurate?
+- Was daily ritual under 2 minutes?
+- Anything feel “generic AI” or “broken”?
+- Would they use it tomorrow?
+
+---
+
+## 7. Rollback
+
+- **App:** Vercel → Deployments → previous deployment → **Promote to Production**
+- **Env:** Revert variables → Redeploy
+- **DB:** Do not drop tables; migrations are additive
+
+---
+
+**Sign-off**
+
+| Field | Value |
+|-------|--------|
+| Production URL | |
+| Deploy date | |
+| Migrations verified | ☐ |
+| Two-account test passed | ☐ |
