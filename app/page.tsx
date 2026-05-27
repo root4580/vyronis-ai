@@ -1,0 +1,1738 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { Plus, X, LogOut, Settings, Pencil, Trash2, Brain } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import {
+  DashboardHeader,
+  StatsCards,
+  EquityCurveChart,
+  WeeklyPerformance,
+  RecentTradesTable,
+  AIPsychologyInsights,
+  DisciplineScore,
+  RiskManagement,
+  EmotionalStateTracker,
+  DailyRulesChecklist,
+  WinRateAnalytics,
+  SessionStats,
+  CalendarHeatmapPlaceholder,
+  AITradeCoachPlaceholder,
+  StreakTrackerPlaceholder,
+  QuantumAnalyticsPlaceholder,
+  type DashboardTab,
+} from "@/components/dashboard/trading-components"
+import { StrategyPerformance } from "@/components/dashboard/strategy-performance"
+import { AdvancedAnalyticsPanel } from "@/components/dashboard/advanced-analytics"
+import { WeeklyDebriefPanel } from "@/components/dashboard/weekly-debrief-panel"
+import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
+import { MistakeAnalysisPanel } from "@/components/dashboard/mistake-analysis"
+import { TabTransition } from "@/components/dashboard/tab-transition"
+import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard/dashboard-skeletons"
+import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
+import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
+import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
+import { TradeCoachModal } from "@/components/dashboard/trade-coach-modal"
+import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
+import {
+  deleteCoachSession,
+  fetchCoachSession,
+  fetchPlannedCoachSessions,
+  generateCoachFeedback,
+  linkCoachSessionToTrade,
+} from "@/lib/trade-coach/api-client"
+import { syncTradeLearningMemory } from "@/lib/learning/api-client"
+import {
+  buildEmptyPlannedContext,
+  buildPlannedContextFromForm,
+  buildTradeFormFromPlannedSession,
+} from "@/lib/trade-coach/planned-context"
+import type { PlannedCoachSessionItem, PreTradePlannedContext } from "@/lib/trade-coach/types"
+import {
+  createInitialTradeForm,
+  parseMistakeTags,
+  type TradeFormState,
+} from "@/lib/trade-form-config"
+import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
+import {
+  DEFAULT_USER_SETTINGS,
+  getTodayTrades,
+  getTradeRiskViolation,
+  normalizeUserSettings,
+  type UserSettingsForm,
+  type UserSettingsRecord,
+} from "@/lib/user-settings"
+import {
+  DEFAULT_DASHBOARD_PREFERENCES,
+  parseDashboardPreferences,
+  type DashboardPreferences,
+} from "@/lib/user-preferences"
+import {
+  DEFAULT_USER_PROFILE,
+  clearCachedUserProfile,
+  loadUserProfile,
+  readCachedUserProfile,
+  type UserProfileForm,
+} from "@/lib/user-profile"
+import {
+  buildUserProfileCardProps,
+  UserProfileCard,
+  UserProfileCardEmptyHint,
+} from "@/components/dashboard/user-profile-card"
+import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
+import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
+import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
+import { SigningOutScreen } from "@/components/auth/signing-out-screen"
+import {
+  clearCachedTrades,
+  readCachedTrades,
+  writeCachedTrades,
+} from "@/lib/dashboard-cache"
+import {
+  DASHBOARD_LOAD_TIMEOUT_MS,
+  logDashboardLoading,
+  withTimeout,
+} from "@/lib/dashboard-loading-debug"
+import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+
+type Trade = {
+  id: string
+  pair: string
+  direction: string
+  result: string
+  pnl: number
+  emotion: string
+  setup: string
+  strategy_name: string | null
+  risk_percent: number | null
+  rule_followed: boolean | null
+  user_id: string | null
+  trade_date: string | null
+  higher_timeframe: string | null
+  entry_timeframe: string | null
+  confirmation_timeframe: string | null
+  confirmation_signal: string | null
+  session: string | null
+  screenshot_url: string | null
+  entry_price?: number | null
+  stop_loss?: number | null
+  take_profit?: number | null
+  risk_reward?: number | null
+  emotion_after?: string | null
+  mistake_tags?: string | null
+  trade_notes?: string | null
+  created_at: string
+}
+
+const initialFormState: TradeFormState = createInitialTradeForm()
+
+type Violation = {
+  type: "risk" | "rules" | "emotional"
+  message: string
+}
+
+
+function getTradeViolations(trade: Trade, maxRiskPerTrade: number): Violation[] {
+  const violations: Violation[] = []
+
+  const riskViolation = getTradeRiskViolation(trade.risk_percent, maxRiskPerTrade)
+  if (riskViolation) {
+    violations.push({ type: "risk", message: riskViolation })
+  }
+  
+  if (trade.rule_followed === false) {
+    violations.push({ type: "rules", message: "Rules broken" })
+  }
+  
+  if (trade.result === "LOSS" && (trade.emotion === "Revenge" || trade.emotion === "FOMO")) {
+    violations.push({ type: "emotional", message: "Emotional risk" })
+  }
+  
+  return violations
+}
+
+export default function Home() {
+  const [trades, setTrades] = useState<Trade[]>(() => readCachedTrades<Trade>())
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [form, setForm] = useState<TradeFormState>(initialFormState)
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
+  const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null)
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
+  const [userSettings, setUserSettings] = useState<UserSettingsRecord | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfileForm | null>(() => readCachedUserProfile())
+  const [settingsForm, setSettingsForm] = useState<UserSettingsForm>(DEFAULT_USER_SETTINGS)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
+  const router = useRouter()
+  const pathname = usePathname()
+  const supabase = createClient()
+  const { toast } = useToast()
+  const signingOutRef = useRef(false)
+  const profileWarningShownRef = useRef(false)
+  const loadedDashboardUserRef = useRef<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [screenshotViewer, setScreenshotViewer] = useState<{ url: string | null; label: string } | null>(null)
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null)
+  const [isCoachOpen, setIsCoachOpen] = useState(false)
+  const [coachSessionId, setCoachSessionId] = useState<string | null>(null)
+  const [coachPlannedContext, setCoachPlannedContext] = useState<PreTradePlannedContext>(
+    buildEmptyPlannedContext,
+  )
+  const [coachFeedbackRefreshKey, setCoachFeedbackRefreshKey] = useState(0)
+  const [learningRefreshKey, setLearningRefreshKey] = useState(0)
+  const [plannedSessions, setPlannedSessions] = useState<PlannedCoachSessionItem[]>([])
+  const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
+  const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
+  const [convertSessionId, setConvertSessionId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard")
+  const [isLoadingTrades, setIsLoadingTrades] = useState(false)
+  const [tradesLoadError, setTradesLoadError] = useState<string | null>(null)
+  const [dashboardLoadTimedOut, setDashboardLoadTimedOut] = useState(false)
+  const dashboardLoadTimedOutRef = useRef(false)
+  const globalLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tradesFetchSettledRef = useRef(false)
+
+  function clearGlobalLoadTimeout() {
+    if (globalLoadTimeoutRef.current) {
+      window.clearTimeout(globalLoadTimeoutRef.current)
+      globalLoadTimeoutRef.current = null
+    }
+  }
+
+  function releaseSkeletonGuard(reason: string) {
+    if (dashboardLoadTimedOutRef.current) return
+
+    dashboardLoadTimedOutRef.current = true
+    setDashboardLoadTimedOut(true)
+    setIsLoadingTrades(false)
+    setIsLoadingProfile(false)
+
+    logDashboardLoading("releaseSkeletonGuard", {
+      reason,
+      activeTab,
+      tradesCount: trades.length,
+      tradesFetchSettled: tradesFetchSettledRef.current,
+    })
+  }
+
+  function markDashboardDataReady(reason: string) {
+    clearGlobalLoadTimeout()
+    tradesFetchSettledRef.current = true
+    setIsLoadingTrades(false)
+    setIsLoadingProfile(false)
+    setTradesLoadError(null)
+
+    logDashboardLoading("markDashboardDataReady", {
+      reason,
+      activeTab,
+      tradesCount: trades.length,
+    })
+  }
+
+  useEffect(() => {
+    const cachedTrades = readCachedTrades<Trade>()
+    const cachedProfile = readCachedUserProfile()
+
+    logDashboardLoading("mount", {
+      cachedTrades: cachedTrades.length,
+      cachedProfile: cachedProfile !== null,
+    })
+
+    if (cachedTrades.length > 0) {
+      setTrades(cachedTrades)
+    } else {
+      setIsLoadingTrades(true)
+    }
+
+    if (cachedProfile) {
+      setUserProfile(cachedProfile)
+    } else {
+      setIsLoadingProfile(true)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      releaseSkeletonGuard("mount-3s-skeleton-timeout")
+    }, DASHBOARD_LOAD_TIMEOUT_MS)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
+  useEffect(() => {
+    logDashboardLoading("loading-state-changed", {
+      isLoadingTrades,
+      isLoadingProfile,
+      dashboardLoadTimedOut,
+      showTradesSkeleton: isLoadingTrades && !dashboardLoadTimedOut,
+      showProfileSkeleton: isLoadingProfile && !dashboardLoadTimedOut,
+      userId: user?.id ?? null,
+      activeTab,
+      tradesCount: trades.length,
+      tradesLoadError,
+    })
+  }, [
+    isLoadingTrades,
+    isLoadingProfile,
+    dashboardLoadTimedOut,
+    user?.id,
+    activeTab,
+    trades.length,
+    tradesLoadError,
+  ])
+  
+  const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+  
+  function validateFile(file: File): string | null {
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return 'Invalid file type. Allowed: jpg, jpeg, png, webp'
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return 'File too large. Maximum size is 10MB'
+    }
+    return null
+  }
+  
+  async function handleScreenshotUpload(file: File) {
+    const validationError = validateFile(file)
+    if (validationError) {
+      toast({
+        title: "Invalid file",
+        description: validationError,
+        variant: "destructive",
+      })
+      return
+    }
+    
+    setIsUploading(true)
+    setUploadProgress(0)
+    
+    // Simulate progress for better UX (actual upload doesn't support progress)
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval)
+          return 90
+        }
+        return prev + 10
+      })
+    }, 150)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+      })
+      
+      clearInterval(progressInterval)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
+      }
+      
+      setUploadProgress(100)
+      const { url } = await response.json()
+      setForm(prev => ({ ...prev, screenshot_url: url }))
+      toast({
+        title: "Screenshot uploaded",
+        description: "Your chart screenshot has been attached to this trade.",
+      })
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload screenshot",
+        variant: "destructive",
+      })
+    } finally {
+      clearInterval(progressInterval)
+      setIsUploading(false)
+      setTimeout(() => setUploadProgress(0), 500)
+    }
+  }
+  
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+  
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+  
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      handleScreenshotUpload(file)
+    }
+  }
+  
+  useEffect(() => {
+    let cancelled = false
+
+    async function ensureUserSettings(userId: string) {
+      await supabase.from("user_settings").upsert(
+        {
+          user_id: userId,
+          ...DEFAULT_USER_SETTINGS,
+          dashboard_preferences: DEFAULT_DASHBOARD_PREFERENCES,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id", ignoreDuplicates: true },
+      )
+    }
+
+    async function ensureUserProfile(userId: string) {
+      await supabase.from("user_profiles").upsert(
+        {
+          user_id: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id", ignoreDuplicates: true },
+      )
+    }
+
+    async function loadDashboardData(
+      userId: string,
+      metadata?: Record<string, unknown> | null,
+      options?: { silent?: boolean },
+    ) {
+      logDashboardLoading("loadDashboardData:start", { userId, silent: options?.silent ?? false })
+
+      const results = await Promise.allSettled([
+        fetchTrades(userId, options),
+        fetchUserSettings(userId),
+        fetchUserProfile(userId, metadata, options),
+      ])
+
+      logDashboardLoading("loadDashboardData:complete", {
+        userId,
+        trades: results[0].status,
+        settings: results[1].status,
+        profile: results[2].status,
+        tradesFetchSettled: tradesFetchSettledRef.current,
+      })
+    }
+
+    async function bootstrapFromSession(sessionUser: {
+      id: string
+      email?: string
+      user_metadata?: Record<string, unknown>
+    }) {
+      if (cancelled || loadedDashboardUserRef.current === sessionUser.id) return
+
+      loadedDashboardUserRef.current = sessionUser.id
+      setUser({ id: sessionUser.id, email: sessionUser.email })
+
+      try {
+        await loadDashboardData(sessionUser.id, sessionUser.user_metadata, {
+          silent:
+            readCachedTrades<Trade>().length > 0 || readCachedUserProfile() !== null,
+        })
+      } catch (error) {
+        loadedDashboardUserRef.current = null
+        throw error
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !session?.user) return
+      logDashboardLoading("bootstrap:getSession", { userId: session.user.id })
+      void bootstrapFromSession(session.user)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+
+      logDashboardLoading("auth-state-change", {
+        event,
+        userId: session?.user?.id ?? null,
+      })
+
+      if (event === "SIGNED_OUT") {
+        loadedDashboardUserRef.current = null
+        tradesFetchSettledRef.current = false
+        setUser(null)
+        setTrades([])
+        setUserSettings(null)
+        setUserProfile(null)
+        clearCachedTrades()
+        setTradesLoadError(null)
+        setIsLoadingTrades(false)
+        setIsLoadingProfile(false)
+        dashboardLoadTimedOutRef.current = false
+        setDashboardLoadTimedOut(false)
+
+        if (!signingOutRef.current) {
+          router.replace("/auth/login")
+        }
+        return
+      }
+
+      if (!session?.user) {
+        return
+      }
+
+      setUser({ id: session.user.id, email: session.user.email })
+
+      if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") {
+        return
+      }
+
+      if (loadedDashboardUserRef.current === session.user.id) {
+        logDashboardLoading("auth-state-change:skip-already-loaded", {
+          userId: session.user.id,
+          event,
+        })
+        return
+      }
+
+      void (async () => {
+        try {
+          if (event === "SIGNED_IN") {
+            await ensureUserSettings(session.user.id)
+            await ensureUserProfile(session.user.id)
+          }
+
+          if (cancelled) return
+
+          await bootstrapFromSession(session.user)
+        } catch (error) {
+          logDashboardLoading("auth-state-change:load-error", {
+            event,
+            message: error instanceof Error ? error.message : String(error),
+          })
+          if (!cancelled) {
+            setTradesLoadError(
+              "Could not load dashboard data right now. Try refreshing the page.",
+            )
+            releaseSkeletonGuard("auth-load-error")
+          }
+        }
+      })()
+    })
+
+    return () => {
+      cancelled = true
+      loadedDashboardUserRef.current = null
+      tradesFetchSettledRef.current = false
+      subscription.unsubscribe()
+    }
+  }, [router, supabase])
+
+  async function fetchTrades(
+    userId?: string,
+    options?: { silent?: boolean },
+  ) {
+    const uid = userId || user?.id
+    if (!uid) {
+      logDashboardLoading("fetchTrades:skip-no-user")
+      setIsLoadingTrades(false)
+      return
+    }
+
+    const cachedTrades = readCachedTrades<Trade>()
+    const hasCachedTrades = cachedTrades.length > 0
+
+    logDashboardLoading("fetchTrades:start", {
+      userId: uid,
+      silent: options?.silent ?? false,
+      hasCachedTrades,
+      dashboardLoadTimedOut: dashboardLoadTimedOutRef.current,
+    })
+
+    if (
+      !options?.silent &&
+      !hasCachedTrades &&
+      trades.length === 0 &&
+      !dashboardLoadTimedOutRef.current
+    ) {
+      setIsLoadingTrades(true)
+    }
+
+    if (!options?.silent) {
+      setTradesLoadError(null)
+    }
+
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false }),
+        15000,
+        "trades.select",
+      )
+
+      if (error) {
+        console.log(error)
+        logDashboardLoading("fetchTrades:error", {
+          userId: uid,
+          message: error.message,
+          code: error.code,
+        })
+        if (!options?.silent) {
+          setTradesLoadError(
+            hasCachedTrades
+              ? "Couldn't refresh trades. Showing your last loaded data."
+              : "Couldn't load trades right now. Try refreshing the page.",
+          )
+        }
+        return
+      }
+
+      const nextTrades = data || []
+      setTrades(nextTrades)
+      writeCachedTrades(nextTrades)
+      tradesFetchSettledRef.current = true
+
+      if (!options?.silent) {
+        markDashboardDataReady("fetchTrades:success")
+      } else {
+        setIsLoadingTrades(false)
+      }
+
+      logDashboardLoading("fetchTrades:success", {
+        userId: uid,
+        count: nextTrades.length,
+      })
+    } catch (error) {
+      console.log(error)
+      logDashboardLoading("fetchTrades:exception", {
+        userId: uid,
+        message: error instanceof Error ? error.message : String(error),
+      })
+      if (!options?.silent) {
+        setTradesLoadError(
+          hasCachedTrades
+            ? "Couldn't refresh trades. Showing your last loaded data."
+            : "Couldn't load trades right now. Try refreshing the page.",
+        )
+      }
+    } finally {
+      setIsLoadingTrades(false)
+    }
+  }
+
+  async function fetchUserSettings(userId: string) {
+    logDashboardLoading("fetchUserSettings:start", { userId })
+
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("user_settings")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        DASHBOARD_LOAD_TIMEOUT_MS,
+        "user_settings.select",
+      )
+
+      if (error && error.code !== "PGRST116") {
+        console.log(error)
+        logDashboardLoading("fetchUserSettings:error", { message: error.message })
+      }
+
+      if (data) {
+        setUserSettings(data)
+        setSettingsForm(normalizeUserSettings(data))
+        setActiveTab(parseDashboardPreferences(data.dashboard_preferences).activeTab)
+        logDashboardLoading("fetchUserSettings:success", { userId })
+        return
+      }
+
+      await supabase.from("user_settings").upsert(
+        {
+          user_id: userId,
+          ...DEFAULT_USER_SETTINGS,
+          dashboard_preferences: DEFAULT_DASHBOARD_PREFERENCES,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id", ignoreDuplicates: true },
+      )
+
+      const { data: createdSettings } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (createdSettings) {
+        setUserSettings(createdSettings)
+        setSettingsForm(normalizeUserSettings(createdSettings))
+        setActiveTab(parseDashboardPreferences(createdSettings.dashboard_preferences).activeTab)
+        logDashboardLoading("fetchUserSettings:created-defaults", { userId })
+        return
+      }
+
+      setSettingsForm(DEFAULT_USER_SETTINGS)
+      setActiveTab(DEFAULT_DASHBOARD_PREFERENCES.activeTab)
+      logDashboardLoading("fetchUserSettings:fallback-defaults", { userId })
+    } catch (error) {
+      logDashboardLoading("fetchUserSettings:timeout-or-failure", {
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  async function fetchUserProfile(
+    userId: string,
+    metadata?: Record<string, unknown> | null,
+    options?: { silent?: boolean },
+  ) {
+    logDashboardLoading("fetchUserProfile:start", {
+      userId,
+      silent: options?.silent ?? false,
+    })
+
+    const cached = readCachedUserProfile()
+    if (cached) {
+      setUserProfile(cached)
+    }
+
+    if (
+      !options?.silent &&
+      !cached &&
+      !dashboardLoadTimedOutRef.current
+    ) {
+      setIsLoadingProfile(true)
+    }
+
+    try {
+      const result = await withTimeout(
+        loadUserProfile(supabase, userId, metadata),
+        DASHBOARD_LOAD_TIMEOUT_MS,
+        "user_profiles.load",
+      )
+
+      setUserProfile(result.profile)
+      logDashboardLoading("fetchUserProfile:success", { userId })
+
+      if (result.missingTable && !profileWarningShownRef.current) {
+        profileWarningShownRef.current = true
+        toast({
+          title: "Profile table missing",
+          description: "Run supabase/user-profiles-migration.sql in Supabase, then save your name at /profile.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      logDashboardLoading("fetchUserProfile:timeout-or-failure", {
+        message: error instanceof Error ? error.message : String(error),
+      })
+      if (cached) {
+        setUserProfile(cached)
+      }
+    } finally {
+      setIsLoadingProfile(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!user?.id || pathname !== "/") return
+
+    const mountedAt = Date.now()
+
+    function refreshProfile() {
+      if (Date.now() - mountedAt < 1500) return
+
+      void supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+        if (!authUser) return
+        void fetchUserProfile(authUser.id, authUser.user_metadata, { silent: true })
+      })
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshProfile()
+      }
+    }
+
+    window.addEventListener("focus", refreshProfile)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener("focus", refreshProfile)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [user?.id, pathname, supabase])
+
+  useEffect(() => {
+    if (!user?.id) {
+      setCoachSessionId(null)
+      setPlannedSessions([])
+      return
+    }
+
+    void refreshPlannedSessions(user.id)
+  }, [user?.id])
+
+  type OpenCoachOptions = {
+    sessionId?: string
+  }
+
+  async function handleOpenCoach(context?: PreTradePlannedContext, options: OpenCoachOptions = {}) {
+    const riskLimit =
+      userSettings?.max_risk_per_trade ??
+      settingsForm.max_risk_per_trade ??
+      DEFAULT_USER_SETTINGS.max_risk_per_trade
+
+    if (options.sessionId) {
+      try {
+        const session = await fetchCoachSession(options.sessionId)
+        setCoachPlannedContext(session.planned_context)
+        setCoachSessionId(options.sessionId)
+        setIsCoachOpen(true)
+      } catch (error) {
+        toast({
+          title: "Could not open coach session",
+          description: error instanceof Error ? error.message : "Try again in a moment.",
+          variant: "destructive",
+        })
+      }
+      return
+    }
+
+    setCoachPlannedContext(
+      context || buildPlannedContextFromForm(form, riskLimit),
+    )
+    setCoachSessionId(null)
+    setIsCoachOpen(true)
+  }
+
+  async function refreshPlannedSessions(userId?: string, background = false) {
+    const targetUserId = userId ?? user?.id
+    if (!targetUserId) return
+
+    if (!background) {
+      setIsLoadingPlannedSessions(true)
+    }
+
+    try {
+      const planned = await fetchPlannedCoachSessions()
+      setPlannedSessions(planned)
+    } catch {
+      if (!background) {
+        setPlannedSessions([])
+      }
+    } finally {
+      if (!background) {
+        setIsLoadingPlannedSessions(false)
+      }
+    }
+  }
+
+  async function handleContinuePlannedCoach(sessionId: string) {
+    await handleOpenCoach(undefined, { sessionId })
+  }
+
+  async function handleConvertPlannedTrade(sessionId: string) {
+    try {
+      const session = await fetchCoachSession(sessionId)
+      setConvertSessionId(sessionId)
+      setCoachSessionId(sessionId)
+      setCoachPlannedContext(session.planned_context)
+      setEditingTrade(null)
+      setForm(buildTradeFormFromPlannedSession(session))
+      setIsModalOpen(true)
+      toast({
+        title: "Plan loaded",
+        description: "Add the trade outcome and save to link this plan to your completed trade.",
+      })
+    } catch (error) {
+      toast({
+        title: "Could not load planned trade",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  async function handleDeletePlannedSession(sessionId: string) {
+    const session = plannedSessions.find((item) => item.id === sessionId)
+    const label = session?.pair ? `${session.pair} plan` : "this planned trade"
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return
+
+    setDeletingPlannedSessionId(sessionId)
+    try {
+      await deleteCoachSession(sessionId)
+      setPlannedSessions((current) => current.filter((item) => item.id !== sessionId))
+      if (coachSessionId === sessionId) {
+        setCoachSessionId(null)
+        setConvertSessionId(null)
+        setIsCoachOpen(false)
+      }
+      if (convertSessionId === sessionId) {
+        setConvertSessionId(null)
+      }
+      toast({
+        title: "Plan deleted",
+        description: "The unfinished coach session was removed.",
+      })
+    } catch (error) {
+      toast({
+        title: "Could not delete plan",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingPlannedSessionId(null)
+    }
+  }
+
+  async function finalizeCoachForTrade(tradeId: string, linkedSessionId?: string | null) {
+    const sessionToLink = linkedSessionId ?? coachSessionId
+    try {
+      if (sessionToLink) {
+        await linkCoachSessionToTrade(sessionToLink, tradeId)
+        setCoachSessionId(null)
+        setConvertSessionId(null)
+      }
+      await generateCoachFeedback(tradeId)
+      setCoachFeedbackRefreshKey((current) => current + 1)
+      void refreshPlannedSessions(undefined, true)
+      toast({
+        title: "Coach review ready",
+        description: "Open the trade in your journal to see plan vs outcome feedback.",
+      })
+    } catch (error) {
+      toast({
+        title: "Coach review unavailable",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Run supabase/trade-coach-migration.sql to enable AI Trade Coach.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  function handleTabChange(tab: DashboardTab) {
+    setActiveTab(tab)
+    if (!user) return
+
+    void supabase
+      .from("user_settings")
+      .update({
+        dashboard_preferences: { activeTab: tab },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+  }
+
+  async function saveUserSettings(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) return
+
+    setIsSavingSettings(true)
+
+    const settingsData = {
+      user_id: user.id,
+      starting_balance: settingsForm.starting_balance,
+      daily_drawdown_limit: settingsForm.daily_drawdown_limit,
+      max_risk_per_trade: settingsForm.max_risk_per_trade,
+      max_trades_per_day: settingsForm.max_trades_per_day,
+      prop_firm_size: settingsForm.prop_firm_size,
+      profit_target: settingsForm.profit_target,
+      preferred_session: settingsForm.preferred_session,
+      dashboard_preferences: { activeTab },
+      updated_at: new Date().toISOString(),
+    }
+
+    async function persistSettings(payload: typeof settingsData) {
+      return supabase
+        .from("user_settings")
+        .upsert(payload, { onConflict: "user_id" })
+        .select("*")
+        .single()
+    }
+
+    let result = await persistSettings(settingsData)
+    let error = result.error
+    let savedSettings = result.data
+    let usedFallbackSave = false
+
+    if (error && /column|schema cache/i.test(error.message)) {
+      const { max_trades_per_day, dashboard_preferences, ...coreSettingsData } = settingsData
+      result = await persistSettings(coreSettingsData)
+      error = result.error
+      savedSettings = result.data
+      usedFallbackSave = !error
+    }
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } else {
+      if (savedSettings) {
+        setUserSettings(savedSettings)
+        setSettingsForm(normalizeUserSettings(savedSettings))
+      }
+      toast({
+        title: "Settings saved",
+        description: usedFallbackSave
+          ? "Settings saved, but max trades per day needs supabase/user-settings-migration.sql."
+          : "Your account settings have been updated.",
+        variant: usedFallbackSave ? "destructive" : "default",
+      })
+      fetchUserSettings(user.id)
+      setIsSettingsOpen(false)
+    }
+
+    setIsSavingSettings(false)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!form.pair || !form.direction || !form.result || !form.pnl) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "You must be logged in to save trades",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+
+    const computedRiskReward = calculateRiskReward(form)
+
+    const extendedTradeData = {
+      entry_price: parseOptionalNumber(form.entry_price),
+      stop_loss: parseOptionalNumber(form.stop_loss),
+      take_profit: parseOptionalNumber(form.take_profit),
+      risk_reward: computedRiskReward,
+      emotion_after: form.emotion_after.trim() || null,
+      mistake_tags: form.mistake_tags.length > 0 ? form.mistake_tags.join(",") : null,
+      trade_notes: form.trade_notes.trim() || null,
+    }
+
+    const normalizedResult = normalizeTradeResultForDb(form.result)
+
+    const tradeData = {
+      pair: form.pair,
+      direction: form.direction,
+      result: normalizedResult,
+      pnl: normalizePnL(parseFloat(form.pnl), form.result),
+      emotion: form.emotion || "Calm",
+      setup: form.setup || "A+ Setup",
+      strategy_name: form.strategy_name || null,
+      risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
+      rule_followed: form.rule_followed,
+      user_id: user.id,
+      trade_date: form.trade_date || new Date().toISOString().split("T")[0],
+      higher_timeframe: form.higher_timeframe || null,
+      entry_timeframe: form.entry_timeframe || null,
+      confirmation_timeframe: form.confirmation_timeframe || null,
+      confirmation_signal: form.confirmation_signal || null,
+      session: form.session || null,
+      screenshot_url: form.screenshot_url || null,
+      ...extendedTradeData,
+    }
+
+    async function persistTrade(payload: typeof tradeData) {
+      if (editingTrade) {
+        return supabase
+          .from("trades")
+          .update(payload)
+          .eq("id", editingTrade.id)
+          .eq("user_id", user.id)
+          .select("id")
+          .single()
+      }
+      // Never send id on insert — DB DEFAULT gen_random_uuid() assigns the PK.
+      const { id: _omitId, ...insertPayload } = payload as typeof tradeData & { id?: string | null }
+      return supabase.from("trades").insert([insertPayload]).select("id").single()
+    }
+
+    let result = await persistTrade(tradeData)
+    let error = result.error
+    let usedFallbackSave = false
+
+    if (error && /column|schema cache/i.test(error.message)) {
+      const {
+        entry_price,
+        stop_loss,
+        take_profit,
+        risk_reward,
+        emotion_after,
+        mistake_tags,
+        trade_notes,
+        ...coreTradeData
+      } = tradeData
+      result = await persistTrade(coreTradeData)
+      error = result.error
+      usedFallbackSave = !error
+    }
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } else {
+      const savedTradeId = editingTrade?.id ?? result.data?.id
+      toast({
+        title: editingTrade ? "Trade updated" : "Trade saved",
+        description: usedFallbackSave
+          ? `${form.pair} saved, but extended fields need a DB migration. Run supabase/trade-fields-migration.sql in Supabase.`
+          : `${form.pair} ${form.direction} ${form.result} has been ${editingTrade ? "updated" : "saved"}.`,
+        variant: usedFallbackSave ? "destructive" : "default",
+      })
+      setForm(createInitialTradeForm())
+      setEditingTrade(null)
+      setIsModalOpen(false)
+      fetchTrades(user.id)
+      if (savedTradeId) {
+        void syncTradeLearningMemory(savedTradeId)
+          .then(() => setLearningRefreshKey((current) => current + 1))
+          .catch(() => undefined)
+        void finalizeCoachForTrade(savedTradeId, convertSessionId ?? coachSessionId)
+      }
+    }
+    setIsSubmitting(false)
+  }
+
+  function handleEditTrade(trade: Trade) {
+    setSelectedTrade(null)
+    setEditingTrade(trade)
+    setForm({
+      pair: trade.pair,
+      direction: trade.direction,
+      result: trade.result,
+      pnl: Math.abs(trade.pnl).toString(),
+      emotion: trade.emotion,
+      emotion_after: trade.emotion_after || "",
+      setup: trade.setup,
+      strategy_name: trade.strategy_name || "",
+      risk_percent: (trade.risk_percent || 1).toString(),
+      rule_followed: trade.rule_followed !== false,
+      trade_date: trade.trade_date || new Date().toISOString().split("T")[0],
+      higher_timeframe: trade.higher_timeframe || "",
+      entry_timeframe: trade.entry_timeframe || "",
+      confirmation_timeframe: trade.confirmation_timeframe || "",
+      confirmation_signal: trade.confirmation_signal || "",
+      session: trade.session || "",
+      screenshot_url: trade.screenshot_url || "",
+      entry_price: trade.entry_price?.toString() || "",
+      stop_loss: trade.stop_loss?.toString() || "",
+      take_profit: trade.take_profit?.toString() || "",
+      mistake_tags: parseMistakeTags(trade.mistake_tags),
+      trade_notes: trade.trade_notes || "",
+    })
+    setIsModalOpen(true)
+  }
+
+  function handleDeleteClick(trade: Trade) {
+    setTradeToDelete(trade)
+    setIsDeleteModalOpen(true)
+  }
+
+  async function confirmDeleteTrade() {
+    if (!tradeToDelete || !user) return
+
+    setIsDeleting(true)
+    
+    const { error } = await supabase
+      .from("trades")
+      .delete()
+      .eq("id", tradeToDelete.id)
+      .eq("user_id", user.id) // Security: only delete own trades
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Trade deleted",
+        description: `${tradeToDelete.pair} trade has been removed.`,
+      })
+      fetchTrades(user.id)
+    }
+
+    setIsDeleting(false)
+    setIsDeleteModalOpen(false)
+    setTradeToDelete(null)
+  }
+
+  function closeModal() {
+    setIsModalOpen(false)
+    setEditingTrade(null)
+    setConvertSessionId(null)
+    setForm(createInitialTradeForm())
+  }
+
+  // Calculate live analytics from trades
+  const startingBalance = userSettings?.starting_balance ?? settingsForm.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance
+  const maxRiskPerTrade = userSettings?.max_risk_per_trade ?? settingsForm.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade
+  const showTradesSkeleton =
+    isLoadingTrades && trades.length === 0 && !dashboardLoadTimedOut
+  const showProfileSkeleton =
+    isLoadingProfile && !userProfile && !dashboardLoadTimedOut
+  const showLoadFallbackBanner = !!tradesLoadError
+  const profileCard = buildUserProfileCardProps({
+    profile: userProfile ?? DEFAULT_USER_PROFILE,
+    email: user?.email,
+    propFirmSize: settingsForm.prop_firm_size,
+    isLoading: showProfileSkeleton,
+  })
+  const usingEmailFallback =
+    !showProfileSkeleton &&
+    !userProfile?.first_name?.trim() &&
+    !userProfile?.last_name?.trim()
+  const totalPnL = trades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
+  const accountBalance = startingBalance + totalPnL
+  const winCount = trades.filter(t => t.result === "WIN").length
+  const winRate = trades.length > 0 ? Math.round((winCount / trades.length) * 100) : 0
+  const avgRisk = trades.length > 0 ? trades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / trades.length : 1
+  const todayTrades = getTodayTrades(trades)
+
+  // Calculate violation stats
+  const tradesWithViolations = trades.map(t => ({
+    ...t,
+    violations: getTradeViolations(t, maxRiskPerTrade)
+  }))
+  const violationCount = tradesWithViolations.filter(t => t.violations.length > 0).length
+  const cleanCount = trades.length - violationCount
+
+  function clearSessionState() {
+    loadedDashboardUserRef.current = null
+    setUser(null)
+    setTrades([])
+    setUserSettings(null)
+    setUserProfile(null)
+    clearCachedUserProfile()
+    clearCachedTrades()
+    setTradesLoadError(null)
+    setIsLoadingTrades(false)
+    setIsLoadingProfile(false)
+    dashboardLoadTimedOutRef.current = false
+    setDashboardLoadTimedOut(false)
+    tradesFetchSettledRef.current = false
+    clearGlobalLoadTimeout()
+    setIsModalOpen(false)
+    setIsSettingsOpen(false)
+    setIsDeleteModalOpen(false)
+    setSelectedTrade(null)
+    setEditingTrade(null)
+    setTradeToDelete(null)
+  }
+
+  async function handleLogout() {
+    if (signingOutRef.current || isLoggingOut) return
+
+    signingOutRef.current = true
+    setIsLoggingOut(true)
+
+    toast({
+      title: "Signing out...",
+      description: "Redirecting to login.",
+    })
+
+    clearSessionState()
+
+    await clearLocalAuthSession(supabase)
+    router.replace("/auth/login")
+
+    void signOutWithTimeout(supabase).then(({ timedOut }) => {
+      if (timedOut) {
+        redirectToLogin()
+      }
+    })
+  }
+
+  if (isLoggingOut || signingOutRef.current) {
+    return <SigningOutScreen />
+  }
+
+  if (!user && !isLoadingTrades && !dashboardLoadTimedOut) {
+    return null
+  }
+
+  return (
+    <div className="dashboard-shell">
+      <DashboardHeader
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+      
+      {user && (
+        <div className="dashboard-container px-4 pt-4 md:px-6 md:pt-5">
+          <div className="dashboard-user-bar">
+            <div className="min-w-0">
+              <UserProfileCard {...profileCard} />
+              {usingEmailFallback && <UserProfileCardEmptyHint />}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.04] group"
+                title="Account Settings"
+              >
+                <Settings className="size-4 text-muted-foreground transition-colors group-hover:text-cyan-glow" />
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-loss/20 hover:bg-loss/[0.08] group"
+                title="Logout"
+              >
+                {isLoggingOut ? (
+                  <div className="size-4 animate-spin rounded-full border-2 border-loss/30 border-t-loss" />
+                ) : (
+                  <LogOut className="size-4 text-muted-foreground transition-colors group-hover:text-loss" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <main className="dashboard-container space-y-6 px-4 py-5 pb-28 md:space-y-8 md:px-6 md:py-6 md:pb-24">
+        {showLoadFallbackBanner && (
+          <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
+            <p className="text-[12px] font-medium text-amber-200/90">
+              {tradesLoadError}
+            </p>
+          </DashboardInsetPanel>
+        )}
+        <TabTransition activeTab={activeTab}>
+          {activeTab === "dashboard" && (
+            showTradesSkeleton ? (
+              <DashboardOverviewSkeleton />
+            ) : (
+              <div className="space-y-6 md:space-y-8">
+                <StatsCards
+                  accountBalance={accountBalance}
+                  totalPnL={totalPnL}
+                  winRate={winRate}
+                  avgRisk={avgRisk}
+                  maxRiskPerTrade={maxRiskPerTrade}
+                  tradeCount={trades.length}
+                />
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Performance</p>
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
+                    <EquityCurveChart trades={trades} startingBalance={startingBalance} />
+                    <WeeklyPerformance trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Intelligence</p>
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
+                    <CalendarHeatmapPlaceholder trades={trades} />
+                    <AITradeCoachPlaceholder
+                      trades={trades}
+                      patternMemoryRefreshKey={coachFeedbackRefreshKey}
+                    />
+                  </div>
+                </section>
+              </div>
+            )
+          )}
+
+          {activeTab === "strategies" && (
+            <section className="dashboard-section space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="dashboard-section-title mb-0">Strategies</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  asChild
+                  className="h-9 border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
+                >
+                  <a href="/strategy">
+                    <Brain className="mr-2 size-4" />
+                    Strategy Playbook
+                  </a>
+                </Button>
+              </div>
+              <StrategyPerformance
+                trades={trades}
+                isLoading={showTradesSkeleton}
+                loadError={tradesLoadError}
+              />
+            </section>
+          )}
+
+          {activeTab === "analytics" && (
+            showTradesSkeleton ? (
+              <DashboardOverviewSkeleton />
+            ) : (
+              <div className="space-y-6 md:space-y-8">
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Weekly AI Debrief</p>
+                  <div className="dashboard-stagger">
+                    <WeeklyDebriefPanel
+                      refreshKey={coachFeedbackRefreshKey}
+                      onViewTrade={(tradeId) => {
+                        const trade = trades.find((row) => String(row.id) === String(tradeId))
+                        if (trade) setSelectedTrade(trade)
+                      }}
+                    />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Trade Memory + Learning</p>
+                  <div className="dashboard-stagger">
+                    <TradeLearningPanel refreshKey={learningRefreshKey + coachFeedbackRefreshKey} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Advanced Analytics</p>
+                  <div className="dashboard-stagger">
+                    <AdvancedAnalyticsPanel trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Mistake Analysis</p>
+                  <div className="dashboard-stagger">
+                    <MistakeAnalysisPanel trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Performance Heatmap</p>
+                  <div className="dashboard-stagger">
+                    <CalendarHeatmapPlaceholder trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Performance Analytics</p>
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+                    <DisciplineScore
+                      settings={settingsForm}
+                      trades={trades}
+                      startingBalance={startingBalance}
+                    />
+                    <RiskManagement
+                      settings={settingsForm}
+                      trades={trades}
+                      startingBalance={startingBalance}
+                    />
+                    <EmotionalStateTracker trades={trades} />
+                    <WinRateAnalytics trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Insights & Sessions</p>
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+                    <StreakTrackerPlaceholder trades={trades} />
+                    <QuantumAnalyticsPlaceholder trades={trades} />
+                    <SessionStats trades={trades} />
+                    <AIPsychologyInsights trades={trades} />
+                  </div>
+                </section>
+
+                <section className="dashboard-section">
+                  <p className="dashboard-section-title">Discipline</p>
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                    <DailyRulesChecklist
+                      settings={settingsForm}
+                      trades={trades}
+                      startingBalance={startingBalance}
+                    />
+                  </div>
+                </section>
+              </div>
+            )
+          )}
+
+          {activeTab === "journal" && (
+            showTradesSkeleton ? (
+              <section className="dashboard-section">
+                <p className="dashboard-section-title">Trade Journal</p>
+                <div className="dashboard-stagger">
+                  <TableSkeleton />
+                </div>
+              </section>
+            ) : (
+              <section className="dashboard-section">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="dashboard-section-title mb-0">Trade Journal</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {plannedSessions.some((session) => session.status === "in_progress") && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const latestInProgress = plannedSessions.find(
+                            (session) => session.status === "in_progress",
+                          )
+                          if (latestInProgress) {
+                            void handleContinuePlannedCoach(latestInProgress.id)
+                          }
+                        }}
+                        className="h-9 border-white/[0.08] text-foreground/85 hover:bg-white/[0.04]"
+                      >
+                        Continue Latest Plan
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void handleOpenCoach(buildEmptyPlannedContext())}
+                      className="h-9 border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
+                    >
+                      <Brain className="mr-2 size-4" />
+                      New Pre-Trade Coach
+                    </Button>
+                  </div>
+                </div>
+                <div className="dashboard-stagger space-y-3">
+                  <PlannedTradesSection
+                    sessions={plannedSessions}
+                    isLoading={isLoadingPlannedSessions}
+                    deletingSessionId={deletingPlannedSessionId}
+                    onContinueCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
+                    onConvertToTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
+                    onDeletePlanned={(sessionId) => void handleDeletePlannedSession(sessionId)}
+                  />
+                  <RecentTradesTable
+                    trades={trades}
+                    onEdit={handleEditTrade}
+                    onDelete={handleDeleteClick}
+                    onViewTrade={setSelectedTrade}
+                    onScreenshotClick={(trade) =>
+                      setScreenshotViewer({ url: trade?.screenshot_url ?? null, label: trade?.pair ?? "Trade" })
+                    }
+                  />
+                </div>
+              </section>
+            )
+          )}
+        </TabTransition>
+      </main>
+
+      <button
+        onClick={() => {
+          setEditingTrade(null)
+          setForm(createInitialTradeForm())
+          setIsModalOpen(true)
+        }}
+        className="dashboard-fab group"
+      >
+        <Plus className="size-5 transition-transform group-hover:rotate-90 duration-300" />
+        <span className="hidden text-[14px] md:inline">New Trade</span>
+      </button>
+
+      <AddTradeModal
+        open={isModalOpen}
+        onClose={closeModal}
+        form={form}
+        onFormChange={(updates) => setForm((prev) => ({ ...prev, ...updates }))}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+        isEditing={!!editingTrade}
+        startingBalance={startingBalance}
+        maxRiskPerTrade={maxRiskPerTrade}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        isDragging={isDragging}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onScreenshotUpload={handleScreenshotUpload}
+        onScreenshotRemove={() => setForm((prev) => ({ ...prev, screenshot_url: "" }))}
+        onScreenshotPreview={() =>
+          setScreenshotViewer({ url: form.screenshot_url, label: form.pair || "Trade chart" })
+        }
+        onOpenCoach={() =>
+          void handleOpenCoach(buildPlannedContextFromForm(form, maxRiskPerTrade))
+        }
+      />
+
+      <AccountSettingsModal
+        open={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        form={settingsForm}
+        onFormChange={(updates) => setSettingsForm((prev) => ({ ...prev, ...updates }))}
+        onSubmit={saveUserSettings}
+        isSaving={isSavingSettings}
+        accountBalance={accountBalance}
+        totalPnL={totalPnL}
+      />
+
+      {isDeleteModalOpen && tradeToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="dashboard-modal-backdrop"
+            onClick={() => {
+              setIsDeleteModalOpen(false)
+              setTradeToDelete(null)
+            }}
+          />
+
+          <div className="dashboard-modal-panel relative mx-4 w-full max-w-md border-loss/20">
+              <div className="relative border-b border-white/[0.06] px-6 py-5">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-loss/[0.08] via-transparent to-transparent" />
+                <div className="relative flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-[10px] border border-loss/20 bg-loss/[0.08]">
+                    <Trash2 className="size-4 text-loss" />
+                  </div>
+                  <div>
+                    <h2 className="text-[15px] font-semibold tracking-tight text-foreground">Delete Trade</h2>
+                    <p className="text-[11px] text-muted-foreground/70">This action cannot be undone</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <p className="mb-4 text-[13px] text-muted-foreground">
+                  Are you sure you want to delete this trade?
+                </p>
+                
+                <div className="dashboard-inset-panel space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-foreground">{tradeToDelete.pair}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      tradeToDelete.result === "WIN" 
+                        ? "bg-profit/20 text-profit" 
+                        : tradeToDelete.result === "LOSS"
+                        ? "bg-loss/20 text-loss"
+                        : "bg-muted/50 text-muted-foreground"
+                    }`}>
+                      {tradeToDelete.result}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Direction:</span>
+                      <span className={`ml-1 ${tradeToDelete.direction === "BUY" ? "text-profit" : "text-loss"}`}>
+                        {tradeToDelete.direction}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">P&L:</span>
+                      <span className={`ml-1 font-medium ${getPnLTextClass(tradeToDelete.pnl, tradeToDelete.result)}`}>
+                        {formatPnL(tradeToDelete.pnl, tradeToDelete.result)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsDeleteModalOpen(false)
+                      setTradeToDelete(null)
+                    }}
+                    className="flex-1 h-11 border-border/50 hover:bg-secondary/50"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={confirmDeleteTrade}
+                    disabled={isDeleting}
+                    className="flex-1 h-11 bg-loss hover:bg-loss/90 text-white"
+                  >
+                    {isDeleting ? (
+                      <div className="flex items-center gap-2">
+                        <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Deleting...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Trash2 className="size-4" />
+                        Delete Trade
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </div>
+          </div>
+        </div>
+      )}
+
+      <ScreenshotViewerModal
+        open={!!screenshotViewer}
+        imageUrl={screenshotViewer?.url ?? null}
+        title={screenshotViewer?.label}
+        onClose={() => setScreenshotViewer(null)}
+      />
+
+      <TradeDetailsModal
+        trade={selectedTrade}
+        maxRiskPerTrade={maxRiskPerTrade}
+        coachFeedbackRefreshKey={coachFeedbackRefreshKey}
+        onClose={() => setSelectedTrade(null)}
+        onEdit={(trade) => handleEditTrade(trade as Trade)}
+        isScreenshotOpen={!!screenshotViewer}
+        onScreenshotClick={(trade) =>
+          setScreenshotViewer({ url: trade.screenshot_url ?? null, label: trade.pair })
+        }
+      />
+
+      <TradeCoachModal
+        open={isCoachOpen}
+        onClose={() => setIsCoachOpen(false)}
+        plannedContext={coachPlannedContext}
+        maxRiskPerTrade={maxRiskPerTrade}
+        sessionId={coachSessionId}
+        onSessionChange={(sessionId) => {
+          setCoachSessionId(sessionId)
+          if (sessionId) {
+            void refreshPlannedSessions(undefined, true)
+          }
+        }}
+        onCompleted={(sessionId) => {
+          setCoachSessionId(sessionId)
+          void refreshPlannedSessions(undefined, true)
+        }}
+      />
+
+      <Toaster />
+    </div>
+  )
+}

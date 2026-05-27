@@ -1,0 +1,94 @@
+import { buildWeeklyDebrief, filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
+import type { WeeklyDebriefResult } from "@/lib/ai/weekly-debrief-types"
+import { generateDebriefNarrativeWithProvider } from "@/lib/ai/providers"
+import { generatePatternMemory } from "@/lib/trade-coach/pattern-memory"
+import { buildEmotionalTrends } from "@/lib/learning/pattern-detection"
+import { buildLearningDashboard, buildWeeklyReviewAdvice } from "@/lib/learning/learning-dashboard"
+import type {
+  AiReviewRecord,
+  LearningFeedbackRow,
+  LearningTradeRow,
+} from "@/lib/learning/types"
+
+export function buildPersistedWeeklyReview(input: {
+  trades: LearningTradeRow[]
+  feedback: LearningFeedbackRow[]
+  weekOffset?: number
+  previousDisciplineAvg?: number | null
+  maxRiskPerTrade?: number
+}): AiReviewRecord {
+  const weekRange = getWeekRange(new Date(), input.weekOffset ?? 0)
+  const weekTrades = filterTradesForWeek(input.trades, weekRange.start, weekRange.end)
+
+  const patternResult = generatePatternMemory({
+    trades: input.trades,
+    feedback: input.feedback.map((row) => ({
+      trade_id: row.trade_id,
+      discipline_score: row.discipline_score,
+      planned_vs_actual: row.planned_vs_actual || [],
+    })),
+    sessions: [],
+    maxRiskPerTrade: input.maxRiskPerTrade ?? 1,
+  })
+
+  const debrief: WeeklyDebriefResult = buildWeeklyDebrief({
+    trades: input.trades,
+    feedback: input.feedback.map((row) => ({
+      trade_id: row.trade_id,
+      discipline_score: row.discipline_score,
+      planned_vs_actual: row.planned_vs_actual || [],
+    })),
+    coachSessions: [],
+    patterns: patternResult.patterns,
+    maxRiskPerTrade: input.maxRiskPerTrade ?? 1,
+    weekStart: weekRange.start,
+    weekEnd: weekRange.end,
+    previousWeekDisciplineAvg: input.previousDisciplineAvg ?? null,
+  })
+
+  const dashboard = buildLearningDashboard({
+    trades: weekTrades,
+    feedback: input.feedback,
+    maxRiskPerTrade: input.maxRiskPerTrade,
+  })
+
+  const emotionalTrends = buildEmotionalTrends(weekTrades).map((item) => ({
+    emotion: item.emotion,
+    count: item.count,
+    trend: item.trend,
+  }))
+
+  const summary = `${weekTrades.length} trades · ${debrief.summary.winRate}% win rate · ${
+    debrief.summary.totalPnL >= 0 ? "+" : ""
+  }${debrief.summary.totalPnL.toFixed(2)} P&L`
+
+  return {
+    review_type: "weekly",
+    week_start: weekRange.start.toISOString().slice(0, 10),
+    week_end: weekRange.end.toISOString().slice(0, 10),
+    summary,
+    recurring_mistakes: debrief.summary.mostRepeatedMistake
+      ? [debrief.summary.mostRepeatedMistake]
+      : [],
+    emotional_trends: emotionalTrends,
+    discipline_score: debrief.summary.averageDisciplineScore ?? dashboard.disciplineScore,
+    most_profitable_setup: debrief.summary.bestSetup,
+    advice: buildWeeklyReviewAdvice({ trades: weekTrades, dashboard }),
+    payload: debrief,
+  }
+}
+
+export async function enrichWeeklyReviewWithProvider(
+  review: AiReviewRecord,
+  weekTrades: LearningTradeRow[],
+): Promise<AiReviewRecord> {
+  const debrief = review.payload as WeeklyDebriefResult
+  const aiNarrative = await generateDebriefNarrativeWithProvider({
+    summary: review.summary,
+    tradeCount: weekTrades.length,
+    winRate: debrief.summary?.winRate ?? 0,
+    recurringMistakes: review.recurring_mistakes,
+  })
+  if (!aiNarrative) return review
+  return { ...review, summary: aiNarrative }
+}
