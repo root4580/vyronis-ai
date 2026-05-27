@@ -49,7 +49,6 @@ function AnnotationShape({ annotation }: { annotation: ChartAnnotation }) {
       )}
       <foreignObject x={x} y={Math.max(y - 5, 0)} width={Math.min(width + 8, 36)} height={5}>
         <div
-          xmlns="http://www.w3.org/1999/xhtml"
           className="truncate rounded px-1 py-0.5 text-[6px] font-semibold uppercase tracking-[0.08em]"
           style={{
             background: style.chipBg,

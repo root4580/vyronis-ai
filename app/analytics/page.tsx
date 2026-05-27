@@ -16,6 +16,8 @@ import {
   fetchUserStartingBalance,
   fetchUserTradesForAnalytics,
 } from "@/lib/analytics/fetch-trades"
+import type { AnalyticsTradeRow } from "@/lib/analytics/types"
+import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 
 export default function AnalyticsPage() {
   const router = useRouter()
@@ -24,6 +26,8 @@ export default function AnalyticsPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [startingBalance, setStartingBalance] = useState(10000)
+  const [maxRiskPerTrade, setMaxRiskPerTrade] = useState(DEFAULT_USER_SETTINGS.max_risk_per_trade)
+  const [rawTrades, setRawTrades] = useState<AnalyticsTradeRow[]>([])
   const [analytics, setAnalytics] = useState(() => buildDashboardAnalytics([]))
 
   useEffect(() => {
@@ -41,9 +45,14 @@ export default function AnalyticsPage() {
         return
       }
 
-      const [tradesResult, balance] = await Promise.all([
+      const [tradesResult, balance, settingsResult] = await Promise.all([
         fetchUserTradesForAnalytics(supabase, user.id),
         fetchUserStartingBalance(supabase, user.id),
+        supabase
+          .from("user_settings")
+          .select("max_risk_per_trade")
+          .eq("user_id", user.id)
+          .maybeSingle(),
       ])
 
       if (cancelled) return
@@ -57,6 +66,13 @@ export default function AnalyticsPage() {
       }
 
       setStartingBalance(balance)
+      setRawTrades(tradesResult.trades)
+      setMaxRiskPerTrade(
+        typeof settingsResult.data?.max_risk_per_trade === "number" &&
+          settingsResult.data.max_risk_per_trade > 0
+          ? settingsResult.data.max_risk_per_trade
+          : DEFAULT_USER_SETTINGS.max_risk_per_trade,
+      )
       setAnalytics(buildDashboardAnalytics(tradesResult.trades, balance))
       setIsLoading(false)
     }
@@ -127,7 +143,11 @@ export default function AnalyticsPage() {
           <AnalyticsPageSkeleton />
         ) : (
           <div className="space-y-8">
-            <WeeklyReviewPanel refreshKey={analytics.tradeCount} />
+            <WeeklyReviewPanel
+              refreshKey={analytics.tradeCount}
+              trades={rawTrades}
+              maxRiskPerTrade={maxRiskPerTrade}
+            />
             <AnalyticsDashboard analytics={analytics} startingBalance={startingBalance} />
           </div>
         )}

@@ -7,13 +7,13 @@ export type MistakeTrade = {
   pnl: number
   emotion: string
   emotion_after?: string | null
-  session: string | null
-  risk_percent: number | null
-  rule_followed: boolean | null
-  confirmation_signal: string | null
+  session?: string | null
+  risk_percent?: number | null
+  rule_followed?: boolean | null
+  confirmation_signal?: string | null
   mistake_tags?: string | null
   strategy_name?: string | null
-  trade_date: string | null
+  trade_date?: string | null
   created_at: string
 }
 
@@ -309,7 +309,7 @@ function findMostImproved(trades: MistakeTrade[], context: AnalysisContext): { l
   return best
 }
 
-function normalizeSession(session: string | null): string {
+function normalizeSession(session?: string | null): string {
   if (!session) return "Unknown session"
   if (session.toLowerCase().includes("london")) return "London session"
   if (session.toLowerCase().includes("new york") || session.toLowerCase().includes("ny")) return "New York session"

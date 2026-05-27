@@ -1,3 +1,8 @@
+import type {
+  SetupCoachingInsight,
+  SetupScoreBreakdown,
+} from "@/lib/trade-coach/setup-score-engine"
+
 export type AnalyticsTradeRow = {
   id: string
   pair: string
@@ -24,8 +29,8 @@ export type AnalyticsTradeRow = {
   risk_reward?: number | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: Record<string, number> | null
-  setup_coaching_insights?: Array<{ id: string; type: string; message: string }> | null
+  setup_score_breakdown?: SetupScoreBreakdown | null
+  setup_coaching_insights?: SetupCoachingInsight[] | null
 }
 
 export type SetupDisplayBucket = "A+" | "A" | "B" | "C"

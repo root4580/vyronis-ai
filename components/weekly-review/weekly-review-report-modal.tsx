@@ -15,7 +15,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { WeeklyReviewInsightCard } from "@/components/weekly-review/weekly-review-insight-card"
 import { WeeklyReviewScoreMeter } from "@/components/weekly-review/weekly-review-score-meter"
+import type { LeakEngineInput } from "@/lib/behavior"
 import type { WeeklyReviewReport } from "@/lib/weekly-review/types"
+import {
+  buildBehavioralExportSummary,
+  printBehavioralWeeklyReview,
+} from "@/lib/weekly-review/behavioral-export"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +29,8 @@ type WeeklyReviewReportModalProps = {
   open: boolean
   onClose: () => void
   onViewTrade?: (tradeId: string) => void
+  trades?: LeakEngineInput["trades"]
+  maxRiskPerTrade?: number
 }
 
 const ANIMATION_MS = 300
@@ -33,6 +40,8 @@ export function WeeklyReviewReportModal({
   open,
   onClose,
   onViewTrade,
+  trades = [],
+  maxRiskPerTrade = 1,
 }: WeeklyReviewReportModalProps) {
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(open)
@@ -120,14 +129,28 @@ export function WeeklyReviewReportModal({
                 {report.weekLabel}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] p-2 hover:border-white/[0.14]"
-              aria-label="Close"
-            >
-              <X className="size-5 text-muted-foreground" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 border-white/[0.1] text-[11px]"
+                onClick={() => {
+                  const summary = buildBehavioralExportSummary(report, trades, maxRiskPerTrade)
+                  printBehavioralWeeklyReview(report, summary)
+                }}
+              >
+                Print review
+              </Button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-lg border border-white/[0.08] bg-white/[0.04] p-2 hover:border-white/[0.14]"
+                aria-label="Close"
+              >
+                <X className="size-5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
         </header>
 

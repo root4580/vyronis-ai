@@ -19,7 +19,6 @@ import type {
   ExecutionReplayCandleState,
   ExecutionReplayChangeItem,
   ExecutionReplayEntryComparison,
-  ExecutionReplayEntryComparison,
   ExecutionReplayEvent,
   ExecutionReplayPhase,
   ExecutionReplayResult,

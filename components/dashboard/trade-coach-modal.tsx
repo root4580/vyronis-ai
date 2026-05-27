@@ -33,6 +33,8 @@ import {
 } from "@/lib/strategy/api-client"
 import type { StrategyPlaybookRecord } from "@/lib/strategy/types"
 import { resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
+import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
+import type { ChartVisionProviderId } from "@/lib/coach/types"
 import {
   estimateQuestionCount,
   extractResponsesFromMessages,
@@ -169,9 +171,9 @@ export function TradeCoachModal({
 
     return {
       ...resolved,
-      provider,
+      provider: provider as ChartVisionProviderId | undefined,
       visualAnalysis,
-    }
+    } as MtfAnalysisResult
   }, [session])
 
   const analysisHasRun = useMemo(() => {

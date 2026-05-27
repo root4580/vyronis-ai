@@ -56,7 +56,7 @@ export function buildLearningDashboard(input: {
     feedback: feedback.map((row) => ({
       trade_id: row.trade_id,
       discipline_score: row.discipline_score,
-      planned_vs_actual: (row.planned_vs_actual || []) as PlannedVsActualComparison[],
+      planned_vs_actual: (row.planned_vs_actual || []) as unknown as PlannedVsActualComparison[],
     })) as PatternMemoryFeedback[],
     sessions: input.sessions || [],
     maxRiskPerTrade: input.maxRiskPerTrade ?? 1,
@@ -112,7 +112,7 @@ export function buildLearningMemorySnapshot(input: {
     feedback: input.feedback.map((row) => ({
       trade_id: row.trade_id,
       discipline_score: row.discipline_score,
-      planned_vs_actual: (row.planned_vs_actual || []) as PlannedVsActualComparison[],
+      planned_vs_actual: (row.planned_vs_actual || []) as unknown as PlannedVsActualComparison[],
     })) as PatternMemoryFeedback[],
     sessions: input.sessions || [],
     maxRiskPerTrade: input.maxRiskPerTrade ?? 1,

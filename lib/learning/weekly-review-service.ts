@@ -5,10 +5,15 @@ import { generatePatternMemory } from "@/lib/trade-coach/pattern-memory"
 import { buildEmotionalTrends } from "@/lib/learning/pattern-detection"
 import { buildLearningDashboard, buildWeeklyReviewAdvice } from "@/lib/learning/learning-dashboard"
 import type {
+  WeeklyDebriefFeedback,
+  WeeklyDebriefTrade,
+} from "@/lib/ai/weekly-debrief-types"
+import type {
   AiReviewRecord,
   LearningFeedbackRow,
   LearningTradeRow,
 } from "@/lib/learning/types"
+import type { PatternMemoryFeedback } from "@/lib/trade-coach/pattern-memory"
 
 export function buildPersistedWeeklyReview(input: {
   trades: LearningTradeRow[]
@@ -18,26 +23,30 @@ export function buildPersistedWeeklyReview(input: {
   maxRiskPerTrade?: number
 }): AiReviewRecord {
   const weekRange = getWeekRange(new Date(), input.weekOffset ?? 0)
-  const weekTrades = filterTradesForWeek(input.trades, weekRange.start, weekRange.end)
+  const weekTrades = filterTradesForWeek(
+    input.trades as unknown as WeeklyDebriefTrade[],
+    weekRange.start,
+    weekRange.end,
+  )
+
+  const debriefTrades = input.trades as unknown as WeeklyDebriefTrade[]
+  const debriefFeedback = input.feedback.map((row) => ({
+    trade_id: row.trade_id,
+    discipline_score: row.discipline_score,
+    planned_vs_actual: (row.planned_vs_actual ||
+      []) as unknown as WeeklyDebriefFeedback["planned_vs_actual"],
+  }))
 
   const patternResult = generatePatternMemory({
-    trades: input.trades,
-    feedback: input.feedback.map((row) => ({
-      trade_id: row.trade_id,
-      discipline_score: row.discipline_score,
-      planned_vs_actual: row.planned_vs_actual || [],
-    })),
+    trades: debriefTrades,
+    feedback: debriefFeedback as PatternMemoryFeedback[],
     sessions: [],
     maxRiskPerTrade: input.maxRiskPerTrade ?? 1,
   })
 
   const debrief: WeeklyDebriefResult = buildWeeklyDebrief({
-    trades: input.trades,
-    feedback: input.feedback.map((row) => ({
-      trade_id: row.trade_id,
-      discipline_score: row.discipline_score,
-      planned_vs_actual: row.planned_vs_actual || [],
-    })),
+    trades: debriefTrades,
+    feedback: debriefFeedback,
     coachSessions: [],
     patterns: patternResult.patterns,
     maxRiskPerTrade: input.maxRiskPerTrade ?? 1,

@@ -275,7 +275,11 @@ export async function persistWeeklyReview(
   const trades = await loadTrades(supabase, userId)
   const feedback = await loadFeedback(supabase, userId)
   const weekRange = getWeekRange(new Date(), weekOffset)
-  const weekTrades = filterTradesForWeek(trades, weekRange.start, weekRange.end)
+  const weekTrades = filterTradesForWeek(
+    trades as Parameters<typeof filterTradesForWeek>[0],
+    weekRange.start,
+    weekRange.end,
+  )
   let review = buildPersistedWeeklyReview({ trades, feedback, weekOffset, maxRiskPerTrade })
   review = await enrichWeeklyReviewWithProvider(review, weekTrades)
 

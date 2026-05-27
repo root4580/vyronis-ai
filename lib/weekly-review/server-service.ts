@@ -55,7 +55,8 @@ async function loadFeedback(
   return (data || []).map((row) => ({
     trade_id: String(row.trade_id),
     discipline_score: row.discipline_score,
-    planned_vs_actual: (row.planned_vs_actual || []) as WeeklyDebriefFeedback[0]["planned_vs_actual"],
+    planned_vs_actual: (row.planned_vs_actual ||
+      []) as WeeklyDebriefFeedback["planned_vs_actual"],
   }))
 }
 

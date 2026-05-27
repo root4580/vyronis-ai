@@ -35,12 +35,18 @@ export type LeakAnalysisContext = {
   chronological: BehaviorTrade[]
 }
 
-export function getTradeDayKey(trade: Pick<BehaviorTrade, "trade_date" | "created_at">): string {
+export function getTradeDayKey(trade: {
+  trade_date?: string | null
+  created_at: string
+}): string {
   if (trade.trade_date) return trade.trade_date.split("T")[0]
   return trade.created_at.split("T")[0]
 }
 
-export function getTradeTimestamp(trade: Pick<BehaviorTrade, "trade_date" | "created_at">): number {
+export function getTradeTimestamp(trade: {
+  trade_date?: string | null
+  created_at: string
+}): number {
   return new Date(trade.trade_date || trade.created_at).getTime()
 }
 
@@ -150,9 +156,9 @@ export function mapTradeToBehaviorTrade(
     pair: trade.pair,
     setup: trade.setup || "",
     setup_classification: resolved.classification,
-    risk_percent: trade.risk_percent,
-    rule_followed: trade.rule_followed,
-    confirmation_signal: trade.confirmation_signal,
+    risk_percent: trade.risk_percent ?? null,
+    rule_followed: trade.rule_followed ?? null,
+    confirmation_signal: trade.confirmation_signal ?? null,
     mistake_tags: trade.mistake_tags,
     trade_date: trade.trade_date ?? null,
     created_at: trade.created_at,

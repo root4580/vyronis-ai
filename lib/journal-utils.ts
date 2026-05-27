@@ -6,14 +6,31 @@ export type JournalTrade = {
   direction: string
   result: string
   pnl: number
+  emotion: string
   session: string | null
   setup: string
   strategy_name: string | null
+  risk_percent: number | null
+  rule_followed: boolean | null
+  confirmation_signal: string | null
   trade_date: string | null
   created_at: string
   screenshot_url: string | null
   mistake_tags?: string | null
-  emotion?: string
+  user_id?: string | null
+  higher_timeframe?: string | null
+  entry_timeframe?: string | null
+  confirmation_timeframe?: string | null
+  entry_price?: number | null
+  stop_loss?: number | null
+  take_profit?: number | null
+  risk_reward?: number | null
+  trade_notes?: string | null
+  emotion_after?: string | null
+  setup_score?: number | null
+  setup_classification?: string | null
+  setup_score_breakdown?: import("@/lib/trade-coach/setup-score-engine").SetupScoreBreakdown | null
+  setup_coaching_insights?: import("@/lib/trade-coach/setup-score-engine").SetupCoachingInsight[] | null
 }
 
 export type JournalSortKey = "date" | "pair" | "pnl" | "result"
@@ -37,12 +54,12 @@ function getTradeDate(trade: JournalTrade): number {
   return new Date(trade.trade_date || trade.created_at).getTime()
 }
 
-export function filterAndSortTrades(
-  trades: JournalTrade[],
+export function filterAndSortTrades<T extends JournalTrade>(
+  trades: T[],
   filters: JournalFilters,
   sortKey: JournalSortKey,
   sortDir: JournalSortDir,
-): JournalTrade[] {
+): T[] {
   const query = filters.search.trim().toLowerCase()
 
   let filtered = trades.filter((trade) => {

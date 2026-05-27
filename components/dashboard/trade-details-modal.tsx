@@ -26,7 +26,11 @@ import { ExecutionReplayPanel } from "@/components/dashboard/execution-replay-pa
 import { TradeQualityTradeSection } from "@/components/dashboard/trade-quality-trade-section"
 import { SetupScorePanel } from "@/components/dashboard/setup-score-panel"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
-import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
+import {
+  resolveStoredSetupScore,
+  type SetupCoachingInsight,
+  type SetupScoreBreakdown,
+} from "@/lib/trade-coach/setup-score-engine"
 import {
   buildTradeDetailAnalysis,
   getEmotionDisplay,
@@ -62,8 +66,8 @@ export type TradeDetails = {
   screenshot_url?: string | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: Record<string, number> | null
-  setup_coaching_insights?: Array<{ id: string; type: string; message: string }> | null
+  setup_score_breakdown?: SetupScoreBreakdown | null
+  setup_coaching_insights?: SetupCoachingInsight[] | null
 }
 
 type TradeDetailsModalProps = {

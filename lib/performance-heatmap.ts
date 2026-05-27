@@ -71,7 +71,7 @@ function calculateStreaks(tradedDays: HeatmapDay[]) {
 
   let longestProfit = 0
   let runningProfit = 0
-  let currentType: "profit" | "loss" | "none" = "none"
+  let currentType: "profit" | "loss" | null = null
   let currentCount = 0
 
   for (const day of sorted) {
@@ -103,7 +103,7 @@ function calculateStreaks(tradedDays: HeatmapDay[]) {
     }
   }
 
-  if (currentType === "none") {
+  if (currentType === null) {
     return {
       currentStreak: { type: "none" as const, count: 0 },
       longestProfitStreak: longestProfit,

@@ -118,7 +118,19 @@ function isCounterTrend(trade: SetupScoreTradeInput): boolean {
 }
 
 function getMistakeLabels(trade: SetupScoreTradeInput): Set<string> {
-  return new Set(getTradeDisplayMistakeTags(trade).map((tag) => tag.label))
+  return new Set(
+    getTradeDisplayMistakeTags({
+      direction: trade.direction,
+      result: trade.result,
+      pnl: 0,
+      emotion: trade.emotion,
+      emotion_after: trade.emotion_after,
+      risk_percent: trade.risk_percent ?? null,
+      rule_followed: trade.rule_followed ?? null,
+      confirmation_signal: trade.confirmation_signal ?? null,
+      mistake_tags: trade.mistake_tags,
+    }).map((tag) => tag.label),
+  )
 }
 
 function scoreHtfAlignment(trade: SetupScoreTradeInput): { score: number; strengths: string[]; warnings: string[] } {

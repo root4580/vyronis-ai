@@ -40,12 +40,12 @@ function parsePercent(value: string | undefined): number | null {
 export function hasChartUploaded(
   context: PreTradePlannedContext,
   chartUrl?: string | null,
-  session?: Pick<TradeCoachSessionRecord, keyof PreTradePlannedContext | "mtf_analysis" | "weekly_screenshot_url" | "daily_screenshot_url" | "h4_screenshot_url" | "h1_screenshot_url" | "m15_screenshot_url"> | null,
+  session?: TradeCoachSessionRecord | null,
 ): boolean {
-  if (session && hasMtfAnalysis(session as TradeCoachSessionRecord)) return true
+  if (session && hasMtfAnalysis(session)) return true
   if (context.mtf_analysis) return true
   if (session) {
-    return countMtfScreenshots(getMtfScreenshotsFromSession(session as TradeCoachSessionRecord)) > 0
+    return countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0
   }
   return Boolean(chartUrl || context.chart_url || context.screenshot_url)
 }

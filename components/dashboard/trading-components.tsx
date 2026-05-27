@@ -150,8 +150,8 @@ type Trade = {
   emotion_after?: string | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: Record<string, number> | null
-  setup_coaching_insights?: Array<{ id: string; type: string; message: string }> | null
+  setup_score_breakdown?: import("@/lib/trade-coach/setup-score-engine").SetupScoreBreakdown | null
+  setup_coaching_insights?: import("@/lib/trade-coach/setup-score-engine").SetupCoachingInsight[] | null
   created_at: string
 }
 

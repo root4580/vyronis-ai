@@ -165,10 +165,12 @@ export function evaluateTradeRiskGuard(input: TradeRiskGuardInput): TradeRiskGua
   const maxRisk = settings.max_risk_per_trade
 
   const plannedContext = buildPlannedContextFromForm(form, maxRisk)
-  const coachResponses = {
+  const coachResponses: Record<string, string> = {
     emotional_state: form.emotion,
-    planned_risk: form.risk_percent ? `${form.risk_percent}%` : undefined,
     rule_check: form.rule_followed ? "yes" : "no",
+  }
+  if (form.risk_percent) {
+    coachResponses.planned_risk = `${form.risk_percent}%`
   }
 
   for (const coachFlag of detectCoachRedFlags(plannedContext, coachResponses, maxRisk)) {

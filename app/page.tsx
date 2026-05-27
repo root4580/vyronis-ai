@@ -109,6 +109,13 @@ import {
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
 import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
+import { DailyRitualStrip } from "@/components/ritual/daily-ritual-strip"
+import { markRitualCoachEngaged } from "@/lib/daily-ritual"
+import {
+  buildRepeatTradeDraft,
+  getMostRecentTradeForRepeat,
+  preserveRepeatMarkerOnEdit,
+} from "@/lib/trade-quick-log"
 import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
 import {
@@ -476,15 +483,18 @@ export default function Home() {
       }
     }
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }: { data: { session: { user: { id: string; email?: string | null } } | null } }) => {
       if (cancelled || !session?.user) return
       logDashboardLoading("bootstrap:getSession", { userId: session.user.id })
-      void bootstrapFromSession(session.user)
+      void bootstrapFromSession({
+        id: session.user.id,
+        email: session.user.email ?? undefined,
+      })
     })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event: string, session: { user: { id: string; email?: string | null } } | null) => {
       if (cancelled) return
 
       logDashboardLoading("auth-state-change", {
@@ -516,7 +526,7 @@ export default function Home() {
         return
       }
 
-      setUser({ id: session.user.id, email: session.user.email })
+      setUser({ id: session.user.id, email: session.user.email ?? undefined })
 
       if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") {
         return
@@ -539,7 +549,10 @@ export default function Home() {
 
           if (cancelled) return
 
-          await bootstrapFromSession(session.user)
+          await bootstrapFromSession({
+            id: session.user.id,
+            email: session.user.email ?? undefined,
+          })
         } catch (error) {
           logDashboardLoading("auth-state-change:load-error", {
             event,
@@ -603,7 +616,10 @@ export default function Home() {
           .from("trades")
           .select("*")
           .eq("user_id", uid)
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false }) as Promise<{
+          data: Trade[] | null
+          error: { message: string; code?: string } | null
+        }>,
         15000,
         "trades.select",
       )
@@ -667,7 +683,10 @@ export default function Home() {
           .from("user_settings")
           .select("*")
           .eq("user_id", userId)
-          .maybeSingle(),
+          .maybeSingle() as Promise<{
+          data: UserSettingsRecord | null
+          error: { message: string; code?: string } | null
+        }>,
         DASHBOARD_LOAD_TIMEOUT_MS,
         "user_settings.select",
       )
@@ -780,7 +799,7 @@ export default function Home() {
     function refreshProfile() {
       if (Date.now() - mountedAt < 1500) return
 
-      void supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+      void supabase.auth.getUser().then(({ data: { user: authUser } }: { data: { user: { id: string; user_metadata?: Record<string, unknown> } | null } }) => {
         if (!authUser) return
         void fetchUserProfile(authUser.id, authUser.user_metadata, { silent: true })
       })
@@ -827,6 +846,9 @@ export default function Home() {
         setCoachPlannedContext(session.planned_context)
         setCoachSessionId(options.sessionId)
         setIsCoachOpen(true)
+        if (user?.id) {
+          markRitualCoachEngaged(user.id)
+        }
       } catch (error) {
         toast({
           title: "Could not open coach session",
@@ -842,6 +864,10 @@ export default function Home() {
     )
     setCoachSessionId(null)
     setIsCoachOpen(true)
+
+    if (user?.id) {
+      markRitualCoachEngaged(user.id)
+    }
   }
 
   async function refreshPlannedSessions(userId?: string, background = false) {
@@ -998,7 +1024,7 @@ export default function Home() {
 
     if (error && /column|schema cache/i.test(error.message)) {
       const { max_trades_per_day, dashboard_preferences, ...coreSettingsData } = settingsData
-      result = await persistSettings(coreSettingsData)
+      result = await persistSettings(coreSettingsData as typeof settingsData)
       error = result.error
       savedSettings = result.data
       usedFallbackSave = !error
@@ -1093,7 +1119,9 @@ export default function Home() {
   }
 
   async function executeTradeSubmit() {
-    if (!user) return
+    const activeUser = user
+    if (!activeUser) return
+    const activeUserId = activeUser.id
 
     setIsSubmitting(true)
 
@@ -1106,7 +1134,9 @@ export default function Home() {
       risk_reward: computedRiskReward,
       emotion_after: form.emotion_after.trim() || null,
       mistake_tags: form.mistake_tags.length > 0 ? form.mistake_tags.join(",") : null,
-      trade_notes: form.trade_notes.trim() || null,
+      trade_notes: editingTrade
+        ? preserveRepeatMarkerOnEdit(editingTrade.trade_notes, form.trade_notes.trim())
+        : form.trade_notes.trim() || null,
     }
 
     const normalizedResult = normalizeTradeResultForDb(form.result)
@@ -1197,7 +1227,7 @@ export default function Home() {
       strategy_name: form.strategy_name || null,
       risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
       rule_followed: form.rule_followed,
-      user_id: user.id,
+      user_id: activeUserId,
       trade_date: form.trade_date || new Date().toISOString().split("T")[0],
       higher_timeframe: form.higher_timeframe || null,
       entry_timeframe: form.entry_timeframe || null,
@@ -1218,7 +1248,7 @@ export default function Home() {
           .from("trades")
           .update(payload)
           .eq("id", editingTrade.id)
-          .eq("user_id", user.id)
+          .eq("user_id", activeUserId)
           .select("id")
           .single()
       }
@@ -1246,7 +1276,7 @@ export default function Home() {
         setup_coaching_insights,
         ...coreTradeData
       } = tradeData
-      result = await persistTrade(coreTradeData)
+      result = await persistTrade(coreTradeData as typeof tradeData)
       error = result.error
       usedFallbackSave = !error
     }
@@ -1269,7 +1299,7 @@ export default function Home() {
       setForm(createInitialTradeForm())
       setEditingTrade(null)
       setIsModalOpen(false)
-      fetchTrades(user.id)
+      fetchTrades(activeUserId)
       if (savedTradeId) {
         void syncTradeLearningMemory(savedTradeId)
           .then(() => setLearningRefreshKey((current) => current + 1))
@@ -1505,6 +1535,27 @@ export default function Home() {
                   tradeCount={trades.length}
                 />
 
+                {user?.id ? (
+                  <DailyRitualStrip
+                    userId={user.id}
+                    trades={trades}
+                    maxRiskPerTrade={maxRiskPerTrade}
+                    hasPlannedCoachInProgress={plannedSessions.some(
+                      (session) => session.status === "in_progress",
+                    )}
+                    onOpenCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
+                    onOpenLog={() => {
+                      setEditingTrade(null)
+                      setConvertSessionId(null)
+                      setForm(createInitialTradeForm())
+                      setIsModalOpen(true)
+                    }}
+                    onCoachEngaged={() => {
+                      if (user.id) markRitualCoachEngaged(user.id)
+                    }}
+                  />
+                ) : null}
+
                 <PrimaryLeakCardWithSettings
                   trades={trades}
                   settings={settingsForm}
@@ -1572,6 +1623,8 @@ export default function Home() {
                   <div className="dashboard-stagger">
                     <WeeklyReviewPanel
                       refreshKey={coachFeedbackRefreshKey + learningRefreshKey}
+                      trades={trades}
+                      maxRiskPerTrade={maxRiskPerTrade}
                       onViewTrade={(tradeId) => {
                         const trade = trades.find((row) => String(row.id) === String(tradeId))
                         if (trade) setSelectedTrade(trade)
@@ -1766,6 +1819,17 @@ export default function Home() {
         onOpenCoach={() =>
           void handleOpenCoach(buildPlannedContextFromForm(form, maxRiskPerTrade))
         }
+        canRepeatLast={!editingTrade && trades.length > 0}
+        repeatSourceLabel={getMostRecentTradeForRepeat(trades)?.pair}
+        onRepeatLast={() => {
+          const source = getMostRecentTradeForRepeat(trades)
+          if (!source) return
+          setForm(buildRepeatTradeDraft(source))
+          toast({
+            title: "Last setup loaded",
+            description: "Update result, P&L, and psychology before saving.",
+          })
+        }}
       />
 
       <AccountSettingsModal

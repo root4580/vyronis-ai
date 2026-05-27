@@ -71,6 +71,9 @@ type AddTradeModalProps = {
   onScreenshotPreview: () => void
   onOpenCoach?: () => void
   hasCoachSession?: boolean
+  canRepeatLast?: boolean
+  repeatSourceLabel?: string
+  onRepeatLast?: () => void
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -152,6 +155,9 @@ export function AddTradeModal({
   onScreenshotPreview,
   onOpenCoach,
   hasCoachSession = false,
+  canRepeatLast = false,
+  repeatSourceLabel,
+  onRepeatLast,
 }: AddTradeModalProps) {
   const riskReward = useMemo(() => calculateRiskReward(form), [form])
   const positionSize = useMemo(
@@ -650,6 +656,19 @@ export function AddTradeModal({
           </div>
 
           <div className="relative shrink-0 border-t border-white/[0.06] bg-black/20 px-4 py-4 backdrop-blur-md md:px-6">
+            {canRepeatLast && onRepeatLast && !isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRepeatLast}
+                className="mb-3 h-10 w-full border-white/[0.1] bg-white/[0.03] text-[12px] text-foreground/85 hover:bg-white/[0.06]"
+              >
+                Repeat last setup
+                {repeatSourceLabel ? (
+                  <span className="ml-1.5 text-muted-foreground/60">· {repeatSourceLabel}</span>
+                ) : null}
+              </Button>
+            )}
             {onOpenCoach && !isEditing && (
               <Button
                 type="button"

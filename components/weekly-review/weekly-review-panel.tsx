@@ -17,14 +17,22 @@ import {
   previewWeeklyReview,
 } from "@/lib/weekly-review/api-client"
 import { weeklyReviewRowToReport } from "@/lib/weekly-review/engine"
+import type { LeakEngineInput } from "@/lib/behavior"
 import type { WeeklyReviewReport } from "@/lib/weekly-review/types"
 
 type WeeklyReviewPanelProps = {
   refreshKey?: number
   onViewTrade?: (tradeId: string) => void
+  trades?: LeakEngineInput["trades"]
+  maxRiskPerTrade?: number
 }
 
-export function WeeklyReviewPanel({ refreshKey = 0, onViewTrade }: WeeklyReviewPanelProps) {
+export function WeeklyReviewPanel({
+  refreshKey = 0,
+  onViewTrade,
+  trades = [],
+  maxRiskPerTrade = 1,
+}: WeeklyReviewPanelProps) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [report, setReport] = useState<WeeklyReviewReport | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -187,6 +195,8 @@ export function WeeklyReviewPanel({ refreshKey = 0, onViewTrade }: WeeklyReviewP
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onViewTrade={onViewTrade}
+        trades={trades}
+        maxRiskPerTrade={maxRiskPerTrade}
       />
     </>
   )
