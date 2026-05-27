@@ -6,7 +6,7 @@ export function getDashboardTabHref(tab: DashboardTab): string {
   return `/?tab=${tab}`
 }
 
-/** Parse `?tab=` for in-app sections. Analytics uses `/analytics` instead. */
+/** Parse `?tab=` for in-app sections. Analytics uses a dedicated route. */
 export function parseTabSearchParam(value: string | null): DashboardTab | null {
   if (value === "dashboard" || value === "strategies" || value === "journal") {
     return value

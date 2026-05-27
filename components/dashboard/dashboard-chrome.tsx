@@ -19,6 +19,8 @@ type DashboardChromeProps = {
   onFabClick?: () => void
   banner?: ReactNode
   mainClassName?: string
+  showSignalBell?: boolean
+  onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
 }
 
 export function DashboardChrome({
@@ -33,12 +35,16 @@ export function DashboardChrome({
   onFabClick,
   banner,
   mainClassName,
+  showSignalBell,
+  onSignalAlertClick,
 }: DashboardChromeProps) {
   return (
     <DashboardAppShell
       activeTab={activeTab}
       onOpenSettings={onOpenSettings}
       mainClassName={mainClassName}
+      showSignalBell={showSignalBell}
+      onSignalAlertClick={onSignalAlertClick}
       userBar={
         <DashboardUserBar
           profileCard={profileCard}

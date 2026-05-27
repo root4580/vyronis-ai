@@ -39,6 +39,31 @@ export function getServerAiEnv() {
   }
 }
 
+/** Server-only service role — webhook ingest only. Never import from client components. */
+export function getServiceRoleKey(): string {
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY_VYRONIS?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  return requireEnv(
+    "SUPABASE_SERVICE_ROLE_KEY_VYRONIS (or SUPABASE_SERVICE_ROLE_KEY)",
+    key,
+  )
+}
+
+/** Canonical app URL for webhooks and redirects. */
+export function getAppBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL?.trim()) {
+    return process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, "")
+  }
+  if (process.env.VERCEL_URL?.trim()) {
+    return `https://${process.env.VERCEL_URL.trim().replace(/\/$/, "")}`
+  }
+  return (
+    process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "")
+}
+
 export function assertProductionEnv(): void {
   if (process.env.NODE_ENV !== "production") return
 

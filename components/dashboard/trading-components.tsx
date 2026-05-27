@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useMemo, useState, useEffect, useCallback } from "react"
+import { useMemo, useState, useEffect, useCallback, type ReactNode } from "react"
 import {
   TrendingUp,
   TrendingDown,
@@ -89,6 +89,7 @@ import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
+import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
@@ -156,6 +157,7 @@ type Trade = {
   setup_classification?: string | null
   setup_score_breakdown?: import("@/lib/trade-coach/setup-score-engine").SetupScoreBreakdown | null
   setup_coaching_insights?: import("@/lib/trade-coach/setup-score-engine").SetupCoachingInsight[] | null
+  import_source?: string | null
   created_at: string
 }
 
@@ -279,9 +281,11 @@ export type DashboardTab = "dashboard" | "strategies" | "analytics" | "journal"
 type DashboardHeaderProps = {
   activeTab: DashboardTab
   onOpenSettings?: () => void
+  showSignalBell?: boolean
+  onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
 }
 
-export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderProps) {
+export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onSignalAlertClick }: DashboardHeaderProps) {
   const pathname = usePathname()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
@@ -387,12 +391,17 @@ export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderPr
               <Settings className="size-4 text-muted-foreground transition-colors group-hover:text-cyan-glow" />
             </button>
 
-            <button className="relative rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.04] group">
-              <Bell className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-              <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-loss text-[9px] font-semibold text-white">
-                3
-              </span>
-            </button>
+            {showSignalBell && onSignalAlertClick ? (
+              <SignalAlertsBell enabled onSelectSignal={onSignalAlertClick} />
+            ) : (
+              <button
+                type="button"
+                className="relative rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.04] group"
+                title="Setup alerts"
+              >
+                <Bell className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+              </button>
+            )}
 
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.08] px-2.5 py-1">
               <Sparkles className="size-3 text-amber-400" />
@@ -408,7 +417,7 @@ export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderPr
             <Link
               key={item.id}
               href={getDashboardTabHref(item.id)}
-              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
+              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-2 py-1 transition-all duration-200 ${
                 activeTab === item.id
                   ? "dashboard-nav-mobile-active text-cyan-glow"
                   : "text-muted-foreground hover:text-foreground"
@@ -680,7 +689,21 @@ export function WeeklyPerformance({ trades }: { trades?: Trade[] }) {
   )
 }
 
-export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick, onViewTrade }: { trades?: Trade[]; onEdit?: (trade: Trade) => void; onDelete?: (trade: Trade) => void; onScreenshotClick?: (trade: Trade) => void; onViewTrade?: (trade: Trade) => void }) {
+export function RecentTradesTable({
+  trades,
+  onEdit,
+  onDelete,
+  onScreenshotClick,
+  onViewTrade,
+  headerActions,
+}: {
+  trades?: Trade[]
+  onEdit?: (trade: Trade) => void
+  onDelete?: (trade: Trade) => void
+  onScreenshotClick?: (trade: Trade) => void
+  onViewTrade?: (trade: Trade) => void
+  headerActions?: ReactNode
+}) {
   const safeTrades = trades ?? []
   const hasTrades = safeTrades.length > 0
 
@@ -759,6 +782,7 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
             {hasTrades ? `${filteredTrades.length} / ${safeTrades.length} trades` : "0 trades"}
           </Badge>
         }
+        action={headerActions}
       />
       <DashboardCardBody className="space-y-3 pt-2">
         {hasTrades && (
@@ -844,6 +868,14 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                         className="text-left transition-colors hover:text-cyan-glow"
                       >
                         <p className="font-medium tracking-tight leading-tight">{trade.pair}</p>
+                        {trade.import_source === "journal_csv" ? (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 h-5 border-cyan-glow/25 bg-cyan-glow/[0.08] text-[9px] text-cyan-glow"
+                          >
+                            CSV Import
+                          </Badge>
+                        ) : null}
                       </button>
                       <div className={cn(JOURNAL_MOBILE_BADGE_STACK_CLASS, "md:hidden")}>
                         <div className="shrink-0">
@@ -910,32 +942,26 @@ export function RecentTradesTable({ trades, onEdit, onDelete, onScreenshotClick,
                     </td>
                     <td className="py-3.5">
                       <div className="flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => trade && onScreenshotClick?.(trade)}
-                          className={
-                            trade.screenshot_url
-                              ? "group/chart journal-screenshot-thumb relative overflow-hidden rounded-lg border border-white/[0.08] transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-glow/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.18)]"
-                              : "group/chart flex size-10 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] transition-all duration-200 hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.04]"
-                          }
-                          title={trade.screenshot_url ? "View chart screenshot" : "No screenshot uploaded"}
-                        >
-                          {trade.screenshot_url ? (
-                            <>
-                              <img
-                                src={trade.screenshot_url}
-                                alt={`${trade.pair} chart`}
-                                className="dashboard-image-zoom size-10 object-cover"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover/chart:opacity-100">
-                                <ImageIcon className="size-4 text-cyan-glow drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
-                              </div>
-                              <div className="pointer-events-none absolute -inset-1 rounded-lg opacity-0 blur-md transition-opacity duration-300 group-hover/chart:opacity-100 bg-cyan-glow/20" />
-                            </>
-                          ) : (
-                            <ImageIcon className="size-4 text-muted-foreground/25 transition-colors group-hover/chart:text-cyan-glow/60" />
-                          )}
-                        </button>
+                        {trade.screenshot_url ? (
+                          <button
+                            type="button"
+                            onClick={() => trade && onScreenshotClick?.(trade)}
+                            className="group/chart journal-screenshot-thumb relative overflow-hidden rounded-lg border border-white/[0.08] transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-glow/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.18)]"
+                            title="View chart screenshot"
+                          >
+                            <img
+                              src={trade.screenshot_url}
+                              alt={`${trade.pair} chart`}
+                              className="dashboard-image-zoom size-10 object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover/chart:opacity-100">
+                              <ImageIcon className="size-4 text-cyan-glow drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                            </div>
+                            <div className="pointer-events-none absolute -inset-1 rounded-lg opacity-0 blur-md transition-opacity duration-300 group-hover/chart:opacity-100 bg-cyan-glow/20" />
+                          </button>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground/35">—</span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3.5 text-right text-[12px] tabular-nums text-muted-foreground hidden lg:table-cell">

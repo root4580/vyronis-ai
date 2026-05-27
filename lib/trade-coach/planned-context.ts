@@ -92,6 +92,16 @@ export function buildPlannedCoachSessionItem(
     plan_summary: buildPlanSummary(context, responses),
     confidence_score: context.coach_analysis?.confidenceScore ?? null,
     should_take_trade: context.coach_analysis?.shouldTakeTrade ?? null,
+    signal_source: context.signal_source ?? "manual",
+    strategy_name: context.strategy_name ?? null,
+    timeframe: context.entry_timeframe ?? null,
+    ai_recommendation: context.coach_analysis
+      ? context.coach_analysis.shouldTakeTrade === "yes"
+        ? "TAKE"
+        : context.coach_analysis.shouldTakeTrade === "no"
+          ? "SKIP"
+          : "CAUTION"
+      : null,
     created_at: session.created_at,
     updated_at: session.updated_at,
   }

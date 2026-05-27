@@ -77,14 +77,14 @@ export function DashboardCardHeader({
 }: DashboardCardHeaderProps) {
   return (
     <CardHeader className={cn("dashboard-card-header", className)}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="dashboard-card-title">
           <span className="dashboard-icon-chip">
             <Icon className="size-3.5" />
           </span>
           {title}
         </CardTitle>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {badge}
           {action}
         </div>

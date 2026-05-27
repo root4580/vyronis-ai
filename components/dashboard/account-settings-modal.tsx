@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import { TradingViewWebhookSettings } from "@/components/tradingview/tradingview-webhook-settings"
 import { PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
 
 type AccountSettingsModalProps = {
@@ -219,6 +220,8 @@ export function AccountSettingsModal({
                 Dashboard balance = starting balance + total P&L from logged trades.
               </p>
             </DashboardInsetPanel>
+
+            <TradingViewWebhookSettings />
           </div>
 
           <div className="relative shrink-0 border-t border-white/[0.06] bg-black/20 px-4 py-4 backdrop-blur-md md:px-6">

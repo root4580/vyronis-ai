@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { AnalyticsTradeRow } from "@/lib/analytics/types"
 import {
   filterTradesByScope,
-  manualTradesOrFilter,
+  journalTradesOrFilter,
   researchTradesOrFilter,
 } from "@/lib/analytics/trade-scope"
 import type { AnalyticsTradeScope } from "@/lib/research/types"
@@ -15,7 +15,7 @@ export async function fetchUserTradesForAnalytics(
   let query = supabase.from("trades").select("*").eq("user_id", userId)
 
   if (scope === "manual") {
-    query = query.or(manualTradesOrFilter())
+    query = query.or(journalTradesOrFilter())
   } else if (scope === "research") {
     query = query.or(researchTradesOrFilter())
   }

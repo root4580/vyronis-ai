@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { X, Pencil, Trash2, Brain } from "lucide-react"
+import { X, Pencil, Trash2, Brain, FileUp, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -24,6 +24,7 @@ import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
 import { TradeCoachModal } from "@/components/dashboard/trade-coach-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
+import { JournalImportModal } from "@/components/dashboard/journal-import-modal"
 import {
   deleteCoachSession,
   fetchCoachSession,
@@ -74,7 +75,7 @@ import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { AuthLoadingState } from "@/components/auth/auth-loading-state"
 import { clearClientSessionData } from "@/lib/client-session"
 import { parseTabSearchParam, readTabFromLocation } from "@/lib/dashboard-nav"
-import { manualTradesOrFilter } from "@/lib/analytics/trade-scope"
+import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import {
   readCachedTrades,
   TRADES_LOAD_TIMEOUT_MS,
@@ -140,6 +141,7 @@ type Trade = {
   setup_classification?: string | null
   setup_score_breakdown?: SetupScoreBreakdown | null
   setup_coaching_insights?: SetupCoachingInsight[] | null
+  import_source?: string | null
   created_at: string
 }
 
@@ -181,6 +183,7 @@ export default function HomePage() {
 function Home() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isJournalImportOpen, setIsJournalImportOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -619,7 +622,7 @@ function Home() {
         .from("trades")
         .select("*")
         .eq("user_id", uid)
-        .or(manualTradesOrFilter())
+        .or(journalTradesOrFilter())
         .order("created_at", { ascending: false })
 
       let { data, error } = await withTimeout(
@@ -1577,7 +1580,12 @@ function Home() {
       onOpenSettings={() => setIsSettingsOpen(true)}
       onLogout={() => void handleLogout()}
       isLoggingOut={isLoggingOut}
-      showFab={Boolean(user)}
+      showFab={Boolean(user) && activeTab !== "journal"}
+      showSignalBell={Boolean(user)}
+      onSignalAlertClick={() => {
+        setActiveTab("journal")
+        void refreshPlannedSessions(undefined, true)
+      }}
       onFabClick={() => {
         setEditingTrade(null)
         setConvertSessionId(null)
@@ -1700,37 +1708,6 @@ function Home() {
                   settings={settingsForm}
                   startingBalance={startingBalance}
                 />
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="dashboard-section-title mb-0">Trade Journal</p>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {plannedSessions.some((session) => session.status === "in_progress") && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const latestInProgress = plannedSessions.find(
-                            (session) => session.status === "in_progress",
-                          )
-                          if (latestInProgress) {
-                            void handleContinuePlannedCoach(latestInProgress.id)
-                          }
-                        }}
-                        className="h-9 border-white/[0.08] text-foreground/85 hover:bg-white/[0.04]"
-                      >
-                        Continue Latest Plan
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleOpenCoach(buildEmptyPlannedContext())}
-                      className="h-9 border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
-                    >
-                      <Brain className="mr-2 size-4" />
-                      New Pre-Trade Coach
-                    </Button>
-                  </div>
-                </div>
                 <div className="dashboard-stagger space-y-3">
                   <PlannedTradesSection
                     sessions={plannedSessions}
@@ -1739,6 +1716,7 @@ function Home() {
                     onContinueCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
                     onConvertToTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
                     onDeletePlanned={(sessionId) => void handleDeletePlannedSession(sessionId)}
+                    onNewCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
                   />
                   <RecentTradesTable
                     trades={trades}
@@ -1747,6 +1725,32 @@ function Home() {
                     onViewTrade={setSelectedTrade}
                     onScreenshotClick={(trade) =>
                       setScreenshotViewer({ url: trade?.screenshot_url ?? null, label: trade?.pair ?? "Trade" })
+                    }
+                    headerActions={
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setEditingTrade(null)
+                            setConvertSessionId(null)
+                            setForm(createInitialTradeForm())
+                            setIsModalOpen(true)
+                          }}
+                          className="h-9 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+                        >
+                          <Plus className="mr-2 size-4" />
+                          New Trade
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsJournalImportOpen(true)}
+                          className="h-9 w-full border-white/[0.08] bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06] sm:w-auto"
+                        >
+                          <FileUp className="mr-2 size-4" />
+                          Import CSV
+                        </Button>
+                      </div>
                     }
                   />
                 </div>
@@ -1763,6 +1767,18 @@ function Home() {
         isSubmitting={isSubmitting}
         onCancel={handleRiskGuardCancel}
         onConfirm={handleRiskGuardConfirm}
+      />
+
+      <JournalImportModal
+        open={isJournalImportOpen}
+        onClose={() => setIsJournalImportOpen(false)}
+        onImported={() => {
+          if (user?.id) void fetchTrades(user.id)
+          toast({
+            title: "Journal updated",
+            description: "Imported entries are now in your Trade Journal table.",
+          })
+        }}
       />
 
       <AddTradeModal

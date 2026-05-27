@@ -141,6 +141,19 @@ export function getActiveQuestionFromSession(
 }
 
 export function buildCoachIntro(context: PreTradePlannedContext): string {
+  if (context.signal_source === "tradingview") {
+    const pair = context.pair || "your pair"
+    const direction = context.direction || "setup"
+    const strategy = context.strategy_name ? ` (${context.strategy_name})` : ""
+    const score = context.coach_analysis?.confidenceScore
+    const rec = context.coach_analysis?.shouldTakeTrade
+    const scoreLine =
+      score != null
+        ? ` Vyronis scored this alert ${score}/100${rec ? ` — ${rec === "yes" ? "TAKE" : rec === "no" ? "SKIP" : "CAUTION"}` : ""}.`
+        : ""
+    return `TradingView alert received: ${pair} ${direction}${strategy}.${scoreLine} Click Open Coach when you're ready — this plan is saved in Planned Trades. No orders were placed.`
+  }
+
   const pair = context.pair || "your pair"
   const direction = context.direction || "your direction"
   return `Multi-timeframe check-in for ${pair} ${direction}. Upload Weekly, Daily, H4 bias charts plus H1 setup and M15 entry screenshots. I'll score HTF alignment and entry confirmation, then ask 2-3 quick emotion/risk questions.`

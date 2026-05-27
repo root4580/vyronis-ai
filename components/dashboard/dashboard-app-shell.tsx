@@ -11,6 +11,8 @@ type DashboardAppShellProps = {
   userBar?: ReactNode
   fab?: ReactNode
   banner?: ReactNode
+  showSignalBell?: boolean
+  onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
 }
 
 export function DashboardAppShell({
@@ -21,10 +23,17 @@ export function DashboardAppShell({
   userBar,
   fab,
   banner,
+  showSignalBell,
+  onSignalAlertClick,
 }: DashboardAppShellProps) {
   return (
     <div className="dashboard-shell">
-      <DashboardHeader activeTab={activeTab} onOpenSettings={onOpenSettings} />
+      <DashboardHeader
+        activeTab={activeTab}
+        onOpenSettings={onOpenSettings}
+        showSignalBell={showSignalBell}
+        onSignalAlertClick={onSignalAlertClick}
+      />
       {userBar}
       <main className={mainClassName}>
         {banner}

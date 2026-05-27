@@ -41,6 +41,8 @@ export type PreTradePlannedContext = {
   chart_annotations?: import("@/lib/chart-annotations/types").ChartAnnotationBundle
   bias_alignment_score?: number | null
   entry_confirmation_score?: number | null
+  signal_source?: "tradingview" | "manual"
+  tradingview_signal_id?: string
 }
 
 export type ChartAnalysisResult = {
@@ -249,6 +251,10 @@ export type PlannedCoachSessionItem = {
   plan_summary: string
   confidence_score: number | null
   should_take_trade: string | null
+  signal_source?: "tradingview" | "manual" | null
+  strategy_name?: string | null
+  timeframe?: string | null
+  ai_recommendation?: string | null
   created_at: string
   updated_at: string
 }
