@@ -69,6 +69,11 @@ CREATE TRIGGER on_auth_user_created_profile
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user_profile();
 
+-- Backfill rows for users who signed up before this migration
+INSERT INTO public.user_profiles (user_id)
+SELECT id FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
+
 GRANT SELECT, INSERT, UPDATE ON public.user_profiles TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

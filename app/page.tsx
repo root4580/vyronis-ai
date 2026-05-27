@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { usePathname } from "next/navigation"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import { Plus, X, LogOut, Settings, Pencil, Trash2, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -88,6 +87,7 @@ import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { clearClientSessionData } from "@/lib/client-session"
+import { parseTabSearchParam, readTabFromLocation } from "@/lib/dashboard-nav"
 import {
   readCachedTrades,
   TRADES_LOAD_TIMEOUT_MS,
@@ -183,7 +183,15 @@ function getTradeViolations(trade: Trade, maxRiskPerTrade: number): Violation[] 
   return violations
 }
 
-export default function Home() {
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <Home />
+    </Suspense>
+  )
+}
+
+function Home() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -203,6 +211,7 @@ export default function Home() {
   
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const { toast } = useToast()
   const signingOutRef = useRef(false)
@@ -683,6 +692,33 @@ export default function Home() {
     }
   }
 
+  function persistActiveTab(tab: DashboardTab) {
+    if (!user) return
+
+    void supabase
+      .from("user_settings")
+      .update({
+        dashboard_preferences: { activeTab: tab },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+  }
+
+  useEffect(() => {
+    const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
+    if (!tabFromUrl) return
+
+    setActiveTab(tabFromUrl)
+    if (user?.id) {
+      persistActiveTab(tabFromUrl)
+    }
+  }, [searchParams, user?.id])
+
+  useEffect(() => {
+    if (activeTab !== "analytics") return
+    router.replace("/analytics")
+  }, [activeTab, router])
+
   async function fetchUserSettings(userId: string) {
     logDashboardLoading("fetchUserSettings:start", { userId })
 
@@ -708,7 +744,19 @@ export default function Home() {
       if (data) {
         setUserSettings(data)
         setSettingsForm(normalizeUserSettings(data))
-        setActiveTab(parseDashboardPreferences(data.dashboard_preferences).activeTab)
+
+        const tabFromUrl = readTabFromLocation()
+        if (tabFromUrl) {
+          setActiveTab(tabFromUrl)
+        } else {
+          const savedTab = parseDashboardPreferences(data.dashboard_preferences).activeTab
+          if (savedTab === "analytics") {
+            router.replace("/analytics")
+          } else {
+            setActiveTab(savedTab)
+          }
+        }
+
         logDashboardLoading("fetchUserSettings:success", { userId })
         return
       }
@@ -732,7 +780,19 @@ export default function Home() {
       if (createdSettings) {
         setUserSettings(createdSettings)
         setSettingsForm(normalizeUserSettings(createdSettings))
-        setActiveTab(parseDashboardPreferences(createdSettings.dashboard_preferences).activeTab)
+
+        const tabFromUrl = readTabFromLocation()
+        if (tabFromUrl) {
+          setActiveTab(tabFromUrl)
+        } else {
+          const savedTab = parseDashboardPreferences(createdSettings.dashboard_preferences).activeTab
+          if (savedTab === "analytics") {
+            router.replace("/analytics")
+          } else {
+            setActiveTab(savedTab)
+          }
+        }
+
         logDashboardLoading("fetchUserSettings:created-defaults", { userId })
         return
       }
@@ -984,19 +1044,6 @@ export default function Home() {
         variant: "destructive",
       })
     }
-  }
-
-  function handleTabChange(tab: DashboardTab) {
-    setActiveTab(tab)
-    if (!user) return
-
-    void supabase
-      .from("user_settings")
-      .update({
-        dashboard_preferences: { activeTab: tab },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id)
   }
 
   async function saveUserSettings(e: React.FormEvent) {
@@ -1485,7 +1532,6 @@ export default function Home() {
     <div className="dashboard-shell">
       <DashboardHeader
         activeTab={activeTab}
-        onTabChange={handleTabChange}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       

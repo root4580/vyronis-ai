@@ -44,6 +44,8 @@ Password reset emails use `/auth/callback?next=/auth/reset-password` — the cal
 2. Under **Redirect URLs**, add production callback (and localhost for dev).
 3. Click **Save**.
 4. Confirm **Email** provider enabled if using password auth (Authentication → Providers).
+5. **Login fails with “Email not confirmed”** → Authentication → Providers → Email → disable “Confirm email” for closed beta, or have the user click the confirmation link first.
+6. **Localhost works but Vercel login fails** → Vercel env must use the **same** Supabase project where the account was created (or sign up again on the production URL).
 
 ---
 
@@ -65,6 +67,12 @@ Password reset emails use `/auth/callback?next=/auth/reset-password` — the cal
 
 ---
 
+## 3b. Local vs Vercel feature gap
+
+If localhost has features Vercel does not, read **`docs/VERCEL-LOCAL-PARITY.md`** — usually stale deploy, different Supabase project, or migrations not run on production.
+
+---
+
 ## 4. Supabase migrations (before inviting users)
 
 **Path:** Supabase → **SQL Editor** → New query
@@ -77,8 +85,13 @@ Run files in order from `supabase/MIGRATION_ORDER.md`. Minimum for beta:
 4. `008-weekly-reviews.sql`
 5. `trade-coach-migration.sql` (if using coach)
 6. `user-settings-migration.sql`
-7. `user-profiles-migration.sql`
+7. **`user-profiles-migration.sql`** — required for profile name on dashboard; without it you see “Profile table missing”
 8. `storage-setup.sql`
+9. `trade-memory-migration.sql` (learning panel)
+10. `strategy-playbooks-migration.sql` (`/strategy` page)
+11. Coach chart stack (`chart-vision-ai-migration.sql`, etc.) — only if using vision coach
+
+**Full order:** `supabase/MIGRATION_ORDER.md`
 
 Existing production DB: run repair `001` → `004` first per `MIGRATION_ORDER.md`.
 

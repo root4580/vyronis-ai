@@ -85,6 +85,7 @@ import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
@@ -274,11 +275,10 @@ export type DashboardTab = "dashboard" | "strategies" | "analytics" | "journal"
 
 type DashboardHeaderProps = {
   activeTab: DashboardTab
-  onTabChange: (tab: DashboardTab) => void
   onOpenSettings?: () => void
 }
 
-export function DashboardHeader({ activeTab, onTabChange, onOpenSettings }: DashboardHeaderProps) {
+export function DashboardHeader({ activeTab, onOpenSettings }: DashboardHeaderProps) {
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
   const [localTime, setLocalTime] = useState<string>("")
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -322,36 +322,20 @@ export function DashboardHeader({ activeTab, onTabChange, onOpenSettings }: Dash
           </div>
 
           <nav className="hidden lg:flex items-center gap-0.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-1">
-            {navItems.map((item) =>
-              item.id === "analytics" ? (
-                <Link
-                  key={item.id}
-                  href="/analytics"
-                  className={`dashboard-nav-pill ${
-                    activeTab === item.id
-                      ? "dashboard-nav-pill-active text-cyan-glow"
-                      : "dashboard-nav-pill-inactive"
-                  }`}
-                >
-                  <item.icon className="size-3.5" />
-                  <span>{item.label}</span>
-                </Link>
-              ) : (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onTabChange(item.id)}
-                  className={`dashboard-nav-pill ${
-                    activeTab === item.id
-                      ? "dashboard-nav-pill-active text-cyan-glow"
-                      : "dashboard-nav-pill-inactive"
-                  }`}
-                >
-                  <item.icon className="size-3.5" />
-                  <span>{item.label}</span>
-                </button>
-              ),
-            )}
+            {navItems.map((item) => (
+              <Link
+                key={item.id}
+                href={getDashboardTabHref(item.id)}
+                className={`dashboard-nav-pill ${
+                  activeTab === item.id
+                    ? "dashboard-nav-pill-active text-cyan-glow"
+                    : "dashboard-nav-pill-inactive"
+                }`}
+              >
+                <item.icon className="size-3.5" />
+                <span>{item.label}</span>
+              </Link>
+            ))}
           </nav>
 
           <div className="flex items-center gap-2 md:gap-2.5">
@@ -400,36 +384,20 @@ export function DashboardHeader({ activeTab, onTabChange, onOpenSettings }: Dash
 
       <div className="border-t border-white/[0.04] lg:hidden">
         <nav className="flex items-center justify-around px-2 py-2">
-          {navItems.map((item) =>
-            item.id === "analytics" ? (
-              <Link
-                key={item.id}
-                href="/analytics"
-                className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
-                  activeTab === item.id
-                    ? "dashboard-nav-mobile-active text-cyan-glow"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <item.icon className="size-[18px]" />
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </Link>
-            ) : (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onTabChange(item.id)}
-                className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
-                  activeTab === item.id
-                    ? "dashboard-nav-mobile-active text-cyan-glow"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <item.icon className="size-[18px]" />
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </button>
-            ),
-          )}
+          {navItems.map((item) => (
+            <Link
+              key={item.id}
+              href={getDashboardTabHref(item.id)}
+              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all duration-200 ${
+                activeTab === item.id
+                  ? "dashboard-nav-mobile-active text-cyan-glow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <item.icon className="size-[18px]" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          ))}
         </nav>
       </div>
     </header>

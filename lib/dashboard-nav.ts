@@ -1,0 +1,20 @@
+import type { DashboardTab } from "@/components/dashboard/trading-components"
+
+export function getDashboardTabHref(tab: DashboardTab): string {
+  if (tab === "analytics") return "/analytics"
+  if (tab === "dashboard") return "/"
+  return `/?tab=${tab}`
+}
+
+/** Parse `?tab=` for in-app sections. Analytics uses `/analytics` instead. */
+export function parseTabSearchParam(value: string | null): DashboardTab | null {
+  if (value === "dashboard" || value === "strategies" || value === "journal") {
+    return value
+  }
+  return null
+}
+
+export function readTabFromLocation(): DashboardTab | null {
+  if (typeof window === "undefined") return null
+  return parseTabSearchParam(new URLSearchParams(window.location.search).get("tab"))
+}

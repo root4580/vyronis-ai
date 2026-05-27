@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowRight, Lock, Mail } from "lucide-react"
 import {
@@ -20,7 +19,6 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
   async function ensureDefaultSettings(userId: string) {
@@ -82,8 +80,7 @@ export default function SignUpPage() {
     if (data.session?.user) {
       await ensureDefaultSettings(data.session.user.id)
       await ensureDefaultProfile(data.session.user.id)
-      router.push("/")
-      router.refresh()
+      window.location.assign("/")
       return
     }
 

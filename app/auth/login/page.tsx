@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Lock, Mail } from "lucide-react"
 import {
@@ -18,7 +17,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
   async function handleLogin(e: React.FormEvent) {
@@ -43,8 +41,8 @@ export default function LoginPage() {
         : "/"
 
     setLoading(false)
-    router.push(nextPath)
-    router.refresh()
+    // Full navigation so middleware receives auth cookies on Vercel (client router alone can bounce back to login).
+    window.location.assign(nextPath)
   }
 
   return (
