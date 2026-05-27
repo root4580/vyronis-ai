@@ -37,6 +37,8 @@ Concise step-by-step guide. Complete in order.
 | **Redirect URLs** | `https://your-app.vercel.app/auth/callback` |
 | | `http://localhost:3000/auth/callback` (local dev only) |
 
+Password reset emails use `/auth/callback?next=/auth/reset-password` — the callback URL above covers this flow.
+
 **Steps:**
 1. Set **Site URL** to your production Vercel URL.
 2. Under **Redirect URLs**, add production callback (and localhost for dev).

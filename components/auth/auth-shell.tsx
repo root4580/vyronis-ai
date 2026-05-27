@@ -80,6 +80,14 @@ export function AuthErrorBanner({ message }: { message: string }) {
   )
 }
 
+export function AuthSuccessBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-profit/30 bg-profit/[0.08] px-3 py-2.5 text-sm text-profit">
+      {message}
+    </div>
+  )
+}
+
 export function AuthSubmitButton({
   loading,
   loadingLabel,

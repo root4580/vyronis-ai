@@ -61,16 +61,26 @@ export default function LoginPage() {
           required
         />
 
-        <AuthField
-          label="Password"
-          icon={Lock}
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          autoComplete="current-password"
-          required
-        />
+        <div className="space-y-2">
+          <AuthField
+            label="Password"
+            icon={Lock}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
+          <div className="flex justify-end">
+            <Link
+              href="/auth/forgot-password"
+              className="text-[11px] font-medium text-cyan-glow/90 transition-colors hover:text-cyan-glow hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
 
         {error && <AuthErrorBanner message={error} />}
 
