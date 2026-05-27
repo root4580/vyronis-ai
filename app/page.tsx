@@ -74,6 +74,7 @@ import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { AuthLoadingState } from "@/components/auth/auth-loading-state"
 import { clearClientSessionData } from "@/lib/client-session"
 import { parseTabSearchParam, readTabFromLocation } from "@/lib/dashboard-nav"
+import { manualTradesOrFilter } from "@/lib/analytics/trade-scope"
 import {
   readCachedTrades,
   TRADES_LOAD_TIMEOUT_MS,
@@ -614,18 +615,38 @@ function Home() {
     }
 
     try {
-      const { data, error } = await withTimeout(
-        supabase
-          .from("trades")
-          .select("*")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: false }) as Promise<{
+      let query = supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", uid)
+        .or(manualTradesOrFilter())
+        .order("created_at", { ascending: false })
+
+      let { data, error } = await withTimeout(
+        query as Promise<{
           data: Trade[] | null
           error: { message: string; code?: string } | null
         }>,
         15000,
         "trades.select",
       )
+
+      if (error && /import_source|column .* does not exist/i.test(error.message)) {
+        const fallback = await withTimeout(
+          supabase
+            .from("trades")
+            .select("*")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false }) as Promise<{
+            data: Trade[] | null
+            error: { message: string; code?: string } | null
+          }>,
+          15000,
+          "trades.select.fallback",
+        )
+        data = fallback.data
+        error = fallback.error
+      }
 
       if (error) {
         console.log(error)

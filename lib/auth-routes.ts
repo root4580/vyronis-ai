@@ -2,7 +2,7 @@
  * App routes that require an authenticated Supabase session.
  * `/` hosts dashboard + journal tabs; `/analytics` is the standalone analytics page.
  */
-export const PROTECTED_PATHS = ["/", "/analytics", "/strategy", "/profile"] as const
+export const PROTECTED_PATHS = ["/", "/analytics", "/strategy", "/profile", "/research-lab"] as const
 
 export const AUTH_ENTRY_PATHS = [
   "/auth/login",

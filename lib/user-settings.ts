@@ -12,6 +12,7 @@ export type UserSettingsRecord = {
   profit_target: number
   preferred_session?: string
   dashboard_preferences?: DashboardPreferences | null
+  research_lab_enabled?: boolean
   updated_at?: string
 }
 

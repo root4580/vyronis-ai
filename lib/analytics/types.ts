@@ -31,6 +31,15 @@ export type AnalyticsTradeRow = {
   setup_classification?: string | null
   setup_score_breakdown?: SetupScoreBreakdown | null
   setup_coaching_insights?: SetupCoachingInsight[] | null
+  research_strategy_id?: string | null
+  import_source?: string | null
+  import_batch_id?: string | null
+  external_ticket?: string | null
+  closed_at?: string | null
+  opened_at?: string | null
+  lots?: number | null
+  commission?: number | null
+  swap?: number | null
 }
 
 export type SetupDisplayBucket = "A+" | "A" | "B" | "C"

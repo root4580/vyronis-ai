@@ -4,9 +4,11 @@ export type StrategyTrade = {
   pnl: number
   result: string
   strategy_name: string | null
+  research_strategy_id?: string | null
 }
 
 export type StrategyStats = {
+  id: string | null
   name: string
   tradeCount: number
   wins: number
@@ -22,6 +24,7 @@ export type StrategyPerformanceSummary = {
   worstStrategy: StrategyStats | null
   totalTrades: number
   hasStrategyData: boolean
+  groupBy: "strategy_name" | "research_strategy_id"
 }
 
 function normalizeStrategyName(name: string | null | undefined): string {
@@ -43,12 +46,17 @@ function calculateAvgRR(trades: StrategyTrade[]): number {
   return avgLoss > 0 ? avgWin / avgLoss : 0
 }
 
-function buildStrategyStats(name: string, trades: StrategyTrade[]): StrategyStats {
+function buildStrategyStats(
+  id: string | null,
+  name: string,
+  trades: StrategyTrade[],
+): StrategyStats {
   const wins = trades.filter((t) => t.result === "WIN").length
   const losses = trades.filter((t) => t.result === "LOSS").length
   const totalPnL = trades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
 
   return {
+    id,
     name,
     tradeCount: trades.length,
     wins,
@@ -59,7 +67,12 @@ function buildStrategyStats(name: string, trades: StrategyTrade[]): StrategyStat
   }
 }
 
-export function buildStrategyPerformance(trades: StrategyTrade[]): StrategyPerformanceSummary {
+export function buildStrategyPerformance(
+  trades: StrategyTrade[],
+  options?: { groupBy?: "strategy_name" | "research_strategy_id" },
+): StrategyPerformanceSummary {
+  const groupBy = options?.groupBy ?? "strategy_name"
+
   if (trades.length === 0) {
     return {
       strategies: [],
@@ -67,21 +80,39 @@ export function buildStrategyPerformance(trades: StrategyTrade[]): StrategyPerfo
       worstStrategy: null,
       totalTrades: 0,
       hasStrategyData: false,
+      groupBy,
     }
   }
 
-  const grouped = new Map<string, StrategyTrade[]>()
+  const grouped = new Map<string, { id: string | null; name: string; trades: StrategyTrade[] }>()
 
   for (const trade of trades) {
+    if (groupBy === "research_strategy_id" && trade.research_strategy_id) {
+      const id = trade.research_strategy_id
+      const bucket = grouped.get(id) || {
+        id,
+        name: trade.strategy_name?.trim() || "Research Strategy",
+        trades: [],
+      }
+      bucket.trades.push(trade)
+      grouped.set(id, bucket)
+      continue
+    }
+
     const name = normalizeStrategyName(trade.strategy_name)
-    const bucket = grouped.get(name) || []
-    bucket.push(trade)
-    grouped.set(name, bucket)
+    const key = `name:${name}`
+    const bucket = grouped.get(key) || { id: null, name, trades: [] }
+    bucket.trades.push(trade)
+    grouped.set(key, bucket)
   }
 
-  const hasNamedStrategy = trades.some((t) => t.strategy_name?.trim())
-  const strategies = Array.from(grouped.entries())
-    .map(([name, bucket]) => buildStrategyStats(name, bucket))
+  const hasNamedStrategy =
+    groupBy === "research_strategy_id"
+      ? trades.some((t) => t.research_strategy_id)
+      : trades.some((t) => t.strategy_name?.trim())
+
+  const strategies = Array.from(grouped.values())
+    .map((entry) => buildStrategyStats(entry.id, entry.name, entry.trades))
     .sort((a, b) => b.totalPnL - a.totalPnL)
 
   const ranked = strategies.filter((s) => s.tradeCount > 0)
@@ -100,6 +131,7 @@ export function buildStrategyPerformance(trades: StrategyTrade[]): StrategyPerfo
     worstStrategy,
     totalTrades: trades.length,
     hasStrategyData: hasNamedStrategy,
+    groupBy,
   }
 }
 

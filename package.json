@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:auth": "npx tsx scripts/test-auth-email.ts"
+    "test:auth": "npx tsx scripts/test-auth-email.ts",
+    "test:research": "npx tsx scripts/test-research-mt5-csv.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

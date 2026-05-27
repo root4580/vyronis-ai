@@ -1,17 +1,45 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { AnalyticsTradeRow } from "@/lib/analytics/types"
+import {
+  filterTradesByScope,
+  manualTradesOrFilter,
+  researchTradesOrFilter,
+} from "@/lib/analytics/trade-scope"
+import type { AnalyticsTradeScope } from "@/lib/research/types"
 
 export async function fetchUserTradesForAnalytics(
   supabase: SupabaseClient,
   userId: string,
+  scope: AnalyticsTradeScope = "manual",
 ): Promise<{ trades: AnalyticsTradeRow[]; error: string | null }> {
-  const { data, error } = await supabase
-    .from("trades")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+  let query = supabase.from("trades").select("*").eq("user_id", userId)
+
+  if (scope === "manual") {
+    query = query.or(manualTradesOrFilter())
+  } else if (scope === "research") {
+    query = query.or(researchTradesOrFilter())
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false })
 
   if (error) {
+    if (/import_source|research_strategy_id|column .* does not exist/i.test(error.message)) {
+      const fallback = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (fallback.error) {
+        return { trades: [], error: fallback.error.message }
+      }
+
+      return {
+        trades: filterTradesByScope((fallback.data ?? []) as AnalyticsTradeRow[], scope),
+        error: null,
+      }
+    }
+
     return { trades: [], error: error.message }
   }
 
