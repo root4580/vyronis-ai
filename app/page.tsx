@@ -108,6 +108,7 @@ import {
   type SetupCoachingInsight,
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
+import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
 import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
 import {
@@ -1502,6 +1503,11 @@ export default function Home() {
                   avgRisk={avgRisk}
                   maxRiskPerTrade={maxRiskPerTrade}
                   tradeCount={trades.length}
+                />
+
+                <PrimaryLeakCardWithSettings
+                  trades={trades}
+                  settings={settingsForm}
                 />
 
                 <RiskGuardBanner
