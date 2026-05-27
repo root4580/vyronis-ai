@@ -77,7 +77,7 @@ export function WeeklyReviewPanel({
       const result = await generateWeeklyReview(weekOffset, false)
       setReport(result.report)
       if (result.skipped) {
-        setPersistMessage("Report generated locally. Run supabase/008-weekly-reviews.sql to save reviews.")
+        setPersistMessage("Review generated on this device. Cloud save is not configured yet.")
       } else if (result.persisted) {
         setPersistMessage("Weekly review saved to your Vyronis journal.")
       }
@@ -106,7 +106,7 @@ export function WeeklyReviewPanel({
       <DashboardCard className="glass-card floating-glow weekly-review-fade-in" glow interactive>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/[0.06] via-cyan-glow/[0.04] to-transparent" />
         <DashboardCardHeader
-          title="Weekly AI Review"
+          title="Weekly Behavioral Review"
           icon={Brain}
           action={
             <div className="flex items-center gap-1">

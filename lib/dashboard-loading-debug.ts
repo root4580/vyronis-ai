@@ -1,4 +1,4 @@
-export const DASHBOARD_LOAD_TIMEOUT_MS = 3000
+export const DASHBOARD_LOAD_TIMEOUT_MS = 10000
 
 export function logDashboardLoading(
   event: string,

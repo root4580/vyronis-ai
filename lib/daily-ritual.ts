@@ -72,6 +72,11 @@ export function getDailyRitualStorageKey(userId: string): string {
   return `${STORAGE_PREFIX}:${userId}`
 }
 
+export function clearDailyRitualState(userId: string): void {
+  if (typeof window === "undefined" || !userId) return
+  localStorage.removeItem(getDailyRitualStorageKey(userId))
+}
+
 export function loadDailyRitualState(userId: string): DailyRitualStoredState {
   const todayKey = getLocalDateKey(new Date())
   const key = getDailyRitualStorageKey(userId)

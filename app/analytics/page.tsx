@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
             </div>
             <div>
               <h1 className="text-[15px] font-semibold leading-none tracking-tight">Vyronis Analytics</h1>
-              <p className="mt-1 text-[11px] text-muted-foreground/70">Phase 1 · Performance Intelligence</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/70">Journal-derived performance</p>
             </div>
           </div>
 
@@ -134,8 +134,7 @@ export default function AnalyticsPage() {
             Trading Performance Dashboard
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground/75">
-            Institutional-grade metrics powered by your Supabase trade history — win rate, equity curve,
-            setup quality, emotions, and weekly trends.
+            Win rate, equity curve, setup quality, and emotion patterns — all computed from trades you log.
           </p>
         </div>
 

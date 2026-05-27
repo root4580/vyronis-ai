@@ -1,9 +1,11 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { isAuthEntryPath, isProtectedPath, sanitizeRedirectPath } from "@/lib/auth-routes"
-import { getPublicEnv } from "@/lib/env"
+import { assertProductionEnv, getPublicEnv } from "@/lib/env"
 
 export async function updateSession(request: NextRequest) {
+  assertProductionEnv()
+
   let supabaseResponse = NextResponse.next({
     request,
   })

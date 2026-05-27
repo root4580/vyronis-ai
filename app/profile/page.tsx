@@ -79,7 +79,7 @@ export default function ProfileSettingsPage() {
       if (data) {
         setProfileRecord(data)
         setForm(normalizeUserProfile(data))
-        writeCachedUserProfile(normalizeUserProfile(data))
+        writeCachedUserProfile(user.id, normalizeUserProfile(data))
       } else {
         const { error: upsertError } = await supabase.from("user_profiles").upsert(
           {
@@ -158,7 +158,7 @@ export default function ProfileSettingsPage() {
     setProfileRecord(data)
     const savedProfile = normalizeUserProfile(data)
     setForm(savedProfile)
-    writeCachedUserProfile(savedProfile)
+    writeCachedUserProfile(user.id, savedProfile)
     toast({
       title: "Profile updated",
       description: "Your trader profile has been saved.",

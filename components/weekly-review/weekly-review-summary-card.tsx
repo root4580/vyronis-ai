@@ -34,7 +34,7 @@ export function WeeklyReviewSummaryCard({
         <Brain className="mx-auto size-8 text-cyan-glow/60" />
         <p className="mt-3 text-sm font-medium text-foreground/90">No trades this week yet</p>
         <p className="mt-1 text-[11px] text-muted-foreground/70">
-          Log journal entries to unlock your AI weekly psychology review.
+          Log journal entries to unlock your weekly discipline review.
         </p>
         {onGenerate && (
           <Button

@@ -66,7 +66,7 @@ export function getProviderDisplayLabel(
   engine: VisionEngineId | ChartVisionProviderId | string,
   model?: string | null,
 ): string {
-  if (engine === "heuristic") return "Heuristic Engine"
+  if (engine === "heuristic") return "Journal rules"
 
   const normalized = normalizeProviderId(engine) || (isAiProviderId(engine) ? engine : null)
   const provider = normalized ? providers[normalized] : null

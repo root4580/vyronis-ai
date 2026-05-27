@@ -74,7 +74,6 @@ import {
 } from "@/lib/user-preferences"
 import {
   DEFAULT_USER_PROFILE,
-  clearCachedUserProfile,
   loadUserProfile,
   readCachedUserProfile,
   type UserProfileForm,
@@ -88,9 +87,10 @@ import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeR
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
+import { clearClientSessionData } from "@/lib/client-session"
 import {
-  clearCachedTrades,
   readCachedTrades,
+  TRADES_LOAD_TIMEOUT_MS,
   writeCachedTrades,
 } from "@/lib/dashboard-cache"
 import {
@@ -184,7 +184,7 @@ function getTradeViolations(trade: Trade, maxRiskPerTrade: number): Violation[] 
 }
 
 export default function Home() {
-  const [trades, setTrades] = useState<Trade[]>(() => readCachedTrades<Trade>())
+  const [trades, setTrades] = useState<Trade[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -196,7 +196,7 @@ export default function Home() {
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null)
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
   const [userSettings, setUserSettings] = useState<UserSettingsRecord | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfileForm | null>(() => readCachedUserProfile())
+  const [userProfile, setUserProfile] = useState<UserProfileForm | null>(null)
   const [settingsForm, setSettingsForm] = useState<UserSettingsForm>(DEFAULT_USER_SETTINGS)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -272,29 +272,14 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const cachedTrades = readCachedTrades<Trade>()
-    const cachedProfile = readCachedUserProfile()
+    setIsLoadingTrades(true)
+    setIsLoadingProfile(true)
 
-    logDashboardLoading("mount", {
-      cachedTrades: cachedTrades.length,
-      cachedProfile: cachedProfile !== null,
-    })
-
-    if (cachedTrades.length > 0) {
-      setTrades(cachedTrades)
-    } else {
-      setIsLoadingTrades(true)
-    }
-
-    if (cachedProfile) {
-      setUserProfile(cachedProfile)
-    } else {
-      setIsLoadingProfile(true)
-    }
+    logDashboardLoading("mount", { awaitingAuth: true })
 
     const timeoutId = window.setTimeout(() => {
-      releaseSkeletonGuard("mount-3s-skeleton-timeout")
-    }, DASHBOARD_LOAD_TIMEOUT_MS)
+      releaseSkeletonGuard("mount-skeleton-timeout")
+    }, TRADES_LOAD_TIMEOUT_MS)
 
     return () => window.clearTimeout(timeoutId)
   }, [])
@@ -473,9 +458,17 @@ export default function Home() {
       setUser({ id: sessionUser.id, email: sessionUser.email })
 
       try {
+        const cachedTrades = readCachedTrades<Trade>(sessionUser.id)
+        const cachedProfile = readCachedUserProfile(sessionUser.id)
+        if (cachedTrades.length > 0) {
+          setTrades(cachedTrades)
+        }
+        if (cachedProfile) {
+          setUserProfile(cachedProfile)
+        }
+
         await loadDashboardData(sessionUser.id, sessionUser.user_metadata, {
-          silent:
-            readCachedTrades<Trade>().length > 0 || readCachedUserProfile() !== null,
+          silent: cachedTrades.length > 0 || cachedProfile !== null,
         })
       } catch (error) {
         loadedDashboardUserRef.current = null
@@ -503,13 +496,14 @@ export default function Home() {
       })
 
       if (event === "SIGNED_OUT") {
+        const previousUserId = loadedDashboardUserRef.current
         loadedDashboardUserRef.current = null
         tradesFetchSettledRef.current = false
+        clearClientSessionData(previousUserId)
         setUser(null)
         setTrades([])
         setUserSettings(null)
         setUserProfile(null)
-        clearCachedTrades()
         setTradesLoadError(null)
         setIsLoadingTrades(false)
         setIsLoadingProfile(false)
@@ -530,6 +524,17 @@ export default function Home() {
 
       if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") {
         return
+      }
+
+      if (
+        loadedDashboardUserRef.current &&
+        loadedDashboardUserRef.current !== session.user.id
+      ) {
+        clearClientSessionData(loadedDashboardUserRef.current)
+        setTrades([])
+        setUserProfile(null)
+        setUserSettings(null)
+        tradesFetchSettledRef.current = false
       }
 
       if (loadedDashboardUserRef.current === session.user.id) {
@@ -587,8 +592,12 @@ export default function Home() {
       return
     }
 
-    const cachedTrades = readCachedTrades<Trade>()
+    const cachedTrades = readCachedTrades<Trade>(uid)
     const hasCachedTrades = cachedTrades.length > 0
+
+    if (hasCachedTrades && trades.length === 0) {
+      setTrades(cachedTrades)
+    }
 
     logDashboardLoading("fetchTrades:start", {
       userId: uid,
@@ -634,7 +643,7 @@ export default function Home() {
         if (!options?.silent) {
           setTradesLoadError(
             hasCachedTrades
-              ? "Couldn't refresh trades. Showing your last loaded data."
+              ? "Couldn't refresh trades. Showing your last saved session."
               : "Couldn't load trades right now. Try refreshing the page.",
           )
         }
@@ -643,7 +652,7 @@ export default function Home() {
 
       const nextTrades = data || []
       setTrades(nextTrades)
-      writeCachedTrades(nextTrades)
+      writeCachedTrades(uid, nextTrades)
       tradesFetchSettledRef.current = true
 
       if (!options?.silent) {
@@ -748,7 +757,7 @@ export default function Home() {
       silent: options?.silent ?? false,
     })
 
-    const cached = readCachedUserProfile()
+    const cached = readCachedUserProfile(userId)
     if (cached) {
       setUserProfile(cached)
     }
@@ -1419,13 +1428,13 @@ export default function Home() {
   const cleanCount = trades.length - violationCount
 
   function clearSessionState() {
+    const previousUserId = loadedDashboardUserRef.current ?? user?.id
     loadedDashboardUserRef.current = null
+    clearClientSessionData(previousUserId)
     setUser(null)
     setTrades([])
     setUserSettings(null)
     setUserProfile(null)
-    clearCachedUserProfile()
-    clearCachedTrades()
     setTradesLoadError(null)
     setIsLoadingTrades(false)
     setIsLoadingProfile(false)

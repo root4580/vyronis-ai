@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import {
   BookOpen,
   Loader2,
@@ -121,6 +123,8 @@ function StringListEditor({
 }
 
 export function StrategyPlaybookMain() {
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [playbooks, setPlaybooks] = useState<StrategyPlaybookRecord[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<StrategyPlaybookInput>(createDefaultPlaybookInput())
@@ -137,6 +141,14 @@ export function StrategyPlaybookMain() {
     setIsLoading(true)
     setError(null)
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace("/auth/login?next=/strategy")
+        return
+      }
+
       const rows = await fetchStrategyPlaybooks()
       setPlaybooks(rows)
       if (rows.length > 0) {
@@ -150,7 +162,7 @@ export function StrategyPlaybookMain() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [router, supabase])
 
   useEffect(() => {
     void loadPlaybooks()

@@ -21,6 +21,7 @@ import {
   buildBehavioralExportSummary,
   printBehavioralWeeklyReview,
 } from "@/lib/weekly-review/behavioral-export"
+import { formatInsightSourceLabel } from "@/lib/client-session"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
@@ -78,6 +79,7 @@ export function WeeklyReviewReportModal({
   if (!mounted || !report) return null
 
   const pnlTone = report.totalPnL >= 0 ? "WIN" : "LOSS"
+  const source = formatInsightSourceLabel(report.provider)
 
   return (
     <div
@@ -99,30 +101,32 @@ export function WeeklyReviewReportModal({
 
       <div
         className={cn(
-          "weekly-review-terminal relative flex max-h-[96dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-cyan-glow/20 sm:rounded-2xl",
+          "relative flex max-h-[96dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-white/[0.08] bg-[#0a0c10] shadow-2xl sm:rounded-2xl",
           visible ? "translate-y-0 scale-100" : "translate-y-4 scale-[0.98]",
         )}
         style={{ transition: `transform ${ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)` }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="weekly-review-terminal-scan pointer-events-none absolute inset-0" />
-
-        <header className="relative shrink-0 border-b border-cyan-glow/15 px-4 py-4 md:px-6">
+        <header className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-lg border border-cyan-glow/25 bg-cyan-glow/[0.1]">
+                <div className="flex size-8 items-center justify-center rounded-lg border border-cyan-glow/20 bg-cyan-glow/[0.08]">
                   <Brain className="size-4 text-cyan-glow" />
                 </div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-cyan-glow/90">
-                  Vyronis AI · Weekly Review
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">
+                  Weekly behavioral review
                 </p>
-                <Badge variant="outline" className="h-5 border-cyan-glow/25 text-[10px] text-cyan-glow">
-                  {report.provider}
+                <Badge
+                  variant="outline"
+                  className="h-5 border-white/[0.1] text-[10px] text-muted-foreground"
+                  title={source.description}
+                >
+                  {source.short}
                 </Badge>
               </div>
               <h2 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">
-                Performance & Psychology Report
+                Discipline & session summary
               </h2>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/75">
                 <CalendarRange className="size-3.5" />
@@ -155,10 +159,8 @@ export function WeeklyReviewReportModal({
         </header>
 
         <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
-          <div className="font-mono text-[11px] text-cyan-glow/70">
-            <span className="text-profit">&gt;</span> analyzing journal stream… complete
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{report.headline}</p>
+          <p className="text-sm leading-relaxed text-foreground/90">{report.headline}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/65">{source.description}</p>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="rounded-xl border border-white/[0.06] bg-black/30 px-3 py-2">

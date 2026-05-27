@@ -100,21 +100,49 @@ export function getProfileInitials(
 
 export const PROFILE_CACHE_KEY = "vyronis-user-profile"
 
-export function readCachedUserProfile(): UserProfileForm | null {
-  if (typeof window === "undefined") return null
+type ProfileCacheEnvelope = {
+  userId: string
+  profile: UserProfileForm
+  updatedAt: string
+}
+
+function isProfileEnvelope(value: unknown): value is ProfileCacheEnvelope {
+  if (!value || typeof value !== "object") return false
+  const record = value as ProfileCacheEnvelope
+  return typeof record.userId === "string" && !!record.profile
+}
+
+/** Never returns a profile unless cache belongs to the given user. */
+export function readCachedUserProfile(userId: string | null | undefined): UserProfileForm | null {
+  if (!userId || typeof window === "undefined") return null
 
   try {
     const raw = sessionStorage.getItem(PROFILE_CACHE_KEY)
     if (!raw) return null
-    return normalizeUserProfile(JSON.parse(raw) as Partial<UserProfileRecord>)
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!isProfileEnvelope(parsed)) {
+      sessionStorage.removeItem(PROFILE_CACHE_KEY)
+      return null
+    }
+
+    if (parsed.userId !== userId) return null
+    return normalizeUserProfile(parsed.profile as Partial<UserProfileRecord>)
   } catch {
+    sessionStorage.removeItem(PROFILE_CACHE_KEY)
     return null
   }
 }
 
-export function writeCachedUserProfile(profile: UserProfileForm) {
-  if (typeof window === "undefined") return
-  sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile))
+export function writeCachedUserProfile(userId: string, profile: UserProfileForm) {
+  if (!userId || typeof window === "undefined") return
+
+  const envelope: ProfileCacheEnvelope = {
+    userId,
+    profile,
+    updatedAt: new Date().toISOString(),
+  }
+  sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(envelope))
 }
 
 export function clearCachedUserProfile() {
@@ -223,7 +251,7 @@ export async function loadUserProfile(
 
   if (data) {
     const profile = mergeProfileWithMetadata(normalizeUserProfile(data), metadata)
-    writeCachedUserProfile(profile)
+    writeCachedUserProfile(userId, profile)
     return {
       profile,
       missingTable: false,
@@ -248,7 +276,7 @@ export async function loadUserProfile(
   }
 
   const profile = mergeProfileWithMetadata(DEFAULT_USER_PROFILE, metadata)
-  writeCachedUserProfile(profile)
+  writeCachedUserProfile(userId, profile)
 
   return {
     profile,
