@@ -1,5 +1,6 @@
 import type { CompanionConversationalState } from "@/lib/intelligence/conversational-types"
 import type { TraderContextMemory } from "@/lib/intelligence/trader-context"
+import type { CompanionIntent } from "@/lib/intelligence/companion-intent-engine"
 
 export function resolveCompanionState(memory: TraderContextMemory): CompanionConversationalState {
   const { snapshot, primaryLeak, warnings } = memory
@@ -17,31 +18,44 @@ export function resolveCompanionState(memory: TraderContextMemory): CompanionCon
   return "calm"
 }
 
-export function stateOpener(state: CompanionConversationalState): string {
-  switch (state) {
-    case "protective":
-      return "I'm going to be direct with you"
-    case "warning":
-      return "Something in your recent data stands out"
-    case "reflective":
-      return "Looking at your journal honestly"
-    case "confident":
-      return "You're executing with decent rhythm today"
-    case "analytical":
-      return "Let me walk through what I'm seeing"
-    case "calm":
-    default:
-      return ""
-  }
-}
-
 export function buildThinkingPhases(input: {
   userMessage: string
   state: CompanionConversationalState
+  intent?: CompanionIntent
 }): string[] {
+  const intent = input.intent
   const text = input.userMessage.toLowerCase()
-  const phases: string[] = []
 
+  if (intent === "casual_conversation") {
+    return ["One moment…"]
+  }
+
+  if (intent === "market_check") {
+    return [
+      "Checking your session…",
+      "Reviewing planned trades…",
+      "Scanning recent patterns and risk…",
+      "Putting it together…",
+    ]
+  }
+
+  if (intent === "emotional_check_in") {
+    return ["Listening…", "Reviewing emotional patterns…", "Formulating response…"]
+  }
+
+  if (intent === "pre_trade_coaching") {
+    return ["Reviewing planned setups…", "Comparing against your playbook…", "Formulating response…"]
+  }
+
+  if (intent === "post_trade_review") {
+    return ["Pulling up recent trades…", "Comparing plan vs execution…", "Formulating response…"]
+  }
+
+  if (intent === "analytics_pattern") {
+    return ["Reviewing journal patterns…", "Checking discipline trends…", "Formulating response…"]
+  }
+
+  const phases: string[] = []
   if (/plan|setup|coach|entry|trade/.test(text)) {
     phases.push("Comparing against past setups…")
   }
@@ -52,10 +66,7 @@ export function buildThinkingPhases(input: {
     phases.push("Reviewing discipline trend…")
   }
   if (phases.length === 0) {
-    phases.push("Analyzing recent execution…")
-  }
-  if (input.state === "protective" || input.state === "warning") {
-    phases.push("Checking risk guardrails…")
+    phases.push("Thinking…")
   }
   phases.push("Formulating response…")
   return phases
@@ -65,26 +76,33 @@ export function pickFollowUpQuestion(input: {
   state: CompanionConversationalState
   memory: TraderContextMemory
   userMessage: string
+  intent?: CompanionIntent
 }): string | undefined {
   const text = input.userMessage.toLowerCase()
-  const { memory, state } = input
+  const { memory, intent } = input
 
+  if (intent === "casual_conversation") return undefined
   if (/why|rush|fomo|revenge|tilt/.test(text)) return undefined
 
-  if (state === "protective" && memory.snapshot.todayTradeCount >= 2) {
-    return "Why did you rush this entry?"
+  if (intent === "market_check") {
+    return "Want me to dig into setups, discipline, or risk next?"
   }
-  if (state === "warning" || state === "reflective") {
-    if (memory.topPatterns.some((p) => /loss|emotion|discipline/i.test(p.message))) {
-      return "Were you emotionally affected by the previous loss?"
-    }
-    return "Did your HTF bias change — or did execution fail?"
+
+  if (intent === "emotional_check_in") {
+    return "What's the strongest emotion on your mind right now?"
   }
-  if (state === "analytical" && memory.plannedSessions.length > 0) {
-    return "Want to walk through your planned setup before the session moves on?"
+
+  if (intent === "pre_trade_coaching" && memory.plannedSessions.length > 0) {
+    return "Should we open your next planned setup together?"
   }
-  if (state === "confident") {
-    return "What would it take to repeat today's discipline tomorrow?"
+
+  if (intent === "post_trade_review") {
+    return "Which trade should we break down first?"
   }
+
+  if (intent === "analytics_pattern") {
+    return "Want me to compare this to a specific session or pair?"
+  }
+
   return undefined
 }

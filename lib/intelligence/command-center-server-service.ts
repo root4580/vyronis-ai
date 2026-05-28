@@ -1,20 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { detectPrimaryLeak } from "@/lib/behavior/leak-engine"
-import type { LeakEngineInput } from "@/lib/behavior/types"
-import {
-  generatePatternMemory,
-  type PatternMemoryFeedback,
-  type PatternMemorySession,
-  type PatternMemoryTrade,
-} from "@/lib/trade-coach/pattern-memory"
-import type { PlannedVsActualComparison, PreTradePlannedContext } from "@/lib/trade-coach/types"
-import { listPlannedCoachSessions } from "@/lib/trade-coach/server-service"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
-import { buildTraderContextMemory } from "@/lib/intelligence/trader-context"
-import {
-  buildConversationalGreeting,
-  generateCompanionDialogue,
-} from "@/lib/intelligence/companion-dialogue-engine"
+import { buildMemoryBundle } from "@/lib/intelligence/memory-bundle"
+import { buildConversationalGreeting } from "@/lib/intelligence/companion-dialogue-engine"
+import { generateCompanionIntelligenceReply } from "@/lib/intelligence/companion-llm-engine"
+import { compressInteractionMemory } from "@/lib/intelligence/memory-compression"
+import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
 import { resolveCompanionState } from "@/lib/intelligence/conversational-state-engine"
 import {
@@ -70,73 +60,6 @@ async function loadUserSettings(supabase: SupabaseClient, userId: string) {
     maxTradesPerDay: data?.max_trades_per_day ?? DEFAULT_USER_SETTINGS.max_trades_per_day,
     enabled: data?.command_center_enabled ?? true,
   }
-}
-
-async function loadProfileName(supabase: SupabaseClient, userId: string) {
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("display_name")
-    .eq("user_id", userId)
-    .maybeSingle()
-  return data?.display_name ?? null
-}
-
-async function loadTrades(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from("trades")
-    .select(
-      "id, pair, direction, result, pnl, emotion, emotion_after, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, setup, setup_classification",
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-
-  if (error) throw new Error(error.message)
-  return data || []
-}
-
-async function loadPatternInputs(supabase: SupabaseClient, userId: string, maxRiskPerTrade: number) {
-  const trades = (await loadTrades(supabase, userId)) as PatternMemoryTrade[]
-
-  const { data: feedbackRows, error: feedbackError } = await supabase
-    .from("trade_coach_feedback")
-    .select("trade_id, discipline_score, planned_vs_actual")
-    .eq("user_id", userId)
-
-  let feedback: PatternMemoryFeedback[] = []
-  if (!feedbackError) {
-    feedback = (feedbackRows || []).map((row) => ({
-      trade_id: String(row.trade_id),
-      discipline_score: row.discipline_score,
-      planned_vs_actual: (row.planned_vs_actual || []) as PlannedVsActualComparison[],
-    }))
-  }
-
-  const { data: sessionRows, error: sessionsError } = await supabase
-    .from("trade_coach_sessions")
-    .select("trade_id, planned_context")
-    .eq("user_id", userId)
-    .not("trade_id", "is", null)
-
-  let sessions: PatternMemorySession[] = []
-  if (!sessionsError) {
-    sessions = (sessionRows || []).map((row) => ({
-      trade_id: row.trade_id ? String(row.trade_id) : null,
-      planned_context: (row.planned_context || {}) as PreTradePlannedContext,
-    }))
-  }
-
-  return generatePatternMemory({ trades, feedback, sessions, maxRiskPerTrade })
-}
-
-async function loadUnreadSignalCount(supabase: SupabaseClient, userId: string) {
-  const { count, error } = await supabase
-    .from("tradingview_signals")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .is("read_at", null)
-
-  if (error && !isMissingTableError(error)) return 0
-  return count ?? 0
 }
 
 export async function getOrCreateThread(
@@ -323,55 +246,6 @@ async function ensureDailyGreeting(
   return listThreadMessages(supabase, userId, threadId)
 }
 
-async function buildMemoryBundle(supabase: SupabaseClient, userId: string) {
-  const settings = await loadUserSettings(supabase, userId)
-  const traderName = await loadProfileName(supabase, userId)
-  const trades = await loadTrades(supabase, userId)
-  const patternResult = await loadPatternInputs(supabase, userId, settings.maxRiskPerTrade)
-  const plannedSessions = await listPlannedCoachSessions(supabase, userId)
-  const unreadSignalCount = await loadUnreadSignalCount(supabase, userId)
-
-  const leakTrades: LeakEngineInput["trades"] = trades.map((t) => ({
-    id: String(t.id),
-    direction: String(t.direction),
-    result: String(t.result),
-    pnl: Number(t.pnl),
-    emotion: String(t.emotion),
-    emotion_after: t.emotion_after,
-    session: t.session,
-    pair: String(t.pair || ""),
-    setup: String(t.setup || ""),
-    setup_classification: t.setup_classification,
-    risk_percent: t.risk_percent,
-    rule_followed: t.rule_followed,
-    confirmation_signal: t.confirmation_signal,
-    mistake_tags: t.mistake_tags,
-    trade_date: t.trade_date,
-    created_at: String(t.created_at),
-    timestamp: new Date(t.created_at).getTime(),
-    dayKey: "",
-    hourOfDay: 0,
-  }))
-
-  const primaryLeak = detectPrimaryLeak({
-    trades: leakTrades,
-    maxRiskPerTrade: settings.maxRiskPerTrade,
-  })
-
-  const memory = buildTraderContextMemory({
-    trades,
-    maxRiskPerTrade: settings.maxRiskPerTrade,
-    maxTradesPerDay: settings.maxTradesPerDay,
-    primaryLeak,
-    patterns: patternResult.patterns,
-    plannedSessions,
-    traderName,
-    unreadSignalCount,
-  })
-
-  return { settings, memory, recentTrades: trades.slice(0, 12) as RecentTradeMemory[], traderName }
-}
-
 export async function appendModeTransitionMessage(
   supabase: SupabaseClient,
   userId: string,
@@ -488,22 +362,37 @@ export async function getCommandCenterContext(
   }
 }
 
-export async function postCommandCenterMessage(
+export async function postCommandCenterChat(
   supabase: SupabaseClient,
   userId: string,
-  content: string,
+  input: {
+    content: string
+    mode?: CommandCenterMode
+    focusId?: string | null
+  },
 ): Promise<{
   userMessage: CommandCenterMessageRecord
   assistantMessage: CommandCenterMessageRecord
   context: CommandCenterContext
   thinkingPhases: string[]
+  engine: "llm" | "heuristic"
+  decision?: import("@/lib/intelligence/intelligence-types").TradeDecisionResult
 }> {
-  const trimmed = content.trim()
+  const trimmed = input.content.trim()
   if (!trimmed) throw new Error("Message cannot be empty")
 
-  const { memory, recentTrades } = await buildMemoryBundle(supabase, userId)
-  const threadId = await getOrCreateCompanionThread(supabase, userId)
+  const mode = input.mode ?? "companion"
+  const threadId =
+    mode === "companion"
+      ? await getOrCreateCompanionThread(supabase, userId)
+      : await getOrCreateThread(supabase, userId, mode, input.focusId)
+
   const recentMessages = await listThreadMessages(supabase, userId, threadId, 40)
+
+  const fullContext = await buildFullTraderContext(supabase, userId, {
+    focusId: input.focusId,
+    recentMessages,
+  })
 
   const userMessage = await insertMessage(supabase, {
     userId,
@@ -513,10 +402,9 @@ export async function postCommandCenterMessage(
     content: trimmed,
   })
 
-  const dialogue = generateCompanionDialogue({
+  const dialogue = await generateCompanionIntelligenceReply({
     userMessage: trimmed,
-    memory,
-    recentTrades,
+    context: fullContext,
     recentMessages: [...recentMessages, userMessage],
   })
 
@@ -527,26 +415,59 @@ export async function postCommandCenterMessage(
     messageType: dialogue.isCriticalHighlight ? "warning" : "text",
     content: dialogue.content,
     payload: {
-      replyEngine: "dialogue-v2",
+      replyEngine: dialogue.engine === "llm" ? "intelligence-llm-v1" : "dialogue-v3-intent",
       companionState: dialogue.companionState,
       followUpQuestion: dialogue.followUpQuestion,
-      memoryReference: dialogue.memoryReference,
       mentionedWarningIds: dialogue.mentionedWarningIds,
       isCriticalHighlight: dialogue.isCriticalHighlight,
+      intent: dialogue.intent,
+      decision: dialogue.decision,
     },
   })
+
+  await compressInteractionMemory(supabase, {
+    userId,
+    threadId,
+    context: fullContext,
+    intent: dialogue.intent,
+    userMessage: trimmed,
+    assistantReply: dialogue.content,
+    sourceMessageId: assistantMessage.id,
+    decision: dialogue.decision,
+  }).catch(() => null)
 
   await supabase
     .from("command_center_threads")
     .update({ updated_at: new Date().toISOString() })
     .eq("id", threadId)
 
-  const context = await getCommandCenterContext(supabase, userId, "companion")
+  const context = await getCommandCenterContext(supabase, userId, mode, input.focusId)
 
   return {
     userMessage,
     assistantMessage,
     context,
     thinkingPhases: dialogue.thinkingPhases,
+    engine: dialogue.engine,
+    decision: dialogue.decision,
+  }
+}
+
+export async function postCommandCenterMessage(
+  supabase: SupabaseClient,
+  userId: string,
+  content: string,
+): Promise<{
+  userMessage: CommandCenterMessageRecord
+  assistantMessage: CommandCenterMessageRecord
+  context: CommandCenterContext
+  thinkingPhases: string[]
+}> {
+  const result = await postCommandCenterChat(supabase, userId, { content })
+  return {
+    userMessage: result.userMessage,
+    assistantMessage: result.assistantMessage,
+    context: result.context,
+    thinkingPhases: result.thinkingPhases,
   }
 }

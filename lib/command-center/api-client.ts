@@ -3,6 +3,7 @@ import type {
   CommandCenterMessageRecord,
   CommandCenterMode,
 } from "@/lib/command-center/types"
+import type { TradeDecisionResult } from "@/lib/intelligence/intelligence-types"
 
 export async function fetchCommandCenterContext(
   mode: CommandCenterMode = "companion",
@@ -45,17 +46,23 @@ export async function switchCommandCenterMode(input: {
   return payload as CommandCenterContext
 }
 
-export async function sendCommandCenterMessage(content: string): Promise<{
+export async function sendCommandCenterChat(input: {
+  content: string
+  mode?: CommandCenterMode
+  focusId?: string | null
+}): Promise<{
   userMessage: CommandCenterMessageRecord
   assistantMessage: CommandCenterMessageRecord
   context: CommandCenterContext
   thinkingPhases: string[]
+  engine: "llm" | "heuristic"
+  decision?: TradeDecisionResult
 }> {
-  const response = await fetch("/api/command-center/messages", {
+  const response = await fetch("/api/command-center/chat", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(input),
   })
 
   const payload = await response.json()
@@ -64,4 +71,20 @@ export async function sendCommandCenterMessage(content: string): Promise<{
   }
 
   return payload
+}
+
+/** @deprecated Prefer sendCommandCenterChat */
+export async function sendCommandCenterMessage(content: string): Promise<{
+  userMessage: CommandCenterMessageRecord
+  assistantMessage: CommandCenterMessageRecord
+  context: CommandCenterContext
+  thinkingPhases: string[]
+}> {
+  const result = await sendCommandCenterChat({ content })
+  return {
+    userMessage: result.userMessage,
+    assistantMessage: result.assistantMessage,
+    context: result.context,
+    thinkingPhases: result.thinkingPhases,
+  }
 }

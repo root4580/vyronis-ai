@@ -14,7 +14,7 @@ import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import {
   fetchCommandCenterContext,
-  sendCommandCenterMessage,
+  sendCommandCenterChat,
   switchCommandCenterMode,
 } from "@/lib/command-center/api-client"
 import type { CommandCenterContext, CommandCenterMessageRecord, CommandCenterMode } from "@/lib/command-center/types"
@@ -279,7 +279,11 @@ export function AIContextProvider({
       )
 
       try {
-        const result = await sendCommandCenterMessage(content)
+        const result = await sendCommandCenterChat({
+          content,
+          mode,
+          focusId,
+        })
         setThinkingPhases(result.thinkingPhases)
         setContext(result.context)
         setMode(result.context.mode)
@@ -293,7 +297,7 @@ export function AIContextProvider({
         setIsThinking(false)
       }
     },
-    [context, refresh, userId],
+    [context, focusId, mode, refresh, userId],
   )
 
   const clearStreamingMessage = useCallback(() => {

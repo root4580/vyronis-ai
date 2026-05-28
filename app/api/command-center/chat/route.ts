@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       mode?: CommandCenterMode
       focusId?: string | null
     }
+
     const content = body.content?.trim()
     if (!content) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 })
@@ -33,14 +34,15 @@ export async function POST(request: Request) {
       mode: body.mode,
       focusId: body.focusId,
     })
+
     return NextResponse.json(result)
   } catch (error) {
     if (error instanceof CommandCenterTableMissingError) {
       return NextResponse.json({ error: error.message }, { status: 503 })
     }
-    console.error("Command center message error:", error)
+    console.error("Command center chat error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send message" },
+      { error: error instanceof Error ? error.message : "Failed to generate response" },
       { status: 500 },
     )
   }
