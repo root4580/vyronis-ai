@@ -1546,6 +1546,23 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   animation: command-center-fade-in 0.22s ease both;
 }
 
+.companion-terminal-thread {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.015) 0%,
+    transparent 12%
+  );
+}
+
+.companion-terminal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.2) transparent;
+}
+
+.companion-thinking {
+  animation: command-center-message-in 0.3s ease both;
+}
+
 .command-center-panel {
   max-height: min(90vh, 900px);
   background: linear-gradient(
@@ -1635,5 +1652,89 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   40% {
     opacity: 1;
     transform: translateY(-2px);
+  }
+}
+
+.command-center-panel-expanded {
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.14),
+    0 28px 90px rgba(0, 0, 0, 0.6),
+    0 0 56px rgba(34, 211, 238, 0.12);
+}
+
+.command-center-mode-transition {
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s ease;
+}
+
+.command-center-panel-transitioning {
+  pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  .command-center-panel {
+    inset: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    animation: command-center-slide-up-mobile 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .command-center-body {
+    max-height: calc(100dvh - 64px);
+  }
+
+  .command-center-launcher {
+    bottom: 5.75rem;
+    left: 1rem;
+    padding-inline: 0.875rem;
+  }
+
+  .companion-terminal-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@keyframes command-center-slide-up-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.command-center-mode-content {
+  animation: command-center-mode-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.command-center-back-btn {
+  animation: command-center-mode-in 0.22s ease both;
+}
+
+.command-center-system-message {
+  animation: command-center-message-in 0.24s ease both;
+}
+
+@keyframes command-center-mode-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

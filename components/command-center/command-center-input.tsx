@@ -8,10 +8,16 @@ import { cn } from "@/lib/utils"
 type CommandCenterInputProps = {
   onSend: (content: string) => Promise<void>
   disabled?: boolean
+  placeholder?: string
   className?: string
 }
 
-export function CommandCenterInput({ onSend, disabled, className }: CommandCenterInputProps) {
+export function CommandCenterInput({
+  onSend,
+  disabled,
+  placeholder = "Ask about setups, patterns, or how you're feeling…",
+  className,
+}: CommandCenterInputProps) {
   const [value, setValue] = useState("")
   const [isSending, setIsSending] = useState(false)
 
@@ -41,7 +47,7 @@ export function CommandCenterInput({ onSend, disabled, className }: CommandCente
         value={value}
         onChange={(event) => setValue(event.target.value)}
         rows={2}
-        placeholder="Ask about setups, patterns, or how you're feeling…"
+        placeholder={placeholder}
         disabled={disabled || isSending}
         className="max-h-24 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
         onKeyDown={(event) => {

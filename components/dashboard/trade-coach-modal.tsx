@@ -82,14 +82,21 @@ const MtfAnalysisPanel = dynamic(
   },
 )
 
-type TradeCoachModalProps = {
-  open: boolean
-  onClose: () => void
+type TradeCoachPanelProps = {
+  active: boolean
+  embedded?: boolean
+  showHeader?: boolean
+  onClose?: () => void
   plannedContext: PreTradePlannedContext
   maxRiskPerTrade?: number
   sessionId?: string | null
   onSessionChange?: (sessionId: string | null) => void
   onCompleted?: (sessionId: string) => void
+}
+
+type TradeCoachModalProps = Omit<TradeCoachPanelProps, "active" | "embedded" | "showHeader"> & {
+  open: boolean
+  onClose: () => void
 }
 
 function CoachBubble({ message }: { message: TradeCoachMessageRecord }) {
@@ -120,15 +127,17 @@ function CoachBubble({ message }: { message: TradeCoachMessageRecord }) {
   )
 }
 
-export function TradeCoachModal({
-  open,
+export function TradeCoachPanel({
+  active,
+  embedded = false,
+  showHeader = !embedded,
   onClose,
   plannedContext,
   maxRiskPerTrade = DEFAULT_USER_SETTINGS.max_risk_per_trade,
   sessionId,
   onSessionChange,
   onCompleted,
-}: TradeCoachModalProps) {
+}: TradeCoachPanelProps) {
   const [session, setSession] = useState<TradeCoachSessionWithMessages | null>(null)
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -249,7 +258,7 @@ export function TradeCoachModal({
   const tradeQuality = resolveTradeQualityFromSession(session)
 
   useEffect(() => {
-    if (!open) return
+    if (!active) return
 
     let cancelled = false
 
@@ -292,10 +301,10 @@ export function TradeCoachModal({
     return () => {
       cancelled = true
     }
-  }, [open, sessionId, maxRiskPerTrade, plannedContext, onSessionChange])
+  }, [active, sessionId, maxRiskPerTrade, plannedContext, onSessionChange])
 
   useEffect(() => {
-    if (!open) return
+    if (!active) return
 
     void fetchStrategyPlaybooks()
       .then((rows) => {
@@ -304,7 +313,7 @@ export function TradeCoachModal({
       .catch(() => {
         setPlaybooks([])
       })
-  }, [open])
+  }, [active])
 
   useEffect(() => {
     if (!session) return
@@ -338,14 +347,14 @@ export function TradeCoachModal({
   useEffect(() => {
     if (!scrollRef.current) return
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  }, [session?.messages.length, mtfAnalysis, open])
+  }, [session?.messages.length, mtfAnalysis, active])
 
   useEffect(() => {
-    if (!open) {
+    if (!active) {
       previousSessionStatusRef.current = null
       return
     }
-  }, [open])
+  }, [active])
 
   useEffect(() => {
     if (!session) return
@@ -417,7 +426,7 @@ export function TradeCoachModal({
     }
   }
 
-  if (!open) return null
+  if (!active) return null
 
   const isComplete = workflowPhase === "complete"
   const requiresOverride =
@@ -446,18 +455,9 @@ export function TradeCoachModal({
         ? `Quick check · ${questionProgress}/${totalQuestions}`
         : "Complete"
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4 md:p-6">
-      <div className="add-trade-backdrop absolute inset-0" onClick={onClose} aria-hidden />
-
-      <div
-        className="add-trade-modal glass-card relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="trade-coach-title"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.07] via-transparent to-profit/[0.04]" />
-
+  const panelBody = (
+    <>
+      {showHeader ? (
         <header className="trade-coach-modal-header relative sticky top-0 z-20 shrink-0 border-b border-white/[0.06] px-4 py-3.5 md:px-6 md:py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -488,22 +488,25 @@ export function TradeCoachModal({
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] p-2 transition-all hover:bg-white/[0.06]"
-              aria-label="Close coach"
-            >
-              <X className="size-5 text-muted-foreground" />
-            </button>
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] p-2 transition-all hover:bg-white/[0.06]"
+                aria-label="Close coach"
+              >
+                <X className="size-5 text-muted-foreground" />
+              </button>
+            ) : null}
           </div>
         </header>
+      ) : null}
 
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div
-            ref={scrollRef}
-            className="trade-coach-modal-scroll min-h-0 flex-1 space-y-3 px-4 py-3 md:px-6 md:py-4"
-          >
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="trade-coach-modal-scroll min-h-0 flex-1 space-y-3 px-4 py-3 md:px-6 md:py-4"
+        >
           {isLoading ? (
             <div className="flex min-h-[240px] items-center justify-center">
               <Loader2 className="size-6 animate-spin text-cyan-glow" />
@@ -545,9 +548,9 @@ export function TradeCoachModal({
               <p className="text-[12px] text-loss/90">{error}</p>
             </DashboardInsetPanel>
           )}
-          </div>
+        </div>
 
-          <footer className="trade-coach-modal-scroll relative max-h-[min(38vh,340px)] shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-4 py-3.5 backdrop-blur-md md:px-6 md:py-4">
+        <footer className="trade-coach-modal-scroll relative max-h-[min(38vh,340px)] shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-4 py-3.5 backdrop-blur-md md:px-6 md:py-4">
           {isComplete ? (
             <div className="space-y-3">
               {mtfAnalysis && session && (
@@ -738,8 +741,7 @@ export function TradeCoachModal({
               </Button>
             </div>
           ) : null}
-          </footer>
-        </div>
+        </footer>
       </div>
 
       <ScreenshotViewerModal
@@ -750,6 +752,34 @@ export function TradeCoachModal({
         defaultOverlayMode="overlay"
         onClose={() => setChartViewer(null)}
       />
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="command-center-pre-trade flex min-h-0 flex-1 flex-col overflow-hidden">
+        {panelBody}
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4 md:p-6">
+      <div className="add-trade-backdrop absolute inset-0" onClick={onClose} aria-hidden />
+
+      <div
+        className="add-trade-modal glass-card relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trade-coach-title"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.07] via-transparent to-profit/[0.04]" />
+        {panelBody}
+      </div>
     </div>
   )
+}
+
+export function TradeCoachModal({ open, onClose, ...rest }: TradeCoachModalProps) {
+  return <TradeCoachPanel active={open} embedded={false} onClose={onClose} {...rest} />
 }

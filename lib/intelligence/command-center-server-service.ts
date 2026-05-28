@@ -11,7 +11,17 @@ import type { PlannedVsActualComparison, PreTradePlannedContext } from "@/lib/tr
 import { listPlannedCoachSessions } from "@/lib/trade-coach/server-service"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { buildTraderContextMemory } from "@/lib/intelligence/trader-context"
-import { generateCompanionReply } from "@/lib/intelligence/companion-reply-engine"
+import {
+  buildConversationalGreeting,
+  generateCompanionDialogue,
+} from "@/lib/intelligence/companion-dialogue-engine"
+import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
+import { resolveCompanionState } from "@/lib/intelligence/conversational-state-engine"
+import {
+  getFreshWarnings,
+  greetingWarningIds,
+  resolveCompanionStateFromThread,
+} from "@/lib/intelligence/companion-context-utils"
 import type {
   CommandCenterContext,
   CommandCenterMessageRecord,
@@ -129,6 +139,60 @@ async function loadUnreadSignalCount(supabase: SupabaseClient, userId: string) {
   return count ?? 0
 }
 
+export async function getOrCreateThread(
+  supabase: SupabaseClient,
+  userId: string,
+  focusType: CommandCenterMode | "companion" = "companion",
+  focusId?: string | null,
+): Promise<string> {
+  if (focusType === "companion") {
+    return getOrCreateCompanionThread(supabase, userId)
+  }
+
+  if (!focusId) {
+    throw new Error(`focusId is required for ${focusType} threads`)
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from("command_center_threads")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("focus_type", focusType)
+    .eq("focus_id", focusId)
+    .maybeSingle()
+
+  if (findError && isMissingTableError(findError)) {
+    throw new CommandCenterTableMissingError()
+  }
+  if (findError) throw new Error(findError.message)
+  if (existing?.id) return String(existing.id)
+
+  const title =
+    focusType === "pre_trade"
+      ? "Pre-trade review"
+      : focusType === "post_trade"
+        ? "Post-trade debrief"
+        : "Weekly review"
+
+  const { data: created, error: createError } = await supabase
+    .from("command_center_threads")
+    .insert({
+      user_id: userId,
+      focus_type: focusType,
+      focus_id: focusId,
+      title,
+    })
+    .select("id")
+    .single()
+
+  if (createError) {
+    if (isMissingTableError(createError)) throw new CommandCenterTableMissingError()
+    throw new Error(createError.message)
+  }
+
+  return String(created.id)
+}
+
 export async function getOrCreateCompanionThread(
   supabase: SupabaseClient,
   userId: string,
@@ -218,23 +282,37 @@ async function ensureDailyGreeting(
   supabase: SupabaseClient,
   userId: string,
   threadId: string,
-  greeting: CommandCenterContext["greeting"],
+  memory: Awaited<ReturnType<typeof buildMemoryBundle>>["memory"],
+  recentTrades: RecentTradeMemory[],
+  traderName: string | null,
 ) {
-  const messages = await listThreadMessages(supabase, userId, threadId, 20)
-  const lastGreeting = [...messages].reverse().find((m) => m.message_type === "greeting")
+  const allMessages = await listThreadMessages(supabase, userId, threadId, 80)
+  const lastGreeting = [...allMessages].reverse().find((m) => m.message_type === "greeting")
   const greetingDay = lastGreeting?.payload?.dayKey
 
   if (greetingDay === todayKey() && lastGreeting) {
-    return messages
+    return allMessages
   }
+
+  const greeting = buildConversationalGreeting({
+    memory,
+    recentTrades,
+    traderName,
+  })
+
+  const seededWarningIds = greetingWarningIds(memory)
 
   await insertMessage(supabase, {
     userId,
     threadId,
     role: "assistant",
     messageType: "greeting",
-    content: `${greeting.headline}\n\n${greeting.subline}`,
-    payload: { dayKey: todayKey(), headline: greeting.headline, subline: greeting.subline },
+    content: greeting.content,
+    payload: {
+      dayKey: todayKey(),
+      companionState: greeting.companionState,
+      mentionedWarningIds: seededWarningIds,
+    },
   })
 
   await supabase
@@ -291,24 +369,117 @@ async function buildMemoryBundle(supabase: SupabaseClient, userId: string) {
     unreadSignalCount,
   })
 
-  return { settings, memory }
+  return { settings, memory, recentTrades: trades.slice(0, 12) as RecentTradeMemory[], traderName }
+}
+
+export async function appendModeTransitionMessage(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    mode: CommandCenterMode
+    focusId?: string | null
+    label: string
+    direction: "enter" | "exit"
+  },
+): Promise<CommandCenterMessageRecord> {
+  const companionThreadId = await getOrCreateCompanionThread(supabase, userId)
+
+  const content =
+    input.direction === "enter"
+      ? `Entering ${input.label}`
+      : `Returned to companion · ${input.label}`
+
+  const message = await insertMessage(supabase, {
+    userId,
+    threadId: companionThreadId,
+    role: "system",
+    messageType: "system",
+    content,
+    payload: {
+      mode: input.mode,
+      focusId: input.focusId ?? null,
+      direction: input.direction,
+    },
+  })
+
+  await supabase
+    .from("command_center_threads")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", companionThreadId)
+
+  return message
+}
+
+export async function switchCommandCenterMode(
+  supabase: SupabaseClient,
+  userId: string,
+  input: {
+    mode: CommandCenterMode
+    focusId?: string | null
+    label?: string
+    direction?: "enter" | "exit"
+  },
+): Promise<CommandCenterContext> {
+  const direction = input.direction ?? (input.mode === "companion" ? "exit" : "enter")
+  const label =
+    input.label ??
+    (input.mode === "companion"
+      ? "Companion"
+      : input.mode === "pre_trade"
+        ? "Pre-trade coach"
+        : input.mode)
+
+  if (label) {
+    await appendModeTransitionMessage(supabase, userId, {
+      mode: input.mode,
+      focusId: input.focusId,
+      label,
+      direction,
+    })
+  }
+
+  if (input.mode !== "companion" && input.focusId) {
+    await getOrCreateThread(supabase, userId, input.mode, input.focusId)
+  }
+
+  return getCommandCenterContext(supabase, userId, input.mode, input.focusId ?? null)
 }
 
 export async function getCommandCenterContext(
   supabase: SupabaseClient,
   userId: string,
   mode: CommandCenterMode = "companion",
+  focusId: string | null = null,
 ): Promise<CommandCenterContext> {
-  const { settings, memory } = await buildMemoryBundle(supabase, userId)
-  const threadId = await getOrCreateCompanionThread(supabase, userId)
-  const messages = await ensureDailyGreeting(supabase, userId, threadId, memory.greeting)
+  const { settings, memory, recentTrades, traderName } = await buildMemoryBundle(supabase, userId)
+  const companionThreadId = await getOrCreateCompanionThread(supabase, userId)
+  const messages = await ensureDailyGreeting(
+    supabase,
+    userId,
+    companionThreadId,
+    memory,
+    recentTrades,
+    traderName,
+  )
+
+  let threadId = companionThreadId
+  if (mode !== "companion" && focusId) {
+    threadId = await getOrCreateThread(supabase, userId, mode, focusId)
+  }
+
+  const companionState = resolveCompanionStateFromThread(messages, memory)
+  const freshWarnings = getFreshWarnings(memory.warnings, messages)
 
   return {
     enabled: settings.enabled,
     threadId,
+    companionThreadId,
     mode,
+    focusId,
+    companionState,
     greeting: memory.greeting,
     warnings: memory.warnings,
+    freshWarnings,
     snapshot: memory.snapshot,
     primaryLeak: memory.primaryLeak,
     topPatterns: memory.topPatterns,
@@ -321,12 +492,18 @@ export async function postCommandCenterMessage(
   supabase: SupabaseClient,
   userId: string,
   content: string,
-): Promise<{ userMessage: CommandCenterMessageRecord; assistantMessage: CommandCenterMessageRecord; context: CommandCenterContext }> {
+): Promise<{
+  userMessage: CommandCenterMessageRecord
+  assistantMessage: CommandCenterMessageRecord
+  context: CommandCenterContext
+  thinkingPhases: string[]
+}> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error("Message cannot be empty")
 
-  const { memory } = await buildMemoryBundle(supabase, userId)
+  const { memory, recentTrades } = await buildMemoryBundle(supabase, userId)
   const threadId = await getOrCreateCompanionThread(supabase, userId)
+  const recentMessages = await listThreadMessages(supabase, userId, threadId, 40)
 
   const userMessage = await insertMessage(supabase, {
     userId,
@@ -336,15 +513,27 @@ export async function postCommandCenterMessage(
     content: trimmed,
   })
 
-  const reply = generateCompanionReply({ userMessage: trimmed, memory })
+  const dialogue = generateCompanionDialogue({
+    userMessage: trimmed,
+    memory,
+    recentTrades,
+    recentMessages: [...recentMessages, userMessage],
+  })
 
   const assistantMessage = await insertMessage(supabase, {
     userId,
     threadId,
     role: "assistant",
-    messageType: "text",
-    content: reply,
-    payload: { replyEngine: "heuristic-v1" },
+    messageType: dialogue.isCriticalHighlight ? "warning" : "text",
+    content: dialogue.content,
+    payload: {
+      replyEngine: "dialogue-v2",
+      companionState: dialogue.companionState,
+      followUpQuestion: dialogue.followUpQuestion,
+      memoryReference: dialogue.memoryReference,
+      mentionedWarningIds: dialogue.mentionedWarningIds,
+      isCriticalHighlight: dialogue.isCriticalHighlight,
+    },
   })
 
   await supabase
@@ -352,7 +541,12 @@ export async function postCommandCenterMessage(
     .update({ updated_at: new Date().toISOString() })
     .eq("id", threadId)
 
-  const context = await getCommandCenterContext(supabase, userId)
+  const context = await getCommandCenterContext(supabase, userId, "companion")
 
-  return { userMessage, assistantMessage, context }
+  return {
+    userMessage,
+    assistantMessage,
+    context,
+    thinkingPhases: dialogue.thinkingPhases,
+  }
 }

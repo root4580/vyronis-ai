@@ -6,8 +6,12 @@ import type {
 
 export async function fetchCommandCenterContext(
   mode: CommandCenterMode = "companion",
+  focusId?: string | null,
 ): Promise<CommandCenterContext> {
-  const response = await fetch(`/api/command-center/context?mode=${mode}`, {
+  const params = new URLSearchParams({ mode })
+  if (focusId) params.set("focusId", focusId)
+
+  const response = await fetch(`/api/command-center/context?${params.toString()}`, {
     method: "GET",
     credentials: "include",
   })
@@ -20,10 +24,32 @@ export async function fetchCommandCenterContext(
   return payload as CommandCenterContext
 }
 
+export async function switchCommandCenterMode(input: {
+  mode: CommandCenterMode
+  focusId?: string | null
+  label?: string
+  direction?: "enter" | "exit"
+}): Promise<CommandCenterContext> {
+  const response = await fetch("/api/command-center/mode", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to switch command center mode")
+  }
+
+  return payload as CommandCenterContext
+}
+
 export async function sendCommandCenterMessage(content: string): Promise<{
   userMessage: CommandCenterMessageRecord
   assistantMessage: CommandCenterMessageRecord
   context: CommandCenterContext
+  thinkingPhases: string[]
 }> {
   const response = await fetch("/api/command-center/messages", {
     method: "POST",

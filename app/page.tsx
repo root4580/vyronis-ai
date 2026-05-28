@@ -22,7 +22,6 @@ import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
-import { TradeCoachModal } from "@/components/dashboard/trade-coach-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
 import { JournalImportModal } from "@/components/dashboard/journal-import-modal"
 import {
@@ -216,11 +215,7 @@ function Home() {
   const [isDragging, setIsDragging] = useState(false)
   const [screenshotViewer, setScreenshotViewer] = useState<{ url: string | null; label: string } | null>(null)
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null)
-  const [isCoachOpen, setIsCoachOpen] = useState(false)
   const [coachSessionId, setCoachSessionId] = useState<string | null>(null)
-  const [coachPlannedContext, setCoachPlannedContext] = useState<PreTradePlannedContext>(
-    buildEmptyPlannedContext,
-  )
   const [coachFeedbackRefreshKey, setCoachFeedbackRefreshKey] = useState(0)
   const [plannedSessions, setPlannedSessions] = useState<PlannedCoachSessionItem[]>([])
   const [riskGuardOpen, setRiskGuardOpen] = useState(false)
@@ -236,9 +231,18 @@ function Home() {
   const globalLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tradesFetchSettledRef = useRef(false)
   const openCommandCenterRef = useRef<() => void>(() => {})
+  const openPreTradeCoachRef = useRef<
+    (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>
+  >(async () => {})
   const bindOpenCommandCenter = useCallback((open: () => void) => {
     openCommandCenterRef.current = open
   }, [])
+  const bindOpenPreTradeCoach = useCallback(
+    (openPreTrade: (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>) => {
+      openPreTradeCoachRef.current = openPreTrade
+    },
+    [],
+  )
 
   function clearGlobalLoadTimeout() {
     if (globalLoadTimeoutRef.current) {
@@ -946,41 +950,24 @@ function Home() {
 
   type OpenCoachOptions = {
     sessionId?: string
+    plannedContext?: PreTradePlannedContext
   }
 
   async function handleOpenCoach(context?: PreTradePlannedContext, options: OpenCoachOptions = {}) {
-    const riskLimit =
-      userSettings?.max_risk_per_trade ??
-      settingsForm.max_risk_per_trade ??
-      DEFAULT_USER_SETTINGS.max_risk_per_trade
-
-    if (options.sessionId) {
-      try {
-        const session = await fetchCoachSession(options.sessionId)
-        setCoachPlannedContext(session.planned_context)
-        setCoachSessionId(options.sessionId)
-        setIsCoachOpen(true)
-        if (user?.id) {
-          markRitualCoachEngaged(user.id)
-        }
-      } catch (error) {
-        toast({
-          title: "Could not open coach session",
-          description: error instanceof Error ? error.message : "Try again in a moment.",
-          variant: "destructive",
-        })
+    try {
+      await openPreTradeCoachRef.current({
+        sessionId: options.sessionId,
+        plannedContext: context,
+      })
+      if (user?.id) {
+        markRitualCoachEngaged(user.id)
       }
-      return
-    }
-
-    setCoachPlannedContext(
-      context || buildPlannedContextFromForm(form, riskLimit),
-    )
-    setCoachSessionId(null)
-    setIsCoachOpen(true)
-
-    if (user?.id) {
-      markRitualCoachEngaged(user.id)
+    } catch (error) {
+      toast({
+        title: "Could not open coach session",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1015,7 +1002,6 @@ function Home() {
       const session = await fetchCoachSession(sessionId)
       setConvertSessionId(sessionId)
       setCoachSessionId(sessionId)
-      setCoachPlannedContext(session.planned_context)
       setEditingTrade(null)
       setForm(buildTradeFormFromPlannedSession(session))
       setIsModalOpen(true)
@@ -1044,7 +1030,6 @@ function Home() {
       if (coachSessionId === sessionId) {
         setCoachSessionId(null)
         setConvertSessionId(null)
-        setIsCoachOpen(false)
       }
       if (convertSessionId === sessionId) {
         setConvertSessionId(null)
@@ -1583,10 +1568,15 @@ function Home() {
     <AIContextProvider
       userId={user?.id}
       refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
-      onContinuePlannedCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
-      onNewPreTradeCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
+      maxRiskPerTrade={maxRiskPerTrade}
+      onCoachSessionChange={(sessionId) => setCoachSessionId(sessionId)}
+      onCoachCompleted={() => void refreshPlannedSessions(undefined, true)}
     >
-      <CommandCenterBridge onBindOpen={bindOpenCommandCenter} />
+      <CommandCenterBridge
+        onBindOpen={bindOpenCommandCenter}
+        onBindPreTrade={bindOpenPreTradeCoach}
+        onCoachSessionIdChange={setCoachSessionId}
+      />
     <>
     <DashboardChrome
       activeTab={activeTab}
@@ -1958,24 +1948,6 @@ function Home() {
         onScreenshotClick={(trade) =>
           setScreenshotViewer({ url: trade.screenshot_url ?? null, label: trade.pair })
         }
-      />
-
-      <TradeCoachModal
-        open={isCoachOpen}
-        onClose={() => setIsCoachOpen(false)}
-        plannedContext={coachPlannedContext}
-        maxRiskPerTrade={maxRiskPerTrade}
-        sessionId={coachSessionId}
-        onSessionChange={(sessionId) => {
-          setCoachSessionId(sessionId)
-          if (sessionId) {
-            void refreshPlannedSessions(undefined, true)
-          }
-        }}
-        onCompleted={(sessionId) => {
-          setCoachSessionId(sessionId)
-          void refreshPlannedSessions(undefined, true)
-        }}
       />
 
       <VyronisCommandCenter />

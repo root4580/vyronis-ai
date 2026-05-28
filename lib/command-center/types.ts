@@ -2,6 +2,8 @@ import type { PrimaryLeakInsight } from "@/lib/behavior/types"
 import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
 import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 
+import type { CompanionConversationalState } from "@/lib/intelligence/conversational-types"
+
 export type CommandCenterMode = "companion" | "pre_trade" | "post_trade" | "weekly"
 
 export type CommandCenterMessageRole = "user" | "assistant" | "system"
@@ -47,10 +49,20 @@ export type CommandCenterTraderSnapshot = {
   unreadSignalCount: number
 }
 
+export type CommandCenterOpenOptions = {
+  mode?: CommandCenterMode
+  focusId?: string | null
+  recordTransition?: boolean
+  transitionLabel?: string
+}
+
 export type CommandCenterContext = {
   enabled: boolean
   threadId: string
+  companionThreadId: string
   mode: CommandCenterMode
+  focusId: string | null
+  companionState: CompanionConversationalState
   greeting: CommandCenterGreeting
   warnings: CommandCenterWarning[]
   snapshot: CommandCenterTraderSnapshot
@@ -58,4 +70,6 @@ export type CommandCenterContext = {
   topPatterns: PatternMemoryPattern[]
   plannedSessions: PlannedCoachSessionItem[]
   messages: CommandCenterMessageRecord[]
+  /** Warnings not yet mentioned in the companion thread (avoids duplicate UI signals) */
+  freshWarnings: CommandCenterWarning[]
 }

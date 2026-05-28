@@ -13,7 +13,8 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
 
   if (!enabled) return null
 
-  const warningCount = context?.warnings.length ?? 0
+  const criticalCount =
+    context?.freshWarnings.filter((w) => w.severity === "critical").length ?? 0
 
   return (
     <button
@@ -25,8 +26,8 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
     >
       <Brain className="size-5 transition-transform duration-300 group-hover:scale-110" />
       <span className="hidden text-[13px] font-medium md:inline">Vyronis AI</span>
-      {warningCount > 0 ? (
-        <span className="command-center-launcher-badge">{warningCount}</span>
+      {criticalCount > 0 ? (
+        <span className="command-center-launcher-badge">{criticalCount}</span>
       ) : null}
     </button>
   )

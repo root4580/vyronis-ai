@@ -1,28 +1,37 @@
 "use client"
 
-import { Brain, X } from "lucide-react"
+import { ArrowLeft, Brain, Eye, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AiMessageThread } from "@/components/command-center/ai-message-thread"
-import { BehavioralWarningStrip } from "@/components/command-center/behavioral-warning-strip"
-import { CommandCenterInput } from "@/components/command-center/command-center-input"
-import { PlannedTradesMemoryFeed } from "@/components/command-center/planned-trades-memory-feed"
+import { CompanionMode } from "@/components/command-center/companion-mode"
+import { PreTradeMode } from "@/components/command-center/pre-trade-mode"
 import { useAIContext } from "@/providers/ai-context-provider"
+import { COMPANION_STATE_LABELS } from "@/lib/intelligence/conversational-types"
 import { cn } from "@/lib/utils"
+
+const MODE_LABELS = {
+  companion: "Companion",
+  pre_trade: "Pre-trade coach",
+  post_trade: "Post-trade debrief",
+  weekly: "Weekly review",
+} as const
 
 export function VyronisCommandCenter() {
   const {
     isOpen,
     close,
+    mode,
     context,
-    isLoading,
-    isSending,
-    error,
-    sendMessage,
-    onContinuePlannedCoach,
-    onNewPreTradeCoach,
+    isTransitioning,
+    coachPlannedContext,
+    returnToCompanion,
   } = useAIContext()
 
   if (!isOpen) return null
+
+  const isExpanded = mode === "pre_trade" || mode === "post_trade"
+  const pairLabel = coachPlannedContext.pair
+    ? `${coachPlannedContext.pair} ${coachPlannedContext.direction || ""}`.trim()
+    : null
 
   return (
     <>
@@ -36,33 +45,58 @@ export function VyronisCommandCenter() {
       <aside
         className={cn(
           "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full flex-col",
-          "sm:bottom-4 sm:right-4 sm:max-h-[90vh] sm:w-[min(420px,calc(100vw-2rem))]",
+          "sm:bottom-4 sm:right-4 sm:max-h-[90vh]",
           "rounded-t-2xl sm:rounded-2xl",
+          "command-center-mode-transition",
+          isExpanded
+            ? "command-center-panel-expanded sm:w-[min(640px,calc(100vw-2rem))]"
+            : "sm:w-[min(420px,calc(100vw-2rem))]",
+          isTransitioning && "command-center-panel-transitioning",
         )}
         role="dialog"
         aria-label="Vyronis AI Command Center"
       >
         <header className="command-center-header sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
+            {mode !== "companion" ? (
+              <button
+                type="button"
+                onClick={() => void returnToCompanion()}
+                className="command-center-back-btn mb-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-cyan-glow/90 transition-colors hover:text-cyan-glow"
+              >
+                <ArrowLeft className="size-3.5" />
+                Back to companion
+              </button>
+            ) : null}
+
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-lg border border-cyan-glow/25 bg-cyan-glow/[0.1]">
                 <Brain className="size-4 text-cyan-glow" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-foreground">
-                  Vyronis Command Center
+                  {mode === "companion" ? "Vyronis Command Center" : MODE_LABELS[mode]}
                 </p>
                 <p className="text-[10px] text-muted-foreground/75">
-                  {context?.greeting.sessionLabel ?? "Trading companion"}
+                  {mode === "companion"
+                    ? (context?.companionState
+                        ? COMPANION_STATE_LABELS[context.companionState]
+                        : context?.greeting.sessionLabel ?? "Online")
+                    : pairLabel || "Multi-timeframe pre-trade review"}
                 </p>
               </div>
             </div>
-            {context?.greeting ? (
-              <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground/85">
-                {context.greeting.headline}
-              </p>
+
+            {mode === "pre_trade" ? (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-glow/25 bg-cyan-glow/[0.08] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-glow">
+                  <Eye className="size-3" />
+                  Vision-enabled
+                </span>
+              </div>
             ) : null}
           </div>
+
           <Button
             type="button"
             variant="ghost"
@@ -74,42 +108,22 @@ export function VyronisCommandCenter() {
           </Button>
         </header>
 
-        <div className="command-center-body flex min-h-0 flex-1 flex-col gap-3 px-4 py-3">
-          {isLoading && !context ? (
-            <div className="flex flex-1 items-center justify-center py-12">
-              <div className="command-center-typing flex gap-1">
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
-          ) : (
-            <>
-              {context ? (
-                <>
-                  <BehavioralWarningStrip warnings={context.warnings} />
-                  <AiMessageThread
-                    messages={context.messages}
-                    isSending={isSending}
-                    className="min-h-[200px]"
-                  />
-                  <PlannedTradesMemoryFeed
-                    sessions={context.plannedSessions}
-                    onContinueCoach={onContinuePlannedCoach}
-                    onNewCoach={onNewPreTradeCoach}
-                  />
-                </>
-              ) : null}
-
-              {error ? (
-                <p className="rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] text-amber-200/90">
-                  {error}
-                </p>
-              ) : null}
-
-              <CommandCenterInput onSend={sendMessage} disabled={isLoading} />
-            </>
+        <div
+          className={cn(
+            "command-center-body flex min-h-0 flex-1 flex-col gap-3 px-4 py-3",
+            isExpanded && "px-3 sm:px-4",
           )}
+        >
+          <div
+            key={mode}
+            className={cn(
+              "command-center-mode-content flex min-h-0 flex-1 flex-col gap-3",
+              isExpanded ? "overflow-hidden" : "",
+            )}
+          >
+            {mode === "companion" ? <CompanionMode /> : null}
+            {mode === "pre_trade" ? <PreTradeMode /> : null}
+          </div>
         </div>
       </aside>
     </>
