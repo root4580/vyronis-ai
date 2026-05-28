@@ -447,18 +447,18 @@ export function TradeCoachModal({
         : "Complete"
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4 md:p-6">
       <div className="add-trade-backdrop absolute inset-0" onClick={onClose} aria-hidden />
 
       <div
-        className="glass-card relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden sm:max-h-[85vh]"
+        className="add-trade-modal glass-card relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="trade-coach-title"
       >
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.07] via-transparent to-profit/[0.04]" />
 
-        <header className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
+        <header className="trade-coach-modal-header relative sticky top-0 z-20 shrink-0 border-b border-white/[0.06] px-4 py-3.5 md:px-6 md:py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1]">
@@ -499,7 +499,11 @@ export function TradeCoachModal({
           </div>
         </header>
 
-        <div ref={scrollRef} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 md:px-6">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            ref={scrollRef}
+            className="trade-coach-modal-scroll min-h-0 flex-1 space-y-3 px-4 py-3 md:px-6 md:py-4"
+          >
           {isLoading ? (
             <div className="flex min-h-[240px] items-center justify-center">
               <Loader2 className="size-6 animate-spin text-cyan-glow" />
@@ -541,9 +545,9 @@ export function TradeCoachModal({
               <p className="text-[12px] text-loss/90">{error}</p>
             </DashboardInsetPanel>
           )}
-        </div>
+          </div>
 
-        <footer className="relative shrink-0 border-t border-white/[0.06] bg-black/20 px-4 py-4 backdrop-blur-md md:px-6">
+          <footer className="trade-coach-modal-scroll relative max-h-[min(38vh,340px)] shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-4 py-3.5 backdrop-blur-md md:px-6 md:py-4">
           {isComplete ? (
             <div className="space-y-3">
               {mtfAnalysis && session && (
@@ -734,7 +738,8 @@ export function TradeCoachModal({
               </Button>
             </div>
           ) : null}
-        </footer>
+          </footer>
+        </div>
       </div>
 
       <ScreenshotViewerModal

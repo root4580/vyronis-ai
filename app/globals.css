@@ -402,6 +402,18 @@
   animation: backdropFade 0.24s ease-out forwards;
 }
 
+.trade-coach-modal-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.trade-coach-modal-header {
+  background: rgba(10, 15, 20, 0.92);
+  backdrop-filter: blur(16px);
+}
+
 .add-trade-modal {
   border: 1px solid rgba(34, 211, 238, 0.14);
   box-shadow:
