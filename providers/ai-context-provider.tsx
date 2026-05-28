@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -13,11 +14,16 @@ import { fetchCoachSession } from "@/lib/trade-coach/api-client"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import {
+  archiveCommandCenterSession,
   fetchCommandCenterContext,
   sendCommandCenterChat,
   switchCommandCenterMode,
 } from "@/lib/command-center/api-client"
-import type { CommandCenterContext, CommandCenterMessageRecord, CommandCenterMode } from "@/lib/command-center/types"
+import type {
+  CommandCenterContext,
+  CommandCenterMessageRecord,
+  CommandCenterMode,
+} from "@/lib/command-center/types"
 import { buildThinkingPhases } from "@/lib/intelligence/conversational-state-engine"
 
 const OPEN_STATE_KEY = "vyronis.commandCenter.open"
@@ -59,10 +65,18 @@ type AIContextValue = {
   openPreTradeCoach: (options?: OpenPreTradeOptions) => Promise<void>
   returnToCompanion: () => Promise<void>
   refresh: () => Promise<void>
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (input: {
+    content: string
+    imageUrl?: string | null
+    imageUrls?: string[] | null
+  }) => Promise<void>
   clearStreamingMessage: () => void
   handleCoachSessionChange: (sessionId: string | null) => void
   handleCoachCompleted: (sessionId: string) => void
+  historySessionId: string | null
+  viewingArchivedSession: boolean
+  openHistorySession: (sessionId: string) => Promise<void>
+  startNewSession: () => Promise<void>
 }
 
 const AIContext = createContext<AIContextValue | null>(null)
@@ -91,33 +105,48 @@ export function AIContextProvider({
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionRestored, setSessionRestored] = useState(false)
+  const [historySessionId, setHistorySessionId] = useState<string | null>(null)
+  const panelEpochRef = useRef(0)
+  const needsFreshSessionRef = useRef(false)
+
+  const viewingArchivedSession = context?.viewingArchivedSession ?? false
 
   const enabled = context?.enabled ?? true
 
-  const refresh = useCallback(async () => {
-    if (!userId) return
-    setIsLoading(true)
-    setError(null)
-    try {
-      const next = await fetchCommandCenterContext(mode, focusId)
-      setContext(next)
-      setMode(next.mode)
-      setFocusId(next.focusId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load AI context")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userId, mode, focusId])
+  const refresh = useCallback(
+    async (options?: { fresh?: boolean }) => {
+      if (!userId) return
+      setIsLoading(true)
+      setError(null)
+      const useFresh =
+        options?.fresh ??
+        (needsFreshSessionRef.current && mode === "companion" && !historySessionId)
+      if (useFresh) needsFreshSessionRef.current = false
+
+      try {
+        const next = await fetchCommandCenterContext(mode, focusId, historySessionId, {
+          fresh: useFresh,
+        })
+        setContext(next)
+        setMode(next.mode)
+        setFocusId(next.focusId)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load AI context")
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [userId, mode, focusId, historySessionId],
+  )
 
   useEffect(() => {
     if (!userId) {
       setContext(null)
       return
     }
-    if (!sessionRestored) return
+    if (!sessionRestored || !isOpen) return
     void refresh()
-  }, [userId, refreshKey, mode, focusId, sessionRestored, refresh])
+  }, [userId, refreshKey, mode, focusId, historySessionId, sessionRestored, isOpen, refresh])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -165,7 +194,12 @@ export function AIContextProvider({
 
   const open = useCallback(
     (nextMode: CommandCenterMode = "companion") => {
+      setHistorySessionId(null)
+      needsFreshSessionRef.current = nextMode === "companion"
       setIsOpen(true)
+      setContext(null)
+      setIsLoading(true)
+      setError(null)
       if (nextMode === "companion") {
         setMode("companion")
         setFocusId(null)
@@ -174,13 +208,89 @@ export function AIContextProvider({
     [],
   )
 
-  const close = useCallback(() => {
+  const close = useCallback(async () => {
+    panelEpochRef.current += 1
+    const shouldArchive = userId && !historySessionId
+    needsFreshSessionRef.current = true
+
     setIsOpen(false)
-  }, [])
+    setContext(null)
+    setMode("companion")
+    setFocusId(null)
+    setHistorySessionId(null)
+    setCoachSessionId(null)
+    setCoachPlannedContext(buildEmptyPlannedContext())
+    setStreamingMessage(null)
+    setThinkingPhases([])
+    setIsThinking(false)
+    setIsSending(false)
+    setIsTransitioning(false)
+    setIsLoading(false)
+    setError(null)
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(OPEN_STATE_KEY, "0")
+      sessionStorage.setItem(MODE_STATE_KEY, "companion")
+      sessionStorage.removeItem(FOCUS_STATE_KEY)
+    }
+
+    if (shouldArchive) {
+      try {
+        await archiveCommandCenterSession()
+      } catch {
+        // fresh=1 on next open will retry rotation
+      }
+    }
+  }, [userId, historySessionId])
+
+  const openHistorySession = useCallback(
+    async (sessionId: string) => {
+      if (!userId) return
+      needsFreshSessionRef.current = false
+      setHistorySessionId(sessionId)
+      setMode("companion")
+      setFocusId(null)
+      setStreamingMessage(null)
+      setContext(null)
+      setIsLoading(true)
+      setError(null)
+      try {
+        const next = await fetchCommandCenterContext("companion", null, sessionId)
+        setContext(next)
+        setMode(next.mode)
+        setFocusId(next.focusId)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load session")
+        setHistorySessionId(null)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [userId],
+  )
+
+  const startNewSession = useCallback(async () => {
+    setHistorySessionId(null)
+    setStreamingMessage(null)
+    setError(null)
+    if (!isOpen || !userId) return
+    setIsLoading(true)
+    try {
+      const next = await fetchCommandCenterContext("companion", null, null, { fresh: true })
+      setContext(next)
+      setMode(next.mode)
+      setFocusId(next.focusId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start new session")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [isOpen, userId])
 
   const openPreTradeCoach = useCallback(
     async (options: OpenPreTradeOptions = {}) => {
       if (!userId) return
+      setHistorySessionId(null)
       setIsOpen(true)
       setIsTransitioning(true)
       setError(null)
@@ -254,50 +364,95 @@ export function AIContextProvider({
   }, [userId, coachPlannedContext.pair])
 
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!userId) return
+    async (input: {
+      content: string
+      imageUrl?: string | null
+      imageUrls?: string[] | null
+    }) => {
+      if (!userId || historySessionId) return
       setIsSending(true)
       setIsThinking(true)
       setStreamingMessage(null)
       setError(null)
 
+      const bundleUrls =
+        input.imageUrls?.filter(Boolean) ??
+        (input.imageUrl ? [input.imageUrl] : [])
+      const isBundle = bundleUrls.length > 1
+      const previewText =
+        input.content.trim() ||
+        (isBundle
+          ? `📷 ${bundleUrls.length} chart screenshots (timeframe bundle)`
+          : bundleUrls.length === 1
+            ? "📷 Chart uploaded"
+            : "")
       const previewState = context?.companionState ?? "calm"
-      setThinkingPhases(buildThinkingPhases({ userMessage: content, state: previewState }))
+      setThinkingPhases(
+        isBundle
+          ? [
+              "Analyzing timeframe bundle…",
+              "Reading timeframe labels on each chart…",
+              "Comparing Weekly → Daily → H4 → H1 → M15 → M5…",
+              "Checking HTF alignment and entry timing…",
+            ]
+          : bundleUrls.length === 1
+            ? [
+                "Reading your chart…",
+                "Checking trend direction…",
+                "Reviewing confirmation and structure…",
+                "Putting the analysis together…",
+              ]
+            : buildThinkingPhases({ userMessage: previewText, state: previewState }),
+      )
 
-      const optimisticUser = {
+      const optimisticUser: CommandCenterMessageRecord = {
         id: `temp-${Date.now()}`,
         thread_id: context?.companionThreadId ?? context?.threadId ?? "",
-        role: "user" as const,
-        message_type: "text" as const,
-        content,
-        payload: {},
+        role: "user",
+        message_type: bundleUrls.length > 0 ? "analysis" : "text",
+        content: previewText,
+        payload:
+          bundleUrls.length > 0
+            ? {
+                imageUrl: bundleUrls[0],
+                imageUrls: bundleUrls,
+                analysisKind: isBundle ? "timeframe_bundle" : "single_chart",
+              }
+            : {},
         created_at: new Date().toISOString(),
       }
 
+      const epoch = panelEpochRef.current
       setContext((prev) =>
         prev ? { ...prev, messages: [...prev.messages, optimisticUser] } : prev,
       )
 
       try {
         const result = await sendCommandCenterChat({
-          content,
+          content: input.content,
+          imageUrl: input.imageUrl ?? bundleUrls[0] ?? null,
+          imageUrls: isBundle ? bundleUrls : null,
           mode,
           focusId,
         })
+        if (epoch !== panelEpochRef.current) return
         setThinkingPhases(result.thinkingPhases)
         setContext(result.context)
         setMode(result.context.mode)
         setFocusId(result.context.focusId)
         setStreamingMessage(result.assistantMessage)
       } catch (err) {
+        if (epoch !== panelEpochRef.current) return
         setError(err instanceof Error ? err.message : "Failed to send message")
         void refresh()
       } finally {
-        setIsSending(false)
-        setIsThinking(false)
+        if (epoch === panelEpochRef.current) {
+          setIsSending(false)
+          setIsThinking(false)
+        }
       }
     },
-    [context, focusId, mode, refresh, userId],
+    [context, focusId, historySessionId, mode, refresh, userId],
   )
 
   const clearStreamingMessage = useCallback(() => {
@@ -355,6 +510,10 @@ export function AIContextProvider({
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachCompleted,
+      historySessionId,
+      viewingArchivedSession,
+      openHistorySession,
+      startNewSession,
     }),
     [
       enabled,
@@ -381,6 +540,10 @@ export function AIContextProvider({
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachCompleted,
+      historySessionId,
+      viewingArchivedSession,
+      openHistorySession,
+      startNewSession,
     ],
   )
 

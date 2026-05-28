@@ -101,8 +101,59 @@ export function useCoachChartUpload() {
     }
   }, [validateFile])
 
+  const uploadCharts = useCallback(
+    async (files: File[]): Promise<string[]> => {
+      if (files.length === 0) return []
+      if (files.length === 1) return [await uploadChart(files[0])]
+
+      setIsUploading(true)
+      setUploadProgress(0)
+      setError(null)
+      const progressInterval = window.setInterval(() => {
+        setUploadProgress((prev) => (prev >= 90 ? 90 : prev + 8))
+      }, 120)
+
+      try {
+        const urls: string[] = []
+        for (let index = 0; index < files.length; index += 1) {
+          const validationError = validateFile(files[index])
+          if (validationError) throw new Error(validationError)
+
+          const compressed = await compressImage(files[index])
+          const formData = new FormData()
+          formData.append("file", compressed)
+
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+          })
+
+          if (!response.ok) {
+            const payload = await response.json()
+            throw new Error(payload.error || "Upload failed")
+          }
+
+          const { url } = (await response.json()) as { url: string }
+          urls.push(url)
+          setUploadProgress(Math.round(((index + 1) / files.length) * 100))
+        }
+        return urls
+      } catch (uploadError) {
+        const message = uploadError instanceof Error ? uploadError.message : "Upload failed"
+        setError(message)
+        throw uploadError
+      } finally {
+        window.clearInterval(progressInterval)
+        setIsUploading(false)
+      }
+    },
+    [uploadChart, validateFile],
+  )
+
   return {
     uploadChart,
+    uploadCharts,
     isUploading,
     uploadProgress,
     error,

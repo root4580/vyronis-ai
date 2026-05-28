@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { CompanionContextStrip } from "@/components/command-center/companion-context-strip"
 import { AiMessageThread } from "@/components/command-center/ai-message-thread"
 import { CommandCenterInput } from "@/components/command-center/command-center-input"
 import { useAIContext } from "@/providers/ai-context-provider"
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 export function CompanionMode() {
   const {
+    isOpen,
     context,
     isLoading,
     isSending,
@@ -19,12 +21,14 @@ export function CompanionMode() {
     error,
     sendMessage,
     openPreTradeCoach,
+    viewingArchivedSession,
+    startNewSession,
   } = useAIContext()
 
   const [plansExpanded, setPlansExpanded] = useState(false)
   const plannedCount = context?.plannedSessions.length ?? 0
 
-  if (!context && isLoading) {
+  if (!context && (isLoading || isOpen)) {
     return (
       <div className="flex flex-1 items-center justify-center py-12">
         <div className="command-center-typing flex gap-1">
@@ -40,6 +44,32 @@ export function CompanionMode() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {viewingArchivedSession ? (
+        <div className="flex shrink-0 items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+          <p className="min-w-0 truncate text-[11px] text-muted-foreground/85">
+            Viewing past session
+            {context.sessionTitle ? ` · ${context.sessionTitle}` : ""}
+          </p>
+          <button
+            type="button"
+            onClick={() => void startNewSession()}
+            className="shrink-0 text-[10px] font-medium text-cyan-glow/90 hover:text-cyan-glow"
+          >
+            New session
+          </button>
+        </div>
+      ) : (
+        <CompanionContextStrip
+          context={{
+            cognitive: context.cognitive,
+            tradingOs: context.tradingOs,
+            adaptiveCognition: context.adaptiveCognition,
+            vyronisCore: context.vyronisCore,
+            autonomous: context.autonomous,
+            freshWarnings: context.freshWarnings,
+          }}
+        />
+      )}
       <AiMessageThread
         messages={context.messages}
         isThinking={isThinking}
@@ -99,8 +129,17 @@ export function CompanionMode() {
 
       <CommandCenterInput
         onSend={sendMessage}
-        disabled={isLoading || isThinking || Boolean(streamingMessage)}
-        placeholder="Talk to Vyronis — setups, emotions, journal…"
+        disabled={
+          viewingArchivedSession ||
+          isLoading ||
+          isThinking ||
+          Boolean(streamingMessage)
+        }
+        placeholder={
+          viewingArchivedSession
+            ? "Past session — start a new session to chat"
+            : "Talk to Vyronis — setups, emotions, journal…"
+        }
       />
     </div>
   )

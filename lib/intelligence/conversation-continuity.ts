@@ -43,15 +43,15 @@ export function weaveWarningInline(
   if (alreadyMentioned) return ""
 
   if (warning.severity === "critical") {
-    return `I need to flag this: ${warning.message}`
+    return `Real talk — ${warning.message.charAt(0).toLowerCase()}${warning.message.slice(1)}`
   }
   if (warning.source === "pattern") {
-    return `I'm noticing a pattern — ${warning.message.toLowerCase()}`
+    return `Your journal's been flagging this: ${warning.message.charAt(0).toLowerCase()}${warning.message.slice(1)}`
   }
   if (warning.source === "leak") {
-    return `Your journal keeps pointing to the same leak: ${warning.message.toLowerCase()}`
+    return `Same leak showing up again — ${warning.message.charAt(0).toLowerCase()}${warning.message.slice(1)}`
   }
-  return warning.message
+  return warning.message.charAt(0).toLowerCase() + warning.message.slice(1)
 }
 
 export function recentConversationSummary(

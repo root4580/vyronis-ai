@@ -25,12 +25,8 @@ function joinParts(parts: string[]): string {
 
 function respondToCasual(traderName?: string | null): string {
   const name = firstNameFromDisplay(traderName)
-  const hello = name ? `Hey ${name}.` : "Hey."
-  return joinParts([
-    hello,
-    "How's your day going?",
-    "Are we looking at the market today, reviewing trades, or keeping it light for now?",
-  ])
+  const hello = name ? `Hey ${name} — good to see you.` : "Hey — good to see you."
+  return joinParts([hello, "What's on your mind — market, a setup, or just checking in?"])
 }
 
 function respondToMarketCheck(memory: TraderContextMemory): string {

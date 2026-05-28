@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { resolveAiProvider } from "@/lib/ai/providers"
 import type { CompanionIntent } from "@/lib/intelligence/companion-intent-engine"
 import { isTradingIntent } from "@/lib/intelligence/companion-intent-engine"
+import type { CommandCenterVisionAnalysis } from "@/lib/intelligence/command-center-vision-engine"
+import { patternMemoryCandidates } from "@/lib/intelligence/pattern-intelligence-engine"
 import type {
   CommandCenterMemoryInsight,
   FullTraderContext,
@@ -26,8 +28,41 @@ function heuristicMemoryInsight(input: {
   intent: CompanionIntent
   userMessage: string
   decision?: TradeDecisionResult
+  chartVision?: CommandCenterVisionAnalysis | null
 }): { category: MemoryInsightCategory; insight: string } | null {
-  const { context, intent, decision } = input
+  const { context, intent, decision, chartVision } = input
+
+  if (chartVision?.bundle) {
+    const bundle = chartVision.bundle
+    if (bundle.conflicts.length > 0) {
+      return {
+        category: "dangerous_pattern",
+        insight: `MTF bundle (${bundle.inferredStack}): ${bundle.conflicts[0]}`,
+      }
+    }
+    return {
+      category: "best_setup_condition",
+      insight: `MTF bundle read: ${bundle.inferredStack} — ${bundle.comparisonSummary.slice(0, 120)}`,
+    }
+  }
+
+  if (chartVision?.vision) {
+    const trend = chartVision.vision.metrics.trendDirection
+    if (chartVision.vision.warnings.length > 0) {
+      return {
+        category: "dangerous_pattern",
+        insight: `Chart review: ${trend} trend with flags — ${chartVision.vision.warnings[0]}`,
+      }
+    }
+    return {
+      category: "best_setup_condition",
+      insight: `Chart review: ${trend} trend, score ${chartVision.vision.visionScore}/100 — ${chartVision.vision.detectedSetup}`,
+    }
+  }
+
+  if (chartVision && !chartVision.available) {
+    return null
+  }
 
   if (intent === "emotional_check_in" && context.emotionalState.dominantEmotion) {
     return {
@@ -165,9 +200,10 @@ export async function compressInteractionMemory(
     assistantReply: string
     sourceMessageId?: string
     decision?: TradeDecisionResult
+    chartVision?: CommandCenterVisionAnalysis | null
   },
 ): Promise<CommandCenterMemoryInsight | null> {
-  if (!shouldCompressMemory(input.intent)) return null
+  if (!shouldCompressMemory(input.intent) && !input.chartVision?.vision) return null
 
   const duplicate = input.context.compressedMemories.find(
     (m) => m.insight.toLowerCase() === input.assistantReply.slice(0, 80).toLowerCase(),
@@ -175,6 +211,12 @@ export async function compressInteractionMemory(
   if (duplicate) return null
 
   const llmInsight = await extractLlmMemoryInsight(input)
+  const patternCandidates = patternMemoryCandidates({
+    context: input.context,
+    chartVision: input.chartVision,
+  })
+  const patternPick = patternCandidates[0]
+
   const insight =
     llmInsight ||
     heuristicMemoryInsight({
@@ -182,7 +224,11 @@ export async function compressInteractionMemory(
       intent: input.intent,
       userMessage: input.userMessage,
       decision: input.decision,
-    })
+      chartVision: input.chartVision,
+    }) ||
+    (patternPick
+      ? { category: patternPick.category, insight: patternPick.insight }
+      : null)
 
   if (!insight) return null
 
@@ -195,6 +241,10 @@ export async function compressInteractionMemory(
     metadata: {
       intent: input.intent,
       decision: input.decision?.recommendation,
+      visionScore: input.chartVision?.vision?.visionScore,
+      trend: input.chartVision?.vision?.metrics.trendDirection,
+      patternId: patternPick?.patternId,
+      weightedScore: input.decision?.weightedConfidence?.score,
     },
   })
 }

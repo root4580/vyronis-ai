@@ -43,6 +43,20 @@ export type PreTradePlannedContext = {
   entry_confirmation_score?: number | null
   signal_source?: "tradingview" | "manual"
   tradingview_signal_id?: string
+  /** Command Center multi-image timeframe bundle session id */
+  timeframe_bundle_id?: string
+  timeframe_bundle?: {
+    sessionId: string
+    imageUrls: string[]
+    inferredStack: string
+    comparisonSummary: string
+    frames: Array<{
+      index: number
+      imageUrl: string
+      inferredTimeframe: string
+      displayLabel: string
+    }>
+  }
 }
 
 export type ChartAnalysisResult = {

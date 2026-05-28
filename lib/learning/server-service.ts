@@ -18,6 +18,13 @@ import {
   weeklyReviewReportToAiReviewRecord,
   weeklyReviewRowToAiReviewRecord,
 } from "@/lib/weekly-review/learning-adapter"
+import { reflectOnCompletedTrade } from "@/lib/autonomous/reflection-engine"
+import type { TradeReflection } from "@/lib/autonomous/types"
+import { buildTradeReplayIntelligence } from "@/lib/cognitive/trade-replay-intelligence"
+import type { TradeReplayIntelligence } from "@/lib/cognitive/types"
+import { persistLessonMemory } from "@/lib/autonomous/server-service"
+import { buildOutcomeLesson } from "@/lib/learning/outcome-learning-engine"
+import { persistOutcomeLesson } from "@/lib/learning/outcome-lessons-service"
 import type {
   AiReviewRecord,
   JournalIntelligenceResult,
@@ -133,7 +140,13 @@ export async function syncTradeMemoryForTrade(
   supabase: SupabaseClient,
   userId: string,
   tradeId: string,
-): Promise<{ synced: boolean; skipped?: boolean; journal?: JournalIntelligenceResult }> {
+): Promise<{
+  synced: boolean
+  skipped?: boolean
+  journal?: JournalIntelligenceResult
+  reflection?: TradeReflection
+  replay?: TradeReplayIntelligence
+}> {
   const trades = await loadTrades(supabase, userId)
   const trade = trades.find((row) => String(row.id) === String(tradeId))
   if (!trade) throw new Error("Trade not found")
@@ -171,7 +184,62 @@ export async function syncTradeMemoryForTrade(
   await syncEmotionalPatterns(supabase, userId, trades)
   await syncSetupStatistics(supabase, userId, trades)
 
-  return { synced: true, journal }
+  const reflection = reflectOnCompletedTrade({
+    id: String(trade.id),
+    pair: String(trade.pair),
+    direction: String(trade.direction),
+    result: String(trade.result),
+    pnl: Number(trade.pnl),
+    emotion: trade.emotion,
+    session: trade.session,
+    rule_followed: trade.rule_followed,
+    mistake_tags: trade.mistake_tags,
+    notes: trade.trade_notes,
+    setup: trade.setup,
+  })
+  await persistLessonMemory(supabase, userId, reflection, {
+    tradeId: String(tradeId),
+    coachSessionId: sessionIdByTrade.get(String(tradeId)) ?? tradeFeedback?.session_id ?? undefined,
+  }).catch(() => undefined)
+
+  const outcomeLesson = buildOutcomeLesson({
+    trade: {
+      id: String(trade.id),
+      pair: String(trade.pair),
+      direction: String(trade.direction),
+      result: String(trade.result),
+      pnl: Number(trade.pnl),
+      emotion: trade.emotion,
+      session: trade.session,
+      rule_followed: trade.rule_followed,
+      mistake_tags: trade.mistake_tags,
+      notes: trade.trade_notes,
+      setup: trade.setup,
+    },
+    coachPlannedSummary: tradeFeedback?.coaching_summary ?? null,
+    vyronisWarningSnippet: tradeFeedback?.coaching_summary ?? null,
+  })
+  await persistOutcomeLesson(supabase, userId, outcomeLesson).catch(() => undefined)
+
+  const replay = buildTradeReplayIntelligence(
+    {
+      id: String(trade.id),
+      pair: String(trade.pair),
+      direction: String(trade.direction),
+      result: String(trade.result),
+      pnl: Number(trade.pnl),
+      emotion: trade.emotion,
+      session: trade.session,
+      rule_followed: trade.rule_followed,
+      mistake_tags: trade.mistake_tags,
+      notes: trade.trade_notes,
+      setup: trade.setup,
+      planned_notes: trade.trade_notes,
+    },
+    { plannedNotes: trade.trade_notes },
+  )
+
+  return { synced: true, journal, reflection, replay }
 }
 
 async function syncEmotionalPatterns(

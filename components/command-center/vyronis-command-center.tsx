@@ -4,6 +4,7 @@ import { ArrowLeft, Brain, Eye, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CompanionMode } from "@/components/command-center/companion-mode"
 import { PreTradeMode } from "@/components/command-center/pre-trade-mode"
+import { SessionHistoryMenu } from "@/components/command-center/session-history-menu"
 import { useAIContext } from "@/providers/ai-context-provider"
 import { COMPANION_STATE_LABELS } from "@/lib/intelligence/conversational-types"
 import { cn } from "@/lib/utils"
@@ -43,8 +44,9 @@ export function VyronisCommandCenter() {
       />
 
       <aside
+        onClick={(e) => e.stopPropagation()}
         className={cn(
-          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full flex-col",
+          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full flex-col overflow-visible",
           "sm:bottom-4 sm:right-4 sm:max-h-[90vh]",
           "rounded-t-2xl sm:rounded-2xl",
           "command-center-mode-transition",
@@ -56,7 +58,7 @@ export function VyronisCommandCenter() {
         role="dialog"
         aria-label="Vyronis AI Command Center"
       >
-        <header className="command-center-header sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5">
+        <header className="command-center-header sticky top-0 z-20 flex items-start justify-between gap-3 overflow-visible border-b border-white/[0.08] px-4 py-3.5">
           <div className="min-w-0 flex-1">
             {mode !== "companion" ? (
               <button
@@ -97,15 +99,18 @@ export function VyronisCommandCenter() {
             ) : null}
           </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={close}
-            className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.06]"
-          >
-            <X className="size-4" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {mode === "companion" ? <SessionHistoryMenu /> : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={close}
+              className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.06]"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </header>
 
         <div

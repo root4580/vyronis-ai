@@ -3,8 +3,22 @@ import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { buildMemoryBundle } from "@/lib/intelligence/memory-bundle"
 import { buildConversationalGreeting } from "@/lib/intelligence/companion-dialogue-engine"
 import { generateCompanionIntelligenceReply } from "@/lib/intelligence/companion-llm-engine"
-import { compressInteractionMemory } from "@/lib/intelligence/memory-compression"
+import { compressInteractionMemory, storeMemoryInsight } from "@/lib/intelligence/memory-compression"
+import { persistCognitiveSnapshot } from "@/lib/intelligence/cognitive-snapshot-service"
+import {
+  buildToneMemoryInsightPayload,
+  inferMessageTone,
+} from "@/lib/intelligence/tone-memory-engine"
+import { syncAutonomousPersistence } from "@/lib/autonomous/server-service"
 import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
+import {
+  analyzeCommandCenterBundle,
+  analyzeCommandCenterChart,
+} from "@/lib/intelligence/command-center-vision-engine"
+import {
+  linkBundleAnalysisToCoachSession,
+  linkChartAnalysisToCoachSession,
+} from "@/lib/intelligence/command-center-chart-link"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
 import { resolveCompanionState } from "@/lib/intelligence/conversational-state-engine"
 import {
@@ -17,12 +31,23 @@ import type {
   CommandCenterMessageRecord,
   CommandCenterMode,
 } from "@/lib/command-center/types"
+import { CommandCenterTableMissingError } from "@/lib/command-center/errors"
+import {
+  archiveActiveCompanionSession,
+  createActiveCompanionThread,
+  getActiveCompanionThreadId,
+  getThreadStatus,
+  listArchivedCompanionSessions,
+  rotateCompanionSession,
+  type CompanionSessionSummary,
+} from "@/lib/command-center/session-service"
 
-export class CommandCenterTableMissingError extends Error {
-  constructor(message = "Command center tables missing. Run supabase/014-command-center-foundation.sql.") {
-    super(message)
-    this.name = "CommandCenterTableMissingError"
-  }
+export { CommandCenterTableMissingError }
+export type { CompanionSessionSummary }
+export {
+  archiveActiveCompanionSession,
+  listArchivedCompanionSessions,
+  rotateCompanionSession,
 }
 
 function isMissingTableError(error: { message?: string; code?: string } | null) {
@@ -120,31 +145,9 @@ export async function getOrCreateCompanionThread(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string> {
-  const { data: existing, error: findError } = await supabase
-    .from("command_center_threads")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("focus_type", "companion")
-    .maybeSingle()
-
-  if (findError && isMissingTableError(findError)) {
-    throw new CommandCenterTableMissingError()
-  }
-  if (findError) throw new Error(findError.message)
-  if (existing?.id) return String(existing.id)
-
-  const { data: created, error: createError } = await supabase
-    .from("command_center_threads")
-    .insert({ user_id: userId, focus_type: "companion", title: "Vyronis Companion" })
-    .select("id")
-    .single()
-
-  if (createError) {
-    if (isMissingTableError(createError)) throw new CommandCenterTableMissingError()
-    throw new Error(createError.message)
-  }
-
-  return String(created.id)
+  const activeId = await getActiveCompanionThreadId(supabase, userId)
+  if (activeId) return activeId
+  return createActiveCompanionThread(supabase, userId)
 }
 
 export async function listThreadMessages(
@@ -324,30 +327,68 @@ export async function getCommandCenterContext(
   userId: string,
   mode: CommandCenterMode = "companion",
   focusId: string | null = null,
+  options?: { sessionThreadId?: string | null; fresh?: boolean },
 ): Promise<CommandCenterContext> {
   const { settings, memory, recentTrades, traderName } = await buildMemoryBundle(supabase, userId)
-  const companionThreadId = await getOrCreateCompanionThread(supabase, userId)
-  const messages = await ensureDailyGreeting(
-    supabase,
-    userId,
-    companionThreadId,
-    memory,
-    recentTrades,
-    traderName,
-  )
 
-  let threadId = companionThreadId
-  if (mode !== "companion" && focusId) {
+  const activeCompanionThreadId =
+    options?.fresh && mode === "companion" && !options?.sessionThreadId
+      ? await rotateCompanionSession(supabase, userId, listThreadMessages)
+      : await getOrCreateCompanionThread(supabase, userId)
+
+  const viewSessionId = options?.sessionThreadId?.trim() || null
+  const viewingArchived =
+    viewSessionId != null &&
+    viewSessionId !== activeCompanionThreadId &&
+    (await getThreadStatus(supabase, userId, viewSessionId)) === "archived"
+
+  let companionThreadId = activeCompanionThreadId
+  let messages: CommandCenterMessageRecord[]
+
+  if (viewingArchived && viewSessionId) {
+    messages = await listThreadMessages(supabase, userId, viewSessionId, 80)
+    companionThreadId = viewSessionId
+  } else {
+    messages = await ensureDailyGreeting(
+      supabase,
+      userId,
+      activeCompanionThreadId,
+      memory,
+      recentTrades,
+      traderName,
+    )
+  }
+
+  let threadId = activeCompanionThreadId
+  if (viewingArchived && viewSessionId) {
+    threadId = viewSessionId
+  } else if (mode !== "companion" && focusId) {
     threadId = await getOrCreateThread(supabase, userId, mode, focusId)
   }
 
   const companionState = resolveCompanionStateFromThread(messages, memory)
   const freshWarnings = getFreshWarnings(memory.warnings, messages)
 
+  const traderContext = await buildFullTraderContext(supabase, userId, {
+    focusId,
+    recentMessages: messages,
+  }).catch(() => null)
+
+  let sessionTitle: string | null = null
+  if (viewingArchived && viewSessionId) {
+    const { data: threadRow } = await supabase
+      .from("command_center_threads")
+      .select("title")
+      .eq("id", viewSessionId)
+      .eq("user_id", userId)
+      .maybeSingle()
+    sessionTitle = threadRow?.title ? String(threadRow.title) : "Past session"
+  }
+
   return {
     enabled: settings.enabled,
     threadId,
-    companionThreadId,
+    companionThreadId: activeCompanionThreadId,
     mode,
     focusId,
     companionState,
@@ -359,6 +400,13 @@ export async function getCommandCenterContext(
     topPatterns: memory.topPatterns,
     plannedSessions: memory.plannedSessions,
     messages,
+    autonomous: traderContext?.autonomous ?? null,
+    cognitive: traderContext?.cognitive ?? null,
+    tradingOs: traderContext?.tradingOs ?? null,
+    adaptiveCognition: traderContext?.adaptiveCognition ?? null,
+    vyronisCore: traderContext?.vyronisCore ?? null,
+    viewingArchivedSession: viewingArchived,
+    sessionTitle,
   }
 }
 
@@ -367,6 +415,8 @@ export async function postCommandCenterChat(
   userId: string,
   input: {
     content: string
+    imageUrl?: string | null
+    imageUrls?: string[] | null
     mode?: CommandCenterMode
     focusId?: string | null
   },
@@ -375,11 +425,25 @@ export async function postCommandCenterChat(
   assistantMessage: CommandCenterMessageRecord
   context: CommandCenterContext
   thinkingPhases: string[]
-  engine: "llm" | "heuristic"
+  engine: "llm" | "heuristic" | "vision"
   decision?: import("@/lib/intelligence/intelligence-types").TradeDecisionResult
+  chartVision?: import("@/lib/intelligence/command-center-vision-engine").CommandCenterVisionAnalysis
 }> {
   const trimmed = input.content.trim()
-  if (!trimmed) throw new Error("Message cannot be empty")
+  const imageUrls = (
+    input.imageUrls?.map((url) => url?.trim()).filter(Boolean) as string[] | undefined
+  ) ?? (input.imageUrl?.trim() ? [input.imageUrl.trim()] : [])
+  const imageUrl = imageUrls[0] ?? null
+  const isBundle = imageUrls.length > 1
+  if (!trimmed && imageUrls.length === 0) throw new Error("Message cannot be empty")
+
+  const content =
+    trimmed ||
+    (isBundle
+      ? `📷 ${imageUrls.length} chart screenshots (timeframe bundle)`
+      : imageUrl
+        ? "📷 Chart uploaded"
+        : "")
 
   const mode = input.mode ?? "companion"
   const threadId =
@@ -394,47 +458,138 @@ export async function postCommandCenterChat(
     recentMessages,
   })
 
+  const chartVision =
+    imageUrls.length > 0
+      ? isBundle
+        ? await analyzeCommandCenterBundle({
+            imageUrls,
+            plannedContext: fullContext.activePlannedContext,
+          })
+        : await analyzeCommandCenterChart({
+            imageUrl: imageUrls[0],
+            plannedContext: fullContext.activePlannedContext,
+          })
+      : null
+
   const userMessage = await insertMessage(supabase, {
     userId,
     threadId,
     role: "user",
-    messageType: "text",
-    content: trimmed,
+    messageType: imageUrls.length > 0 ? "analysis" : "text",
+    content,
+    payload:
+      imageUrls.length > 0
+        ? {
+            imageUrl,
+            imageUrls,
+            analysisKind: isBundle ? "timeframe_bundle" : "single_chart",
+            bundleSessionId: chartVision?.bundle?.sessionId,
+          }
+        : {},
   })
 
   const dialogue = await generateCompanionIntelligenceReply({
-    userMessage: trimmed,
+    userMessage: content,
     context: fullContext,
     recentMessages: [...recentMessages, userMessage],
+    chartVision,
   })
 
   const assistantMessage = await insertMessage(supabase, {
     userId,
     threadId,
     role: "assistant",
-    messageType: dialogue.isCriticalHighlight ? "warning" : "text",
+    messageType: chartVision
+      ? "analysis"
+      : dialogue.isCriticalHighlight
+        ? "warning"
+        : "text",
     content: dialogue.content,
     payload: {
-      replyEngine: dialogue.engine === "llm" ? "intelligence-llm-v1" : "dialogue-v3-intent",
+      replyEngine:
+        dialogue.engine === "vision"
+          ? "intelligence-vision-v1"
+          : dialogue.engine === "llm"
+            ? "intelligence-llm-v1"
+            : "dialogue-v3-intent",
       companionState: dialogue.companionState,
       followUpQuestion: dialogue.followUpQuestion,
       mentionedWarningIds: dialogue.mentionedWarningIds,
       isCriticalHighlight: dialogue.isCriticalHighlight,
       intent: dialogue.intent,
       decision: dialogue.decision,
+      imageUrl: chartVision?.imageUrl,
+      imageUrls: chartVision?.imageUrls,
+      analysisKind: chartVision?.bundle ? "timeframe_bundle" : chartVision?.imageUrl ? "single_chart" : undefined,
+      bundleSessionId: chartVision?.bundle?.sessionId,
+      timeframeBundle: chartVision?.bundle
+        ? {
+            inferredStack: chartVision.bundle.inferredStack,
+            frames: chartVision.bundle.frames,
+          }
+        : undefined,
+      chartVision: chartVision?.vision,
+      visionChecklist: chartVision?.checklist,
     },
   })
+
+  if (mode === "pre_trade" && input.focusId && chartVision?.vision && chartVision.legacy) {
+    if (chartVision.bundle) {
+      await linkBundleAnalysisToCoachSession(supabase, userId, input.focusId, {
+        bundle: chartVision.bundle,
+        vision: chartVision.vision,
+        legacy: chartVision.legacy,
+      }).catch(() => null)
+    } else {
+      await linkChartAnalysisToCoachSession(supabase, userId, input.focusId, {
+        imageUrl: chartVision.imageUrl,
+        vision: chartVision.vision,
+        legacy: chartVision.legacy,
+      }).catch(() => null)
+    }
+  }
+
+  if (fullContext.autonomous && (mode === "pre_trade" || imageUrls.length > 0)) {
+    await syncAutonomousPersistence(supabase, userId, fullContext.autonomous, {
+      persistShadow: true,
+      coachSessionId: input.focusId ?? undefined,
+    }).catch(() => null)
+  }
 
   await compressInteractionMemory(supabase, {
     userId,
     threadId,
     context: fullContext,
     intent: dialogue.intent,
-    userMessage: trimmed,
+    userMessage: content,
     assistantReply: dialogue.content,
     sourceMessageId: assistantMessage.id,
     decision: dialogue.decision,
+    chartVision,
   }).catch(() => null)
+
+  if (fullContext.cognitive) {
+    await persistCognitiveSnapshot(supabase, userId, fullContext.cognitive, {
+      coachSessionId: input.focusId ?? undefined,
+    }).catch(() => null)
+  }
+
+  const tone = inferMessageTone(content)
+  if (tone !== "neutral") {
+    const payload = buildToneMemoryInsightPayload({
+      tone,
+      intent: dialogue.intent,
+      snippet: content,
+    })
+    await storeMemoryInsight(supabase, {
+      userId,
+      threadId,
+      sourceMessageId: userMessage.id,
+      category: payload.category,
+      insight: payload.insight,
+      metadata: payload.metadata,
+    }).catch(() => null)
+  }
 
   await supabase
     .from("command_center_threads")
@@ -450,6 +605,7 @@ export async function postCommandCenterChat(
     thinkingPhases: dialogue.thinkingPhases,
     engine: dialogue.engine,
     decision: dialogue.decision,
+    chartVision: chartVision ?? undefined,
   }
 }
 

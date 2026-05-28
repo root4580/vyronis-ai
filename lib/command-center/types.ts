@@ -2,6 +2,11 @@ import type { PrimaryLeakInsight } from "@/lib/behavior/types"
 import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
 import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 
+import type { AutonomousIntelligenceSnapshot } from "@/lib/autonomous/types"
+import type { CognitiveIntelligenceSnapshot } from "@/lib/cognitive/types"
+import type { TradingOsSnapshot } from "@/lib/trading-os/types"
+import type { AdaptiveCognitionSnapshot } from "@/lib/adaptive-cognition/types"
+import type { VyronisCoreSnapshot } from "@/lib/vyronis-core/types"
 import type { CompanionConversationalState } from "@/lib/intelligence/conversational-types"
 
 export type CommandCenterMode = "companion" | "pre_trade" | "post_trade" | "weekly"
@@ -56,6 +61,15 @@ export type CommandCenterOpenOptions = {
   transitionLabel?: string
 }
 
+export type CommandCenterChatSendInput = {
+  content: string
+  imageUrl?: string | null
+  /** Multiple chart screenshots analyzed as one timeframe bundle session. */
+  imageUrls?: string[] | null
+  mode?: CommandCenterMode
+  focusId?: string | null
+}
+
 export type CommandCenterContext = {
   enabled: boolean
   threadId: string
@@ -72,4 +86,24 @@ export type CommandCenterContext = {
   messages: CommandCenterMessageRecord[]
   /** Warnings not yet mentioned in the companion thread (avoids duplicate UI signals) */
   freshWarnings: CommandCenterWarning[]
+  /** Shadow Mode, Trader DNA, session intelligence, pattern memory */
+  autonomous: AutonomousIntelligenceSnapshot | null
+  /** Cognitive state, coaching mode, predictions, market environment */
+  cognitive: CognitiveIntelligenceSnapshot | null
+  /** Autonomous Trading OS — monitoring, interventions, evolution */
+  tradingOs: TradingOsSnapshot | null
+  /** Long-term adaptive cognition — identity, life context, insights */
+  adaptiveCognition: AdaptiveCognitionSnapshot | null
+  vyronisCore: VyronisCoreSnapshot | null
+  /** True when browsing a closed/archived companion session (read-only) */
+  viewingArchivedSession?: boolean
+  sessionTitle?: string | null
+}
+
+export type CompanionSessionSummary = {
+  id: string
+  title: string
+  updatedAt: string
+  preview: string
+  messageCount: number
 }

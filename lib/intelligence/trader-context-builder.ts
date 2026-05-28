@@ -22,7 +22,18 @@ import type {
   FullTraderContext,
 } from "@/lib/intelligence/intelligence-types"
 import type { CommandCenterMessageRecord } from "@/lib/command-center/types"
+import { buildAutonomousIntelligenceSnapshot } from "@/lib/autonomous/orchestrator"
+import { buildCognitiveIntelligenceSnapshot } from "@/lib/cognitive/orchestrator"
+import { buildTradingOsSnapshot } from "@/lib/trading-os/orchestrator"
+import { buildAdaptiveCognitionSnapshot } from "@/lib/adaptive-cognition/orchestrator"
+import { loadLifeContextHistory } from "@/lib/adaptive-cognition/server-service"
+import { buildVyronisCoreSnapshot } from "@/lib/vyronis-core/orchestrator"
+import { loadRecentLessons } from "@/lib/autonomous/server-service"
 import { buildMemoryBundle } from "@/lib/intelligence/memory-bundle"
+import { loadRecentOutcomeLessons } from "@/lib/learning/outcome-lessons-service"
+import { loadTraderStateTimeline } from "@/lib/intelligence/cognitive-snapshot-service"
+import { computeVerdictCalibration } from "@/lib/intelligence/verdict-calibration-engine"
+import { toneMemoryFromMessages } from "@/lib/intelligence/tone-memory-engine"
 
 const IMPULSIVE_EMOTIONS = new Set([
   "fomo",
@@ -187,7 +198,7 @@ export async function buildFullTraderContext(
 
   let recentMessages: FullTraderContext["recentMessages"] = input?.recentMessages ?? []
 
-  return {
+  const baseContext: FullTraderContext = {
     traderName,
     preferredSession: settings.preferred_session ?? "NY Session",
     settings,
@@ -206,10 +217,85 @@ export async function buildFullTraderContext(
       memory.plannedSessions,
       input?.focusId,
     ),
+    autonomous: null,
+  }
+
+  const autonomous = buildAutonomousIntelligenceSnapshot({
+    context: baseContext,
+    plannedContext: baseContext.activePlannedContext,
+    trigger: "context_load",
+  })
+
+  const dbLessons = await loadRecentLessons(supabase, userId, 5).catch(() => [])
+  if (dbLessons.length > 0) {
+    autonomous.recentLessons = [...new Set([...dbLessons, ...autonomous.recentLessons])].slice(0, 5)
+  }
+
+  const withAutonomous = { ...baseContext, autonomous }
+
+  const cognitive = buildCognitiveIntelligenceSnapshot({
+    context: withAutonomous,
+    chartVision: undefined,
+  })
+
+  const withCognitive = { ...withAutonomous, cognitive }
+
+  const tradingOs = buildTradingOsSnapshot({
+    context: withCognitive,
+    lastKnownSession: null,
+  })
+
+  const withTradingOs = { ...withCognitive, tradingOs }
+
+  const lifeContextHistory = await loadLifeContextHistory(supabase, userId, 14).catch(() => [])
+
+  const adaptiveCognition = buildAdaptiveCognitionSnapshot({
+    context: withTradingOs,
+    lifeContextHistory,
+  })
+
+  const withAdaptive = { ...withTradingOs, adaptiveCognition }
+
+  const vyronisCore = buildVyronisCoreSnapshot({ context: withAdaptive })
+
+  const outcomeLessons = await loadRecentOutcomeLessons(supabase, userId, 8).catch(() => [])
+
+  const traderStateTimeline = await loadTraderStateTimeline(
+    supabase,
+    userId,
+    tradingOs?.liveSession.emotionalDriftScore,
+  ).catch(() => null)
+
+  const verdictCalibration = computeVerdictCalibration(outcomeLessons)
+  const toneMemory = toneMemoryFromMessages(recentMessages)
+
+  return {
+    ...withAdaptive,
+    vyronisCore,
+    outcomeLessons,
+    traderStateTimeline,
+    verdictCalibration,
+    toneMemory,
   }
 }
 
-export function serializeTraderContextForLlm(context: FullTraderContext): string {
+export function serializeTraderContextForLlm(
+  context: FullTraderContext,
+  depth: "lite" | "full" = "full",
+): string {
+  if (depth === "lite") {
+    const lite = {
+      traderName: context.traderName,
+      today: context.memory.snapshot,
+      emotionalState: context.emotionalState,
+      primaryLeak: context.memory.primaryLeak.status === "active"
+        ? context.memory.primaryLeak.headline
+        : null,
+      riskToday: `${context.risk.todayLossPercent.toFixed(1)}% drawdown used`,
+      outcomeHints: (context.outcomeLessons ?? []).slice(0, 2).map((l) => l.naturalReference),
+    }
+    return JSON.stringify(lite, null, 2)
+  }
   const payload = {
     traderName: context.traderName,
     preferredSession: context.preferredSession,
@@ -267,6 +353,74 @@ export function serializeTraderContextForLlm(context: FullTraderContext): string
           emotion: context.activePlannedContext.emotion,
           riskPercent: context.activePlannedContext.risk_percent,
           htf: context.activePlannedContext.higher_timeframe,
+        }
+      : null,
+    autonomous: context.autonomous
+      ? {
+          shadow: {
+            emotionalRisk: context.autonomous.shadow.emotionalRiskScore,
+            disciplineConfidence: context.autonomous.shadow.disciplineConfidence,
+            executionQuality: context.autonomous.shadow.executionQualityPrediction,
+            proactiveMessage: context.autonomous.shadow.proactiveMessage,
+            flags: context.autonomous.shadow.flags,
+          },
+          session: {
+            phase: context.autonomous.session.phase,
+            context: context.autonomous.session.marketContext,
+            narrative: context.autonomous.session.narrative,
+            bias: context.autonomous.session.tradingBias,
+          },
+          traderDna: {
+            archetype: context.autonomous.traderDna.archetype,
+            bestSetups: context.autonomous.traderDna.bestSetupTypes,
+            recurringMistakes: context.autonomous.traderDna.recurringMistakes,
+            weeklyInsight: context.autonomous.traderDna.weeklyInsight,
+          },
+          patternMatch: context.autonomous.patternMatch.narrative,
+          nudges: context.autonomous.proactiveNudges.map((n) => n.message),
+        }
+      : null,
+    cognitive: context.cognitive
+      ? {
+          state: context.cognitive.state.primary,
+          coachingMode: context.cognitive.coaching.mode,
+          marketEnvironment: context.cognitive.marketEnvironment.labels,
+          strictness: context.cognitive.state.verdictStrictness,
+          confidenceGraph: context.cognitive.confidenceGraph.narrative,
+          crossMemory: context.cognitive.memory.crossMemorySynthesis,
+          predictions: context.cognitive.predictions.narrative,
+        }
+      : null,
+    tradingOs: context.tradingOs
+      ? {
+          headline: context.tradingOs.proactiveHeadline,
+          intervention: context.tradingOs.intervention.active
+            ? context.tradingOs.intervention.message
+            : null,
+          canProceed: context.tradingOs.intervention.canProceedToEntry,
+          alerts: context.tradingOs.liveSession.alerts.map((a) => a.message),
+          evolutionScore: context.tradingOs.evolution.overallEvolutionScore,
+          strategy: context.tradingOs.strategy.adaptiveGuidance,
+        }
+      : null,
+    adaptiveCognition: context.adaptiveCognition
+      ? {
+          philosophy: context.adaptiveCognition.ecosystem.philosophy,
+          becoming: context.adaptiveCognition.identity.becoming,
+          headline: context.adaptiveCognition.headline,
+          insights: context.adaptiveCognition.insights.map((i) => i.message),
+          personalMode: context.adaptiveCognition.personalOs.recommendedMode,
+          luckyWinWarning: context.adaptiveCognition.performance.luckyWinWarning,
+          companionStyle: context.adaptiveCognition.companion.communicationStyle,
+        }
+      : null,
+    vyronisCore: context.vyronisCore
+      ? {
+          maturity: context.vyronisCore.overallMaturity,
+          phaseFocus: context.vyronisCore.currentPhaseFocus,
+          headline: context.vyronisCore.headline,
+          preTradeApproval: context.vyronisCore.phase5.preTradeApproval,
+          intervention: context.vyronisCore.phase5.interventionPrompt,
         }
       : null,
   }

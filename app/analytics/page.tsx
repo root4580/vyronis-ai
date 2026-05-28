@@ -124,6 +124,19 @@ export default function AnalyticsPage() {
             </section>
 
             <section className="dashboard-section">
+              <p className="dashboard-section-title">Trader evolution (Vyronis OS)</p>
+              <p className="mb-3 max-w-2xl text-sm text-muted-foreground/75">
+                Discipline trends, strategy intelligence, replay simulator, and intelligence timeline.
+              </p>
+              <a
+                href="/evolution"
+                className="inline-flex text-sm font-medium text-cyan-glow/90 hover:text-cyan-glow"
+              >
+                Open evolution dashboard →
+              </a>
+            </section>
+
+            <section className="dashboard-section">
               <p className="dashboard-section-title">Trade Memory + Learning</p>
               <TradeLearningPanel refreshKey={analytics.tradeCount} />
             </section>

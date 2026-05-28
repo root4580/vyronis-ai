@@ -5,7 +5,18 @@ import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 import type { PlannedCoachSessionItem, PreTradePlannedContext } from "@/lib/trade-coach/types"
 import type { StrategyPlaybookRecord } from "@/lib/strategy/types"
 import type { WeeklyReviewReport } from "@/lib/weekly-review/types"
+import type { AutonomousIntelligenceSnapshot } from "@/lib/autonomous/types"
+import type { CognitiveIntelligenceSnapshot } from "@/lib/cognitive/types"
+import type { TradingOsSnapshot } from "@/lib/trading-os/types"
+import type { AdaptiveCognitionSnapshot } from "@/lib/adaptive-cognition/types"
+import type { VyronisCoreSnapshot } from "@/lib/vyronis-core/types"
 import type { CompanionIntent } from "@/lib/intelligence/companion-intent-engine"
+import type { OutcomeLessonRecord } from "@/lib/learning/outcome-learning-engine"
+import type { EmotionalIntelligenceSnapshot } from "@/lib/intelligence/emotional-intelligence-engine"
+import type { ToneMemorySnapshot } from "@/lib/intelligence/tone-memory-engine"
+import type { TraderStateTimelineSnapshot } from "@/lib/intelligence/trader-state-timeline-engine"
+import type { VerdictCalibrationSnapshot } from "@/lib/intelligence/verdict-calibration-engine"
+import type { VisionIntelligenceSnapshot } from "@/lib/vyronis-core/phase7-engine"
 import type { TraderContextMemory } from "@/lib/intelligence/trader-context"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
 import type { DailyRuleItem, RiskSnapshot, UserSettingsForm } from "@/lib/user-settings"
@@ -55,6 +66,17 @@ export type FullTraderContext = {
   compressedMemories: CommandCenterMemoryInsight[]
   recentMessages: CommandCenterMessageRecord[]
   activePlannedContext: PreTradePlannedContext | null
+  autonomous?: AutonomousIntelligenceSnapshot | null
+  cognitive?: CognitiveIntelligenceSnapshot | null
+  tradingOs?: TradingOsSnapshot | null
+  adaptiveCognition?: AdaptiveCognitionSnapshot | null
+  vyronisCore?: VyronisCoreSnapshot | null
+  outcomeLessons?: OutcomeLessonRecord[]
+  emotionalIntelligence?: EmotionalIntelligenceSnapshot | null
+  traderStateTimeline?: TraderStateTimelineSnapshot | null
+  verdictCalibration?: VerdictCalibrationSnapshot | null
+  toneMemory?: ToneMemorySnapshot | null
+  visionIntelligence?: VisionIntelligenceSnapshot | null
 }
 
 export type SimilarityDimension = {
@@ -91,6 +113,8 @@ export type TradeDecisionResult = {
   evidence: string[]
   nextQuestion: string
   similarity?: SetupSimilarityResult
+  weightedConfidence?: import("@/lib/intelligence/weighted-confidence-engine").WeightedConfidenceResult
+  psychWarning?: string | null
 }
 
 export type CompanionChatEngineResult = {
@@ -102,8 +126,9 @@ export type CompanionChatEngineResult = {
   mentionedWarningIds: string[]
   isCriticalHighlight?: boolean
   intent: CompanionIntent
-  engine: "llm" | "heuristic"
+  engine: "llm" | "heuristic" | "vision"
   decision?: TradeDecisionResult
   primaryLeak: PrimaryLeakInsight
   topPatterns: PatternMemoryPattern[]
+  chartVision?: import("@/lib/intelligence/command-center-vision-engine").CommandCenterVisionAnalysis
 }

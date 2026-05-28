@@ -102,14 +102,30 @@ export function evaluateTradeDecision(input: {
     evidence.push("A highly similar historical setup won with discipline.")
   }
 
+  const intervention = input.context.tradingOs?.intervention
+  if (intervention?.active) {
+    evidence.unshift(intervention.message)
+    if (!intervention.canProceedToEntry) {
+      score = Math.min(score, 35)
+    } else if (intervention.suggestedRiskMultiplier < 1) {
+      score = Math.min(score, 58)
+      evidence.push(
+        `Trading OS: reduce size to ~${Math.round(intervention.suggestedRiskMultiplier * 100)}% of planned risk.`,
+      )
+    }
+  }
+
   score = clampConfidence(score)
 
   let recommendation: TradeDecisionResult["recommendation"] = "CAUTION"
   if (score >= 72 && critical.length === 0) recommendation = "TAKE"
-  if (score <= 42 || critical.length > 0 && score <= 55) recommendation = "SKIP"
+  if (score <= 42 || (critical.length > 0 && score <= 55)) recommendation = "SKIP"
+  if (intervention?.active && !intervention.canProceedToEntry) recommendation = "SKIP"
 
-  let nextQuestion = "What would need to be true for this to be an A+ execution?"
-  if (recommendation === "SKIP") {
+  let nextQuestion =
+    intervention?.reflectionPrompt ??
+    "What would need to be true for this to be an A+ execution?"
+  if (!intervention?.reflectionPrompt && recommendation === "SKIP") {
     nextQuestion = "What's pulling you toward this trade despite the red flags?"
   } else if (recommendation === "CAUTION") {
     nextQuestion = "Which part of your plan is weakest right now — timing, risk, or emotion?"

@@ -20,17 +20,27 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as {
       content?: string
+      imageUrl?: string | null
+      imageUrls?: string[] | null
       mode?: CommandCenterMode
       focusId?: string | null
     }
 
-    const content = body.content?.trim()
-    if (!content) {
-      return NextResponse.json({ error: "Message content is required" }, { status: 400 })
+    const content = body.content?.trim() ?? ""
+    const imageUrls = Array.isArray(body.imageUrls)
+      ? body.imageUrls.map((url) => url?.trim()).filter(Boolean) as string[]
+      : body.imageUrl?.trim()
+        ? [body.imageUrl.trim()]
+        : []
+    const imageUrl = imageUrls[0] ?? null
+    if (!content && imageUrls.length === 0) {
+      return NextResponse.json({ error: "Message or image is required" }, { status: 400 })
     }
 
     const result = await postCommandCenterChat(supabase, user.id, {
       content,
+      imageUrl,
+      imageUrls: imageUrls.length > 0 ? imageUrls : null,
       mode: body.mode,
       focusId: body.focusId,
     })

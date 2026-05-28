@@ -41,6 +41,9 @@ const PRE_TRADE_PATTERNS = [
   /walk\s+through\s+(the\s+)?(setup|plan|trade)/i,
   /before\s+i\s+(enter|trade|click)/i,
   /\bcoach\b/i,
+  /verdict|take\s+or\s+skip/i,
+  /analyze|analyse|review\s+this\s+chart/i,
+  /what\s+do\s+you\s+think\s+of\s+(this|the)\s+(chart|setup)/i,
 ]
 
 const POST_TRADE_PATTERNS = [
@@ -73,6 +76,9 @@ const ANALYTICS_PATTERNS = [
   /last\s+week|weekly/i,
   /journal\s+(review|data)/i,
 ]
+
+/** Chart-only upload with no analytic cue → stay conversational */
+const CHART_ONLY_PATTERN = /^(📷|chart|screenshot|image|upload|here'?s?\s+(the\s+)?chart)[\s!.?]*$/i
 
 export function detectCompanionIntent(text: string): CompanionIntent {
   const normalized = text.trim().toLowerCase()
@@ -111,6 +117,43 @@ export function detectCompanionIntent(text: string): CompanionIntent {
   }
 
   return "casual_conversation"
+}
+
+/** Resolve intent when media is attached — do not force analysis on casual uploads */
+export function resolveCompanionIntentWithMedia(
+  text: string,
+  hasMedia: boolean,
+): CompanionIntent {
+  const trimmed = text.trim()
+  const base = detectCompanionIntent(text)
+
+  if (!hasMedia) return base
+
+  if (CHART_ONLY_PATTERN.test(trimmed) || trimmed.length < 8) {
+    return "pre_trade_coaching"
+  }
+
+  if (base === "casual_conversation" || base === "emotional_check_in") {
+    return base
+  }
+
+  if (
+    base === "pre_trade_coaching" ||
+    base === "analytics_pattern" ||
+    PRE_TRADE_PATTERNS.some((p) => p.test(trimmed.toLowerCase()))
+  ) {
+    return "pre_trade_coaching"
+  }
+
+  return base
+}
+
+export function isAnalysisIntent(intent: CompanionIntent): boolean {
+  return (
+    intent === "pre_trade_coaching" ||
+    intent === "analytics_pattern" ||
+    intent === "post_trade_review"
+  )
 }
 
 export function isTradingIntent(intent: CompanionIntent): boolean {

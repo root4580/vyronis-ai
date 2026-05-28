@@ -21,12 +21,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const mode = (searchParams.get("mode") || "companion") as CommandCenterMode
     const focusId = searchParams.get("focusId")
+    const sessionThreadId = searchParams.get("sessionId")
+    const fresh = searchParams.get("fresh") === "1"
 
     const context = await getCommandCenterContext(
       supabase,
       user.id,
       mode,
       focusId || null,
+      { sessionThreadId, fresh },
     )
     return NextResponse.json(context)
   } catch (error) {
