@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { X, Pencil, Trash2, Brain, FileUp, Plus } from "lucide-react"
@@ -106,6 +106,10 @@ import {
 } from "@/lib/trade-quick-log"
 import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
+import { AIContextProvider } from "@/providers/ai-context-provider"
+import { VyronisCommandCenter } from "@/components/command-center/vyronis-command-center"
+import { CommandCenterLauncher } from "@/components/command-center/command-center-launcher"
+import { CommandCenterBridge } from "@/components/command-center/command-center-bridge"
 import {
   evaluateTradeRiskGuard,
   type TradeRiskGuardResult,
@@ -231,6 +235,10 @@ function Home() {
   const dashboardLoadTimedOutRef = useRef(false)
   const globalLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tradesFetchSettledRef = useRef(false)
+  const openCommandCenterRef = useRef<() => void>(() => {})
+  const bindOpenCommandCenter = useCallback((open: () => void) => {
+    openCommandCenterRef.current = open
+  }, [])
 
   function clearGlobalLoadTimeout() {
     if (globalLoadTimeoutRef.current) {
@@ -1572,6 +1580,13 @@ function Home() {
   }
 
   return (
+    <AIContextProvider
+      userId={user?.id}
+      refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
+      onContinuePlannedCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
+      onNewPreTradeCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
+    >
+      <CommandCenterBridge onBindOpen={bindOpenCommandCenter} />
     <>
     <DashboardChrome
       activeTab={activeTab}
@@ -1582,6 +1597,7 @@ function Home() {
       isLoggingOut={isLoggingOut}
       showFab={Boolean(user) && activeTab !== "journal"}
       showSignalBell={Boolean(user)}
+      aiLauncher={user ? <CommandCenterLauncher /> : null}
       onSignalAlertClick={() => {
         setActiveTab("journal")
         void refreshPlannedSessions(undefined, true)
@@ -1623,15 +1639,15 @@ function Home() {
                     hasPlannedCoachInProgress={plannedSessions.some(
                       (session) => session.status === "in_progress",
                     )}
-                    onOpenCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
+                    onOpenCoach={() => {
+                      openCommandCenterRef.current()
+                      if (user.id) markRitualCoachEngaged(user.id)
+                    }}
                     onOpenLog={() => {
                       setEditingTrade(null)
                       setConvertSessionId(null)
                       setForm(createInitialTradeForm())
                       setIsModalOpen(true)
-                    }}
-                    onCoachEngaged={() => {
-                      if (user.id) markRitualCoachEngaged(user.id)
                     }}
                   />
                 ) : null}
@@ -1662,6 +1678,7 @@ function Home() {
                     <AITradeCoachPlaceholder
                       trades={trades}
                       patternMemoryRefreshKey={coachFeedbackRefreshKey}
+                      onOpenCompanion={() => openCommandCenterRef.current()}
                     />
                   </div>
                 </section>
@@ -1961,7 +1978,9 @@ function Home() {
         }}
       />
 
+      <VyronisCommandCenter />
       <Toaster />
     </>
+    </AIContextProvider>
   )
 }

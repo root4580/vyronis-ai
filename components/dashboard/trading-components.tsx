@@ -37,6 +37,7 @@ import {
   FlaskConical,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -1449,9 +1450,11 @@ export function CalendarHeatmapPlaceholder({ trades }: { trades?: Trade[] }) {
 export function AITradeCoachPlaceholder({
   trades,
   patternMemoryRefreshKey = 0,
+  onOpenCompanion,
 }: {
   trades?: Trade[]
   patternMemoryRefreshKey?: number
+  onOpenCompanion?: () => void
 }) {
   const analysis = useMemo(() => generateCoachAnalysis(trades ?? []), [trades])
   const mistakeAnalysis = useMemo(() => buildMistakeAnalysis(trades ?? []), [trades])
@@ -1649,6 +1652,18 @@ export function AITradeCoachPlaceholder({
             )
           })}
         </div>
+
+        {onOpenCompanion ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onOpenCompanion}
+            className="h-9 w-full border-cyan-glow/25 bg-cyan-glow/[0.06] text-[11px] text-cyan-glow hover:bg-cyan-glow/[0.12]"
+          >
+            <Sparkles className="mr-2 size-3.5" />
+            Open Vyronis Command Center
+          </Button>
+        ) : null}
       </DashboardCardBody>
     </DashboardCard>
   )

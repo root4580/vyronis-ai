@@ -10,6 +10,7 @@ type DashboardAppShellProps = {
   mainClassName?: string
   userBar?: ReactNode
   fab?: ReactNode
+  aiLauncher?: ReactNode
   banner?: ReactNode
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
@@ -22,6 +23,7 @@ export function DashboardAppShell({
   mainClassName = "dashboard-container space-y-6 px-4 py-5 pb-28 md:space-y-8 md:px-6 md:py-6 md:pb-24",
   userBar,
   fab,
+  aiLauncher,
   banner,
   showSignalBell,
   onSignalAlertClick,
@@ -39,6 +41,7 @@ export function DashboardAppShell({
         {banner}
         {children}
       </main>
+      {aiLauncher}
       {fab}
     </div>
   )

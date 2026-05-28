@@ -17,6 +17,7 @@ type DashboardChromeProps = {
   isLoggingOut?: boolean
   showFab?: boolean
   onFabClick?: () => void
+  aiLauncher?: ReactNode
   banner?: ReactNode
   mainClassName?: string
   showSignalBell?: boolean
@@ -33,6 +34,7 @@ export function DashboardChrome({
   isLoggingOut = false,
   showFab = false,
   onFabClick,
+  aiLauncher,
   banner,
   mainClassName,
   showSignalBell,
@@ -54,6 +56,7 @@ export function DashboardChrome({
           isLoggingOut={isLoggingOut}
         />
       }
+      aiLauncher={aiLauncher}
       fab={showFab && onFabClick ? <DashboardFab onClick={onFabClick} /> : null}
       banner={banner}
     >
