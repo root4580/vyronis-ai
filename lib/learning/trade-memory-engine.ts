@@ -1,3 +1,4 @@
+import { buildSetupFingerprint } from "@/lib/journal/setup-fingerprint"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getSignedPnL } from "@/lib/trade-utils"
 import type {
@@ -114,6 +115,20 @@ export function buildTradeMemoryRecord(input: {
     metadata: {
       pnl: getSignedPnL(trade.pnl, trade.result),
       trade_date: trade.trade_date,
+      setup_fingerprint: buildSetupFingerprint({
+        id: String(trade.id),
+        pair: trade.pair,
+        direction: trade.direction,
+        result: trade.result,
+        emotion: trade.emotion,
+        setup: trade.setup,
+        session: trade.session,
+        confirmation_signal: trade.confirmation_signal,
+        mistake_tags: trade.mistake_tags,
+        rule_followed: trade.rule_followed,
+        trade_date: trade.trade_date,
+        higher_timeframe: trade.higher_timeframe,
+      }),
     },
   }
 }

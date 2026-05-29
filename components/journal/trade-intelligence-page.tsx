@@ -1,19 +1,27 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Pencil } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { TradeIntelligencePanel } from "@/components/dashboard/trade-intelligence-panel"
-import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
+import { TradeCaseStudyView } from "@/components/journal/trade-case-study"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { Button } from "@/components/ui/button"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
-import { getTradeDisplayMistakeTags } from "@/lib/mistake-tags"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
+import {
+  analyzeTradeIntelligence,
+  fetchTradeIntelligence,
+} from "@/lib/intelligence/api-client"
+import { buildTradeCaseStudy } from "@/lib/journal/trade-case-study"
+import { fetchMarketBias, fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
+import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
 import type { TradeDetails } from "@/components/dashboard/trade-details-modal"
+import type { TradeIntelligenceBundle } from "@/lib/intelligence/trade-intelligence-types"
+import type { FingerprintTradeInput } from "@/lib/journal/setup-fingerprint"
+import type { MarketBiasRecord, PairPlanRecord } from "@/lib/strategy-brain/types"
 import { cn } from "@/lib/utils"
 
 type TradeIntelligencePageProps = {
@@ -24,18 +32,62 @@ type TradeIntelligencePageProps = {
 export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePageProps) {
   const router = useRouter()
   const [trade, setTrade] = useState<TradeDetails | null>(null)
+  const [history, setHistory] = useState<FingerprintTradeInput[]>([])
+  const [bundle, setBundle] = useState<TradeIntelligenceBundle | null>(null)
+  const [pairPlan, setPairPlan] = useState<PairPlanRecord | null>(null)
+  const [marketBias, setMarketBias] = useState<MarketBiasRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [screenshotOpen, setScreenshotOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    const { data: auth } = await supabase.auth.getUser()
+    const userId = auth.user?.id
+
     const { data, error } = await supabase.from("trades").select("*").eq("id", tradeId).maybeSingle()
     if (error || !data) {
       setTrade(null)
-    } else {
-      setTrade(data as unknown as TradeDetails)
+      setLoading(false)
+      return
     }
+    setTrade(data as unknown as TradeDetails)
+
+    if (userId) {
+      const { data: rows } = await supabase
+        .from("trades")
+        .select(
+          "id, pair, direction, result, pnl, emotion, setup, session, confirmation_signal, mistake_tags, rule_followed, trade_date, higher_timeframe",
+        )
+        .eq("user_id", userId)
+        .order("trade_date", { ascending: false })
+        .limit(80)
+      setHistory((rows ?? []) as FingerprintTradeInput[])
+    }
+
+    try {
+      const intel = await fetchTradeIntelligence(tradeId)
+      setBundle(intel)
+    } catch {
+      setBundle(null)
+    }
+
+    try {
+      const [bias, plan] = await Promise.all([
+        fetchMarketBias(),
+        fetchWeeklyPlan(getWeekStartSunday()),
+      ])
+      setMarketBias(bias)
+      const normalizedPair = String(data.pair).toUpperCase().replace(/\s/g, "")
+      setPairPlan(
+        plan.pairs.find((p) => p.pair.toUpperCase().replace(/\s/g, "") === normalizedPair) ?? null,
+      )
+    } catch {
+      setPairPlan(null)
+      setMarketBias(null)
+    }
+
     setLoading(false)
   }, [tradeId])
 
@@ -43,15 +95,34 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
     void load()
   }, [load])
 
+  const study = useMemo(() => {
+    if (!trade) return null
+    return buildTradeCaseStudy({
+      trade,
+      bundle,
+      history,
+      pairPlan,
+      marketBias,
+    })
+  }, [trade, bundle, history, pairPlan, marketBias])
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const result = await analyzeTradeIntelligence(tradeId)
+      setBundle(result.bundle)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (loading) {
     return (
-      <p className="py-12 text-center text-[13px] text-muted-foreground animate-pulse">
-        Loading trade intelligence…
-      </p>
+      <p className="py-12 text-center text-[13px] text-muted-foreground">Loading case study…</p>
     )
   }
 
-  if (!trade) {
+  if (!trade || !study) {
     return (
       <div className="space-y-3 py-8 text-center">
         <p className="text-[13px] text-loss">Trade not found</p>
@@ -63,7 +134,6 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
   }
 
   const setup = resolveStoredSetupScore(trade)
-  const mistakes = getTradeDisplayMistakeTags(trade)
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-12">
@@ -76,6 +146,12 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
           Journal
         </Link>
         <div className="flex gap-2">
+          <Link
+            href="/war-room"
+            className="text-[11px] text-muted-foreground hover:text-cyan-glow"
+          >
+            War Room
+          </Link>
           {onEdit ? (
             <Button type="button" variant="outline" size="sm" onClick={() => onEdit(trade)}>
               <Pencil className="mr-1.5 size-3.5" />
@@ -86,7 +162,10 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
       </div>
 
       <DashboardInsetPanel className="px-4 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-cyan-glow/80">
+          Trade case study
+        </p>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold">
               {trade.pair} · {trade.direction}
@@ -97,7 +176,12 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
             </p>
           </div>
           <div className="text-right">
-            <p className={cn("text-lg font-bold tabular-nums", getPnLTextClass(trade.pnl, trade.result))}>
+            <p
+              className={cn(
+                "text-lg font-bold tabular-nums",
+                getPnLTextClass(trade.pnl, trade.result),
+              )}
+            >
               {formatPnL(trade.pnl, trade.result)}
             </p>
             <p className="text-[11px] text-muted-foreground/70">{trade.result}</p>
@@ -108,18 +192,13 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
           <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px]">
             Emotion: {trade.emotion}
           </span>
-          {trade.confirmation_signal ? (
-            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px]">
-              {trade.confirmation_signal}
-            </span>
-          ) : null}
         </div>
       </DashboardInsetPanel>
 
-      {trade.screenshot_url ? (
+      {trade.screenshot_url && (
         <div className="space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-            Chart / entry screenshot
+            Chart evidence
           </p>
           <button
             type="button"
@@ -127,39 +206,24 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
             className="flex w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[11px] text-cyan-glow"
           >
             <Camera className="size-3.5" />
-            {screenshotOpen ? "Hide screenshot" : "View screenshot"}
+            {screenshotOpen ? "Hide chart" : "View entry screenshot"}
           </button>
-          {screenshotOpen ? (
+          {screenshotOpen && trade.screenshot_url ? (
             <img
               src={trade.screenshot_url}
-              alt="Trade screenshot"
+              alt="Entry chart"
               className="max-h-[320px] w-full rounded-lg border border-white/[0.08] object-contain"
             />
           ) : null}
         </div>
-      ) : null}
+      )}
 
-      <TradeIntelligencePanel tradeId={tradeId} refreshKey={0} />
-
-      {mistakes.length > 0 ? (
-        <DashboardInsetPanel className="px-3 py-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-            Mistakes tagged
-          </p>
-          <MistakeTagList tags={mistakes} />
-        </DashboardInsetPanel>
-      ) : null}
-
-      {trade.trade_notes ? (
-        <DashboardInsetPanel className="px-3 py-3">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-            Notes
-          </p>
-          <p className="text-[12px] leading-relaxed text-foreground/85 whitespace-pre-wrap">
-            {trade.trade_notes}
-          </p>
-        </DashboardInsetPanel>
-      ) : null}
+      <TradeCaseStudyView
+        study={study}
+        tradeId={tradeId}
+        onSync={() => void handleSync()}
+        syncing={syncing}
+      />
     </div>
   )
 }

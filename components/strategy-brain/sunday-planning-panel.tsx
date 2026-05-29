@@ -53,6 +53,7 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved }: Props) {
         invalidation: p.invalidation,
         weekly_thesis: p.weekly_thesis,
         notes: p.notes,
+        screenshot_urls: p.screenshot_urls ?? [],
       }))
     }
     return [emptyPair(), emptyPair(), emptyPair()]
@@ -86,6 +87,7 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved }: Props) {
         invalidation: p.invalidation,
         weekly_thesis: p.weekly_thesis,
         notes: p.notes,
+        screenshot_urls: p.screenshot_urls ?? [],
         sort_order: i,
       }))
       const plan = await saveWeeklyPlan({

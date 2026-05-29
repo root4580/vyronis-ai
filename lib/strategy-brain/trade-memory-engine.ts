@@ -1,3 +1,8 @@
+import {
+  buildSetupFingerprint,
+  compareSetupFingerprints,
+  type FingerprintTradeInput,
+} from "@/lib/journal/setup-fingerprint"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import type { ConfirmationChecklist, TradeMemoryTrade } from "@/lib/strategy-brain/types"
 
@@ -16,8 +21,37 @@ export function findSimilarTradeMemory(input: {
   trades: TradeMemoryTrade[]
   confirmation: ConfirmationChecklist
   emotionUnstable?: boolean
+  /** When evaluating a specific trade, pass its id to exclude from fingerprint self-match */
+  currentTradeId?: string
+  currentTrade?: FingerprintTradeInput
 }): string | null {
-  const { pair, trades, confirmation, emotionUnstable } = input
+  const { pair, trades, confirmation, emotionUnstable, currentTradeId, currentTrade } = input
+
+  if (currentTrade) {
+    const history = trades
+      .filter((t) => String(t.id) !== String(currentTradeId ?? ""))
+      .map((t) =>
+        buildSetupFingerprint({
+          id: t.id,
+          pair: t.pair,
+          direction: t.direction,
+          result: t.result,
+          emotion: t.emotion,
+          setup: t.setup,
+          session: null,
+          confirmation_signal: t.confirmation_signal,
+          mistake_tags: t.mistake_tags,
+          trade_date: t.trade_date,
+        }),
+      )
+    const comparison = compareSetupFingerprints(
+      buildSetupFingerprint(currentTrade),
+      history,
+      { minSimilarity: 48, limit: 4 },
+    )
+    if (comparison.insight) return comparison.insight
+  }
+
   const normalizedPair = pair.toUpperCase().replace(/\s/g, "")
   const pairTrades = trades.filter(
     (t) => t.pair.toUpperCase().replace(/\s/g, "") === normalizedPair,

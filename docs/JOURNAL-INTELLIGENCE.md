@@ -21,10 +21,18 @@ Vyronis journal is a **decision and learning workflow**, not a trade history tab
 
 ## Routes
 
-- `/war-room` — Weekly War Room  
-- `/strategy-brain` — AOI + evaluator  
-- `/journal/trade/[id]` — Trade Detail Intelligence  
+- `/war-room` — **Mission control** — HTF bias, session plan, pair cards, AOI status, thesis, HTF screenshots (human-controlled)  
+- `/strategy-brain` — AOI monitor + setup evaluator (advisory, no auto-entry)  
+- `/journal/trade/[id]` — **Trade case study** — 8 structured sections + fingerprint memory  
 - `/?tab=journal` — Decision journal hub  
+
+## Setup fingerprints
+
+Each synced trade stores a fingerprint in `trade_memory.metadata.setup_fingerprint`:
+
+- pair, structure type, confirmation quality, emotion, session, result, mistakes  
+
+Intelligence mode and the case study page compare current setups to prior wins/losses.
 
 ## Database
 

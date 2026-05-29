@@ -1,21 +1,28 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Swords, Upload } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Swords } from "lucide-react"
 import { MarketBiasPanel } from "@/components/strategy-brain/market-bias-panel"
 import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning-panel"
-import { AoiPairCard } from "@/components/strategy-brain/aoi-pair-card"
+import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
+import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
 import { SectionLabel, StrategyBrainGlass } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { StrategyBrainSetupBanner } from "@/components/journal/strategy-brain-setup-banner"
+import { computeWarRoomReadiness } from "@/lib/journal/war-room-status"
 import {
   fetchMarketBias,
   fetchStrategyBrainDashboard,
   fetchWeeklyPlan,
   saveWeeklyPlan,
 } from "@/lib/strategy-brain/api-client"
+import {
+  formatStrategyBrainSetupError,
+  isStrategyBrainSetupError,
+} from "@/lib/strategy-brain/migration-hint"
 import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
 
@@ -27,36 +34,78 @@ export function WeeklyWarRoom() {
   const [sessionFocus, setSessionFocus] = useState("")
   const [expectedScenarios, setExpectedScenarios] = useState("")
   const [savingMeta, setSavingMeta] = useState(false)
+  const [showWatchlistEditor, setShowWatchlistEditor] = useState(false)
+  const [setupError, setSetupError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
+    setLoading(true)
+    setSetupError(null)
     try {
-      const [bias, plan] = await Promise.all([
-        fetchMarketBias(),
-        fetchWeeklyPlan(weekStart).catch(() => null),
-      ])
-      setMarketBias(bias)
-      if (plan) {
-        setWeekPlan(plan)
-        setSessionFocus(plan.session_focus ?? "")
-        setExpectedScenarios(plan.expected_scenarios ?? "")
-      } else {
-        const dash = await fetchStrategyBrainDashboard()
-        setWeekPlan(dash.currentWeekPlan)
-        setSessionFocus(dash.currentWeekPlan?.session_focus ?? "")
-        setExpectedScenarios(dash.currentWeekPlan?.expected_scenarios ?? "")
+      let bias: MarketBiasRecord | null = null
+      try {
+        bias = await fetchMarketBias()
+        setMarketBias(bias)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to load bias"
+        if (isStrategyBrainSetupError(msg)) {
+          setSetupError(formatStrategyBrainSetupError(msg))
+          setMarketBias(null)
+          setWeekPlan(null)
+          return
+        }
+        throw e
       }
+
+      let plan: WeeklyPlanWithPairs | null = null
+      try {
+        plan = await fetchWeeklyPlan(weekStart)
+      } catch {
+        try {
+          const dash = await fetchStrategyBrainDashboard()
+          plan = dash.currentWeekPlan
+        } catch (dashErr) {
+          const msg = dashErr instanceof Error ? dashErr.message : ""
+          if (isStrategyBrainSetupError(msg)) {
+            setSetupError(formatStrategyBrainSetupError(msg))
+            return
+          }
+        }
+      }
+
+      setWeekPlan(plan)
+      setSessionFocus(plan?.session_focus ?? "")
+      setExpectedScenarios(plan?.expected_scenarios ?? "")
     } catch (e) {
-      toast({
-        title: "War Room unavailable",
-        description: e instanceof Error ? e.message : undefined,
-        variant: "destructive",
-      })
+      const msg = e instanceof Error ? e.message : "War Room unavailable"
+      if (isStrategyBrainSetupError(msg)) {
+        setSetupError(formatStrategyBrainSetupError(msg))
+      } else {
+        toast({
+          title: "War Room unavailable",
+          description: msg,
+          variant: "destructive",
+        })
+      }
+    } finally {
+      setLoading(false)
     }
   }, [weekStart, toast])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  const readiness = useMemo(
+    () =>
+      computeWarRoomReadiness({
+        weekPlan,
+        marketBias,
+        sessionFocus,
+        expectedScenarios,
+      }),
+    [weekPlan, marketBias, sessionFocus, expectedScenarios],
+  )
 
   async function saveWarRoomMeta() {
     if (!weekPlan) return
@@ -80,7 +129,7 @@ export function WeeklyWarRoom() {
         })),
       })
       setWeekPlan(updated)
-      toast({ title: "War Room saved" })
+      toast({ title: "Session plan saved" })
     } catch (e) {
       toast({
         title: "Save failed",
@@ -95,7 +144,7 @@ export function WeeklyWarRoom() {
   const pairs = weekPlan?.pairs ?? []
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 pb-10">
+    <div className="mx-auto max-w-4xl space-y-4 pb-12">
       <Link
         href="/?tab=journal"
         className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-cyan-glow"
@@ -104,78 +153,144 @@ export function WeeklyWarRoom() {
         Journal
       </Link>
 
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-          <Swords className="size-5 text-amber-200" />
+      <header className="space-y-1">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
+            <Swords className="size-5 text-amber-200" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Weekly War Room</h1>
+            <p className="text-[12px] text-muted-foreground/75">
+              {formatWeekLabel(weekStart)} — operational center (you execute, Vyronis advises)
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold">Weekly War Room</h1>
-          <p className="text-[11px] text-muted-foreground/75">
-            {formatWeekLabel(weekStart)} — directional thesis before you trade
-          </p>
-        </div>
-      </div>
+      </header>
+
+      {setupError ? (
+        <StrategyBrainSetupBanner onRetry={() => void refresh()} />
+      ) : null}
+
+      {loading && !setupError ? (
+        <p className="text-center text-[12px] text-muted-foreground animate-pulse">Loading War Room…</p>
+      ) : null}
+
+      {!setupError ? (
+        <>
+      <WarRoomWorkflowStatus readiness={readiness} />
 
       <MarketBiasPanel initial={marketBias} onSaved={(b) => setMarketBias(b)} />
 
+      {marketBias ? (
+        <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+          {(["weekly_bias", "daily_bias", "h4_bias"] as const).map((key) => (
+            <div
+              key={key}
+              className="rounded-lg border border-white/[0.08] bg-black/25 px-2 py-2"
+            >
+              <p className="text-[9px] uppercase text-muted-foreground/55">
+                {key.replace("_bias", "").replace("weekly", "W").replace("daily", "D").replace("h4", "H4")}
+              </p>
+              <p className="mt-0.5 font-medium">{marketBias[key]}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <StrategyBrainGlass>
-        <SectionLabel>Session focus &amp; scenarios</SectionLabel>
+        <SectionLabel>Session expectations</SectionLabel>
+        <p className="mb-2 text-[11px] text-muted-foreground/70">
+          When you trade, which session, and what macro scenarios you expect — not entry automation.
+        </p>
         <Textarea
-          className="mt-2 min-h-[56px] border-white/[0.08] bg-black/30 text-[12px]"
-          placeholder="Session focus — e.g. London open only, no NY impulse trades"
+          className="min-h-[52px] border-white/[0.08] bg-black/30 text-[12px]"
+          placeholder="Session focus — e.g. London only, max 2 trades, no impulse after red news"
           value={sessionFocus}
           onChange={(e) => setSessionFocus(e.target.value)}
         />
         <Textarea
           className="mt-2 min-h-[72px] border-white/[0.08] bg-black/30 text-[12px]"
-          placeholder="Expected scenarios — e.g. USD weakness if CPI aligns with DXY breakdown"
+          placeholder="Expected scenarios — e.g. USD weakness if DXY loses weekly support; avoid CHF until CPI"
           value={expectedScenarios}
           onChange={(e) => setExpectedScenarios(e.target.value)}
         />
         <Button
           type="button"
           size="sm"
-          className="mt-2"
-          disabled={savingMeta}
+          className="mt-2 h-9 w-full sm:w-auto"
+          disabled={savingMeta || !weekPlan}
           onClick={() => void saveWarRoomMeta()}
         >
-          Save focus &amp; scenarios
+          {savingMeta ? "Saving…" : "Save session plan"}
         </Button>
       </StrategyBrainGlass>
 
-      <SundayPlanningPanel
-        initial={weekPlan}
-        weekStart={weekStart}
-        onSaved={(p) => {
-          setWeekPlan(p)
-          void refresh()
-        }}
-      />
-
       {pairs.length > 0 ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <SectionLabel>AOI watchlist</SectionLabel>
-            <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-              <Upload className="size-3" />
-              Screenshots: add URLs in pair notes or log on trade
-            </span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {pairs.map((p) => (
-              <AoiPairCard key={p.id} plan={p} onStatusChange={() => void refresh()} />
-            ))}
+          <SectionLabel>Pair operations — AOI &amp; thesis</SectionLabel>
+          <div className="grid gap-3 md:grid-cols-2">
+            {pairs.map((p) =>
+              weekPlan ? (
+                <WarRoomPairCard
+                  key={p.id}
+                  plan={p}
+                  weekPlan={weekPlan}
+                  weekStart={weekStart}
+                  sessionFocus={sessionFocus}
+                  expectedScenarios={expectedScenarios}
+                  onUpdated={setWeekPlan}
+                />
+              ) : null,
+            )}
           </div>
         </div>
-      ) : null}
+      ) : (
+        <p className="rounded-lg border border-dashed border-white/[0.1] px-3 py-6 text-center text-[12px] text-muted-foreground/70">
+          Add 3–5 pairs in the watchlist below to activate pair cards.
+        </p>
+      )}
 
-      <p className="text-[11px] text-muted-foreground/65">
-        Next:{" "}
-        <Link href="/strategy-brain" className="text-cyan-glow hover:underline">
-          Setup evaluator
-        </Link>{" "}
-        → Command Center → Log trade → Review
-      </p>
+      <div className="rounded-xl border border-white/[0.08] bg-black/20">
+        <button
+          type="button"
+          onClick={() => setShowWatchlistEditor((v) => !v)}
+          className="flex w-full items-center justify-between px-3 py-2.5 text-left text-[12px] font-medium"
+        >
+          Edit weekly watchlist (3–5 pairs)
+          {showWatchlistEditor ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </button>
+        {showWatchlistEditor ? (
+          <div className="border-t border-white/[0.06] p-2">
+            <SundayPlanningPanel
+              initial={weekPlan}
+              weekStart={weekStart}
+              onSaved={(p) => {
+                setWeekPlan(p)
+                setShowWatchlistEditor(false)
+                void refresh()
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap gap-3 border-t border-white/[0.06] pt-4 text-[11px]">
+        <Link href="/strategy-brain" className="font-medium text-cyan-glow hover:underline">
+          Setup evaluator →
+        </Link>
+        <Link href="/?tab=dashboard" className="text-muted-foreground hover:text-foreground">
+          Command Center
+        </Link>
+        <Link href="/?tab=journal" className="text-muted-foreground hover:text-foreground">
+          Journal
+        </Link>
+      </div>
+        </>
+      ) : null}
     </div>
   )
 }

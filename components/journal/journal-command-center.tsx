@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { Suspense, useMemo, useState, type ReactNode } from "react"
 import { ArrowLeft, BarChart3, Plus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -212,7 +212,9 @@ export function JournalCommandCenter({
         <div className="flex w-full flex-col gap-2 sm:w-auto">{headerActions}</div>
       </div>
 
-      <JournalWorkflowNav />
+      <Suspense fallback={null}>
+        <JournalWorkflowNav />
+      </Suspense>
       <JournalModeTabs mode={journalMode} onChange={setJournalMode} />
 
       <PlannedTradesSection

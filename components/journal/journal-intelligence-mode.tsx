@@ -5,6 +5,7 @@ import Link from "next/link"
 import { AlertTriangle, ArrowRight, Brain, Target } from "lucide-react"
 import { generatePatternMemory } from "@/lib/trade-coach/pattern-memory"
 import type { DashboardTradeRow } from "@/components/dashboard/trading-components"
+import { buildSetupFingerprint } from "@/lib/journal/setup-fingerprint"
 import { findSimilarTradeMemory } from "@/lib/strategy-brain/trade-memory-engine"
 import { defaultConfirmationChecklist } from "@/lib/strategy-brain/confirmation-engine"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
@@ -59,6 +60,32 @@ export function JournalIntelligenceMode({
         trades: historical.filter((h) => h.id !== t.id),
         confirmation: defaultConfirmationChecklist(),
         emotionUnstable: /fomo|revenge|anxious/i.test(t.emotion || ""),
+        currentTradeId: t.id,
+        currentTrade: {
+          id: t.id,
+          pair: t.pair,
+          direction: t.direction,
+          result: t.result,
+          pnl: t.pnl,
+          emotion: t.emotion,
+          setup: t.setup,
+          session: t.session,
+          confirmation_signal: t.confirmation_signal,
+          mistake_tags: t.mistake_tags,
+          trade_date: t.trade_date,
+        },
+      }),
+      fingerprint: buildSetupFingerprint({
+        id: t.id,
+        pair: t.pair,
+        direction: t.direction,
+        result: t.result,
+        emotion: t.emotion,
+        setup: t.setup,
+        session: t.session,
+        confirmation_signal: t.confirmation_signal,
+        mistake_tags: t.mistake_tags,
+        trade_date: t.trade_date,
       }),
     }))
   }, [trades])
@@ -112,7 +139,7 @@ export function JournalIntelligenceMode({
         <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/60">
           Trade memory (recent)
         </p>
-        {recentWithMemory.map(({ trade, memory }) => (
+        {recentWithMemory.map(({ trade, memory, fingerprint }) => (
           <Link
             key={trade.id}
             href={`/journal/trade/${trade.id}`}
@@ -124,10 +151,14 @@ export function JournalIntelligenceMode({
               </span>
               <Target className="size-3.5 text-muted-foreground/50" />
             </div>
+            <p className="mt-1 text-[10px] text-muted-foreground/60">
+              {fingerprint.structureType} · {fingerprint.confirmationQuality} conf ·{" "}
+              {fingerprint.emotionalState}
+            </p>
             {memory ? (
               <p className="mt-1.5 text-[11px] leading-relaxed text-violet-100/85">{memory}</p>
             ) : (
-              <p className="mt-1 text-[11px] text-muted-foreground/55">Open for full intelligence</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/55">Open case study</p>
             )}
           </Link>
         ))}

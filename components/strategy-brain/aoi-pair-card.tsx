@@ -24,7 +24,7 @@ export function AoiPairCard({ plan, onStatusChange }: Props) {
       : "Zone not set"
 
   return (
-    <StrategyBrainGlass className="relative overflow-hidden transition-transform duration-300 hover:scale-[1.01]">
+    <StrategyBrainGlass className="relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-glow/40 to-transparent" />
       <div className="flex items-start justify-between gap-2">
         <div>

@@ -4,6 +4,12 @@ import { calculateAPlusScore } from "../lib/strategy-brain/aplus-scoring-engine"
 import { evaluateEmotionCheck } from "../lib/strategy-brain/emotion-engine"
 import { evaluateStrategySetup } from "../lib/strategy-brain/orchestrator"
 import { BORDERLINE_AUTO_SKIP_THRESHOLD } from "../lib/strategy-brain/borderline-engine"
+import {
+  buildSetupFingerprint,
+  compareSetupFingerprints,
+} from "../lib/journal/setup-fingerprint"
+import { findSimilarTradeMemory } from "../lib/strategy-brain/trade-memory-engine"
+import { defaultConfirmationChecklist } from "../lib/strategy-brain/confirmation-engine"
 
 let failed = 0
 
@@ -103,6 +109,62 @@ const full = evaluateStrategySetup({
   },
 })
 assert("orchestrator returns scoring", full.scoring.totalScore > 0)
+
+console.log("\n=== Setup fingerprints ===")
+const fp = buildSetupFingerprint({
+  id: "a",
+  pair: "GBPJPY",
+  direction: "BUY",
+  result: "LOSS",
+  emotion: "FOMO",
+  setup: "Breakout",
+  confirmation_signal: "Breakout",
+  mistake_tags: "Early entry",
+})
+assert("fingerprint has structure", fp.structureType === "Breakout")
+const cmp = compareSetupFingerprints(fp, [
+  buildSetupFingerprint({
+    id: "b",
+    pair: "GBPJPY",
+    direction: "BUY",
+    result: "LOSS",
+    emotion: "FOMO",
+    setup: "Breakout",
+    confirmation_signal: "Breakout",
+    mistake_tags: "Early entry",
+    trade_date: "2026-01-01",
+  }),
+])
+assert("comparison finds loss insight", Boolean(cmp.insight))
+const mem = findSimilarTradeMemory({
+  pair: "GBPJPY",
+  trades: [
+    {
+      id: "b",
+      pair: "GBPJPY",
+      direction: "BUY",
+      result: "LOSS",
+      pnl: -50,
+      emotion: "fomo",
+      setup: "Breakout",
+      confirmation_signal: "Breakout",
+      mistake_tags: "Early entry",
+      trade_date: "2026-01-01",
+    },
+  ],
+  confirmation: defaultConfirmationChecklist(),
+  currentTradeId: "a",
+  currentTrade: {
+    id: "a",
+    pair: "GBPJPY",
+    direction: "BUY",
+    result: "LOSS",
+    emotion: "FOMO",
+    setup: "Breakout",
+    confirmation_signal: "Breakout",
+  },
+})
+assert("memory engine uses fingerprints", Boolean(mem))
 
 if (failed > 0) {
   console.error(`\n❌ ${failed} check(s) failed.\n`)
