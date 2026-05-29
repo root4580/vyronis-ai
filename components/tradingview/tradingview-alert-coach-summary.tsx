@@ -3,6 +3,7 @@
 import { Radio } from "lucide-react"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
+import { TradingViewWhyPanel } from "@/components/tradingview/tradingview-why-panel"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import type { SetupGrade } from "@/lib/strategy-brain/types"
@@ -67,6 +68,13 @@ export function TradingViewAlertCoachSummary({
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/70">
           Chart: {chartVision.summary}
         </p>
+      ) : null}
+      {plannedContext.tradingview_why_engine ? (
+        <TradingViewWhyPanel
+          why={plannedContext.tradingview_why_engine}
+          compact={compact}
+          className="mt-3 border-cyan-glow/15 bg-black/25"
+        />
       ) : null}
     </DashboardInsetPanel>
   )

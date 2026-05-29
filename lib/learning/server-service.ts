@@ -25,6 +25,7 @@ import type { TradeReplayIntelligence } from "@/lib/cognitive/types"
 import { persistLessonMemory } from "@/lib/autonomous/server-service"
 import { buildOutcomeLesson } from "@/lib/learning/outcome-learning-engine"
 import { persistOutcomeLesson } from "@/lib/learning/outcome-lessons-service"
+import { linkTradingViewAlertOutcome } from "@/lib/tradingview/signal-outcome-bridge"
 import type {
   AiReviewRecord,
   JournalIntelligenceResult,
@@ -220,6 +221,14 @@ export async function syncTradeMemoryForTrade(
     vyronisWarningSnippet: tradeFeedback?.coaching_summary ?? null,
   })
   await persistOutcomeLesson(supabase, userId, outcomeLesson).catch(() => undefined)
+
+  await linkTradingViewAlertOutcome({
+    supabase,
+    userId,
+    tradeId: String(tradeId),
+    sessionId: sessionIdByTrade.get(String(tradeId)) ?? tradeFeedback?.session_id,
+    outcomeLesson,
+  }).catch(() => undefined)
 
   const replay = buildTradeReplayIntelligence(
     {

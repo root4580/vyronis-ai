@@ -59,12 +59,77 @@ export type TradingViewTechnicalSignalAnalysis = {
   strengths: string[]
 }
 
+export type TradingViewWhyConfidenceCategory = {
+  id: string
+  label: string
+  score: number
+  note: string
+}
+
+export type TradingViewMemoryMatchKind =
+  | "winner"
+  | "loser"
+  | "impulsive"
+  | "high_confidence"
+
+export type TradingViewMemoryMatch = {
+  kind: TradingViewMemoryMatchKind
+  trade_id: string
+  pair: string
+  result: string
+  similarity_score: number
+  summary: string
+}
+
+export type TradingViewMemorySimilarity = {
+  historical_confidence: number
+  overall_similarity: number
+  matches: TradingViewMemoryMatch[]
+  warnings: string[]
+  narrative: string | null
+}
+
+export type TradingViewOutcomeLearning = {
+  trade_id: string
+  result?: string
+  session_note?: string
+  emotion?: string | null
+  lesson?: string
+  natural_reference?: string
+  vyronis_was_right?: boolean | null
+  synced_at: string
+}
+
+/** Structured reasoning layer — makes alert grading feel explainable, not opaque. */
+export type TradingViewWhyEngine = {
+  headline: string
+  confidence_score: number
+  confidence_categories: TradingViewWhyConfidenceCategory[]
+  historical_confidence: number
+  memory_similarity: TradingViewMemorySimilarity
+  grade_passed: boolean
+  setup_grade: SetupGrade
+  setup_verdict: TradingViewSetupVerdict
+  pass_reasons: string[]
+  fail_reasons: string[]
+  improvements: string[]
+  strengths: string[]
+  weaknesses: string[]
+  warnings: string[]
+  memory_insights: string[]
+  recommendation: string
+  /** Every ingested alert is stored for learning, including sub-B+ skips. */
+  saved_for_training: boolean
+}
+
 export type TradingViewSignalAnalysis = TradingViewTechnicalSignalAnalysis & {
   war_room: TradingViewWarRoomAlignment
   setup_grade: SetupGrade
   setup_verdict: TradingViewSetupVerdict
   meets_minimum_grade: boolean
   verdict_summary: string
+  why_engine?: TradingViewWhyEngine
+  outcome_learning?: TradingViewOutcomeLearning
   chart_vision?: TradingViewChartVisionSnapshot
 }
 

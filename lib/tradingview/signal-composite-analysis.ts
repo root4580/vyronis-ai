@@ -2,7 +2,10 @@ import { getMarketBias, getWeeklyPlanWithPairs } from "@/lib/strategy-brain/serv
 import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { analyzeTradingViewSignal } from "@/lib/tradingview/signal-analysis-engine"
+import { loadRecentOutcomeLessons } from "@/lib/learning/outcome-lessons-service"
+import { loadSignalMemoryTrades } from "@/lib/tradingview/signal-memory-loader"
 import { applyWarRoomGrading } from "@/lib/tradingview/signal-war-room-grader"
+import { buildTradingViewWhyEngine } from "@/lib/tradingview/why-engine"
 import type { TradingViewSignalAnalysis } from "@/lib/tradingview/types"
 
 export async function buildTradingViewSignalAnalysis(
@@ -35,11 +38,40 @@ export async function buildTradingViewSignalAnalysis(
     // Strategy brain tables optional — fall back to technical-only with neutral war score
   }
 
-  return applyWarRoomGrading({
+  const analysis = applyWarRoomGrading({
     symbol: input.symbol,
     direction: input.direction,
     technical,
     weekPlan,
     marketBias,
   })
+
+  let trades: Awaited<ReturnType<typeof loadSignalMemoryTrades>> = []
+  let recentOutcomeLessons: Awaited<ReturnType<typeof loadRecentOutcomeLessons>> = []
+  try {
+    ;[trades, recentOutcomeLessons] = await Promise.all([
+      loadSignalMemoryTrades(supabase, userId),
+      loadRecentOutcomeLessons(supabase, userId, 12),
+    ])
+  } catch {
+    // Journal optional
+  }
+
+  const why_engine = buildTradingViewWhyEngine({
+    symbol: input.symbol,
+    direction: input.direction,
+    analysis,
+    trades,
+    recentOutcomeLessons,
+    planned: {
+      pair: input.symbol,
+      direction: input.direction,
+      strategy_name: input.strategy_name,
+      session: technical.session_timing.session,
+      confirmation_signal: input.message || input.strategy_name || undefined,
+      higher_timeframe: technical.htf_alignment.label,
+    },
+  })
+
+  return { ...analysis, why_engine }
 }

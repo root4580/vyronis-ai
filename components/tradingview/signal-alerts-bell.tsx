@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTradingViewSignals } from "@/hooks/use-tradingview-signals"
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
+import { TradingViewWhyPanel } from "@/components/tradingview/tradingview-why-panel"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import { cn } from "@/lib/utils"
 
@@ -195,7 +196,13 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                     ) : null}
                   </div>
 
-                  {signal.ai_analysis?.verdict_summary ? (
+                  {signal.ai_analysis?.why_engine ? (
+                    <TradingViewWhyPanel
+                      why={signal.ai_analysis.why_engine}
+                      compact
+                      className="mt-2"
+                    />
+                  ) : signal.ai_analysis?.verdict_summary ? (
                     <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
                       {signal.ai_analysis.verdict_summary}
                     </p>

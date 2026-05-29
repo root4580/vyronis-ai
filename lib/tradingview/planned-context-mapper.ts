@@ -20,10 +20,11 @@ export function mapAnalysisToCoachAnalysis(analysis: TradingViewSignalAnalysis):
     })),
     insights: [
       `War Room grade: ${analysis.setup_grade} (${analysis.setup_verdict.replace(/_/g, " ")})`,
+      ...(analysis.why_engine?.recommendation ? [analysis.why_engine.recommendation] : []),
       ...analysis.war_room.notes.slice(0, 2),
       ...analysis.strengths.slice(0, 2),
       ...analysis.warnings.slice(0, 3),
-    ].slice(0, 6),
+    ].slice(0, 8),
   }
 }
 
@@ -61,5 +62,6 @@ export function buildPlannedContextFromSignal(input: {
     tradingview_setup_verdict: input.analysis.setup_verdict,
     tradingview_verdict_summary: input.analysis.verdict_summary,
     tradingview_chart_vision: input.analysis.chart_vision,
+    tradingview_why_engine: input.analysis.why_engine,
   }
 }

@@ -47,6 +47,7 @@ export type PreTradePlannedContext = {
   tradingview_setup_verdict?: import("@/lib/tradingview/types").TradingViewSetupVerdict
   tradingview_verdict_summary?: string
   tradingview_chart_vision?: import("@/lib/tradingview/types").TradingViewChartVisionSnapshot
+  tradingview_why_engine?: import("@/lib/tradingview/types").TradingViewWhyEngine
   /** Command Center multi-image timeframe bundle session id */
   timeframe_bundle_id?: string
   timeframe_bundle?: {
