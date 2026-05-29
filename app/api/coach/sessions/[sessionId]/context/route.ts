@@ -25,11 +25,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = (await request.json()) as {
       strategy_playbook_id?: string | null
       strategy_name?: string | null
+      pair?: string
+      direction?: string
+      higher_timeframe?: string
+      entry_timeframe?: string
+      confirmation_timeframe?: string
     }
 
     const session = await updateCoachSessionPlannedContext(supabase, user.id, sessionId, {
       strategy_playbook_id: body.strategy_playbook_id,
       strategy_name: body.strategy_name,
+      pair: body.pair,
+      direction: body.direction,
+      higher_timeframe: body.higher_timeframe,
+      entry_timeframe: body.entry_timeframe,
+      confirmation_timeframe: body.confirmation_timeframe,
     })
 
     return NextResponse.json(session)

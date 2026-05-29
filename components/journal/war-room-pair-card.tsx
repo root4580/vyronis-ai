@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { Camera, Loader2, Target } from "lucide-react"
+import { Target } from "lucide-react"
+import { WarRoomHtfUpload } from "@/components/strategy-brain/war-room-htf-upload"
 import { updatePairAoiStatus, saveWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import type { AoiStatus, BiasDirection, PairPlanRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { AoiStatusPill, SectionLabel } from "@/components/strategy-brain/strategy-brain-primitives"
@@ -20,6 +21,7 @@ type Props = {
   sessionFocus: string
   expectedScenarios: string
   onUpdated: (plan: WeeklyPlanWithPairs) => void
+  onBiasSuggest?: (bias: import("@/lib/strategy-brain/types").MarketBiasInput) => void
 }
 
 export function WarRoomPairCard({
@@ -29,13 +31,12 @@ export function WarRoomPairCard({
   sessionFocus,
   expectedScenarios,
   onUpdated,
+  onBiasSuggest,
 }: Props) {
   const { toast } = useToast()
-  const fileRef = useRef<HTMLInputElement>(null)
   const [thesis, setThesis] = useState(plan.weekly_thesis)
   const [notes, setNotes] = useState(plan.notes)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
 
   const zone =
     plan.aoi_high != null && plan.aoi_low != null
@@ -96,31 +97,6 @@ export function WarRoomPairCard({
       ...weekPlan,
       pairs: weekPlan.pairs.map((p) => (p.id === plan.id ? { ...p, aoi_status: status } : p)),
     })
-  }
-
-  async function uploadHtf(file: File) {
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "same-origin" })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Upload failed")
-      }
-      const { url } = await res.json()
-      const urls = [...(plan.screenshot_urls ?? []), url].slice(0, 4)
-      await persistPair({ screenshot_urls: urls })
-      toast({ title: "HTF screenshot added" })
-    } catch (e) {
-      toast({
-        title: "Upload failed",
-        description: e instanceof Error ? e.message : undefined,
-        variant: "destructive",
-      })
-    } finally {
-      setUploading(false)
-    }
   }
 
   const biasTone =
@@ -204,68 +180,41 @@ export function WarRoomPairCard({
         </div>
       </div>
 
-      <div className="mt-3">
-        <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-          HTF screenshots
-        </p>
-        {(plan.screenshot_urls ?? []).length > 0 ? (
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {(plan.screenshot_urls ?? []).map((url) => (
-              <a
-                key={url}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block shrink-0"
-              >
-                <img
-                  src={url}
-                  alt={`${plan.pair} HTF`}
-                  className="h-16 w-24 rounded-md border border-white/[0.08] object-cover"
-                />
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 text-[10px] text-muted-foreground/55">No charts yet — upload W/D structure</p>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) void uploadHtf(f)
-            e.target.value = ""
-          }}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-2 h-8 text-[10px]"
-          disabled={uploading || saving}
-          onClick={() => fileRef.current?.click()}
-        >
-          {uploading ? (
-            <Loader2 className="mr-1 size-3 animate-spin" />
-          ) : (
-            <Camera className="mr-1 size-3" />
-          )}
-          Add HTF chart
-        </Button>
-      </div>
+      <WarRoomHtfUpload
+        className="mt-3"
+        pairHint={plan.pair}
+        pairLabel={plan.pair}
+        urls={plan.screenshot_urls ?? []}
+        disabled={saving}
+        onUrlsChange={(screenshot_urls) => void persistPair({ screenshot_urls })}
+        onBiasSuggest={onBiasSuggest}
+        onAutofill={(autofill) =>
+          void persistPair({
+            pair: autofill.pair || plan.pair,
+            directional_bias: autofill.directional_bias,
+            aoi_low: autofill.aoi_low,
+            aoi_high: autofill.aoi_high,
+            invalidation: autofill.invalidation,
+            weekly_thesis: autofill.weekly_thesis || plan.weekly_thesis,
+            notes: autofill.notes || plan.notes,
+          })
+        }
+      />
 
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/[0.06] pt-3">
         <Link
-          href={`/strategy-brain?pair=${encodeURIComponent(plan.pair)}`}
-          className="inline-flex items-center gap-1 text-[10px] font-medium text-cyan-glow hover:underline"
+          href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
+          className="inline-flex items-center gap-1 rounded-md border border-cyan-glow/25 bg-cyan-glow/10 px-2 py-1 text-[10px] font-medium text-cyan-glow hover:bg-cyan-glow/15"
         >
           <Target className="size-3" />
+          Open chart coach
+        </Link>
+        <Link
+          href={`/strategy-brain?pair=${encodeURIComponent(plan.pair)}`}
+          className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/80 hover:text-cyan-glow hover:underline"
+        >
           Evaluate setup
         </Link>
-        <span className="text-[10px] text-muted-foreground/50">Human confirms entry</span>
       </div>
     </article>
   )

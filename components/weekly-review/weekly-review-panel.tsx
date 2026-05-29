@@ -105,6 +105,10 @@ export function WeeklyReviewPanel({
     <>
       <DashboardCard className="glass-card floating-glow weekly-review-fade-in" glow interactive>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/[0.06] via-cyan-glow/[0.04] to-transparent" />
+        <p className="px-4 pt-3 text-[11px] leading-relaxed text-muted-foreground/70 md:px-6">
+          Discipline and behavior scores for the week. For trade-level coach grades and P&amp;L, open Journal →
+          Weekly debrief.
+        </p>
         <DashboardCardHeader
           title="Weekly Behavioral Review"
           icon={Brain}

@@ -11,7 +11,11 @@ import {
   toneMemoryFromMessages,
 } from "../lib/intelligence/tone-memory-engine"
 import { resolveVerdictWithReasoning } from "../lib/intelligence/verdict-reasoning-engine"
+import { buildPreTradeApproval } from "../lib/vyronis-core/phase5-engine"
+import { evaluateShadowMode } from "../lib/autonomous/shadow-mode-engine"
 import { buildSessionRecovery } from "../lib/intelligence/session-recovery-engine"
+import { evaluateAutonomousIntervention } from "../lib/trading-os/intervention-layer"
+import { monitorLiveSession } from "../lib/trading-os/live-session-monitor"
 import { buildVisionIntelligenceSnapshot } from "../lib/vyronis-core/phase7-engine"
 import { buildOutcomeLesson } from "../lib/learning/outcome-learning-engine"
 import type { FullTraderContext } from "../lib/intelligence/intelligence-types"
@@ -244,6 +248,33 @@ assert(
   "probability narrative",
 )
 assert(recovery.adjustedEmotionalRisk < recovery.rawHistoricalRisk, "emotional risk decays")
+
+console.log("\n=== Trading day boundary ===")
+const freshMorningCtx = {
+  ...recoveryCtx,
+  sessionRecovery: recovery,
+} as FullTraderContext
+const freshShadow = evaluateShadowMode({ context: freshMorningCtx })
+assert(!freshShadow.shouldPause, "shadow pause off on fresh day after prior losses")
+const freshLive = monitorLiveSession({ context: freshMorningCtx, lastKnownSession: null })
+const freshIntervention = evaluateAutonomousIntervention({
+  os: { context: { ...freshMorningCtx, autonomous: { shadow: freshShadow } as FullTraderContext["autonomous"] } },
+  liveSession: freshLive,
+})
+assert(
+  !freshIntervention.active ||
+    freshIntervention.headline !== "Pause — protect capital and process",
+  "no critical Session Guard pause on fresh morning",
+)
+const freshPreTrade = buildPreTradeApproval(freshMorningCtx)
+assert(
+  freshPreTrade.status === "approved",
+  "pre-trade approved on fresh companion morning (no planned setup)",
+)
+assert(
+  !freshPreTrade.headline.includes("Reflection"),
+  "no reflection headline on fresh companion morning",
+)
 
 console.log("\n=== Verdict reasoning + human signals ===")
 const vr = resolveVerdictWithReasoning({

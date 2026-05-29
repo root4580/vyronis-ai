@@ -45,16 +45,38 @@ type Props = {
 }
 
 export function TradeCaseStudyView({ study, onSync, syncing, tradeId }: Props) {
+  const showSyncPrompt = study.needsIntelligenceSync && onSync
+
   return (
     <div className="space-y-3">
       <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.04] px-3 py-2.5">
         <p className="text-[11px] leading-relaxed text-amber-100/90">{study.discretionaryNote}</p>
       </DashboardInsetPanel>
 
-      {onSync ? (
+      {showSyncPrompt ? (
+        <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.06] px-3 py-3">
+          <p className="text-[12px] font-medium text-foreground/95">Unlock full case study</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+            Sync runs AI setup scoring, coaching notes, and fingerprint matching
+            {study.historyTradeCount < 5
+              ? ` (${study.historyTradeCount} trade${study.historyTradeCount === 1 ? "" : "s"} logged — patterns get stronger after ~5).`
+              : "."}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-3 h-9 w-full bg-cyan-glow/90 text-[11px] font-semibold text-background hover:bg-cyan-glow"
+            disabled={syncing}
+            onClick={onSync}
+          >
+            <RefreshCw className={cn("mr-1.5 size-3.5", syncing && "animate-spin")} />
+            {syncing ? "Syncing…" : "Sync memory"}
+          </Button>
+        </DashboardInsetPanel>
+      ) : onSync ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-black/25 px-3 py-2">
           <p className="text-[10px] text-muted-foreground/75">
-            Sync stores a setup fingerprint for future comparisons.
+            Re-sync after edits to refresh fingerprints and AI notes.
           </p>
           <Button
             type="button"

@@ -1,17 +1,21 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
-import { Brain, CheckCircle2, Circle, ClipboardList, NotebookPen, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Brain, CheckCircle2, Circle, ClipboardList, Crosshair, NotebookPen, Sparkles } from "lucide-react"
+import { fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
+import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 import { Button } from "@/components/ui/button"
 import { EMOTION_OPTIONS } from "@/lib/trade-form-config"
 import type { LeakEngineInput } from "@/lib/behavior"
 import {
   buildDailyRitualView,
+  hasCompletedCoachSessionToday,
   loadDailyRitualState,
   markRitualCheckIn,
   markRitualDebriefComplete,
   type RitualStepId,
 } from "@/lib/daily-ritual"
+import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
 import { formatPnL } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
@@ -19,7 +23,8 @@ type DailyRitualStripProps = {
   userId: string
   trades: LeakEngineInput["trades"]
   maxRiskPerTrade: number
-  hasPlannedCoachInProgress: boolean
+  plannedSessions?: PlannedCoachSessionItem[]
+  onOpenWarRoom?: () => void
   onOpenCoach: () => void
   onOpenLog: () => void
   onCoachEngaged?: () => void
@@ -27,6 +32,7 @@ type DailyRitualStripProps = {
 }
 
 const STEP_ICONS: Record<RitualStepId, typeof Circle> = {
+  "war-room": Crosshair,
   "check-in": Sparkles,
   coach: Brain,
   log: ClipboardList,
@@ -44,7 +50,8 @@ export function DailyRitualStrip({
   userId,
   trades,
   maxRiskPerTrade,
-  hasPlannedCoachInProgress,
+  plannedSessions = [],
+  onOpenWarRoom,
   onOpenCoach,
   onOpenLog,
   onCoachEngaged,
@@ -53,11 +60,23 @@ export function DailyRitualStrip({
   const [storedVersion, setStoredVersion] = useState(0)
   const [activePanel, setActivePanel] = useState<RitualStepId | null>(null)
   const [selectedEmotion, setSelectedEmotion] = useState("Calm")
+  const [watchlistReady, setWatchlistReady] = useState(true)
+
+  useEffect(() => {
+    void fetchWeeklyPlan()
+      .then((plan) => setWatchlistReady(isWatchlistComplete(plan)))
+      .catch(() => setWatchlistReady(true))
+  }, [])
 
   const storedState = useMemo(() => {
     void storedVersion
     return loadDailyRitualState(userId)
   }, [userId, storedVersion])
+
+  const hasCompletedCoachToday = useMemo(
+    () => hasCompletedCoachSessionToday(plannedSessions),
+    [plannedSessions],
+  )
 
   const view = useMemo(
     () =>
@@ -65,10 +84,11 @@ export function DailyRitualStrip({
         userId,
         trades,
         maxRiskPerTrade,
-        hasPlannedCoachInProgress,
+        warRoomReady: watchlistReady,
+        hasCompletedCoachToday,
         storedState,
       }),
-    [userId, trades, maxRiskPerTrade, hasPlannedCoachInProgress, storedState],
+    [userId, trades, maxRiskPerTrade, watchlistReady, hasCompletedCoachToday, storedState],
   )
 
   const bumpStorage = useCallback(() => setStoredVersion((v) => v + 1), [])
@@ -95,6 +115,10 @@ export function DailyRitualStrip({
     const step = view.steps.find((row) => row.id === stepId)
     if (!step) return
 
+    if (stepId === "war-room") {
+      onOpenWarRoom?.()
+      return
+    }
     if (stepId === "log") {
       onOpenLog()
       return
@@ -120,7 +144,9 @@ export function DailyRitualStrip({
             Daily ritual
           </p>
           <p className="text-[12px] font-medium text-foreground/90">
-            {view.allComplete ? "Session closed with discipline" : "Check-in → Coach → Log → Debrief"}
+            {view.allComplete
+              ? "Session closed with discipline"
+              : "War Room → Check-in → Coach → Log → Debrief"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -131,7 +157,7 @@ export function DailyRitualStrip({
             />
           </div>
           <span className="text-[10px] tabular-nums text-muted-foreground/70">
-            {view.completedCount}/4
+            {view.completedCount}/5
           </span>
         </div>
       </div>

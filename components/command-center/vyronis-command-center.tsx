@@ -31,7 +31,11 @@ export function VyronisCommandCenter() {
 
   const isExpanded = mode === "pre_trade" || mode === "post_trade"
   const pairLabel = coachPlannedContext.pair
-    ? `${coachPlannedContext.pair} ${coachPlannedContext.direction || ""}`.trim()
+    ? coachPlannedContext.direction === "LONG"
+      ? `${coachPlannedContext.pair} · Long`
+      : coachPlannedContext.direction === "SHORT"
+        ? `${coachPlannedContext.pair} · Short`
+        : coachPlannedContext.pair
     : null
 
   return (
@@ -84,7 +88,7 @@ export function VyronisCommandCenter() {
                     ? (context?.companionState
                         ? COMPANION_STATE_LABELS[context.companionState]
                         : context?.greeting.sessionLabel ?? "Online")
-                    : pairLabel || "Multi-timeframe pre-trade review"}
+                    : pairLabel || "Upload charts → analyze → quick check-in"}
                 </p>
               </div>
             </div>

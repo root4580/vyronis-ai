@@ -2,7 +2,9 @@ import { detectPrimaryLeak, type LeakEngineInput } from "@/lib/behavior"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { getLocalDateKey, getTodayTrades } from "@/lib/user-settings"
 
-export type RitualStepId = "check-in" | "coach" | "log" | "debrief"
+export type RitualStepId = "war-room" | "check-in" | "coach" | "log" | "debrief"
+
+export const RITUAL_STEP_COUNT = 5
 
 export type DailyRitualStoredState = {
   dateKey: string
@@ -105,6 +107,21 @@ export function markRitualCoachEngaged(userId: string): DailyRitualStoredState {
   return state
 }
 
+export function markRitualCoachComplete(userId: string): DailyRitualStoredState {
+  return markRitualCoachEngaged(userId)
+}
+
+export function hasCompletedCoachSessionToday(
+  sessions: Array<{ status: string; updated_at: string }>,
+): boolean {
+  const todayKey = getLocalDateKey(new Date())
+  return sessions.some((session) => {
+    if (session.status !== "completed" && session.status !== "linked") return false
+    const updatedKey = getLocalDateKey(new Date(session.updated_at))
+    return updatedKey === todayKey
+  })
+}
+
 export function markRitualDebriefComplete(userId: string): DailyRitualStoredState {
   const state = loadDailyRitualState(userId)
   state.debrief = { completedAt: new Date().toISOString() }
@@ -114,10 +131,10 @@ export function markRitualDebriefComplete(userId: string): DailyRitualStoredStat
 
 function isCoachStepComplete(
   stored: DailyRitualStoredState,
-  plannedInProgress: boolean,
+  hasCompletedCoachToday: boolean,
 ): boolean {
   if (stored.coach?.completedAt) return true
-  return plannedInProgress
+  return hasCompletedCoachToday
 }
 
 function isLogStepComplete<T extends { trade_date?: string | null; created_at: string }>(
@@ -175,15 +192,22 @@ export function buildDailyDebriefSummary<T extends LeakEngineInput["trades"][num
 }
 
 function resolveStepStatuses(
+  warRoomComplete: boolean,
   checkInComplete: boolean,
   coachComplete: boolean,
   logComplete: boolean,
   debriefComplete: boolean,
 ): RitualStepView[] {
-  const completion = [checkInComplete, coachComplete, logComplete, debriefComplete]
+  const completion = [warRoomComplete, checkInComplete, coachComplete, logComplete, debriefComplete]
   const firstIncomplete = completion.findIndex((done) => !done)
 
   const defs: Array<Omit<RitualStepView, "status">> = [
+    {
+      id: "war-room",
+      label: "War Room",
+      shortLabel: "War Room",
+      hint: "Sunday watchlist, HTF bias, and AOI for the week.",
+    },
     {
       id: "check-in",
       label: "Check-in",
@@ -194,7 +218,7 @@ function resolveStepStatuses(
       id: "coach",
       label: "Coach",
       shortLabel: "Coach",
-      hint: "Run pre-trade coach on your planned setup.",
+      hint: "Chart review before you execute.",
     },
     {
       id: "log",
@@ -225,28 +249,40 @@ export function buildDailyRitualView(input: {
   userId: string
   trades: LeakEngineInput["trades"]
   maxRiskPerTrade: number
-  hasPlannedCoachInProgress: boolean
+  warRoomReady: boolean
+  hasCompletedCoachToday: boolean
   storedState?: DailyRitualStoredState
 }): DailyRitualView {
   const stored = input.storedState ?? loadDailyRitualState(input.userId)
+  const warRoomComplete = input.warRoomReady
   const checkInComplete = Boolean(stored.checkIn?.completedAt)
-  const coachComplete = isCoachStepComplete(stored, input.hasPlannedCoachInProgress)
+  const coachComplete = isCoachStepComplete(stored, input.hasCompletedCoachToday)
   const logComplete = isLogStepComplete(input.trades)
   const debriefComplete = isDebriefStepComplete(stored, logComplete)
 
-  const steps = resolveStepStatuses(checkInComplete, coachComplete, logComplete, debriefComplete)
+  const steps = resolveStepStatuses(
+    warRoomComplete,
+    checkInComplete,
+    coachComplete,
+    logComplete,
+    debriefComplete,
+  )
   const debrief = buildDailyDebriefSummary(input.trades, input.maxRiskPerTrade)
-  const completedCount = [checkInComplete, coachComplete, logComplete, debriefComplete].filter(
-    Boolean,
-  ).length
+  const completedCount = [
+    warRoomComplete,
+    checkInComplete,
+    coachComplete,
+    logComplete,
+    debriefComplete,
+  ].filter(Boolean).length
 
   return {
     dateKey: stored.dateKey,
     steps,
     debrief,
     completedCount,
-    progressPercent: Math.round((completedCount / 4) * 100),
-    allComplete: completedCount === 4,
+    progressPercent: Math.round((completedCount / RITUAL_STEP_COUNT) * 100),
+    allComplete: completedCount === RITUAL_STEP_COUNT,
     checkInEmotion: stored.checkIn?.emotion ?? null,
   }
 }

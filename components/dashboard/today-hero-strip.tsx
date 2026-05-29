@@ -1,16 +1,21 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArrowRight, CheckCircle2, Circle, Sparkles } from "lucide-react"
+import { fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
+import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 import { formatPnL } from "@/lib/trade-utils"
 import { Button } from "@/components/ui/button"
 import { EMOTION_OPTIONS } from "@/lib/trade-form-config"
 import type { LeakEngineInput } from "@/lib/behavior"
+import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
 import {
   buildDailyRitualView,
+  hasCompletedCoachSessionToday,
   loadDailyRitualState,
   markRitualCheckIn,
   markRitualDebriefComplete,
+  RITUAL_STEP_COUNT,
   type RitualStepId,
 } from "@/lib/daily-ritual"
 import { getTodayPrimaryAction } from "@/lib/dashboard-today"
@@ -20,9 +25,11 @@ type TodayHeroStripProps = {
   userId: string
   trades: LeakEngineInput["trades"]
   maxRiskPerTrade: number
-  hasPlannedCoachInProgress: boolean
+  plannedSessions?: PlannedCoachSessionItem[]
+  onOpenWarRoom?: () => void
   onOpenCoach: () => void
   onOpenLog: () => void
+  onOpenWeeklyDebrief?: () => void
   onViewPerformance?: () => void
   onCoachEngaged?: () => void
   className?: string
@@ -32,9 +39,11 @@ export function TodayHeroStrip({
   userId,
   trades,
   maxRiskPerTrade,
-  hasPlannedCoachInProgress,
+  plannedSessions = [],
+  onOpenWarRoom,
   onOpenCoach,
   onOpenLog,
+  onOpenWeeklyDebrief,
   onViewPerformance,
   onCoachEngaged,
   className,
@@ -43,11 +52,23 @@ export function TodayHeroStrip({
   const [showCheckIn, setShowCheckIn] = useState(false)
   const [debriefOpen, setDebriefOpen] = useState(false)
   const [selectedEmotion, setSelectedEmotion] = useState("Calm")
+  const [watchlistReady, setWatchlistReady] = useState(true)
+
+  useEffect(() => {
+    void fetchWeeklyPlan()
+      .then((plan) => setWatchlistReady(isWatchlistComplete(plan)))
+      .catch(() => setWatchlistReady(true))
+  }, [])
 
   const storedState = useMemo(() => {
     void storedVersion
     return loadDailyRitualState(userId)
   }, [userId, storedVersion])
+
+  const hasCompletedCoachToday = useMemo(
+    () => hasCompletedCoachSessionToday(plannedSessions),
+    [plannedSessions],
+  )
 
   const view = useMemo(
     () =>
@@ -55,10 +76,11 @@ export function TodayHeroStrip({
         userId,
         trades,
         maxRiskPerTrade,
-        hasPlannedCoachInProgress,
+        warRoomReady: watchlistReady,
+        hasCompletedCoachToday,
         storedState,
       }),
-    [userId, trades, maxRiskPerTrade, hasPlannedCoachInProgress, storedState],
+    [userId, trades, maxRiskPerTrade, watchlistReady, hasCompletedCoachToday, storedState],
   )
 
   const action = useMemo(() => getTodayPrimaryAction(view), [view])
@@ -67,11 +89,13 @@ export function TodayHeroStrip({
   function handlePrimaryCta() {
     if (view.allComplete) {
       onViewPerformance?.()
-      document.getElementById("dashboard-performance")?.scrollIntoView({ behavior: "smooth" })
       return
     }
 
     switch (action.stepId) {
+      case "war-room":
+        onOpenWarRoom?.()
+        break
       case "check-in":
         setShowCheckIn(true)
         break
@@ -125,7 +149,7 @@ export function TodayHeroStrip({
             />
           </div>
           <span className="text-[10px] font-medium tabular-nums text-foreground/85">
-            {view.completedCount}/4
+            {view.completedCount}/{RITUAL_STEP_COUNT}
           </span>
         </div>
       </div>
@@ -212,19 +236,31 @@ export function TodayHeroStrip({
             <p className="text-[12px] leading-relaxed text-foreground/90">
               {view.debrief.correctiveAction}
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 w-full border-white/[0.1] bg-white/[0.03]"
-              disabled={view.debrief.tradeCount === 0}
-              onClick={() => {
-                markRitualDebriefComplete(userId)
-                bumpStorage()
-                setDebriefOpen(false)
-              }}
-            >
-              Close today&apos;s session
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {onOpenWeeklyDebrief ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 flex-1 border-cyan-glow/25 bg-cyan-glow/[0.04] text-cyan-glow"
+                  onClick={onOpenWeeklyDebrief}
+                >
+                  Weekly debrief
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 flex-1 border-white/[0.1] bg-white/[0.03]"
+                disabled={view.debrief.tradeCount === 0}
+                onClick={() => {
+                  markRitualDebriefComplete(userId)
+                  bumpStorage()
+                  setDebriefOpen(false)
+                }}
+              >
+                Close today&apos;s session
+              </Button>
+            </div>
           </div>
         )}
     </section>

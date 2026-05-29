@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Brain, Eye, Loader2, Send, Sparkles, X } from "lucide-react"
+import { Brain, ChevronDown, ClipboardList, Eye, Loader2, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CoachWatchlistPairSelect } from "@/components/dashboard/coach-watchlist-pair-select"
 import { CoachMtfUploadGrid } from "@/components/dashboard/coach-mtf-upload-grid"
+import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { CoachChartOverlayStrip } from "@/components/chart-annotations/coach-chart-overlay-strip"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { resolveChartAnnotationsForTimeframe } from "@/lib/chart-annotations/session-overlays"
@@ -32,7 +34,20 @@ import {
   updateCoachSessionContext,
 } from "@/lib/strategy/api-client"
 import type { StrategyPlaybookRecord } from "@/lib/strategy/types"
-import { resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
+import { MTF_TIMEFRAME_IDS } from "@/lib/coach/mtf-constants"
+import { getMtfScreenshotsFromSession, resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
+import {
+  fetchWarRoomVisionAutofill,
+  fetchWeeklyPlan,
+  saveMarketBias,
+  saveWeeklyPlan,
+} from "@/lib/strategy-brain/api-client"
+import {
+  marketBiasInputFromVision,
+  mergeAutofillIntoWeeklyPlan,
+  plannedContextPatchFromVision,
+} from "@/lib/trade-coach/coach-plan-autofill"
+import { useToast } from "@/hooks/use-toast"
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
 import type { ChartVisionProviderId } from "@/lib/coach/types"
 import {
@@ -43,6 +58,7 @@ import {
   getQuestionByKey,
   isMtfAnalysisComplete,
   validateAnswer,
+  type CoachWorkflowPhase,
 } from "@/lib/trade-coach/pre-trade-flow"
 import type {
   PreTradePlannedContext,
@@ -54,6 +70,7 @@ import { resolveTradeQualityFromSession } from "@/lib/trade-coach/trade-quality-
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { TRADE_QUALITY_BLOCK_THRESHOLD } from "@/lib/trade-coach/trade-quality-engine"
 import { MessageHistoryToggle } from "@/components/ui/message-history-toggle"
+import { TradingViewAlertCoachSummary } from "@/components/tradingview/tradingview-alert-coach-summary"
 import { cn } from "@/lib/utils"
 
 const StrategyPlaybookMatchPanel = dynamic(
@@ -94,6 +111,8 @@ type TradeCoachPanelProps = {
   sessionId?: string | null
   onSessionChange?: (sessionId: string | null) => void
   onCompleted?: (sessionId: string) => void
+  onLogPlannedTrade?: (sessionId: string) => void
+  onWorkflowPhaseChange?: (phase: CoachWorkflowPhase) => void
 }
 
 type TradeCoachModalProps = Omit<TradeCoachPanelProps, "active" | "embedded" | "showHeader"> & {
@@ -139,12 +158,16 @@ export function TradeCoachPanel({
   sessionId,
   onSessionChange,
   onCompleted,
+  onLogPlannedTrade,
+  onWorkflowPhaseChange,
 }: TradeCoachPanelProps) {
   const [session, setSession] = useState<TradeCoachSessionWithMessages | null>(null)
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isAutofilling, setIsAutofilling] = useState(false)
+  const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const [riskAcknowledged, setRiskAcknowledged] = useState(false)
   const [isRecordingOverride, setIsRecordingOverride] = useState(false)
@@ -158,6 +181,7 @@ export function TradeCoachPanel({
   } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const previousSessionStatusRef = useRef<string | null>(null)
+  const [mtfDetailsOpen, setMtfDetailsOpen] = useState(false)
 
   const mtfAnalysis = useMemo(() => {
     if (!session) return null
@@ -229,7 +253,12 @@ export function TradeCoachPanel({
   const activeQuestion = useMemo(
     () =>
       session
-        ? getActiveQuestionFromSession(session.messages, session.planned_context, session.chart_url)
+        ? getActiveQuestionFromSession(
+            session.messages,
+            session.planned_context,
+            session.chart_url,
+            session,
+          )
         : null,
     [session],
   )
@@ -245,8 +274,8 @@ export function TradeCoachPanel({
 
   const totalQuestions = useMemo(() => estimateQuestionCount(), [])
 
-  const workflowPhase = useMemo(() => {
-    if (!session) return "upload" as const
+  const workflowPhase = useMemo((): CoachWorkflowPhase => {
+    if (!session) return "upload"
     return getCoachWorkflowPhase({
       status: session.status,
       chartUrl: session.chart_url,
@@ -255,6 +284,20 @@ export function TradeCoachPanel({
       session,
     })
   }, [session, responses])
+
+  useEffect(() => {
+    onWorkflowPhaseChange?.(workflowPhase)
+  }, [workflowPhase, onWorkflowPhaseChange])
+
+  useEffect(() => {
+    if (workflowPhase !== "questions") setMtfDetailsOpen(false)
+  }, [workflowPhase])
+
+  const uploadFocusMode =
+    embedded &&
+    workflowPhase === "upload" &&
+    session?.planned_context?.signal_source !== "tradingview"
+  const collapseMtfForCheckIn = embedded && workflowPhase === "questions" && !mtfDetailsOpen
 
   const coachAnalysis = session?.planned_context?.coach_analysis
   const tradeQuality = resolveTradeQualityFromSession(session)
@@ -322,6 +365,28 @@ export function TradeCoachPanel({
     setSelectedPlaybookId(session.planned_context?.strategy_playbook_id ?? null)
   }, [session?.id, session?.planned_context?.strategy_playbook_id])
 
+  async function handleWatchlistPair(context: PreTradePlannedContext) {
+    if (!session) return
+    setIsUpdatingPlaybook(true)
+    setError(null)
+    try {
+      const updated = await updateCoachSessionContext(session.id, {
+        pair: context.pair,
+        direction: context.direction,
+        strategy_name: context.strategy_name ?? undefined,
+        higher_timeframe: context.higher_timeframe,
+        entry_timeframe: context.entry_timeframe,
+        confirmation_timeframe: context.confirmation_timeframe,
+      })
+      setSession(updated)
+      onSessionChange?.(updated.id)
+    } catch (pairError) {
+      setError(pairError instanceof Error ? pairError.message : "Could not set pair")
+    } finally {
+      setIsUpdatingPlaybook(false)
+    }
+  }
+
   async function handlePlaybookChange(playbookId: string) {
     if (!session) return
     const playbook = playbooks.find((row) => row.id === playbookId)
@@ -372,6 +437,65 @@ export function TradeCoachPanel({
       onCompleted?.(session.id)
     }
   }, [session?.id, session?.status, onCompleted])
+
+  async function handleAutofillFromCharts() {
+    if (!session) return
+    const screenshots = getMtfScreenshotsFromSession(session)
+    const imageUrls = MTF_TIMEFRAME_IDS.map((tf) => screenshots[tf]).filter(
+      (url): url is string => Boolean(url),
+    )
+    if (imageUrls.length === 0) {
+      setError("Upload at least one chart screenshot first.")
+      return
+    }
+
+    setIsAutofilling(true)
+    setError(null)
+    try {
+      const autofill = await fetchWarRoomVisionAutofill({
+        imageUrls,
+        pairHint: session.planned_context?.pair,
+      })
+
+      const contextPatch = plannedContextPatchFromVision(autofill)
+      const updated = await updateCoachSessionContext(session.id, {
+        pair: contextPatch.pair,
+        direction: contextPatch.direction,
+        strategy_name: contextPatch.strategy_name ?? undefined,
+        higher_timeframe: contextPatch.higher_timeframe,
+        entry_timeframe: contextPatch.entry_timeframe,
+        confirmation_timeframe: contextPatch.confirmation_timeframe,
+      })
+      setSession(updated)
+      onSessionChange?.(updated.id)
+
+      try {
+        const weekPlan = await fetchWeeklyPlan().catch(() => null)
+        await saveWeeklyPlan({
+          week_start: weekPlan?.week_start,
+          session_notes: weekPlan?.session_notes ?? "",
+          pairs: mergeAutofillIntoWeeklyPlan(weekPlan, autofill, imageUrls),
+        })
+        await saveMarketBias(marketBiasInputFromVision(autofill))
+      } catch {
+        // War Room tables optional — coach autofill still applied
+      }
+
+      toast({
+        title: "Plan autofilled",
+        description: autofill.available
+          ? `${autofill.pair} · ${autofill.inferredStack} — review AOI prices, then run MTF analysis.`
+          : autofill.comparisonSummary,
+      })
+    } catch (autofillError) {
+      const message =
+        autofillError instanceof Error ? autofillError.message : "Autofill failed"
+      setError(message)
+      toast({ title: "Autofill failed", description: message, variant: "destructive" })
+    } finally {
+      setIsAutofilling(false)
+    }
+  }
 
   async function handleRunMtfAnalysis() {
     if (!session) return
@@ -516,7 +640,10 @@ export function TradeCoachPanel({
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           ref={scrollRef}
-          className="trade-coach-modal-scroll mobile-safe-scroll min-h-0 flex-1 space-y-2 px-3 py-2 sm:space-y-3 sm:px-4 sm:py-3 md:px-6 md:py-4"
+          className={cn(
+            "trade-coach-modal-scroll mobile-safe-scroll min-h-0 flex-1 space-y-2 px-3 py-2 sm:space-y-3 sm:px-4 sm:py-3 md:px-6 md:py-4",
+            uploadFocusMode && "max-h-0 flex-none overflow-hidden p-0 opacity-0",
+          )}
         >
           {isLoading ? (
             <div className="flex min-h-[240px] items-center justify-center">
@@ -524,7 +651,34 @@ export function TradeCoachPanel({
             </div>
           ) : (
             <>
-              {mtfAnalysis && workflowPhase !== "upload" && (
+              {session?.planned_context?.signal_source === "tradingview" ? (
+                <TradingViewAlertCoachSummary plannedContext={session.planned_context} />
+              ) : null}
+              {mtfAnalysis && workflowPhase !== "upload" && collapseMtfForCheckIn ? (
+                <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                        Analysis complete
+                      </p>
+                      <p className="mt-0.5 truncate text-[12px] font-medium text-foreground/90">
+                        {mtfAnalysis.overallScore}/100 · {mtfAnalysis.recommendation} · scroll down for check-in
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shrink-0 border-white/[0.1] text-[11px]"
+                      onClick={() => setMtfDetailsOpen(true)}
+                    >
+                      Details
+                      <ChevronDown className="ml-1 size-3.5" />
+                    </Button>
+                  </div>
+                </DashboardInsetPanel>
+              ) : null}
+              {mtfAnalysis && workflowPhase !== "upload" && !collapseMtfForCheckIn ? (
                 <MtfAnalysisPanel
                   analysis={mtfAnalysis}
                   session={session}
@@ -541,9 +695,9 @@ export function TradeCoachPanel({
                     })
                   }}
                 />
-              )}
+              ) : null}
 
-              {playbookMatch && workflowPhase !== "upload" && (
+              {playbookMatch && workflowPhase !== "upload" && !collapseMtfForCheckIn && (
                 <StrategyPlaybookMatchPanel
                   match={playbookMatch}
                   compact={workflowPhase === "questions"}
@@ -573,7 +727,10 @@ export function TradeCoachPanel({
             "trade-coach-modal-footer mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3.5 md:px-6 md:py-4",
             workflowPhase === "upload"
               ? "mobile-form-footer--upload overflow-visible"
-              : "overflow-y-auto sm:max-h-[min(38vh,340px)]",
+              : embedded && workflowPhase === "questions"
+                ? "overflow-visible"
+                : "overflow-y-auto sm:max-h-[min(38vh,340px)]",
+            uploadFocusMode && "min-h-0 flex-1 overflow-y-auto",
           )}
         >
           {isComplete ? (
@@ -587,7 +744,12 @@ export function TradeCoachPanel({
                 />
               )}
 
-              {tradeQuality && <TradeQualityPanel quality={tradeQuality} />}
+              {tradeQuality && (
+                <TradeQualityPanel
+                  quality={tradeQuality}
+                  warRoomAlertGrade={session.planned_context.tradingview_setup_grade ?? null}
+                />
+              )}
 
               {requiresOverride && (
                 <DashboardInsetPanel className="border-loss/25 bg-loss/[0.06] px-3 py-3">
@@ -623,29 +785,73 @@ export function TradeCoachPanel({
               )}
 
               {!requiresOverride && (
-                <DashboardInsetPanel className="border-profit/20 bg-profit/[0.06] px-3 py-3">
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="mt-0.5 size-4 shrink-0 text-profit" />
-                    <div className="space-y-2">
-                      <p className="text-[12px] font-medium text-foreground/90">Pre-trade plan saved</p>
-                      {mtfAnalysis && (
-                        <p className="text-[11px] font-medium text-foreground/85">
-                          MTF recommendation: {mtfAnalysis.recommendation}
+                <div className="space-y-3">
+                  <DashboardInsetPanel className="border-profit/20 bg-profit/[0.06] px-3 py-3">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="mt-0.5 size-4 shrink-0 text-profit" />
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-medium text-foreground/90">Pre-trade plan saved</p>
+                        {mtfAnalysis && (
+                          <p className="text-[11px] font-medium text-foreground/85">
+                            MTF recommendation: {mtfAnalysis.recommendation}
+                          </p>
+                        )}
+                        {coachAnalysis && !tradeQuality && shouldTakeLabel && (
+                          <p className="text-[11px] text-muted-foreground/75">{shouldTakeLabel}</p>
+                        )}
+                        <p className="text-[11px] leading-relaxed text-muted-foreground/75">
+                          Log the trade to link plan vs outcome and unlock coach review.
                         </p>
-                      )}
-                      {coachAnalysis && !tradeQuality && shouldTakeLabel && (
-                        <p className="text-[11px] text-muted-foreground/75">{shouldTakeLabel}</p>
-                      )}
-                      <p className="text-[11px] leading-relaxed text-muted-foreground/75">
-                        Log the trade in your journal when execution is done.
-                      </p>
+                      </div>
                     </div>
-                  </div>
-                </DashboardInsetPanel>
+                  </DashboardInsetPanel>
+                  {onLogPlannedTrade && session ? (
+                    <Button
+                      type="button"
+                      onClick={() => onLogPlannedTrade(session.id)}
+                      className="h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
+                    >
+                      <ClipboardList className="mr-2 size-4" />
+                      Log this trade
+                    </Button>
+                  ) : null}
+                </div>
               )}
             </div>
           ) : workflowPhase === "upload" && session ? (
             <div className="space-y-3">
+              {error ? (
+                <DashboardInsetPanel className="border-loss/20 bg-loss/[0.06] px-3 py-2.5">
+                  <p className="text-[12px] text-loss/90">{error}</p>
+                </DashboardInsetPanel>
+              ) : null}
+              <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
+                <p className="text-[12px] font-semibold text-foreground/90">
+                  Upload charts — {session.planned_context.pair || "select pair below"}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/75">
+                  Weekly, Daily, H4, H1, M15 in order. Use{" "}
+                  <span className="text-foreground/85">Add 5 at once</span> or multi-select, then{" "}
+                  <span className="text-foreground/85">Autofill</span> or{" "}
+                  <span className="text-foreground/85">Run analysis</span>.
+                </p>
+              </DashboardInsetPanel>
+
+              <CoachMtfUploadGrid
+                session={session}
+                disabled={isLoading || isSubmitting}
+                onSessionUpdate={setSession}
+                onAutofillFromCharts={handleAutofillFromCharts}
+                isAutofilling={isAutofilling}
+                onRunAnalysis={handleRunMtfAnalysis}
+                isAnalyzing={isAnalyzing}
+              />
+
+              <CoachWatchlistPairSelect
+                plannedContext={session.planned_context}
+                disabled={isLoading || isUpdatingPlaybook}
+                onPairSelected={(context) => void handleWatchlistPair(context)}
+              />
               {playbooks.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
@@ -686,21 +892,32 @@ export function TradeCoachPanel({
                         <span className="text-foreground/85">
                           Score {mtfAnalysis.overallScore}/100 · {mtfAnalysis.recommendation}
                         </span>
+                        {(playbookMatch?.setupGrade ||
+                          mtfAnalysis.playbookMatch?.setupGrade) && (
+                          <SetupGradeBadge
+                            grade={
+                              playbookMatch?.setupGrade ??
+                              mtfAnalysis.playbookMatch!.setupGrade
+                            }
+                            className="ml-1"
+                          />
+                        )}
                       </>
                     )}
                   </div>
                 </DashboardInsetPanel>
               )}
-              <CoachMtfUploadGrid
-                session={session}
-                disabled={isLoading || isSubmitting}
-                onSessionUpdate={setSession}
-                onRunAnalysis={handleRunMtfAnalysis}
-                isAnalyzing={isAnalyzing}
-              />
             </div>
           ) : questionDef && activeQuestion ? (
             <div className="space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[12px] font-semibold leading-snug text-foreground/90">
+                  {activeQuestion.prompt}
+                </p>
+                <span className="shrink-0 rounded-md border border-cyan-glow/20 bg-cyan-glow/[0.06] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-cyan-glow">
+                  {questionProgress + 1}/{totalQuestions}
+                </span>
+              </div>
               {questionDef.type === "select" ? (
                 <Select
                   value={draft || undefined}

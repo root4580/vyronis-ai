@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
-import { Loader2, Plus, RefreshCw, Trash2, Upload, X } from "lucide-react"
+import { Loader2, Plus, RefreshCw, Sparkles, Trash2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { MTF_SLOTS, type CoachMtfTimeframe } from "@/lib/coach/mtf-constants"
@@ -16,6 +16,8 @@ type CoachMtfUploadGridProps = {
   onSessionUpdate: (session: TradeCoachSessionWithMessages) => void
   onRunAnalysis: () => Promise<void>
   isAnalyzing?: boolean
+  onAutofillFromCharts?: () => Promise<void>
+  isAutofilling?: boolean
 }
 
 function MtfSlotDesktop({
@@ -247,6 +249,8 @@ export function CoachMtfUploadGrid({
   onSessionUpdate,
   onRunAnalysis,
   isAnalyzing = false,
+  onAutofillFromCharts,
+  isAutofilling = false,
 }: CoachMtfUploadGridProps) {
   const { uploadMtfChart, uploadingTimeframe, uploadProgress, error, setError } = useCoachMtfUpload(
     session.id,
@@ -254,8 +258,10 @@ export function CoachMtfUploadGrid({
   const screenshots = getMtfScreenshotsFromSession(session)
   const uploadedCount = countMtfScreenshots(screenshots)
   const addInputRef = useRef<HTMLInputElement>(null)
+  const bulkInputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null)
   const [addTarget, setAddTarget] = useState<CoachMtfTimeframe | null>(null)
+  const [isBulkUploading, setIsBulkUploading] = useState(false)
 
   const firstEmptySlot = useMemo(
     () => MTF_SLOTS.find((slot) => !screenshots[slot.id])?.id ?? null,
@@ -309,13 +315,57 @@ export function CoachMtfUploadGrid({
     requestAnimationFrame(() => addInputRef.current?.click())
   }
 
+  const emptySlots = useMemo(
+    () => MTF_SLOTS.filter((slot) => !screenshots[slot.id]).map((slot) => slot.id),
+    [screenshots],
+  )
+
+  async function handleBulkUpload(fileList: FileList | File[]) {
+    const files = Array.from(fileList)
+    if (files.length === 0 || emptySlots.length === 0) return
+
+    const batch = files.slice(0, emptySlots.length)
+    if (files.length > emptySlots.length) {
+      setError(
+        `Only ${emptySlots.length} slot(s) open — using the first ${emptySlots.length} files (W→M15 order).`,
+      )
+    } else {
+      setError(null)
+    }
+
+    setIsBulkUploading(true)
+    try {
+      for (let i = 0; i < batch.length; i++) {
+        await uploadMtfChart(emptySlots[i], batch[i])
+      }
+      const refreshed = await fetch(`/api/coach/sessions/${session.id}`, {
+        credentials: "same-origin",
+      }).then((response) => response.json())
+      onSessionUpdate(refreshed)
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : "Bulk upload failed")
+      try {
+        const refreshed = await fetch(`/api/coach/sessions/${session.id}`, {
+          credentials: "same-origin",
+        }).then((response) => response.json())
+        onSessionUpdate(refreshed)
+      } catch {
+        // ignore refresh failure
+      }
+    } finally {
+      setIsBulkUploading(false)
+    }
+  }
+
+  const uploadBusy = Boolean(uploadingTimeframe) || isBulkUploading
+
   return (
     <div className="coach-mtf-upload-root flex flex-col gap-2">
       <div className="coach-mtf-upload-zone shrink-0">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] font-medium text-foreground/85">{countLabel}</p>
           {uploadedCount < 5 ? (
-            <p className="text-[10px] text-amber-400/85">Up to 5 timeframes</p>
+            <p className="text-[10px] text-amber-400/85">Select up to 5 at once (W→M15)</p>
           ) : null}
         </div>
 
@@ -340,22 +390,39 @@ export function CoachMtfUploadGrid({
               }
               return null
             })}
-            {firstEmptySlot ? (
-              <button
-                type="button"
-                disabled={disabled || Boolean(uploadingTimeframe)}
-                onClick={triggerAddCharts}
-                className="chart-upload-thumb chart-upload-add-btn shrink-0 border border-dashed border-white/[0.14] bg-white/[0.03] text-muted-foreground/80 hover:border-cyan-glow/35 hover:text-cyan-glow"
-              >
-                {uploadingTimeframe && !screenshots[uploadingTimeframe] ? (
-                  <Loader2 className="size-4 animate-spin text-cyan-glow" />
-                ) : (
-                  <>
-                    <Plus className="size-4" />
-                    <span className="mt-0.5 text-[9px] font-medium">Add Charts</span>
-                  </>
-                )}
-              </button>
+            {emptySlots.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  disabled={disabled || uploadBusy}
+                  onClick={() => bulkInputRef.current?.click()}
+                  className="chart-upload-thumb chart-upload-add-btn shrink-0 border border-dashed border-cyan-glow/30 bg-cyan-glow/[0.06] text-cyan-glow hover:border-cyan-glow/45"
+                >
+                  {isBulkUploading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="size-4" />
+                      <span className="mt-0.5 text-[9px] font-medium">Add {emptySlots.length} at once</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled || uploadBusy}
+                  onClick={triggerAddCharts}
+                  className="chart-upload-thumb chart-upload-add-btn shrink-0 border border-dashed border-white/[0.14] bg-white/[0.03] text-muted-foreground/80 hover:border-cyan-glow/35 hover:text-cyan-glow"
+                >
+                  {uploadingTimeframe && !screenshots[uploadingTimeframe] ? (
+                    <Loader2 className="size-4 animate-spin text-cyan-glow" />
+                  ) : (
+                    <>
+                      <Plus className="size-4" />
+                      <span className="mt-0.5 text-[9px] font-medium">One chart</span>
+                    </>
+                  )}
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -392,6 +459,36 @@ export function CoachMtfUploadGrid({
             setAddTarget(null)
           }}
         />
+        <input
+          ref={bulkInputRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          className="hidden"
+          disabled={disabled || emptySlots.length === 0 || uploadBusy}
+          onChange={(event) => {
+            const list = event.target.files
+            if (list?.length) void handleBulkUpload(list)
+            event.target.value = ""
+          }}
+        />
+        {emptySlots.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2 hidden h-8 w-full text-[10px] sm:flex border-cyan-glow/25 text-cyan-glow"
+            disabled={disabled || uploadBusy}
+            onClick={() => bulkInputRef.current?.click()}
+          >
+            {isBulkUploading ? (
+              <Loader2 className="mr-1 size-3 animate-spin" />
+            ) : (
+              <Upload className="mr-1 size-3" />
+            )}
+            Upload {Math.min(emptySlots.length, 5)} charts at once (Weekly → M15 order)
+          </Button>
+        ) : null}
       </div>
 
       {error && (
@@ -401,9 +498,38 @@ export function CoachMtfUploadGrid({
         </p>
       )}
 
+      {onAutofillFromCharts ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            disabled ||
+            uploadedCount === 0 ||
+            isAnalyzing ||
+            isAutofilling ||
+            uploadBusy
+          }
+          onClick={() => void onAutofillFromCharts()}
+          className="h-10 w-full shrink-0 border-cyan-glow/25 bg-cyan-glow/[0.06] text-[12px] text-cyan-glow"
+        >
+          {isAutofilling ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Sparkles className="mr-2 size-4" />
+          )}
+          Autofill plan from charts ({uploadedCount}/5)
+        </Button>
+      ) : null}
+
       <Button
         type="button"
-        disabled={disabled || uploadedCount === 0 || isAnalyzing || Boolean(uploadingTimeframe)}
+        disabled={
+          disabled ||
+          uploadedCount === 0 ||
+          isAnalyzing ||
+          isAutofilling ||
+          uploadBusy
+        }
         onClick={() => void onRunAnalysis()}
         className="mobile-sticky-submit h-11 w-full shrink-0 bg-gradient-to-r from-cyan-glow to-profit text-background"
       >

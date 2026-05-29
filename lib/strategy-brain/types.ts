@@ -1,4 +1,4 @@
-/** Discretionary forex strategy doctrine — Top-Down AOI (Vyronis playbook). */
+/** Discretionary forex doctrine — Multi-Timeframe FX Continuation (Vyronis playbook). */
 
 export type BiasDirection = "Bullish" | "Bearish" | "Neutral"
 
@@ -192,6 +192,13 @@ export type StrategySetupEvaluationResult = {
   scoring: ScoringResult
   memoryInsight: string | null
   evaluationId?: string
+}
+
+export type WeeklyWatchlistSnapshot = {
+  weekStart: string
+  pairCount: number
+  watchlistComplete: boolean
+  pairs: string[]
 }
 
 export type StrategyBrainDashboard = {

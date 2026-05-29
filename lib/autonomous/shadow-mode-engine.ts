@@ -1,6 +1,12 @@
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
 import { effectiveEmotionalRisk } from "@/lib/intelligence/session-recovery-engine"
+import {
+  allowHistoricalStandDown,
+  getContextTodayTrades,
+  isFreshTradingDay,
+  isHistoricalCautionOnly,
+} from "@/lib/intelligence/trading-day-boundary"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import type { ShadowAssessment, ShadowRiskLevel } from "@/lib/autonomous/types"
 
@@ -47,9 +53,9 @@ export function evaluateShadowMode(input: {
   }
 
   const recovery = context.sessionRecovery
-  const historicalOnly =
-    recovery?.carryoverMode === "historical_caution" &&
-    recovery.sessionGuardMode === "soft_caution"
+  const freshDay = isFreshTradingDay(context)
+  const historicalOnly = isHistoricalCautionOnly(context)
+  const canHistoricalPause = allowHistoricalStandDown(context)
 
   if (context.emotionalState.trend === "volatile") {
     emotionalRisk += historicalOnly ? 10 : 22
@@ -81,11 +87,20 @@ export function evaluateShadowMode(input: {
     disciplineDrift += 15
   }
 
-  const recentLosses = context.recentTrades.slice(0, 3).filter((t) => t.result === "LOSS").length
+  const lossSample = freshDay
+    ? getContextTodayTrades(context)
+    : context.recentTrades.slice(0, 3)
+  const recentLosses = lossSample.filter((t) => t.result === "LOSS").length
   if (recentLosses >= 2) {
-    revengeSignal += 35
-    emotionalRisk += 18
-    flags.push("Back-to-back losses — revenge risk elevated")
+    revengeSignal += freshDay ? 20 : 35
+    emotionalRisk += freshDay ? 10 : 18
+    flags.push(
+      freshDay
+        ? "Multiple losses today — revenge risk elevated"
+        : "Back-to-back losses — revenge risk elevated",
+    )
+  } else if (freshDay && historicalOnly) {
+    revengeSignal = Math.min(revengeSignal, 28)
   }
 
   if (context.risk.todayLossPercent >= context.settings.daily_drawdown_limit * 0.7) {
@@ -142,10 +157,20 @@ export function evaluateShadowMode(input: {
   )
 
   const overallRiskLevel = riskLevel(composite)
-  const shouldPause =
-    overallRiskLevel === "critical" ||
-    emotionalRisk >= 78 ||
-    (recovery?.sessionGuardMode === "aggressive_protect" && emotionalRisk >= 65)
+  const atDailyLimit =
+    todayCount >= maxTrades ||
+    context.risk.todayLossPercent >= context.settings.daily_drawdown_limit
+
+  let shouldPause =
+    atDailyLimit ||
+    (canHistoricalPause &&
+      (overallRiskLevel === "critical" ||
+        emotionalRisk >= 78 ||
+        (recovery?.sessionGuardMode === "aggressive_protect" && emotionalRisk >= 65)))
+
+  if (freshDay && historicalOnly && !canHistoricalPause) {
+    shouldPause = atDailyLimit
+  }
 
   let proactiveMessage = "Shadow read: conditions look manageable — stay with your plan."
   if (shouldPause) {

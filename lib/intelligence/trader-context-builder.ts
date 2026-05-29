@@ -5,6 +5,8 @@ import {
   buildMistakeHeatmap,
 } from "@/lib/learning/pattern-detection"
 import type { LearningTradeRow } from "@/lib/learning/types"
+import { getWeeklyPlanWithPairs } from "@/lib/strategy-brain/server-service"
+import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
 import { listStrategyPlaybooks } from "@/lib/strategy/server-service"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import {
@@ -176,6 +178,11 @@ export async function buildFullTraderContext(
   const settings = await loadUserSettingsRecord(supabase, userId)
   const extendedTrades = await loadExtendedTrades(supabase, userId)
   const playbooks = await listStrategyPlaybooks(supabase, userId).catch(() => [])
+  const weeklyWeekPlan = await getWeeklyPlanWithPairs(
+    supabase,
+    userId,
+    getWeekStartSunday(),
+  ).catch(() => null)
   const weeklyReview = await loadLatestWeeklyReview(supabase, userId)
   const compressedMemories = await loadMemoryInsights(supabase, userId)
 
@@ -212,6 +219,7 @@ export async function buildFullTraderContext(
     sessionPerformance: analytics.sessionPerformance,
     weeklyReview,
     playbooks,
+    weeklyWeekPlan,
     compressedMemories,
     recentMessages,
     activePlannedContext: resolveActivePlannedContext(

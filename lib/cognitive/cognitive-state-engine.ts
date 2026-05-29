@@ -1,4 +1,6 @@
+import { isFreshTradingDay } from "@/lib/intelligence/trading-day-boundary"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
+import { getTodayTrades } from "@/lib/user-settings"
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import type {
   CognitiveEngineInput,
@@ -14,6 +16,7 @@ function clamp(n: number): number {
 
 function scoreStates(input: CognitiveEngineInput): Map<CognitiveTraderState, number> {
   const { context } = input
+  const freshDay = isFreshTradingDay(context)
   const scores = new Map<CognitiveTraderState, number>([
     ["calm", 40],
     ["focused", 35],
@@ -25,9 +28,11 @@ function scoreStates(input: CognitiveEngineInput): Map<CognitiveTraderState, num
   ])
 
   const emotion = String(
-    context.activePlannedContext?.emotion ||
-      context.emotionalState.dominantEmotion ||
-      "",
+    freshDay
+      ? context.activePlannedContext?.emotion || ""
+      : context.activePlannedContext?.emotion ||
+          context.emotionalState.dominantEmotion ||
+          "",
   ).toLowerCase()
 
   if (IMPULSIVE.has(emotion)) {
@@ -37,16 +42,17 @@ function scoreStates(input: CognitiveEngineInput): Map<CognitiveTraderState, num
   }
 
   if (context.emotionalState.trend === "volatile") {
-    scores.set("impulsive", (scores.get("impulsive") ?? 0) + 25)
-    scores.set("calm", (scores.get("calm") ?? 0) - 20)
+    const volatileBoost = freshDay ? 8 : 25
+    scores.set("impulsive", (scores.get("impulsive") ?? 0) + volatileBoost)
+    scores.set("calm", (scores.get("calm") ?? 0) - (freshDay ? 6 : 20))
   }
 
-  if (context.emotionalState.impulsiveCount >= 2) {
+  if (!freshDay && context.emotionalState.impulsiveCount >= 2) {
     scores.set("impulsive", (scores.get("impulsive") ?? 0) + 20)
   }
 
   const patterns = detectTraderPatterns(context)
-  if (patterns.some((p) => p.id === "reversal_chasing")) {
+  if (!freshDay && patterns.some((p) => p.id === "reversal_chasing")) {
     scores.set("revenge_driven", (scores.get("revenge_driven") ?? 0) + 30)
   }
   if (patterns.some((p) => p.id === "overtrading")) {
@@ -60,7 +66,9 @@ function scoreStates(input: CognitiveEngineInput): Map<CognitiveTraderState, num
     scores.set("fatigued", (scores.get("fatigued") ?? 0) + 22)
   }
 
-  const recent = context.recentTrades.slice(0, 6)
+  const recent = freshDay
+    ? getTodayTrades(context.recentTrades)
+    : context.recentTrades.slice(0, 6)
   const wins = recent.filter((t) => t.result === "WIN").length
   if (recent.length >= 4 && wins / recent.length >= 0.65) {
     scores.set("euphoric", (scores.get("euphoric") ?? 0) + 18)

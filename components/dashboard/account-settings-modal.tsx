@@ -14,6 +14,7 @@ import {
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { TradingViewWebhookSettings } from "@/components/tradingview/tradingview-webhook-settings"
 import { Mt5IntegrationsCollapsible } from "@/components/integrations/mt5-integrations-collapsible"
+import { ProductionDeployChecklist } from "@/components/settings/production-deploy-checklist"
 import { PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
 
 type AccountSettingsModalProps = {
@@ -223,6 +224,8 @@ export function AccountSettingsModal({
                 Dashboard balance = starting balance + total P&L from logged trades.
               </p>
             </DashboardInsetPanel>
+
+            <ProductionDeployChecklist />
 
             <TradingViewWebhookSettings />
 

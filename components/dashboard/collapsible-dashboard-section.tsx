@@ -5,29 +5,42 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type CollapsibleDashboardSectionProps = {
+  id?: string
   title: string
   subtitle?: string
   defaultOpen?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   collapseOnMobile?: boolean
   children: React.ReactNode
   className?: string
 }
 
 export function CollapsibleDashboardSection({
+  id,
   title,
   subtitle,
   defaultOpen = true,
+  open: openProp,
+  onOpenChange,
   collapseOnMobile = true,
   children,
   className,
 }: CollapsibleDashboardSectionProps) {
-  const [open, setOpen] = useState(defaultOpen)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : uncontrolledOpen
+
+  function setOpen(next: boolean) {
+    if (isControlled) onOpenChange?.(next)
+    else setUncontrolledOpen(next)
+  }
 
   return (
-    <section className={cn("dashboard-section", className)}>
+    <section id={id} className={cn("dashboard-section", className)}>
       <button
         type="button"
-        onClick={() => collapseOnMobile && setOpen((v) => !v)}
+        onClick={() => collapseOnMobile && setOpen(!open)}
         className={cn(
           "flex w-full items-center justify-between gap-2 text-left",
           collapseOnMobile && "lg:pointer-events-none",

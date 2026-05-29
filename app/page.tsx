@@ -34,6 +34,8 @@ import {
   linkCoachSessionToTrade,
 } from "@/lib/trade-coach/api-client"
 import { syncTradeLearningMemory } from "@/lib/learning/api-client"
+import { fetchMt5ScreenshotAutofill } from "@/lib/journal/api-client"
+import { tradeFormPatchFromMt5Autofill } from "@/lib/journal/mt5-trade-form-autofill"
 import {
   buildEmptyPlannedContext,
   buildPlannedContextFromForm,
@@ -57,6 +59,8 @@ import {
 import { DEFAULT_DASHBOARD_PREFERENCES } from "@/lib/user-preferences"
 import {
   buildDashboardHomePath,
+  getDashboardHomeHref,
+  getDashboardTabHref,
   parseTabSearchParam,
 } from "@/lib/dashboard-nav"
 import {
@@ -68,7 +72,9 @@ import {
 import {
   buildUserProfileCardProps,
 } from "@/components/dashboard/user-profile-card"
-import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
+import { ConnectedDashboardChrome } from "@/components/dashboard/connected-dashboard-chrome"
+import { DashboardQuickNav } from "@/components/dashboard/dashboard-quick-nav"
+import { DashboardRecentTradesSection } from "@/components/dashboard/dashboard-recent-trades-section"
 import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
@@ -97,11 +103,16 @@ import {
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
 import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
+import { WeeklyWatchlistBanner } from "@/components/dashboard/weekly-watchlist-banner"
 import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
+import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
+import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
+import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
-import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
-import { markRitualCoachEngaged } from "@/lib/daily-ritual"
+import { WeeklyDebriefPanel } from "@/components/dashboard/weekly-debrief-panel"
+import { parseDashboardPreferences } from "@/lib/user-preferences"
+import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
   buildRepeatTradeDraft,
   getMostRecentTradeForRepeat,
@@ -215,6 +226,7 @@ function Home() {
   const profileWarningShownRef = useRef(false)
   const loadedDashboardUserRef = useRef<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isMt5Autofilling, setIsMt5Autofilling] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [screenshotViewer, setScreenshotViewer] = useState<{ url: string | null; label: string } | null>(null)
@@ -226,8 +238,12 @@ function Home() {
   const [riskGuardResult, setRiskGuardResult] = useState<TradeRiskGuardResult | null>(null)
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
+  const [performanceSectionOpen, setPerformanceSectionOpen] = useState(false)
   const [convertSessionId, setConvertSessionId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard")
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    if (typeof window === "undefined") return "dashboard"
+    return parseTabSearchParam(new URLSearchParams(window.location.search).get("tab")) ?? "dashboard"
+  })
   const [isLoadingTrades, setIsLoadingTrades] = useState(false)
   const [tradesLoadError, setTradesLoadError] = useState<string | null>(null)
   const [dashboardLoadTimedOut, setDashboardLoadTimedOut] = useState(false)
@@ -243,6 +259,17 @@ function Home() {
   const bindOpenCommandCenter = useCallback((open: () => void) => {
     openCommandCenterRef.current = open
   }, [])
+
+  const openDashboardPerformance = useCallback(() => {
+    setActiveTab("dashboard")
+    router.replace(getDashboardTabHref("dashboard"))
+    setPerformanceSectionOpen(true)
+    window.setTimeout(() => {
+      document
+        .getElementById("dashboard-performance")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 120)
+  }, [router])
   const bindOpenPreTradeCoach = useCallback(
     (openPreTrade: (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>) => {
       openPreTradeCoachRef.current = openPreTrade
@@ -380,11 +407,15 @@ function Home() {
       
       setUploadProgress(100)
       const { url } = await response.json()
-      setForm(prev => ({ ...prev, screenshot_url: url }))
-      toast({
-        title: "Screenshot uploaded",
-        description: "Your chart screenshot has been attached to this trade.",
-      })
+      setForm((prev) => ({ ...prev, screenshot_url: url }))
+      if (!editingTrade) {
+        void applyMt5ScreenshotAutofill(url, form.pair || undefined)
+      } else {
+        toast({
+          title: "Screenshot uploaded",
+          description: "Tap Autofill from MT5 to update fields from the screenshot.",
+        })
+      }
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -396,6 +427,68 @@ function Home() {
       setIsUploading(false)
       setTimeout(() => setUploadProgress(0), 500)
     }
+  }
+
+  async function applyMt5ScreenshotAutofill(imageUrl: string, pairHint?: string) {
+    setIsMt5Autofilling(true)
+    try {
+      const autofill = await fetchMt5ScreenshotAutofill({
+        imageUrl,
+        pairHint,
+      })
+
+      if (!autofill.available) {
+        toast({
+          title: "Screenshot saved — autofill skipped",
+          description: autofill.summary,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        screenshot_url: imageUrl,
+        ...tradeFormPatchFromMt5Autofill(autofill, prev),
+      }))
+
+      const filled: string[] = []
+      if (autofill.pair) filled.push(autofill.pair)
+      if (autofill.direction) filled.push(autofill.direction)
+      if (autofill.entry_price != null) filled.push("entry")
+      if (autofill.stop_loss != null) filled.push("SL")
+      if (autofill.take_profit != null) filled.push("TP")
+      if (autofill.profit != null || autofill.result) filled.push("P&L")
+
+      toast({
+        title: "MT5 autofill applied",
+        description:
+          filled.length > 0
+            ? `${filled.join(" · ")} — review all fields before saving.`
+            : autofill.summary,
+      })
+    } catch (error) {
+      toast({
+        title: "MT5 autofill failed",
+        description: error instanceof Error ? error.message : "Try again with a clearer screenshot.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsMt5Autofilling(false)
+    }
+  }
+
+  async function handleMt5ScreenshotAutofill() {
+    const imageUrl = form.screenshot_url?.trim()
+    if (!imageUrl) {
+      toast({
+        title: "Upload a screenshot first",
+        description: "Add an MT5 Terminal, History, or Positions screenshot.",
+        variant: "destructive",
+      })
+      return
+    }
+    await applyMt5ScreenshotAutofill(imageUrl, form.pair || undefined)
   }
   
   function handleDragOver(e: React.DragEvent) {
@@ -733,8 +826,14 @@ function Home() {
   }
 
   useEffect(() => {
-    setActiveTab("dashboard")
-    if (pathname === "/" && searchParams.get("tab")) {
+    const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl)
+    } else {
+      setActiveTab("dashboard")
+    }
+    // Clean URL only for redundant ?tab=dashboard (keep journal, strategies, etc.)
+    if (pathname === "/" && searchParams.get("tab") === "dashboard") {
       router.replace(buildDashboardHomePath(searchParams))
     }
     skipUrlTabSyncRef.current = false
@@ -783,6 +882,46 @@ function Home() {
   }, [activeTab, router, searchParams])
 
   useEffect(() => {
+    const coachPair = searchParams.get("coachPair")?.trim()
+    if (!coachPair || !user?.id) return
+
+    void (async () => {
+      const gate = await checkCoachReadiness(coachPair)
+      if (!gate.allowed) {
+        toast({
+          title: gate.headline,
+          description: gate.message,
+          variant: "destructive",
+        })
+        router.replace("/war-room")
+        return
+      }
+      if (gate.severity === "warning") {
+        toast({ title: gate.headline, description: gate.message })
+      }
+      const plannedContext = gate.pairPlan
+        ? buildPlannedContextFromPairPlan(gate.pairPlan)
+        : { ...buildEmptyPlannedContext(), pair: coachPair }
+      await openPreTradeCoachRef.current({ plannedContext })
+      markRitualCoachEngaged(user.id)
+      router.replace(buildDashboardHomePath(searchParams))
+    })()
+  }, [searchParams, user?.id, toast, router])
+
+  useEffect(() => {
+    const coachSession = searchParams.get("coach")?.trim()
+    if (!coachSession || !user?.id) return
+
+    void openPreTradeCoachRef.current({ sessionId: coachSession })
+    markRitualCoachEngaged(user.id)
+    setActiveTab("journal")
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("coach")
+    const next = params.toString() ? `/?${params.toString()}` : getDashboardHomeHref()
+    router.replace(next)
+  }, [searchParams, user?.id, router])
+
+  useEffect(() => {
     if (activeTab !== "analytics") return
     router.replace("/analytics")
   }, [activeTab, router])
@@ -813,7 +952,18 @@ function Home() {
         setUserSettings(data)
         setSettingsForm(normalizeUserSettings(data))
 
-        setActiveTab("dashboard")
+        const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
+        if (!tabFromUrl) {
+          const pref = parseDashboardPreferences(data.dashboard_preferences).activeTab
+          if (pref === "analytics") {
+            router.replace("/analytics")
+          } else if (pref !== "dashboard") {
+            setActiveTab(pref)
+            router.replace(getDashboardTabHref(pref))
+          } else {
+            setActiveTab("dashboard")
+          }
+        }
 
         logDashboardLoading("fetchUserSettings:success", { userId })
         return
@@ -954,9 +1104,28 @@ function Home() {
 
   async function handleOpenCoach(context?: PreTradePlannedContext, options: OpenCoachOptions = {}) {
     try {
+      let plannedContext = context
+      if (!options.sessionId) {
+        const gate = await checkCoachReadiness(plannedContext?.pair)
+        if (!gate.allowed) {
+          toast({
+            title: gate.headline,
+            description: gate.message,
+            variant: "destructive",
+          })
+          return
+        }
+        if (gate.severity === "warning") {
+          toast({ title: gate.headline, description: gate.message })
+        }
+        if (gate.pairPlan && !plannedContext?.pair) {
+          plannedContext = buildPlannedContextFromPairPlan(gate.pairPlan)
+        }
+      }
+
       await openPreTradeCoachRef.current({
         sessionId: options.sessionId,
-        plannedContext: context,
+        plannedContext,
       })
       if (user?.id) {
         markRitualCoachEngaged(user.id)
@@ -1607,7 +1776,16 @@ function Home() {
       refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
       maxRiskPerTrade={maxRiskPerTrade}
       onCoachSessionChange={(sessionId) => setCoachSessionId(sessionId)}
-      onCoachCompleted={() => void refreshPlannedSessions(undefined, true)}
+      onCoachCompleted={(sessionId) => {
+        if (user?.id) markRitualCoachComplete(user.id)
+        void refreshPlannedSessions(undefined, true)
+        toast({
+          title: "Pre-trade complete",
+          description: "Tap Log this trade in the coach or journal to link plan vs outcome.",
+        })
+        setCoachSessionId(sessionId)
+      }}
+      onLogPlannedTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
     >
       <CommandCenterBridge
         onBindOpen={bindOpenCommandCenter}
@@ -1615,8 +1793,9 @@ function Home() {
         onCoachSessionIdChange={setCoachSessionId}
       />
     <>
-    <DashboardChrome
+    <ConnectedDashboardChrome
       activeTab={activeTab}
+      tradeModalOpen={isModalOpen}
       profileCard={profileCard}
       showProfileEmptyHint={usingEmailFallback}
       onOpenSettings={() => setIsSettingsOpen(true)}
@@ -1625,9 +1804,14 @@ function Home() {
       showFab={Boolean(user)}
       showSignalBell={Boolean(user)}
       aiLauncher={user ? <CommandCenterLauncher /> : null}
-      onSignalAlertClick={() => {
+      onSignalAlertClick={(signal) => {
         setActiveTab("journal")
-        void refreshPlannedSessions(undefined, true)
+        if (signal.coach_session_id) {
+          router.replace(getTradingViewSignalHref(signal))
+        } else {
+          router.replace(getDashboardTabHref("journal"))
+          void refreshPlannedSessions(undefined, true)
+        }
       }}
       onFabClick={() => openManualTrade()}
       showMobileDock={Boolean(user)}
@@ -1639,12 +1823,12 @@ function Home() {
         setActiveTab("journal")
         router.replace(getDashboardTabHref("journal"))
       }}
-      onDockCoach={() => void handleOpenCoach()}
-      onDockLog={() => openManualTrade()}
-      onDockStrategies={() => {
-        setActiveTab("strategies")
-        router.replace(getDashboardTabHref("strategies"))
+      onDockCoach={() => {
+        openCommandCenterRef.current()
+        if (user?.id) markRitualCoachEngaged(user.id)
       }}
+      onDockLog={() => openManualTrade()}
+      onDockWarRoom={() => router.push("/war-room")}
       onDockAnalytics={() => router.replace("/analytics")}
       banner={
         showLoadFallbackBanner ? (
@@ -1680,21 +1864,65 @@ function Home() {
                   }
                 />
 
+                <WeeklyWatchlistBanner className="mb-1" />
+
                 {user?.id ? (
                   <TodayHeroStrip
                     userId={user.id}
                     trades={trades}
                     maxRiskPerTrade={maxRiskPerTrade}
-                    hasPlannedCoachInProgress={plannedSessions.some(
-                      (session) => session.status === "in_progress",
-                    )}
+                    plannedSessions={plannedSessions}
+                    onOpenWarRoom={() => router.push("/war-room")}
                     onOpenCoach={() => void handleOpenCoach()}
                     onOpenLog={() => openManualTrade()}
+                    onOpenWeeklyDebrief={() => {
+                      setActiveTab("journal")
+                      router.replace(getDashboardTabHref("journal"))
+                      window.setTimeout(() => {
+                        document
+                          .getElementById("weekly-debrief-panel")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                      }, 120)
+                    }}
                     onCoachEngaged={() => {
                       if (user.id) markRitualCoachEngaged(user.id)
                     }}
+                    onViewPerformance={openDashboardPerformance}
                   />
                 ) : null}
+
+                <DashboardQuickNav
+                  onCalendar={() => {
+                    setActiveTab("journal")
+                    router.replace(getDashboardTabHref("journal"))
+                  }}
+                  onWarRoom={() => router.push("/war-room")}
+                  onChat={() => {
+                    openCommandCenterRef.current()
+                    if (user?.id) markRitualCoachEngaged(user.id)
+                  }}
+                  onLog={() => openManualTrade()}
+                  onStats={openDashboardPerformance}
+                />
+
+                <DashboardRecentTradesSection
+                  trades={trades}
+                  limit={3}
+                  variant="compact"
+                  onViewTrade={(trade) => router.push(`/journal/trade/${trade.id}`)}
+                  onEdit={handleEditTrade}
+                  onDelete={(trade) => {
+                    setTradeToDelete(trade)
+                    setIsDeleteModalOpen(true)
+                  }}
+                  onScreenshotClick={(trade) =>
+                    setScreenshotViewer({ url: trade.screenshot_url, label: trade.pair })
+                  }
+                  onSeeAll={() => {
+                    setActiveTab("journal")
+                    router.replace(getDashboardTabHref("journal"))
+                  }}
+                />
 
                 <PrimaryLeakCardWithSettings
                   trades={trades}
@@ -1709,19 +1937,30 @@ function Home() {
                 />
 
                 <CollapsibleDashboardSection
+                  id="dashboard-performance"
                   title="Performance"
                   subtitle="Equity and weekly stats"
+                  open={performanceSectionOpen}
+                  onOpenChange={setPerformanceSectionOpen}
                   defaultOpen={false}
                   collapseOnMobile
-                  className="dashboard-section"
+                  className="dashboard-section scroll-mt-24"
                 >
-                  <div
-                    id="dashboard-performance"
-                    className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4"
-                  >
+                  <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
                     <EquityCurveChart trades={trades} startingBalance={startingBalance} />
                     <WeeklyPerformance trades={trades} />
                   </div>
+                  <p className="mt-2 text-center text-[10px] text-muted-foreground/65">
+                    Deeper charts and weekly review in{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-cyan-glow/85 underline-offset-2 hover:text-cyan-glow hover:underline"
+                      onClick={() => router.push("/analytics")}
+                    >
+                      Analytics
+                    </button>
+                    .
+                  </p>
                 </CollapsibleDashboardSection>
 
                 <CollapsibleDashboardSection
@@ -1791,6 +2030,17 @@ function Home() {
                   settings={settingsForm}
                   startingBalance={startingBalance}
                 />
+                <CollapsibleDashboardSection
+                  id="weekly-debrief-panel"
+                  title="Weekly debrief"
+                  subtitle="Execution week — trades, coach sessions, corrective focus"
+                  defaultOpen={false}
+                  collapseOnMobile
+                >
+                  <WeeklyDebriefPanel
+                    onViewTrade={(tradeId) => router.push(`/journal/trade/${tradeId}`)}
+                  />
+                </CollapsibleDashboardSection>
                 <JournalCommandCenter
                   trades={trades}
                   startingBalance={startingBalance}
@@ -1838,7 +2088,7 @@ function Home() {
             )
           )}
         </TabTransition>
-    </DashboardChrome>
+    </ConnectedDashboardChrome>
 
       <TradeRiskGuardModal
         open={riskGuardOpen}
@@ -1882,6 +2132,8 @@ function Home() {
         onScreenshotPreview={() =>
           setScreenshotViewer({ url: form.screenshot_url, label: form.pair || "Trade chart" })
         }
+        onMt5Autofill={() => void handleMt5ScreenshotAutofill()}
+        isMt5Autofilling={isMt5Autofilling}
         onOpenCoach={() =>
           void handleOpenCoach(buildPlannedContextFromForm(form, maxRiskPerTrade))
         }

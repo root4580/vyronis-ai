@@ -14,7 +14,10 @@ import { StreamingText } from "@/components/command-center/streaming-text"
 import { CompanionThinkingIndicator } from "@/components/command-center/companion-thinking-indicator"
 import { SessionGuardVerdictCard } from "@/components/command-center/session-guard-verdict-card"
 import { MessageHistoryToggle } from "@/components/ui/message-history-toggle"
-import { partitionCompanionMessages } from "@/lib/command-center/message-display"
+import {
+  filterMessagesForStreaming,
+  partitionCompanionMessages,
+} from "@/lib/command-center/message-display"
 import { cn } from "@/lib/utils"
 
 type AiMessageThreadProps = {
@@ -206,29 +209,95 @@ function ChartReviewBody({
   onStreamComplete?: () => void
   verdictReasoning?: VerdictReasoning | null
 }) {
+  const [analysisOpen, setAnalysisOpen] = useState(false)
   const { narrative, footer } = splitChartReviewContent(content)
   const footerParts = footer ? splitChartReviewFooter(footer) : null
+  const trimmedNarrative = narrative.trim()
+  const collapseNarrative =
+    Boolean(verdictReasoning) && trimmedNarrative.length > 120 && !analysisOpen
 
   return (
-    <div className="space-y-3">
-      {stream ? (
-        <StreamingText text={narrative} active onComplete={onStreamComplete} />
-      ) : (
-        <p className="whitespace-pre-wrap leading-[1.6] text-foreground/90">{narrative}</p>
-      )}
-      {footerParts?.summary && !verdictReasoning ? (
-        <div className="rounded-lg border border-white/[0.07] bg-black/25 px-2.5 py-2 text-[12px] leading-[1.5] text-foreground/82">
-          <p className="whitespace-pre-wrap">{footerParts.summary}</p>
-        </div>
-      ) : null}
+    <div className="space-y-2">
       {verdictReasoning ? (
         <VerdictReasoningPanel reasoning={verdictReasoning} />
-      ) : footerParts?.reasoning ? (
-        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 text-[11px] leading-[1.45] text-foreground/78">
-          <p className="whitespace-pre-wrap">{footerParts.reasoning}</p>
+      ) : null}
+      {trimmedNarrative ? (
+        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2">
+          {stream ? (
+            <StreamingText text={trimmedNarrative} active onComplete={onStreamComplete} />
+          ) : (
+            <p
+              className={cn(
+                "whitespace-pre-wrap text-[12px] leading-[1.5] text-foreground/82",
+                collapseNarrative && "line-clamp-2",
+              )}
+            >
+              {trimmedNarrative}
+            </p>
+          )}
+          {collapseNarrative ? (
+            <button
+              type="button"
+              onClick={() => setAnalysisOpen(true)}
+              className="mt-1.5 text-[10px] font-medium text-cyan-glow/80 hover:text-cyan-glow"
+            >
+              Read chart notes
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {footerParts?.summary && !verdictReasoning ? (
+        <div className="rounded-lg border border-white/[0.07] bg-black/25 px-2.5 py-2 text-[11px] leading-[1.45] text-foreground/78">
+          <p className="line-clamp-3 whitespace-pre-wrap">{footerParts.summary}</p>
+        </div>
+      ) : null}
+      {!verdictReasoning && footerParts?.reasoning ? (
+        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 text-[10px] leading-[1.45] text-foreground/72">
+          <p className="line-clamp-4 whitespace-pre-wrap">{footerParts.reasoning}</p>
         </div>
       ) : null}
     </div>
+  )
+}
+
+function CompactAssistantText({
+  content,
+  stream,
+  onStreamComplete,
+}: {
+  content: string
+  stream?: boolean
+  onStreamComplete?: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const long = content.trim().length > 280
+
+  if (stream) {
+    return (
+      <StreamingText text={content} active onComplete={onStreamComplete} />
+    )
+  }
+
+  return (
+    <>
+      <p
+        className={cn(
+          "whitespace-pre-wrap leading-[1.55]",
+          long && !expanded && "line-clamp-4",
+        )}
+      >
+        {content}
+      </p>
+      {long && !expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-1.5 text-[10px] font-medium text-cyan-glow/80 hover:text-cyan-glow"
+        >
+          Read more
+        </button>
+      ) : null}
+    </>
   )
 }
 
@@ -291,13 +360,15 @@ function AssistantBubble({
             verdictReasoning={verdictReasoning}
           />
         )
-      ) : stream ? (
-        <StreamingText text={message.content} active onComplete={onStreamComplete} />
       ) : (
-        <p className="whitespace-pre-wrap leading-[1.6]">{message.content}</p>
+        <CompactAssistantText
+          content={message.content}
+          stream={stream}
+          onStreamComplete={onStreamComplete}
+        />
       )}
       <MessageImageGrid urls={imageUrls} />
-      {decision ? <DecisionBadge decision={decision} /> : null}
+      {decision && !verdictReasoning ? <DecisionBadge decision={decision} /> : null}
       <VisionChecklist items={checklist} />
     </div>
   )
@@ -324,10 +395,7 @@ export function AiMessageThread({
 }: AiMessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const displayMessages = useMemo(
-    () =>
-      streamingMessage
-        ? messages.filter((m) => m.id !== streamingMessage.id)
-        : messages,
+    () => filterMessagesForStreaming(messages, streamingMessage),
     [messages, streamingMessage],
   )
   const { visible: visibleMessages, history: historyMessages } = useMemo(

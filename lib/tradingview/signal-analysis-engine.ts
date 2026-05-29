@@ -2,7 +2,7 @@ import { detectTradingSession, sessionFitsPreference } from "@/lib/trading/sessi
 import { computeRiskRewardRatio } from "@/lib/tradingview/signal-normalizer"
 import type {
   TradingViewAiRecommendation,
-  TradingViewSignalAnalysis,
+  TradingViewTechnicalSignalAnalysis,
 } from "@/lib/tradingview/types"
 
 function rrQuality(ratio: number | null): "poor" | "acceptable" | "strong" {
@@ -40,7 +40,7 @@ export function analyzeTradingViewSignal(input: {
   confidence?: number | null
   message?: string | null
   preferred_session?: string | null
-}): TradingViewSignalAnalysis {
+}): TradingViewTechnicalSignalAnalysis {
   const session = detectTradingSession()
   const fitsPreferred = sessionFitsPreference(session.name, input.preferred_session)
   const rrRatio = computeRiskRewardRatio({

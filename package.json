@@ -21,7 +21,8 @@
     "mt5:check-env": "npx tsx scripts/check-mt5-env.ts",
     "mt5:quick-test": "npx tsx scripts/run-mt5-quick-test.ts",
     "mt5:cleanup-test-trades": "npx tsx scripts/cleanup-mt5-test-trades.ts",
-    "test:intelligence": "npx tsx scripts/verify-intelligence-stack.ts"
+    "test:intelligence": "npx tsx scripts/verify-intelligence-stack.ts",
+    "tv:test-alert": "npx tsx scripts/send-tradingview-test-alert.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

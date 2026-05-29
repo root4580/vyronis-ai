@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
 import { useMemo, useState, useEffect, useCallback, type ReactNode } from "react"
 import {
@@ -10,6 +11,7 @@ import {
   Brain,
   Shield,
   Target,
+  Crosshair,
   Activity,
   Clock,
   Zap,
@@ -88,9 +90,10 @@ import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
-import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref, getDashboardTabHref, parseTabSearchParam } from "@/lib/dashboard-nav"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
+import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
@@ -297,6 +300,7 @@ export function DashboardHeader({
   hideMobileNav = false,
 }: DashboardHeaderProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
   const [localTime, setLocalTime] = useState<string>("")
@@ -329,7 +333,9 @@ export function DashboardHeader({
     },
     {
       group: "Prepare",
-      items: [{ id: "strategies", label: "Strategies", icon: Target }],
+      items: [
+        { id: "strategies", label: "Strategies", icon: Target },
+      ],
     },
     {
       group: "Review",
@@ -352,6 +358,18 @@ export function DashboardHeader({
             href={getDashboardHomeHref()}
             className="flex items-center gap-3 shrink-0 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40"
             aria-label="Go to Dashboard"
+            onClick={(event) => {
+              if (pathname !== "/") return
+              event.preventDefault()
+              const tab = parseTabSearchParam(
+                new URLSearchParams(window.location.search).get("tab"),
+              )
+              if (!tab || tab === "dashboard") {
+                window.scrollTo({ top: 0, behavior: "smooth" })
+                return
+              }
+              router.replace(getDashboardHomeHref())
+            }}
           >
             <div className="relative flex size-9 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/15 to-profit/10 glow-cyan">
               <Zap className="size-[18px] text-cyan-glow" />
@@ -385,6 +403,19 @@ export function DashboardHeader({
                     <span>{item.label}</span>
                   </Link>
                 ))}
+                {group.group === "Prepare" ? (
+                  <Link
+                    href="/war-room"
+                    className={`dashboard-nav-pill ${
+                      pathname.startsWith("/war-room")
+                        ? "dashboard-nav-pill-active text-cyan-glow"
+                        : "dashboard-nav-pill-inactive"
+                    }`}
+                  >
+                    <Crosshair className="size-3.5" />
+                    <span>War Room</span>
+                  </Link>
+                ) : null}
               </div>
             ))}
             {researchLabEnabled ? (
@@ -434,17 +465,18 @@ export function DashboardHeader({
               <Settings className="size-4 text-muted-foreground transition-colors group-hover:text-cyan-glow" />
             </button>
 
-            {showSignalBell && onSignalAlertClick ? (
-              <SignalAlertsBell enabled onSelectSignal={onSignalAlertClick} />
-            ) : (
-              <button
-                type="button"
-                className="relative rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.04] group"
-                title="Setup alerts"
-              >
-                <Bell className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-              </button>
-            )}
+            {showSignalBell ? (
+              <SignalAlertsBell
+                enabled
+                onSelectSignal={(signal) => {
+                  if (onSignalAlertClick) {
+                    onSignalAlertClick(signal)
+                    return
+                  }
+                  router.push(getTradingViewSignalHref(signal))
+                }}
+              />
+            ) : null}
 
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.08] px-2.5 py-1">
               <Sparkles className="size-3 text-amber-400" />

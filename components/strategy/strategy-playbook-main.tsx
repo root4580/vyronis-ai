@@ -261,23 +261,25 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
           )}
           <h1 className="text-xl font-semibold tracking-tight text-foreground">Strategy Playbook</h1>
           <p className="mt-1 max-w-2xl text-[13px] text-muted-foreground/75">
-            Define your trading rules so the AI Trade Coach knows what to look for in Weekly → M15
-            chart screenshots.
+            Multi-Timeframe FX Continuation — one playbook for chart coach (Sunday focus → AOI →
+            confirmation). Duplicates merge on load.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild className="h-9 border-violet-500/25 text-violet-200">
             <Link href="/strategy-brain">Strategy Brain</Link>
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-9 border-white/[0.08]"
-            onClick={() => void handleCreateNew()}
-          >
-            <Plus className="mr-2 size-4" />
-            New Playbook
-          </Button>
+          {playbooks.length > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 border-white/[0.08]"
+              onClick={() => void handleCreateNew()}
+            >
+              <Plus className="mr-2 size-4" />
+              New Playbook
+            </Button>
+          ) : null}
           <Button
             type="button"
             className="h-9 bg-gradient-to-r from-cyan-glow to-profit text-background"
@@ -301,16 +303,17 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
           <Loader2 className="size-6 animate-spin text-cyan-glow" />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <DashboardCard className="glass-card h-fit" glow>
-            <DashboardCardHeader title="Your Playbooks" icon={BookOpen} />
-            <DashboardCardBody className="space-y-2 pt-2">
-              {playbooks.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground/70">
-                  No playbooks yet. Save your first strategy rules below.
-                </p>
-              ) : (
-                playbooks.map((playbook) => (
+        <div
+          className={cn(
+            "grid gap-4",
+            playbooks.length > 1 && "lg:grid-cols-[280px_minmax(0,1fr)]",
+          )}
+        >
+          {playbooks.length > 1 ? (
+            <DashboardCard className="glass-card h-fit" glow>
+              <DashboardCardHeader title="Your Playbooks" icon={BookOpen} />
+              <DashboardCardBody className="space-y-2 pt-2">
+                {playbooks.map((playbook) => (
                   <button
                     key={playbook.id}
                     type="button"
@@ -334,10 +337,26 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
                       )}
                     </div>
                   </button>
-                ))
-              )}
-            </DashboardCardBody>
-          </DashboardCard>
+                ))}
+              </DashboardCardBody>
+            </DashboardCard>
+          ) : playbooks.length === 1 ? (
+            <DashboardInsetPanel className="flex items-center gap-2 border-cyan-glow/20 bg-cyan-glow/[0.04] px-3 py-2.5">
+              <BookOpen className="size-4 shrink-0 text-cyan-glow" />
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-foreground">
+                  {playbooks[0].strategy_name}
+                </p>
+                <p className="text-[10px] text-muted-foreground/70">Default · used by AI Trade Coach</p>
+              </div>
+              {playbooks[0].is_default ? (
+                <Badge variant="outline" className="ml-auto h-5 shrink-0 text-[9px]">
+                  <Star className="mr-1 size-3" />
+                  Default
+                </Badge>
+              ) : null}
+            </DashboardInsetPanel>
+          ) : null}
 
           <div className="space-y-4">
             <DashboardCard className="glass-card" glow interactive>

@@ -202,6 +202,10 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
         }
       />
       <DashboardCardBody className="space-y-4 pt-2">
+        <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+          Trade execution and coach-backed summary for this week. For behavioral discipline scores, use
+          Analytics → Weekly review.
+        </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
             <Button

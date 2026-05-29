@@ -8,6 +8,8 @@ Vyronis does **not** auto-sync database or config to Vercel. Local (`127.0.0.1`)
 
 If any of these differ, Vercel will look “broken” or “missing features” while localhost works.
 
+**Quick deploy checklist:** see [`DEPLOY-CHECKLIST.md`](./DEPLOY-CHECKLIST.md). The same list appears in **Account Settings** in the app.
+
 ---
 
 ## Feature parity matrix

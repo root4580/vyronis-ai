@@ -215,7 +215,7 @@ export function JournalCalendarView({
   return (
     <div className="flex flex-col gap-4 xl:flex-row">
       <div className="min-w-0 flex-1">
-        <DashboardCard interactive glow className="glass-card">
+        <DashboardCard interactive glow className="glass-card vyronis-calendar-card">
           <DashboardCardHeader
             title={formatMonthLabel(viewYear, viewMonth)}
             icon={BookOpen}
@@ -284,7 +284,9 @@ export function JournalCalendarView({
           </DashboardCardBody>
         </DashboardCard>
       </div>
-      {hasTrades ? <JournalSidebar monthStats={monthStats} weeks={weeks} className="xl:w-72" /> : null}
+      {hasTrades ? (
+        <JournalSidebar monthStats={monthStats} weeks={weeks} className="hidden xl:block xl:w-64" />
+      ) : null}
     </div>
   )
 }

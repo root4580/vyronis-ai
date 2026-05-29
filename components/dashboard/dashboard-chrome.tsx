@@ -7,6 +7,7 @@ import { DashboardMobileDock } from "@/components/dashboard/dashboard-mobile-doc
 import { DashboardUserBar } from "@/components/dashboard/dashboard-user-bar"
 import type { DashboardTab } from "@/components/dashboard/trading-components"
 import type { UserProfileCardProps } from "@/components/dashboard/user-profile-card"
+import type { DockHighlightId } from "@/lib/dashboard-dock"
 
 type DashboardChromeProps = {
   activeTab: DashboardTab
@@ -23,13 +24,14 @@ type DashboardChromeProps = {
   onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
-  onDockStrategies?: () => void
+  onDockWarRoom?: () => void
   onDockAnalytics?: () => void
   aiLauncher?: ReactNode
   banner?: ReactNode
   mainClassName?: string
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
+  dockHighlight?: DockHighlightId
 }
 
 export function DashboardChrome({
@@ -47,13 +49,14 @@ export function DashboardChrome({
   onDockJournal,
   onDockCoach,
   onDockLog,
-  onDockStrategies,
+  onDockWarRoom,
   onDockAnalytics,
   aiLauncher,
   banner,
   mainClassName,
   showSignalBell,
   onSignalAlertClick,
+  dockHighlight = null,
 }: DashboardChromeProps) {
   return (
     <DashboardAppShell
@@ -78,11 +81,12 @@ export function DashboardChrome({
         showMobileDock && onDockHome && onDockJournal && onDockCoach && onDockLog ? (
           <DashboardMobileDock
             activeTab={activeTab}
+            dockHighlight={dockHighlight}
             onHome={onDockHome}
             onJournal={onDockJournal}
             onCoach={onDockCoach}
             onLog={onDockLog}
-            onStrategies={onDockStrategies}
+            onWarRoom={onDockWarRoom}
             onAnalytics={onDockAnalytics}
           />
         ) : null

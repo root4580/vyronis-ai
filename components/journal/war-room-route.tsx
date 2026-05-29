@@ -7,8 +7,11 @@ import { WeeklyWarRoom } from "@/components/journal/weekly-war-room"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
+import { useRouter } from "next/navigation"
+import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
 
 export function WarRoomRoute() {
+  const router = useRouter()
   const chrome = useDashboardChrome({ loginNextPath: "/war-room" })
   const settings = useAccountSettingsModal(chrome.supabase, chrome.user?.id)
 
@@ -24,6 +27,15 @@ export function WarRoomRoute() {
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
+        showSignalBell={Boolean(chrome.user)}
+        showMobileDock={Boolean(chrome.user)}
+        dockHighlight="war-room"
+        onDockHome={() => router.replace(getDashboardHomeHref())}
+        onDockJournal={() => router.replace(getDashboardTabHref("journal"))}
+        onDockWarRoom={() => router.replace("/war-room")}
+        onDockCoach={() => router.replace(getDashboardHomeHref())}
+        onDockLog={() => router.replace("/?action=new-trade")}
+        onDockAnalytics={() => router.replace("/analytics")}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <WeeklyWarRoom />

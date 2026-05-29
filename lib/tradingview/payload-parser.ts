@@ -32,6 +32,8 @@ function normalizeRecord(raw: Record<string, unknown>): TradingViewAlertPayload 
     confidence: parseNumber(raw.confidence ?? raw.confidence_score),
     message: pickString(raw, ["message", "alert_message", "text", "comment"]),
     chart_url: pickString(raw, ["chart_url", "chart", "url"]),
+    image_url: pickString(raw, ["image_url", "image", "img_url", "screenshot"]),
+    screenshot_url: pickString(raw, ["screenshot_url", "screenshotUrl"]),
     alert_id: pickString(raw, ["alert_id", "id", "alertId"]),
   }
 }

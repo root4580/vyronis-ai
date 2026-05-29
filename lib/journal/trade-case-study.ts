@@ -24,6 +24,8 @@ export type TradeCaseStudy = {
   fingerprint: FingerprintComparison
   memoryLine: string | null
   discretionaryNote: string
+  needsIntelligenceSync: boolean
+  historyTradeCount: number
 }
 
 function toneFromScore(score: number): CaseStudySection["tone"] {
@@ -123,7 +125,7 @@ export function buildTradeCaseStudy(input: {
         ...(bundle.setupScore.warnings.slice(0, 2).map((w) => `Watch: ${w}`)),
         ...bundle.setupScore.insights.slice(0, 2).map((i) => i.message),
       ]
-    : ["Run Sync & analyze to generate setup scoring."]
+    : ["Tap Sync memory below for setup grade (A+/B/C) and coaching notes."]
 
   const mistakeBullets =
     bundle && bundle.tags.mistakeTags.length > 0
@@ -243,6 +245,8 @@ export function buildTradeCaseStudy(input: {
     fingerprint,
     memoryLine,
     discretionaryNote:
-      "Vyronis advises; you confirm AOI, timing, and size. No automated entries.",
+      "AI coach only — you choose when to trade, entry timing, and size. Vyronis does not place orders.",
+    needsIntelligenceSync: bundle == null,
+    historyTradeCount: history.length,
   }
 }

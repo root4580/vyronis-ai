@@ -20,6 +20,7 @@ import type { VerdictCalibrationSnapshot } from "@/lib/intelligence/verdict-cali
 import type { VisionIntelligenceSnapshot } from "@/lib/vyronis-core/phase7-engine"
 import type { TraderContextMemory } from "@/lib/intelligence/trader-context"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
+import type { WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import type { DailyRuleItem, RiskSnapshot, UserSettingsForm } from "@/lib/user-settings"
 
 export type MemoryInsightCategory =
@@ -66,6 +67,8 @@ export type FullTraderContext = {
   sessionPerformance: SessionPerformance[]
   weeklyReview: WeeklyReviewReport | null
   playbooks: StrategyPlaybookRecord[]
+  /** Current week War Room plan (Sunday 3–5 pair watchlist) */
+  weeklyWeekPlan?: WeeklyPlanWithPairs | null
   compressedMemories: CommandCenterMemoryInsight[]
   recentMessages: CommandCenterMessageRecord[]
   activePlannedContext: PreTradePlannedContext | null

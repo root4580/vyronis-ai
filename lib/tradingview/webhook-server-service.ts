@@ -1,10 +1,27 @@
 import { timingSafeEqual, createHash } from "crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createPreTradeSession } from "@/lib/trade-coach/server-service"
-import { analyzeTradingViewSignal } from "@/lib/tradingview/signal-analysis-engine"
+import { sendTradingViewAlertEmail } from "@/lib/email/tradingview-alert-email"
+import { buildTradingViewSignalAnalysis } from "@/lib/tradingview/signal-composite-analysis"
+import { gradeMeetsMinimum } from "@/lib/tradingview/signal-war-room-grader"
 import { buildPlannedContextFromSignal } from "@/lib/tradingview/planned-context-mapper"
 import { normalizeAlertPayload } from "@/lib/tradingview/signal-normalizer"
-import type { TradingViewAlertPayload, TradingViewWebhookResult } from "@/lib/tradingview/types"
+import type {
+  TradingViewAlertPayload,
+  TradingViewSignalAnalysis,
+  TradingViewWebhookResult,
+} from "@/lib/tradingview/types"
+
+export type TradingViewIngestChartVisionContext = {
+  userId: string
+  signalId: string
+  coachSessionId: string
+  normalized: ReturnType<typeof normalizeAlertPayload>
+  analysis: TradingViewSignalAnalysis
+  maxRiskPerTrade: number
+  image_url?: string | null
+  screenshot_url?: string | null
+}
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 
 export class TradingViewWebhookError extends Error {
@@ -89,11 +106,16 @@ async function isDuplicateAlert(
   return Boolean(data?.length)
 }
 
+export type TradingViewIngestOutcome = {
+  result: TradingViewWebhookResult
+  chartVision?: TradingViewIngestChartVisionContext
+}
+
 export async function ingestTradingViewAlert(
   supabase: SupabaseClient,
   payload: TradingViewAlertPayload,
   rawPayload: Record<string, unknown>,
-): Promise<TradingViewWebhookResult> {
+): Promise<TradingViewIngestOutcome> {
   if (!payload.secret?.trim()) {
     throw new TradingViewWebhookError("Missing webhook secret.", 401)
   }
@@ -108,11 +130,21 @@ export async function ingestTradingViewAlert(
     throw new TradingViewWebhookError("Missing direction.", 400)
   }
 
-  if (await isDuplicateAlert(supabase, user.user_id, normalized.symbol, normalized.direction)) {
-    return { ok: true, duplicate: true, message: "Duplicate alert skipped (15 min window)." }
+  const isVyronisTestAlert = rawPayload.source === "vyronis_test_alert"
+  if (
+    !isVyronisTestAlert &&
+    (await isDuplicateAlert(supabase, user.user_id, normalized.symbol, normalized.direction))
+  ) {
+    return {
+      result: {
+        ok: true,
+        duplicate: true,
+        message: "Duplicate alert skipped (15 min window).",
+      },
+    }
   }
 
-  const analysis = analyzeTradingViewSignal({
+  const analysis = await buildTradingViewSignalAnalysis(supabase, user.user_id, {
     symbol: normalized.symbol,
     direction: normalized.direction,
     timeframe: normalized.timeframe,
@@ -186,11 +218,52 @@ export async function ingestTradingViewAlert(
     throw new TradingViewWebhookError(linkError.message, 500)
   }
 
+  let emailSent = false
+  if (gradeMeetsMinimum(analysis.setup_grade)) {
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(
+      user.user_id,
+    )
+    const email = authUser?.user?.email
+    if (!authError && email) {
+      const result = await sendTradingViewAlertEmail({
+        to: email,
+        symbol: normalized.symbol,
+        direction: normalized.direction,
+        setupGrade: analysis.setup_grade,
+        setupVerdict: analysis.setup_verdict,
+        verdictSummary: analysis.verdict_summary,
+        alignmentScore: analysis.confidence_score,
+        strategyName: normalized.strategy_name,
+        coachSessionId: session.id,
+      })
+      emailSent = result.sent
+    }
+  }
+
   return {
-    ok: true,
-    signalId: signal.id,
-    coachSessionId: session.id,
-    message: "Alert ingested and planned trade card created.",
+    result: {
+      ok: true,
+      signalId: signal.id,
+      coachSessionId: session.id,
+      user_id: user.user_id,
+      setup_grade: analysis.setup_grade,
+      setup_verdict: analysis.setup_verdict,
+      email_sent: emailSent,
+      chart_vision_scheduled: true,
+      message: analysis.meets_minimum_grade
+        ? `Grade ${analysis.setup_grade} — ${analysis.verdict_summary}${emailSent ? " Email sent." : ""} Chart vision runs in the background.`
+        : `Grade ${analysis.setup_grade} (below your B+ rule) — ${analysis.verdict_summary} Chart vision runs in the background.`,
+    },
+    chartVision: {
+      userId: user.user_id,
+      signalId: signal.id,
+      coachSessionId: session.id,
+      normalized,
+      analysis,
+      maxRiskPerTrade: user.max_risk_per_trade,
+      image_url: payload.image_url,
+      screenshot_url: payload.screenshot_url,
+    },
   }
 }
 

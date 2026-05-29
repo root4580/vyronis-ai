@@ -69,7 +69,7 @@ export function normalizePlaybookRuleItem(
 
 export function normalizeStrategyPlaybookInput(
   input: Partial<StrategyPlaybookInput>,
-  fallbackName = "Top-Down AOI Strategy",
+  fallbackName = "Multi-Timeframe FX Continuation Setup",
 ): StrategyPlaybookInput {
   const defaults = createDefaultPlaybookInput(fallbackName)
   const bias = (input.bias_rules || {}) as Partial<StrategyPlaybookBiasRules>
@@ -159,7 +159,7 @@ export function normalizeStrategyPlaybookRecord(
 ): import("@/lib/strategy/types").StrategyPlaybookRecord {
   const normalized = normalizeStrategyPlaybookInput(
     {
-      strategy_name: String(row.strategy_name || "Top-Down AOI Strategy"),
+      strategy_name: String(row.strategy_name || "Multi-Timeframe FX Continuation Setup"),
       description: String(row.description || ""),
       bias_rules: row.bias_rules as StrategyPlaybookInput["bias_rules"],
       entry_rules: row.entry_rules as StrategyPlaybookInput["entry_rules"],
@@ -170,7 +170,7 @@ export function normalizeStrategyPlaybookRecord(
       example_notes: row.example_notes as StrategyPlaybookInput["example_notes"],
       is_default: Boolean(row.is_default),
     },
-    String(row.strategy_name || "Top-Down AOI Strategy"),
+    String(row.strategy_name || "Multi-Timeframe FX Continuation Setup"),
   )
 
   return {

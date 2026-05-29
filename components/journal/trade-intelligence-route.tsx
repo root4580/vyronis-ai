@@ -26,6 +26,7 @@ export function TradeIntelligenceRoute({ tradeId }: { tradeId: string }) {
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
+        showSignalBell={Boolean(chrome.user)}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <TradeIntelligencePage

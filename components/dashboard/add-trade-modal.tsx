@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   Sparkles,
+  ScanLine,
   Target,
   TrendingDown,
   TrendingUp,
@@ -75,6 +76,8 @@ type AddTradeModalProps = {
   canRepeatLast?: boolean
   repeatSourceLabel?: string
   onRepeatLast?: () => void
+  onMt5Autofill?: () => void
+  isMt5Autofilling?: boolean
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -159,6 +162,8 @@ export function AddTradeModal({
   canRepeatLast = false,
   repeatSourceLabel,
   onRepeatLast,
+  onMt5Autofill,
+  isMt5Autofilling = false,
 }: AddTradeModalProps) {
   const riskReward = useMemo(() => calculateRiskReward(form), [form])
   const positionSize = useMemo(
@@ -589,7 +594,31 @@ export function AddTradeModal({
             </section>
 
             <section className="space-y-2">
-              <FieldLabel>Chart Screenshot</FieldLabel>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <FieldLabel>Chart / MT5 Screenshot</FieldLabel>
+                {form.screenshot_url && onMt5Autofill ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading || isMt5Autofilling || isSubmitting}
+                    onClick={onMt5Autofill}
+                    className="h-8 border-cyan-glow/30 bg-cyan-glow/[0.06] text-[11px] text-cyan-glow hover:bg-cyan-glow/[0.12]"
+                  >
+                    {isMt5Autofilling ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-3.5 animate-spin rounded-full border-2 border-cyan-glow/30 border-t-cyan-glow" />
+                        Reading MT5…
+                      </span>
+                    ) : (
+                      <>
+                        <ScanLine className="mr-1.5 size-3.5" />
+                        Re-run MT5 autofill
+                      </>
+                    )}
+                  </Button>
+                ) : null}
+              </div>
               {form.screenshot_url ? (
                 <>
                   <div className="sm:hidden">
@@ -664,8 +693,10 @@ export function AddTradeModal({
                   ) : (
                     <>
                       <Upload className={cn("size-6", isDragging ? "text-cyan-glow" : "text-muted-foreground/60")} />
-                      <p className="mt-2 text-[12px] text-muted-foreground/80">
-                        {isDragging ? "Drop screenshot here" : "Drag & drop or click to upload"}
+                      <p className="mt-2 text-center text-[12px] text-muted-foreground/80">
+                        {isDragging
+                          ? "Drop screenshot here"
+                          : "MT5 screenshot — uploads and autofills pair, entry, SL, TP"}
                       </p>
                       <p className="mt-1 text-[10px] text-muted-foreground/50">PNG, JPG, WebP up to 10MB</p>
                     </>

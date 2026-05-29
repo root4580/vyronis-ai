@@ -72,6 +72,21 @@ export async function updatePairAoiStatus(
   await parseJson(res)
 }
 
+export async function fetchWarRoomVisionAutofill(input: {
+  imageUrls: string[]
+  pairHint?: string
+}): Promise<import("@/lib/strategy-brain/war-room-vision-types").WarRoomVisionAutofill> {
+  const res = await fetch("/api/strategy-brain/war-room-vision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  const data = await parseJson<{ autofill: import("@/lib/strategy-brain/war-room-vision-types").WarRoomVisionAutofill }>(
+    res,
+  )
+  return data.autofill
+}
+
 export async function evaluateStrategySetup(
   input: StrategySetupEvaluationInput,
 ): Promise<StrategySetupEvaluationResult> {

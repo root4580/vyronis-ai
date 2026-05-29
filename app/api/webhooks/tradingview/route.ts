@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { after, NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
 import { readTradingViewRequestBody } from "@/lib/tradingview/payload-parser"
+import { runTradingViewChartVisionEnrichment } from "@/lib/tradingview/schedule-chart-vision"
 import {
   ingestTradingViewAlert,
   TradingViewTableMissingError,
@@ -16,10 +17,16 @@ export async function POST(request: NextRequest) {
         : {}
 
     const supabase = createServiceRoleClient()
-    const result = await ingestTradingViewAlert(supabase, payload, {
+    const { result, chartVision } = await ingestTradingViewAlert(supabase, payload, {
       ...rawPayload,
       received_content_type: request.headers.get("content-type"),
     })
+
+    if (chartVision) {
+      after(() => {
+        runTradingViewChartVisionEnrichment(supabase, chartVision)
+      })
+    }
 
     return NextResponse.json(result, { status: result.duplicate ? 200 : 202 })
   } catch (error) {

@@ -15,12 +15,19 @@ export function getTodayPrimaryAction(view: DailyRitualView): TodayPrimaryAction
     return {
       stepId: "debrief",
       title: "Session complete",
-      subtitle: "You closed today with discipline. Review performance when ready.",
+      subtitle: "Opens your equity and weekly charts on this page.",
       ctaLabel: "View performance",
     }
   }
 
   switch (step.id) {
+    case "war-room":
+      return {
+        stepId: "war-room",
+        title: "Set up War Room",
+        subtitle: step.hint,
+        ctaLabel: "Open War Room",
+      }
     case "check-in":
       return {
         stepId: "check-in",
@@ -31,9 +38,9 @@ export function getTodayPrimaryAction(view: DailyRitualView): TodayPrimaryAction
     case "coach":
       return {
         stepId: "coach",
-        title: "Run pre-trade coach",
-        subtitle: step.hint,
-        ctaLabel: "Open Vyronis Coach",
+        title: "Pre-trade review",
+        subtitle: "Charts & verdict before entry.",
+        ctaLabel: "Open chart coach",
       }
     case "log":
       return {

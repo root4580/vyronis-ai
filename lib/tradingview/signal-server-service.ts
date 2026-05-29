@@ -15,7 +15,7 @@ function isMissingTableError(message: string): boolean {
 }
 
 const LIST_COLUMNS =
-  "id, symbol, timeframe, direction, strategy_name, message, ai_confidence_score, ai_recommendation, coach_session_id, read_at, received_at, status"
+  "id, symbol, timeframe, direction, strategy_name, message, ai_confidence_score, ai_recommendation, ai_analysis, coach_session_id, read_at, received_at, status"
 
 export async function listTradingViewSignals(
   supabase: SupabaseClient,

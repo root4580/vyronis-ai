@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 type TradeQualityPanelProps = {
   quality: TradeQualityResult
   compact?: boolean
+  /** War Room / TradingView alert grade (A+/B/C/D) — shown when different from check-in grade */
+  warRoomAlertGrade?: string | null
 }
 
 function gradeColor(grade: TradeQualityResult["grade"]) {
@@ -23,15 +25,24 @@ function recommendationColor(recommendation: TradeQualityResult["recommendation"
   return "text-loss"
 }
 
-export function TradeQualityPanel({ quality, compact = false }: TradeQualityPanelProps) {
+export function TradeQualityPanel({
+  quality,
+  compact = false,
+  warRoomAlertGrade,
+}: TradeQualityPanelProps) {
   return (
     <DashboardInsetPanel className="space-y-3 border-cyan-glow/20 bg-cyan-glow/[0.04] px-3 py-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="size-3.5 text-cyan-glow" />
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-            Trade Quality Analysis
-          </p>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
+              Trade Quality Analysis
+            </p>
+            <p className="text-[9px] text-muted-foreground/60">
+              After your check-in — separate from the alert bell grade
+            </p>
+          </div>
         </div>
         <span className={cn("text-xl font-bold tabular-nums", gradeColor(quality.grade))}>
           {quality.grade}
@@ -69,7 +80,9 @@ export function TradeQualityPanel({ quality, compact = false }: TradeQualityPane
           {quality.breakdown.entryConfirmation != null && (
             <div>Entry {quality.breakdown.entryConfirmation}</div>
           )}
-          {quality.breakdown.chart != null && <div>MTF {quality.breakdown.chart}</div>}
+          {quality.breakdown.chart != null && (
+            <div>{quality.breakdown.biasAlignment != null ? "Chart" : "Vision"} {quality.breakdown.chart}</div>
+          )}
           <div>Psychology {quality.breakdown.psychology}</div>
           <div>Risk {quality.breakdown.risk}</div>
           <div>Setup {quality.breakdown.setup}</div>

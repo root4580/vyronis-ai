@@ -1,0 +1,29 @@
+import type { CommandCenterMode } from "@/lib/command-center/types"
+import type { DashboardTab } from "@/components/dashboard/trading-components"
+
+export type DockHighlightId =
+  | "dashboard"
+  | "journal"
+  | "war-room"
+  | "coach"
+  | "log"
+  | "strategies"
+  | "analytics"
+  | null
+
+export function resolveDockHighlight(input: {
+  activeTab: DashboardTab
+  commandCenterOpen: boolean
+  commandCenterMode: CommandCenterMode
+  tradeModalOpen: boolean
+  pathname: string
+}): DockHighlightId {
+  if (input.tradeModalOpen) return "log"
+  if (input.commandCenterOpen && input.commandCenterMode === "companion") return "coach"
+  if (input.pathname.startsWith("/war-room")) return "war-room"
+  if (input.pathname.startsWith("/analytics")) return "analytics"
+  if (input.activeTab === "journal") return "journal"
+  if (input.activeTab === "strategies") return "strategies"
+  if (input.activeTab === "dashboard") return "dashboard"
+  return null
+}

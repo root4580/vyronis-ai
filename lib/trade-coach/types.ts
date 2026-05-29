@@ -43,6 +43,10 @@ export type PreTradePlannedContext = {
   entry_confirmation_score?: number | null
   signal_source?: "tradingview" | "manual"
   tradingview_signal_id?: string
+  tradingview_setup_grade?: import("@/lib/strategy-brain/types").SetupGrade
+  tradingview_setup_verdict?: import("@/lib/tradingview/types").TradingViewSetupVerdict
+  tradingview_verdict_summary?: string
+  tradingview_chart_vision?: import("@/lib/tradingview/types").TradingViewChartVisionSnapshot
   /** Command Center multi-image timeframe bundle session id */
   timeframe_bundle_id?: string
   timeframe_bundle?: {

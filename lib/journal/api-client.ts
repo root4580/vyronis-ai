@@ -87,3 +87,20 @@ export async function confirmJournalImport(options: {
 }): Promise<JournalImportResult> {
   return postJournalImport({ ...options, dryRun: false })
 }
+
+export async function fetchMt5ScreenshotAutofill(input: {
+  imageUrl: string
+  pairHint?: string
+}): Promise<import("@/lib/journal/mt5-screenshot-vision-types").Mt5ScreenshotAutofill> {
+  const response = await fetch("/api/journal/mt5-screenshot-autofill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(input),
+  })
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || "MT5 autofill failed")
+  }
+  return payload.autofill
+}

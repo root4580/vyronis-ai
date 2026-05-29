@@ -1,9 +1,11 @@
 import type { CoachMtfTimeframe } from "@/lib/coach/mtf-constants"
-import { enabledRuleLabels, rule } from "@/lib/strategy/playbook-rule-utils"
+import { enabledRuleLabels } from "@/lib/strategy/playbook-rule-utils"
+import { STRATEGY_FULL_DOCUMENT } from "@/lib/strategy/vyronis-strategy-playbook"
 import type { StrategyPlaybookRecord } from "@/lib/strategy/types"
 
 const TIMEFRAME_FOCUS: Record<CoachMtfTimeframe, string[]> = {
   weekly: [
+    "Sunday watchlist: only score pairs on this week's 3–5 focus list.",
     "Identify macro bias: is price bullish, bearish, or ranging?",
     "Mark major supply/demand or support/resistance zones.",
     "Note if price is near a major HTF zone (premium/discount, key S/R).",
@@ -71,6 +73,9 @@ export function buildPlaybookVisionPromptSection(
     "",
     `Strategy playbook: ${playbook.strategy_name}`,
     playbook.description,
+    "",
+    "Strategy doctrine (summary):",
+    STRATEGY_FULL_DOCUMENT.slice(0, 2200),
     "",
     `Timeframe role (${timeframe.toUpperCase()}):`,
     ...focus.map((line) => `- ${line}`),

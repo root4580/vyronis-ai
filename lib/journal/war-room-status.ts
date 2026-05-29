@@ -42,19 +42,24 @@ export function computeWarRoomReadiness(input: {
     {
       id: "pairs",
       label: "Watchlist",
-      complete: pairs.length >= 3 && pairs.length <= 5,
-      hint: `${pairs.length}/3–5 pairs selected`,
+      complete: pairs.length >= 1 && pairs.length <= 5,
+      hint:
+        pairs.length === 0
+          ? "Add at least one pair"
+          : pairs.length < 3
+            ? `${pairs.length} pair — 3–5 recommended for broader focus`
+            : `${pairs.length}/5 pairs selected`,
     },
     {
       id: "aoi",
       label: "AOI zones",
-      complete: pairs.length > 0 && pairsWithAoi >= Math.min(3, pairs.length),
+      complete: pairs.length > 0 && pairsWithAoi >= 1,
       hint: `${pairsWithAoi} pairs with AOI range`,
     },
     {
       id: "invalidation",
       label: "Invalidation",
-      complete: pairs.length > 0 && pairsWithInvalidation >= Math.min(2, pairs.length),
+      complete: pairs.length > 0 && pairsWithInvalidation >= 1,
       hint: `${pairsWithInvalidation} invalidation levels set`,
     },
     {

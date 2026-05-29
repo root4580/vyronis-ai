@@ -1,3 +1,8 @@
+import {
+  allowHistoricalStandDown,
+  getContextTodayTrades,
+  isFreshTradingDay,
+} from "@/lib/intelligence/trading-day-boundary"
 import type {
   AutonomousIntervention,
   LiveSessionMonitoring,
@@ -5,8 +10,11 @@ import type {
 } from "@/lib/trading-os/types"
 
 function countLowQualityStreak(context: TradingOsEngineInput["context"]): number {
+  const todayTrades = getContextTodayTrades(context)
+  if (todayTrades.length === 0) return 0
+
   let streak = 0
-  for (const t of context.recentTrades.slice(0, 5)) {
+  for (const t of todayTrades.slice(0, 5)) {
     const impulsive = /fomo|revenge|anxious|euphoric|tilted|impulsive/i.test(t.emotion || "")
     const bad = t.result === "LOSS" || t.rule_followed === false || impulsive
     if (bad) streak += 1
@@ -24,6 +32,8 @@ export function evaluateAutonomousIntervention(input: {
   const shadow = context.autonomous?.shadow
   const cognitive = context.cognitive
   const lowQualityStreak = countLowQualityStreak(context)
+  const freshDay = isFreshTradingDay(context)
+  const historicalStandDown = allowHistoricalStandDown(context)
 
   const actions: AutonomousIntervention["actions"] = []
   let severity: AutonomousIntervention["severity"] = "info"
@@ -35,9 +45,10 @@ export function evaluateAutonomousIntervention(input: {
   let suggestedRiskMultiplier = 1
   let expiresAfterMinutes: number | null = null
 
+  const shadowPause = Boolean(shadow?.shouldPause && historicalStandDown)
   const standDown =
     liveSession.overtradingLevel === "critical" ||
-    shadow?.shouldPause ||
+    shadowPause ||
     context.risk.todayLossPercent >= context.settings.daily_drawdown_limit
 
   if (standDown) {
@@ -47,7 +58,7 @@ export function evaluateAutonomousIntervention(input: {
     actions.push("stand_down", "block_impulsive_confirmation")
     headline = "Pause — protect capital and process"
     message =
-      shadow?.proactiveMessage ??
+      (shadowPause ? shadow?.proactiveMessage : null) ??
       "Daily limits or drawdown guard are in play. Step away until you have a clear, calm plan."
     reflectionPrompt = "What emotion is driving the urge to trade right now? One honest sentence before you return."
     suggestedRiskMultiplier = 0
@@ -64,9 +75,10 @@ export function evaluateAutonomousIntervention(input: {
     suggestedRiskMultiplier = 0
     expiresAfterMinutes = 30
   } else if (
-    liveSession.overtradingLevel === "high" ||
-    liveSession.emotionalDriftScore >= 70 ||
-    shadow?.overallRiskLevel === "critical"
+    !freshDay &&
+    (liveSession.overtradingLevel === "high" ||
+      liveSession.emotionalDriftScore >= 70 ||
+      shadow?.overallRiskLevel === "critical")
   ) {
     active = true
     severity = "warning"
@@ -81,8 +93,8 @@ export function evaluateAutonomousIntervention(input: {
     expiresAfterMinutes = 20
   } else if (
     lowQualityStreak >= 2 ||
-    shadow?.overallRiskLevel === "elevated" ||
-    liveSession.emotionalDriftScore >= 55
+    (!freshDay &&
+      (shadow?.overallRiskLevel === "elevated" || liveSession.emotionalDriftScore >= 55))
   ) {
     active = true
     severity = "warning"
@@ -91,7 +103,10 @@ export function evaluateAutonomousIntervention(input: {
     message = "Two recent trades show process slippage. Reduce size and wait for confirmation."
     suggestedRiskMultiplier = 0.65
     expiresAfterMinutes = 15
-  } else if (cognitive?.state.primary === "revenge_driven" || cognitive?.state.primary === "impulsive") {
+  } else if (
+    historicalStandDown &&
+    (cognitive?.state.primary === "revenge_driven" || cognitive?.state.primary === "impulsive")
+  ) {
     active = true
     severity = "warning"
     canProceedToEntry = false

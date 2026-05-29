@@ -3,7 +3,15 @@ import {
   normalizeStrategyPlaybookInput,
   normalizeStrategyPlaybookRecord,
 } from "@/lib/strategy/default-playbook"
-import { createVyronisStrategyPlaybookInput } from "@/lib/strategy/vyronis-strategy-playbook"
+import {
+  pickKeeperPlaybook,
+  reassignCoachSessionsToPlaybook,
+  shouldConsolidatePlaybooks,
+} from "@/lib/strategy/consolidate-playbooks"
+import {
+  createVyronisStrategyPlaybookInput,
+  VYRONIS_STRATEGY_NAME,
+} from "@/lib/strategy/vyronis-strategy-playbook"
 import type { StrategyPlaybookInput, StrategyPlaybookRecord } from "@/lib/strategy/types"
 
 export class StrategyPlaybookTableMissingError extends Error {
@@ -24,36 +32,79 @@ function rowToRecord(row: Record<string, unknown>): StrategyPlaybookRecord {
   return normalizeStrategyPlaybookRecord(row)
 }
 
+async function listStrategyPlaybooksRaw(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<StrategyPlaybookRecord[]> {
+  const { data, error } = await supabase
+    .from("strategy_playbooks")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+
+  throwIfMissing(error)
+  if (error) throw new Error(error.message)
+  return (data || []).map((row) => rowToRecord(row as Record<string, unknown>))
+}
+
+/** Merge duplicate playbooks into one canonical Top-Down AOI strategy. */
+export async function consolidateStrategyPlaybooks(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<StrategyPlaybookRecord | null> {
+  const playbooks = await listStrategyPlaybooksRaw(supabase, userId)
+  const canonical = createVyronisStrategyPlaybookInput()
+
+  if (!shouldConsolidatePlaybooks(playbooks)) {
+    if (playbooks.length === 1) {
+      const only = playbooks[0]
+      if (!only.is_default || only.strategy_name !== VYRONIS_STRATEGY_NAME) {
+        return updateStrategyPlaybook(supabase, userId, only.id, {
+          ...canonical,
+          is_default: true,
+        })
+      }
+    }
+    return playbooks[0] ?? null
+  }
+
+  const keeper = pickKeeperPlaybook(playbooks)
+  const deleteIds = playbooks.filter((p) => p.id !== keeper.id).map((p) => p.id)
+
+  const merged = await updateStrategyPlaybook(supabase, userId, keeper.id, {
+    ...canonical,
+    is_default: true,
+  })
+
+  await reassignCoachSessionsToPlaybook(
+    supabase,
+    userId,
+    deleteIds,
+    merged.id,
+    VYRONIS_STRATEGY_NAME,
+  )
+
+  for (const id of deleteIds) {
+    await deleteStrategyPlaybook(supabase, userId, id)
+  }
+
+  return merged
+}
+
 export async function ensureDefaultStrategyPlaybook(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<StrategyPlaybookRecord | null> {
-  const vyronisInput = createVyronisStrategyPlaybookInput()
-  const existingVyronis = await getStrategyPlaybookByName(
-    supabase,
-    userId,
-    vyronisInput.strategy_name,
-  )
-  if (existingVyronis) {
-    return existingVyronis.is_default
-      ? existingVyronis
-      : (await getDefaultStrategyPlaybook(supabase, userId)) || existingVyronis
-  }
-
-  const existingDefault = await getDefaultStrategyPlaybook(supabase, userId)
-  if (existingDefault) {
-    try {
-      return await createStrategyPlaybook(supabase, userId, {
-        ...vyronisInput,
-        is_default: false,
-      })
-    } catch {
-      return existingDefault
+  const rows = await listStrategyPlaybooksRaw(supabase, userId)
+  if (rows.length > 0) {
+    if (shouldConsolidatePlaybooks(rows)) {
+      return consolidateStrategyPlaybooks(supabase, userId)
     }
+    return getDefaultStrategyPlaybook(supabase, userId) ?? rows[0]
   }
 
   try {
-    return await createStrategyPlaybook(supabase, userId, vyronisInput)
+    return await createStrategyPlaybook(supabase, userId, createVyronisStrategyPlaybookInput())
   } catch {
     return null
   }
@@ -64,16 +115,12 @@ export async function listStrategyPlaybooks(
   userId: string,
 ): Promise<StrategyPlaybookRecord[]> {
   await ensureDefaultStrategyPlaybook(supabase, userId)
-
-  const { data, error } = await supabase
-    .from("strategy_playbooks")
-    .select("*")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false })
-
-  throwIfMissing(error)
-  if (error) throw new Error(error.message)
-  return (data || []).map((row) => rowToRecord(row as Record<string, unknown>))
+  const rows = await listStrategyPlaybooksRaw(supabase, userId)
+  if (shouldConsolidatePlaybooks(rows)) {
+    await consolidateStrategyPlaybooks(supabase, userId)
+    return listStrategyPlaybooksRaw(supabase, userId)
+  }
+  return rows
 }
 
 export async function getStrategyPlaybook(

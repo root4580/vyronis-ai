@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react"
 import { fetchCoachSession } from "@/lib/trade-coach/api-client"
+import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
+import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import {
@@ -25,6 +27,7 @@ import type {
   CommandCenterMode,
 } from "@/lib/command-center/types"
 import { buildThinkingPhases } from "@/lib/intelligence/conversational-state-engine"
+import { useToast } from "@/hooks/use-toast"
 
 const OPEN_STATE_KEY = "vyronis.commandCenter.open"
 const MODE_STATE_KEY = "vyronis.commandCenter.mode"
@@ -42,6 +45,7 @@ type AIContextProviderProps = {
   maxRiskPerTrade?: number
   onCoachSessionChange?: (sessionId: string | null) => void
   onCoachCompleted?: (sessionId: string) => void
+  onLogPlannedTrade?: (sessionId: string) => void
 }
 
 type AIContextValue = {
@@ -73,6 +77,7 @@ type AIContextValue = {
   clearStreamingMessage: () => void
   handleCoachSessionChange: (sessionId: string | null) => void
   handleCoachCompleted: (sessionId: string) => void
+  logPlannedTrade: (sessionId: string) => void
   historySessionId: string | null
   viewingArchivedSession: boolean
   openHistorySession: (sessionId: string) => Promise<void>
@@ -88,7 +93,9 @@ export function AIContextProvider({
   maxRiskPerTrade = 1,
   onCoachSessionChange,
   onCoachCompleted,
+  onLogPlannedTrade,
 }: AIContextProviderProps) {
+  const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
   const [mode, setMode] = useState<CommandCenterMode>("companion")
   const [focusId, setFocusId] = useState<string | null>(null)
@@ -108,6 +115,7 @@ export function AIContextProvider({
   const [historySessionId, setHistorySessionId] = useState<string | null>(null)
   const panelEpochRef = useRef(0)
   const needsFreshSessionRef = useRef(false)
+  const preTradeOpenInFlightRef = useRef(false)
 
   const viewingArchivedSession = context?.viewingArchivedSession ?? false
 
@@ -291,7 +299,7 @@ export function AIContextProvider({
     async (options: OpenPreTradeOptions = {}) => {
       if (!userId) return
       setHistorySessionId(null)
-      setIsOpen(true)
+      preTradeOpenInFlightRef.current = true
       setIsTransitioning(true)
       setError(null)
 
@@ -310,8 +318,30 @@ export function AIContextProvider({
           sessionId = null
         }
 
+        const gate = await checkCoachReadiness(plannedContext.pair)
+        if (!gate.allowed) {
+          setError(`${gate.headline} — ${gate.message}`)
+          return
+        }
+        if (gate.severity === "warning") {
+          toast({
+            title: gate.headline,
+            description: gate.message,
+          })
+        }
+        if (gate.pairPlan) {
+          plannedContext = {
+            ...buildPlannedContextFromPairPlan(gate.pairPlan),
+            ...plannedContext,
+            pair: gate.pairPlan.pair,
+            max_risk_per_trade: maxRiskPerTrade,
+          }
+        }
+
         setCoachPlannedContext(plannedContext)
         setCoachSessionId(sessionId)
+        setMode("pre_trade")
+        setFocusId(sessionId)
 
         const label = plannedContext.pair
           ? `Pre-trade · ${plannedContext.pair} ${plannedContext.direction || ""}`.trim()
@@ -325,15 +355,17 @@ export function AIContextProvider({
         })
 
         setContext(next)
-        setMode("pre_trade")
-        setFocusId(sessionId)
+        setIsOpen(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not open pre-trade coach")
       } finally {
+        window.setTimeout(() => {
+          preTradeOpenInFlightRef.current = false
+        }, 0)
         setIsTransitioning(false)
       }
     },
-    [userId, maxRiskPerTrade],
+    [userId, maxRiskPerTrade, toast],
   )
 
   const returnToCompanion = useCallback(async () => {
@@ -440,7 +472,15 @@ export function AIContextProvider({
         setContext(result.context)
         setMode(result.context.mode)
         setFocusId(result.context.focusId)
-        setStreamingMessage(result.assistantMessage)
+        const stream = result.assistantMessage
+        const alreadyVisible = result.context.messages.some(
+          (message) =>
+            message.id === stream.id ||
+            (message.role === "assistant" &&
+              stream.role === "assistant" &&
+              message.content.trim() === stream.content.trim()),
+        )
+        setStreamingMessage(alreadyVisible ? null : stream)
       } catch (err) {
         if (epoch !== panelEpochRef.current) return
         setError(err instanceof Error ? err.message : "Failed to send message")
@@ -484,6 +524,13 @@ export function AIContextProvider({
     [onCoachCompleted],
   )
 
+  const logPlannedTrade = useCallback(
+    (sessionId: string) => {
+      onLogPlannedTrade?.(sessionId)
+    },
+    [onLogPlannedTrade],
+  )
+
   const value = useMemo<AIContextValue>(
     () => ({
       enabled,
@@ -510,6 +557,7 @@ export function AIContextProvider({
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachCompleted,
+      logPlannedTrade,
       historySessionId,
       viewingArchivedSession,
       openHistorySession,
@@ -540,6 +588,7 @@ export function AIContextProvider({
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachCompleted,
+      logPlannedTrade,
       historySessionId,
       viewingArchivedSession,
       openHistorySession,

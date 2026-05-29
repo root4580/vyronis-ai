@@ -3,22 +3,27 @@ import type { TradingViewSignalAnalysis } from "@/lib/tradingview/types"
 
 export function mapAnalysisToCoachAnalysis(analysis: TradingViewSignalAnalysis): PreTradeAnalysis {
   const shouldTakeTrade =
-    analysis.recommendation === "TAKE"
+    analysis.setup_verdict === "trade_ready" || analysis.setup_verdict === "tradable"
       ? "yes"
-      : analysis.recommendation === "SKIP"
+      : analysis.setup_verdict === "low_quality"
         ? "no"
         : "caution"
 
   return {
     confidenceScore: analysis.confidence_score,
     shouldTakeTrade,
-    summary: analysis.summary,
+    summary: analysis.verdict_summary || analysis.summary,
     redFlags: analysis.warnings.map((message) => ({
       id: "emotional_risk" as const,
       severity: "warning" as const,
       message,
     })),
-    insights: [...analysis.strengths, ...analysis.warnings].slice(0, 6),
+    insights: [
+      `War Room grade: ${analysis.setup_grade} (${analysis.setup_verdict.replace(/_/g, " ")})`,
+      ...analysis.war_room.notes.slice(0, 2),
+      ...analysis.strengths.slice(0, 2),
+      ...analysis.warnings.slice(0, 3),
+    ].slice(0, 6),
   }
 }
 
@@ -52,5 +57,9 @@ export function buildPlannedContextFromSignal(input: {
     tradingview_signal_id: input.signalId,
     max_risk_per_trade: input.maxRiskPerTrade,
     coach_analysis: mapAnalysisToCoachAnalysis(input.analysis),
+    tradingview_setup_grade: input.analysis.setup_grade,
+    tradingview_setup_verdict: input.analysis.setup_verdict,
+    tradingview_verdict_summary: input.analysis.verdict_summary,
+    tradingview_chart_vision: input.analysis.chart_vision,
   }
 }

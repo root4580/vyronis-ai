@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react"
 import type { CommandCenterContext } from "@/lib/command-center/types"
 import { cn } from "@/lib/utils"
@@ -8,9 +8,21 @@ import { cn } from "@/lib/utils"
 type CompanionContextStripProps = {
   context: Pick<
     CommandCenterContext,
-    "cognitive" | "tradingOs" | "adaptiveCognition" | "vyronisCore" | "autonomous" | "freshWarnings"
+    | "cognitive"
+    | "tradingOs"
+    | "adaptiveCognition"
+    | "vyronisCore"
+    | "autonomous"
+    | "freshWarnings"
+    | "snapshot"
   >
   className?: string
+}
+
+function isFreshCompanionMorning(
+  context: Pick<CommandCenterContext, "snapshot">,
+): boolean {
+  return (context.snapshot?.todayTradeCount ?? 0) === 0
 }
 
 type StripTone = "calm" | "insight" | "caution" | "protective"
@@ -50,17 +62,7 @@ function pickContextualStrip(
     }
   }
 
-  if (
-    core?.phase5.preTradeApproval.status === "blocked" ||
-    core?.phase5.preTradeApproval.status === "reflection_required"
-  ) {
-    return {
-      label: "Pre-trade",
-      headline: core.phase5.preTradeApproval.headline,
-      detail: core.phase5.preTradeApproval.reasons[0] ?? core.phase5.preTradeApproval.verdict,
-      tone: "protective",
-    }
-  }
+  const freshMorning = isFreshCompanionMorning(context)
 
   if (criticalWarning) {
     return {
@@ -71,6 +73,7 @@ function pickContextualStrip(
   }
 
   if (
+    !freshMorning &&
     cog &&
     (cog.state.primary === "revenge_driven" ||
       cog.state.primary === "impulsive" ||
@@ -85,22 +88,15 @@ function pickContextualStrip(
     }
   }
 
-  const liveAlert = os?.liveSession.alerts.find((a) => a.severity !== "info")
+  const liveAlert = os?.liveSession.alerts.find(
+    (a) => a.severity !== "info" && !(freshMorning && a.category === "emotional_drift"),
+  )
   if (liveAlert) {
     return {
       label: "Live session",
       headline: liveAlert.message,
       detail: os?.proactiveHeadline,
       tone: liveAlert.severity === "critical" ? "protective" : "caution",
-    }
-  }
-
-  if (core && core.phase5.preTradeApproval.status === "reduced") {
-    return {
-      label: "Pre-trade",
-      headline: core.phase5.preTradeApproval.headline,
-      detail: core.phase5.preTradeApproval.reasons[0],
-      tone: "caution",
     }
   }
 
@@ -114,7 +110,7 @@ function pickContextualStrip(
   }
 
   const shadow = autonomous?.shadow
-  if (shadow && shadow.emotionalRiskScore >= 72) {
+  if (!freshMorning && shadow && shadow.emotionalRiskScore >= 72) {
     return {
       label: "Awareness",
       headline: shadow.proactiveMessage,
@@ -135,10 +131,19 @@ function pickContextualStrip(
 }
 
 export function CompanionContextStrip({ context, className }: CompanionContextStripProps) {
-  const [expanded, setExpanded] = useState(false)
   const strip = pickContextualStrip(context)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (strip?.tone === "protective") setExpanded(true)
+  }, [strip?.tone])
 
   if (!strip) return null
+  if (strip.tone === "calm" || strip.tone === "insight") return null
+
+  const headline =
+    strip.headline.length > 96 ? `${strip.headline.slice(0, 96).trim()}…` : strip.headline
+  const showDetailToggle = strip.tone === "protective" && Boolean(strip.detail)
 
   return (
     <div
@@ -150,10 +155,10 @@ export function CompanionContextStrip({ context, className }: CompanionContextSt
     >
       <button
         type="button"
-        onClick={() => strip.detail && setExpanded((v) => !v)}
+        onClick={() => showDetailToggle && setExpanded((v) => !v)}
         className={cn(
           "flex w-full items-start gap-2 text-left",
-          strip.detail ? "cursor-pointer" : "cursor-default",
+          showDetailToggle ? "cursor-pointer" : "cursor-default",
         )}
       >
         <Sparkles className="mt-0.5 size-3.5 shrink-0 opacity-70" />
@@ -161,12 +166,12 @@ export function CompanionContextStrip({ context, className }: CompanionContextSt
           <p className="text-[9px] font-medium uppercase tracking-[0.12em] opacity-60">
             {strip.label}
           </p>
-          <p className="text-[11px] leading-snug">{strip.headline}</p>
+          <p className="text-[11px] leading-snug">{headline}</p>
           {expanded && strip.detail ? (
             <p className="pt-1 text-[10px] leading-relaxed opacity-85">{strip.detail}</p>
           ) : null}
         </div>
-        {strip.detail ? (
+        {showDetailToggle ? (
           expanded ? (
             <ChevronUp className="size-3.5 shrink-0 opacity-50" />
           ) : (

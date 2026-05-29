@@ -1,4 +1,12 @@
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
+import {
+  allowHistoricalStandDown,
+  isFreshTradingDay,
+  isPreTradeDecisionContext,
+  shouldApplyStrictPreTradeGate,
+} from "@/lib/intelligence/trading-day-boundary"
+import { evaluateWeeklyWatchlistGate } from "@/lib/strategy-brain/weekly-watchlist"
+import { getTodayTrades } from "@/lib/user-settings"
 import type {
   AdaptiveRiskRestriction,
   ConfidenceDecaySnapshot,
@@ -28,7 +36,10 @@ export function buildConfidenceDecay(context: FullTraderContext): ConfidenceDeca
     decayRate += 22
     factors.push("Volatile emotional trend")
   }
-  const recentLosses = context.recentTrades.slice(0, 3).filter((t) => t.result === "LOSS").length
+  const lossSample = isFreshTradingDay(context)
+    ? getTodayTrades(context.recentTrades)
+    : context.recentTrades.slice(0, 3)
+  const recentLosses = lossSample.filter((t) => t.result === "LOSS").length
   if (recentLosses >= 2) {
     decayRate += 15
     factors.push("Recent loss cluster")
@@ -189,27 +200,61 @@ export function buildPreTradeApproval(context: FullTraderContext): PreTradeAppro
   const setup = buildSetupProbability(context)
   const rules = buildRuleViolationForecast(context)
   const reasons: string[] = []
+  const strictGate = shouldApplyStrictPreTradeGate(context)
+  const freshCompanion = isFreshTradingDay(context) && !isPreTradeDecisionContext(context)
 
   let verdict: PreTradeApproval["verdict"] = "CAUTION"
   let status: PreTradeApproval["status"] = "reduced"
   let riskMultiplier = intervention?.suggestedRiskMultiplier ?? 1
 
   const psychologyOverride =
-    Boolean(context.cognitive?.state.primary === "revenge_driven" ||
-      context.cognitive?.state.primary === "impulsive") &&
+    allowHistoricalStandDown(context) &&
+    Boolean(
+      context.cognitive?.state.primary === "revenge_driven" ||
+        context.cognitive?.state.primary === "impulsive",
+    ) &&
     setup.score >= 55
 
-  if (shadow?.shouldPause || (intervention?.active && !intervention.canProceedToEntry)) {
+  const watchlistGate = evaluateWeeklyWatchlistGate({
+    pair: context.activePlannedContext?.pair,
+    weekPlan: context.weeklyWeekPlan ?? null,
+  })
+
+  const shadowBlocks =
+    Boolean(shadow?.shouldPause && allowHistoricalStandDown(context)) ||
+    (intervention?.active && !intervention.canProceedToEntry)
+
+  if (
+    isPreTradeDecisionContext(context) &&
+    !watchlistGate.allowed &&
+    watchlistGate.severity === "blocked"
+  ) {
+    verdict = "SKIP"
+    status = "blocked"
+    riskMultiplier = 0
+    reasons.push(watchlistGate.message)
+  } else if (shadowBlocks) {
     verdict = "SKIP"
     status = "blocked"
     riskMultiplier = 0
     reasons.push(intervention?.message ?? shadow?.proactiveMessage ?? "Shadow pause active")
-  } else if (rules.probability >= 60 || setup.score < 45) {
+  } else if (strictGate && (rules.probability >= 60 || setup.score < 45)) {
     verdict = "SKIP"
     status = "reflection_required"
     riskMultiplier = 0
     reasons.push(...rules.likelyViolations)
-  } else if (setup.score >= 68 && (shadow?.overallRiskLevel === "low" || shadow?.overallRiskLevel === "moderate")) {
+    if (setup.score < 45 && !rules.likelyViolations.length) {
+      reasons.push(setup.narrative)
+    }
+  } else if (freshCompanion) {
+    verdict = "TAKE"
+    status = "approved"
+    riskMultiplier = 1
+    reasons.push("New session — daily rules are active. Reflection applies when you open chart coach.")
+  } else if (
+    setup.score >= 68 &&
+    (shadow?.overallRiskLevel === "low" || shadow?.overallRiskLevel === "moderate")
+  ) {
     verdict = "TAKE"
     status = "approved"
     reasons.push("Setup probability and shadow risk within bounds")

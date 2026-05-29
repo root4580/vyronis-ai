@@ -1,3 +1,5 @@
+import { TRADE_PAIRS } from "@/lib/trade-form-config"
+
 /** Week starts Sunday (forex Sunday planning convention). */
 
 export function getWeekStartSunday(date = new Date()): string {
@@ -18,15 +20,5 @@ export function formatWeekLabel(weekStart: string): string {
   return `${fmt(start)} – ${fmt(end)}`
 }
 
-export const FOREX_PAIRS = [
-  "EURUSD",
-  "GBPUSD",
-  "USDJPY",
-  "AUDUSD",
-  "USDCAD",
-  "NZDUSD",
-  "EURGBP",
-  "EURJPY",
-  "GBPJPY",
-  "XAUUSD",
-] as const
+/** Same symbols as journal / trade log — majors, crosses, metals, indices. */
+export const FOREX_PAIRS: readonly string[] = TRADE_PAIRS

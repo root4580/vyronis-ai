@@ -55,6 +55,46 @@ export async function fetchTradingViewWebhookSettings(): Promise<{
   return parseJson(response)
 }
 
+export type TradingViewSetupReadiness = {
+  ready: boolean
+  steps: Array<{
+    id: string
+    label: string
+    done: boolean
+    hint: string
+    action?: string
+  }>
+  suggestedTestSymbol: string | null
+  suggestedTestDirection: "BUY" | "SELL"
+}
+
+export async function fetchTradingViewSetupReadiness(): Promise<TradingViewSetupReadiness> {
+  const response = await fetch("/api/tradingview/readiness", { credentials: "same-origin" })
+  return parseJson(response)
+}
+
+export async function sendTradingViewTestAlert(input?: {
+  symbol?: string
+  direction?: "BUY" | "SELL"
+}): Promise<{
+  ok: boolean
+  setup_grade?: string
+  setup_verdict?: string
+  email_sent?: boolean
+  message?: string
+  symbol?: string
+  direction?: string
+  coachSessionId?: string
+}> {
+  const response = await fetch("/api/tradingview/test-alert", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input ?? {}),
+  })
+  return parseJson(response)
+}
+
 export async function regenerateTradingViewWebhookSecret(): Promise<{
   secret: string
   enabled: boolean

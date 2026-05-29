@@ -197,13 +197,60 @@ function scoreRisk(
   return { score: clamp(score), warnings, strengths }
 }
 
+function tradingViewWarRoomScore(context: PreTradePlannedContext): number | null {
+  if (context.signal_source !== "tradingview") return null
+  const grade = context.tradingview_setup_grade
+  const alertScore = context.coach_analysis?.confidenceScore
+  if (grade === "A+") return Math.max(alertScore ?? 0, 88)
+  if (grade === "B") return Math.max(alertScore ?? 0, 72)
+  if (grade === "C") return Math.min(alertScore ?? 55, 58)
+  if (grade === "D") return Math.min(alertScore ?? 40, 42)
+  return alertScore ?? null
+}
+
+function effectiveChartVisionScore(context: PreTradePlannedContext): number | null {
+  const fromTv = context.tradingview_chart_vision?.vision_score
+  if (fromTv != null && fromTv > 0) return fromTv
+  const fromCtx = context.vision_score
+  if (fromCtx != null && fromCtx > 0) return fromCtx
+  const chartAnalysis = context.chart_analysis
+  if (!chartAnalysis) return null
+  const fromAnalysis =
+    chartAnalysis.vision?.visionScore ?? chartAnalysis.overallScore ?? null
+  if (fromAnalysis != null && fromAnalysis > 0) return fromAnalysis
+  if (context.signal_source === "tradingview") return null
+  return fromAnalysis
+}
+
 function scoreSetup(
   context: PreTradePlannedContext,
   responses: Record<string, string>,
   patterns: PatternMemoryPattern[],
 ): { score: number; warnings: string[]; strengths: string[] } {
+  const warRoomScore = tradingViewWarRoomScore(context)
+  const linkedVision = effectiveChartVisionScore(context)
+
+  if (context.signal_source === "tradingview" && (warRoomScore != null || linkedVision != null)) {
+    const warnings: string[] = []
+    const strengths: string[] = []
+    let score = warRoomScore ?? 65
+    if (linkedVision != null) {
+      score = Math.round(score * 0.55 + linkedVision * 0.45)
+      strengths.push(`War Room chart vision ${linkedVision}/100 factored into setup score.`)
+    }
+    if (context.tradingview_setup_grade) {
+      strengths.push(
+        `TradingView alert graded ${context.tradingview_setup_grade} vs your weekly War Room plan.`,
+      )
+    }
+    if (context.tradingview_setup_grade === "D") {
+      warnings.push("War Room alert grade is D — treat as low-quality vs your plan.")
+    }
+    return { score: clamp(score), warnings, strengths }
+  }
+
   const chartAnalysis = context.chart_analysis
-  if (chartAnalysis) {
+  if (chartAnalysis && (chartAnalysis.vision?.visionScore ?? chartAnalysis.overallScore ?? 0) > 0) {
     const vision = chartAnalysis.vision
     const warnings = [...(chartAnalysis.warnings ?? [])]
     const strengths = [...(chartAnalysis.strengths ?? [])]
@@ -417,12 +464,6 @@ function deriveConfidence(
   return clamp(Math.round(confidence))
 }
 
-function resolveVisionScore(context: PreTradePlannedContext): number | null {
-  const analysis = context.chart_analysis
-  if (!analysis) return context.vision_score ?? null
-  return analysis.vision?.visionScore ?? context.vision_score ?? analysis.overallScore ?? null
-}
-
 function resolveMtfScores(context: PreTradePlannedContext): {
   bias: number | null
   entry: number | null
@@ -436,8 +477,15 @@ function resolveMtfScores(context: PreTradePlannedContext): {
       combined: mtf.overallScore ?? mtf.visionScore,
     }
   }
-  const visionScore = resolveVisionScore(context)
-  return { bias: null, entry: null, combined: visionScore }
+  const visionScore = effectiveChartVisionScore(context)
+  if (visionScore != null && visionScore > 0) {
+    return { bias: null, entry: null, combined: visionScore }
+  }
+  const warRoom = tradingViewWarRoomScore(context)
+  if (context.signal_source === "tradingview" && warRoom != null) {
+    return { bias: null, entry: null, combined: warRoom }
+  }
+  return { bias: null, entry: null, combined: null }
 }
 
 export function computeTradeQuality(input: TradeQualityInput): TradeQualityResult {

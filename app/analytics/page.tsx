@@ -97,6 +97,7 @@ export default function AnalyticsPage() {
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
+        showSignalBell={Boolean(chrome.user)}
         showFab
         onFabClick={() => router.push("/?action=new-trade")}
       >

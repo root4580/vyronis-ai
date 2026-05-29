@@ -44,10 +44,33 @@ export function hasChartUploaded(
 ): boolean {
   if (session && hasMtfAnalysis(session)) return true
   if (context.mtf_analysis) return true
-  if (session) {
-    return countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0
+  if (session && countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0) return true
+  return Boolean(
+    chartUrl ||
+      session?.chart_url ||
+      session?.screenshot_url ||
+      context.chart_url ||
+      context.screenshot_url ||
+      context.chart_analysis ||
+      context.vision_score != null,
+  )
+}
+
+/** MTF analysis done, or TradingView alert already has War Room / linked chart vision. */
+export function isPreTradeCheckInReady(
+  context: PreTradePlannedContext,
+  chartUrl?: string | null,
+  session?: TradeCoachSessionRecord | null,
+): boolean {
+  const sessionRecord = session ?? {
+    planned_context: context,
+    mtf_analysis: context.mtf_analysis ?? null,
   }
-  return Boolean(chartUrl || context.chart_url || context.screenshot_url)
+  if (isMtfAnalysisComplete(sessionRecord)) return true
+  return (
+    context.signal_source === "tradingview" &&
+    hasChartUploaded(context, chartUrl, session ?? null)
+  )
 }
 
 export function isMtfAnalysisComplete(
@@ -99,8 +122,9 @@ export function getNextQuestionKey(
   responses: Record<string, string>,
   maxRiskPerTrade: number,
   chartUrl?: string | null,
+  session?: TradeCoachSessionRecord | null,
 ): string | null {
-  if (!isMtfAnalysisComplete({ planned_context: context, mtf_analysis: context.mtf_analysis ?? null })) {
+  if (!isPreTradeCheckInReady(context, chartUrl, session)) {
     return null
   }
 
@@ -117,8 +141,9 @@ export function getActiveQuestionFromSession(
   messages: Array<{ role: string; question_key: string | null; content: string }>,
   context: PreTradePlannedContext,
   chartUrl?: string | null,
+  session?: TradeCoachSessionRecord | null,
 ): { key: string; prompt: string } | null {
-  if (!isMtfAnalysisComplete({ planned_context: context, mtf_analysis: context.mtf_analysis ?? null })) {
+  if (!isPreTradeCheckInReady(context, chartUrl, session)) {
     return null
   }
 
@@ -137,7 +162,12 @@ export function getActiveQuestionFromSession(
     }
   }
 
-  return null
+  const responses = extractResponsesFromMessages(messages)
+  const nextKey = getNextQuestionKey(context, responses, 1, chartUrl, session)
+  if (!nextKey || answered.has(nextKey)) return null
+  const fallback = getQuestionByKey(nextKey)
+  if (!fallback) return null
+  return { key: nextKey, prompt: fallback.prompt }
 }
 
 export function buildCoachIntro(context: PreTradePlannedContext): string {
@@ -151,12 +181,18 @@ export function buildCoachIntro(context: PreTradePlannedContext): string {
       score != null
         ? ` Vyronis scored this alert ${score}/100${rec ? ` — ${rec === "yes" ? "TAKE" : rec === "no" ? "SKIP" : "CAUTION"}` : ""}.`
         : ""
-    return `TradingView alert received: ${pair} ${direction}${strategy}.${scoreLine} Click Open Coach when you're ready — this plan is saved in Planned Trades. No orders were placed.`
+    return `TradingView alert: ${pair} ${direction}${strategy}.${scoreLine} War Room chart vision is attached — answer the quick check-in below before you enter on MT5.`
   }
 
   const pair = context.pair || "your pair"
-  const direction = context.direction || "your direction"
-  return `Multi-timeframe check-in for ${pair} ${direction}. Upload Weekly, Daily, H4 bias charts plus H1 setup and M15 entry screenshots. I'll score HTF alignment and entry confirmation, then ask 2-3 quick emotion/risk questions.`
+  const bias =
+    context.direction === "LONG"
+      ? "long bias"
+      : context.direction === "SHORT"
+        ? "short bias"
+        : null
+  const biasPhrase = bias ? ` (${bias})` : ""
+  return `Chart coach for ${pair}${biasPhrase}. Upload Weekly → Daily → H4 → H1 → M15 below (multi-select OK), then tap Autofill or Run analysis. After that, a quick emotion and risk check-in.`
 }
 
 export function estimateQuestionCount(): number {
@@ -200,10 +236,19 @@ export function getCoachWorkflowPhase(input: {
   session?: Pick<TradeCoachSessionRecord, "mtf_analysis" | "planned_context"> | null
 }): CoachWorkflowPhase {
   if (input.status === "completed" || input.status === "linked") return "complete"
-  if (!isMtfAnalysisComplete(input.session ?? { planned_context: input.plannedContext, mtf_analysis: input.plannedContext.mtf_analysis ?? null })) {
+
+  if (!isPreTradeCheckInReady(input.plannedContext, input.chartUrl, input.session ?? null)) {
     return "upload"
   }
-  if (getNextQuestionKey(input.plannedContext, input.responses, 1, input.chartUrl)) {
+  if (
+    getNextQuestionKey(
+      input.plannedContext,
+      input.responses,
+      1,
+      input.chartUrl,
+      input.session ?? null,
+    )
+  ) {
     return "questions"
   }
   return "complete"

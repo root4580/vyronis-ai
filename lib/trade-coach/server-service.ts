@@ -483,7 +483,12 @@ export async function runCoachMtfAnalysis(
     primaryUrl,
   )
   const nextQuestion = nextQuestionKey ? getQuestionByKey(nextQuestionKey) : null
-  const shouldAskNextQuestion = Boolean(nextQuestion) && !hasMtfAnalysis(session)
+  const coachAlreadyAskedNext =
+    Boolean(nextQuestionKey) &&
+    session.messages.some(
+      (message) => message.role === "coach" && message.question_key === nextQuestionKey,
+    )
+  const shouldAskNextQuestion = Boolean(nextQuestion) && !coachAlreadyAskedNext
 
   const maxStepIndex = session.messages.reduce(
     (max, message) => Math.max(max, message.step_index),
@@ -605,7 +610,18 @@ export async function updateCoachSessionPlannedContext(
   supabase: SupabaseClient,
   userId: string,
   sessionId: string,
-  patch: Partial<Pick<PreTradePlannedContext, "strategy_playbook_id" | "strategy_name">>,
+  patch: Partial<
+    Pick<
+      PreTradePlannedContext,
+      | "strategy_playbook_id"
+      | "strategy_name"
+      | "pair"
+      | "direction"
+      | "higher_timeframe"
+      | "entry_timeframe"
+      | "confirmation_timeframe"
+    >
+  >,
 ): Promise<TradeCoachSessionWithMessages> {
   const session = await getCoachSession(supabase, userId, sessionId)
   if (!session) throw new Error("Coach session not found")
@@ -833,6 +849,7 @@ export async function submitPreTradeAnswer(
     responses,
     maxRisk,
     session.chart_url,
+    session,
   )
   let nextStatus: TradeCoachSessionRecord["status"] = "in_progress"
   let updatedContext: PreTradePlannedContext = mergeMtfIntoContext(
@@ -869,7 +886,7 @@ export async function submitPreTradeAnswer(
       buildTradeQualityInput(updatedContext, responses, maxRisk, historicalTrades, patternMemory),
     )
     updatedContext = {
-      ...context,
+      ...updatedContext,
       coach_analysis: {
         ...analysis,
         tradeQuality,

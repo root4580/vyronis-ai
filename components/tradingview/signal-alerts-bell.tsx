@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTradingViewSignals } from "@/hooks/use-tradingview-signals"
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
+import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import { cn } from "@/lib/utils"
 
 type SignalAlertsBellProps = {
@@ -24,6 +25,13 @@ function recommendationClass(rec: string | null | undefined) {
   if (rec === "TAKE") return "border-profit/25 bg-profit/[0.08] text-profit"
   if (rec === "SKIP") return "border-loss/25 bg-loss/[0.08] text-loss"
   return "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+}
+
+function gradeClass(grade: string | null | undefined) {
+  if (grade === "A+") return "border-profit/30 bg-profit/[0.1] text-profit"
+  if (grade === "B") return "border-cyan-glow/30 bg-cyan-glow/[0.1] text-cyan-glow"
+  if (grade === "C") return "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+  return "border-loss/25 bg-loss/[0.08] text-loss/90"
 }
 
 function formatRelativeTime(iso: string) {
@@ -128,7 +136,19 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {signal.ai_recommendation ? (
+                    {signal.ai_analysis?.setup_grade ? (
+                      <Badge
+                        variant="outline"
+                        className={cn("h-5 text-[9px] font-semibold", gradeClass(signal.ai_analysis.setup_grade))}
+                      >
+                        Grade {signal.ai_analysis.setup_grade}
+                      </Badge>
+                    ) : null}
+                    {signal.ai_analysis?.setup_verdict ? (
+                      <Badge variant="outline" className="h-5 text-[9px] text-muted-foreground/85">
+                        {setupVerdictLabel(signal.ai_analysis.setup_verdict)}
+                      </Badge>
+                    ) : signal.ai_recommendation ? (
                       <Badge
                         variant="outline"
                         className={cn("h-5 text-[9px]", recommendationClass(signal.ai_recommendation))}
@@ -150,7 +170,11 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                       </Badge>
                     ) : null}
                   </div>
-                  {signal.message ? (
+                  {signal.ai_analysis?.verdict_summary ? (
+                    <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
+                      {signal.ai_analysis.verdict_summary}
+                    </p>
+                  ) : signal.message ? (
                     <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
                       {signal.message}
                     </p>

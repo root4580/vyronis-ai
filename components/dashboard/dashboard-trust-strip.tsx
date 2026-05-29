@@ -23,7 +23,7 @@ export function DashboardTrustStrip({
     >
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground/75">
         <Shield className="size-3.5 text-cyan-glow/70" />
-        <span>Vyronis advises — you execute</span>
+        <span>AI coach — you place every trade</span>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-[10px] tabular-nums text-muted-foreground/60">
         <span>{tradeCount} trades in journal</span>

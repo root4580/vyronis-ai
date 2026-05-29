@@ -13,6 +13,7 @@ export function buildTradingViewAlertTemplate(secret: string): string {
       confidence: 70,
       message: "{{strategy.order.alert_message}}",
       chart_url: "https://www.tradingview.com/chart/?symbol={{ticker}}",
+      image_url: null,
       alert_id: "{{timenow}}",
     },
     null,
@@ -32,6 +33,7 @@ export function buildTradingViewAlertTemplatePlain(secret: string): string {
   "take_profit": 1.0920,
   "confidence": 72,
   "message": "Breakout setup",
-  "chart_url": "https://www.tradingview.com/chart/?symbol={{ticker}}"
+  "chart_url": "https://www.tradingview.com/chart/?symbol={{ticker}}",
+  "image_url": null
 }`
 }

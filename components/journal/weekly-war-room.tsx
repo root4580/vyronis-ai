@@ -6,7 +6,9 @@ import { ArrowLeft, ChevronDown, ChevronUp, Swords } from "lucide-react"
 import { MarketBiasPanel } from "@/components/strategy-brain/market-bias-panel"
 import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning-panel"
 import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
+import { WeeklyWatchlistStrip } from "@/components/journal/weekly-watchlist-strip"
 import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
+import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 import { SectionLabel, StrategyBrainGlass } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,8 +19,10 @@ import {
   fetchMarketBias,
   fetchStrategyBrainDashboard,
   fetchWeeklyPlan,
+  saveMarketBias,
   saveWeeklyPlan,
 } from "@/lib/strategy-brain/api-client"
+import type { MarketBiasInput } from "@/lib/strategy-brain/types"
 import {
   formatStrategyBrainSetupError,
   isStrategyBrainSetupError,
@@ -35,6 +39,7 @@ export function WeeklyWarRoom() {
   const [expectedScenarios, setExpectedScenarios] = useState("")
   const [savingMeta, setSavingMeta] = useState(false)
   const [showWatchlistEditor, setShowWatchlistEditor] = useState(false)
+  const watchlistComplete = isWatchlistComplete(weekPlan)
   const [setupError, setSetupError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -161,7 +166,7 @@ export function WeeklyWarRoom() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Weekly War Room</h1>
             <p className="text-[12px] text-muted-foreground/75">
-              {formatWeekLabel(weekStart)} — operational center (you execute, Vyronis advises)
+              {formatWeekLabel(weekStart)} — weekly plan (you trade; AI coaches)
             </p>
           </div>
         </div>
@@ -178,6 +183,26 @@ export function WeeklyWarRoom() {
       {!setupError ? (
         <>
       <WarRoomWorkflowStatus readiness={readiness} />
+
+      <WeeklyWatchlistStrip weekPlan={weekPlan} showCoachLinks={watchlistComplete} />
+
+      {!watchlistComplete ? (
+        <p className="text-[11px] text-muted-foreground/70">
+          Select <span className="text-foreground/85">up to 5 charts at once</span> per pair (W → M15 order), then{" "}
+          <span className="text-foreground/85">Analyze &amp; autofill</span> for pair, AOI, thesis, and HTF bias.
+        </p>
+      ) : null}
+
+      {!watchlistComplete ? (
+        <SundayPlanningPanel
+          initial={weekPlan}
+          weekStart={weekStart}
+          onSaved={(p) => {
+            setWeekPlan(p)
+            void refresh()
+          }}
+        />
+      ) : null}
 
       <MarketBiasPanel initial={marketBias} onSaved={(b) => setMarketBias(b)} />
 
@@ -239,6 +264,14 @@ export function WeeklyWarRoom() {
                   sessionFocus={sessionFocus}
                   expectedScenarios={expectedScenarios}
                   onUpdated={setWeekPlan}
+                  onBiasSuggest={(bias: MarketBiasInput) => {
+                    void saveMarketBias(bias)
+                      .then((b) => {
+                        setMarketBias(b)
+                        toast({ title: "HTF bias updated from chart read" })
+                      })
+                      .catch(() => {})
+                  }}
                 />
               ) : null,
             )}
@@ -246,7 +279,7 @@ export function WeeklyWarRoom() {
         </div>
       ) : (
         <p className="rounded-lg border border-dashed border-white/[0.1] px-3 py-6 text-center text-[12px] text-muted-foreground/70">
-          Add 3–5 pairs in the watchlist below to activate pair cards.
+          Save at least one pair in the watchlist below to activate pair cards.
         </p>
       )}
 
@@ -256,7 +289,7 @@ export function WeeklyWarRoom() {
           onClick={() => setShowWatchlistEditor((v) => !v)}
           className="flex w-full items-center justify-between px-3 py-2.5 text-left text-[12px] font-medium"
         >
-          Edit weekly watchlist (3–5 pairs)
+          {watchlistComplete ? "Edit weekly watchlist" : "Add or edit watchlist (1–5 pairs)"}
           {showWatchlistEditor ? (
             <ChevronUp className="size-4 text-muted-foreground" />
           ) : (
@@ -268,6 +301,14 @@ export function WeeklyWarRoom() {
             <SundayPlanningPanel
               initial={weekPlan}
               weekStart={weekStart}
+              onBiasSuggest={(bias: MarketBiasInput) => {
+                void saveMarketBias(bias)
+                  .then((b) => {
+                    setMarketBias(b)
+                    toast({ title: "HTF bias updated from chart read" })
+                  })
+                  .catch(() => {})
+              }}
               onSaved={(p) => {
                 setWeekPlan(p)
                 setShowWatchlistEditor(false)

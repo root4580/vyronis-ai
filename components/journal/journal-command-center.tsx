@@ -1,19 +1,21 @@
 "use client"
 
-import { Suspense, useMemo, useState, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { ArrowLeft, BarChart3, Plus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { DashboardEmptyState } from "@/components/dashboard/dashboard-primitives"
+import { DashboardRecentTradesSection } from "@/components/dashboard/dashboard-recent-trades-section"
 import { type DashboardTradeRow } from "@/components/dashboard/trading-components"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
 import { JournalAnalyticsStrip } from "@/components/journal/journal-analytics-strip"
 import { JournalCalendarView } from "@/components/journal/journal-calendar-view"
 import { JournalIntelligenceMode } from "@/components/journal/journal-intelligence-mode"
 import { JournalModeTabs } from "@/components/journal/journal-mode-tabs"
+import { JournalMonthStrip } from "@/components/journal/journal-month-strip"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
-import { JournalWorkflowNav } from "@/components/journal/journal-workflow-nav"
 import {
   buildDrawdownStats,
   buildJournalMonthStats,
@@ -115,6 +117,9 @@ export function JournalCommandCenter({
     [dayTrades],
   )
 
+  const hasPlannedInProgress = plannedSessions.some((s) => s.status === "in_progress")
+  const hasTrades = trades.length > 0
+
   const goPrevMonth = () => {
     const next = shiftMonth(viewYear, viewMonth, -1)
     setViewYear(next.year)
@@ -129,11 +134,9 @@ export function JournalCommandCenter({
     setSelectedDate(null)
   }
 
-  const hasTrades = trades.length > 0
-
   if (selectedDate) {
     return (
-      <section className="dashboard-section space-y-4">
+      <section className="dashboard-section space-y-3">
         <Button
           type="button"
           variant="ghost"
@@ -145,35 +148,21 @@ export function JournalCommandCenter({
         </Button>
 
         {selectedDayMeta && selectedDayMeta.tradeCount > 0 ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "border-white/10",
-                  selectedDayMeta.pnl >= 0
-                    ? "bg-profit/10 text-profit"
-                    : "bg-loss/10 text-loss",
-                )}
-              >
-                {formatJournalDayPnl(selectedDayMeta.pnl)}
-              </Badge>
-              <span className="text-[12px] text-muted-foreground/80">
-                {selectedDayMeta.tradeCount} trades · {selectedDayMeta.winRate}% win rate
-              </span>
-            </div>
-            {onClearJournalCsvDay && journalCsvOnSelectedDay.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-fit border-loss/30 text-[11px] text-loss hover:bg-loss/[0.08]"
-                onClick={() => void onClearJournalCsvDay(selectedDate)}
-              >
-                Clear {journalCsvOnSelectedDay.length} CSV import
-                {journalCsvOnSelectedDay.length === 1 ? "" : "s"} on this day
-              </Button>
-            ) : null}
+          <div className="vyronis-surface flex flex-wrap items-center gap-2 px-3 py-2">
+            <Badge
+              variant="outline"
+              className={cn(
+                "border-white/10",
+                selectedDayMeta.pnl >= 0
+                  ? "bg-profit/10 text-profit"
+                  : "bg-loss/10 text-loss",
+              )}
+            >
+              {formatJournalDayPnl(selectedDayMeta.pnl)}
+            </Badge>
+            <span className="text-[12px] text-muted-foreground/80">
+              {selectedDayMeta.tradeCount} trades · {selectedDayMeta.winRate}% wins
+            </span>
           </div>
         ) : null}
 
@@ -181,10 +170,10 @@ export function JournalCommandCenter({
           <Button
             type="button"
             onClick={() => onLogTrade(selectedDate)}
-            className="h-9 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+            className="h-10 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
           >
             <Plus className="mr-2 size-4" />
-            Log trade for this day
+            Log trade
           </Button>
         ) : null}
 
@@ -200,43 +189,62 @@ export function JournalCommandCenter({
   }
 
   return (
-    <section className="dashboard-section space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="dashboard-section-title">Decision journal</p>
-          <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-muted-foreground/70">
-            Plan before you trade — calendar intelligence, analytics, and pattern memory
-            (not just a trade log).
-          </p>
-        </div>
+    <section className="dashboard-section space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[15px] font-semibold tracking-tight text-foreground">Journal</p>
         <div className="flex w-full flex-col gap-2 sm:w-auto">{headerActions}</div>
       </div>
 
-      <Suspense fallback={null}>
-        <JournalWorkflowNav />
-      </Suspense>
       <JournalModeTabs mode={journalMode} onChange={setJournalMode} />
 
-      <PlannedTradesSection
-        sessions={plannedSessions}
-        isLoading={isLoadingPlanned}
-        deletingSessionId={deletingSessionId}
-        onContinueCoach={onContinueCoach}
-        onConvertToTrade={onConvertToTrade}
-        onDeletePlanned={onDeletePlanned}
-        onNewCoach={onNewCoach}
-      />
-
       {journalMode === "calendar" ? (
-        <JournalCalendarView
-          trades={trades}
-          viewYear={viewYear}
-          viewMonth={viewMonth}
-          onPrevMonth={goPrevMonth}
-          onNextMonth={goNextMonth}
-          onSelectDate={setSelectedDate}
-          onLogTrade={onLogTrade ? () => onLogTrade() : undefined}
-        />
+        <div className="space-y-3">
+          <JournalMonthStrip stats={monthStats} />
+          <JournalCalendarView
+            trades={trades}
+            viewYear={viewYear}
+            viewMonth={viewMonth}
+            onPrevMonth={goPrevMonth}
+            onNextMonth={goNextMonth}
+            onSelectDate={setSelectedDate}
+            onLogTrade={onLogTrade ? () => onLogTrade() : undefined}
+          />
+          {hasTrades ? (
+            <CollapsibleDashboardSection
+              title="Recent trades"
+              defaultOpen={false}
+              collapseOnMobile
+            >
+              <DashboardRecentTradesSection
+                trades={trades}
+                limit={3}
+                variant="compact"
+                onViewTrade={onViewTrade}
+                onEdit={onEditTrade}
+                onDelete={onDeleteTrade}
+                onScreenshotClick={onScreenshotClick}
+              />
+            </CollapsibleDashboardSection>
+          ) : null}
+          {plannedSessions.length > 0 ? (
+            <CollapsibleDashboardSection
+              title="Planned setups"
+              subtitle={hasPlannedInProgress ? "Coach in progress" : undefined}
+              defaultOpen={hasPlannedInProgress}
+              collapseOnMobile
+            >
+              <PlannedTradesSection
+                sessions={plannedSessions}
+                isLoading={isLoadingPlanned}
+                deletingSessionId={deletingSessionId}
+                onContinueCoach={onContinueCoach}
+                onConvertToTrade={onConvertToTrade}
+                onDeletePlanned={onDeletePlanned}
+                onNewCoach={onNewCoach}
+              />
+            </CollapsibleDashboardSection>
+          ) : null}
+        </div>
       ) : null}
 
       {journalMode === "analytics" && hasTrades ? (
@@ -247,8 +255,8 @@ export function JournalCommandCenter({
         <DashboardEmptyState
           icon={BarChart3}
           title="No analytics yet"
-          description="Log trades to unlock drawdown, session, and weekday intelligence"
-          className="min-h-[200px]"
+          description="Log a trade to unlock session and weekday stats"
+          className="min-h-[160px]"
         />
       ) : null}
 
@@ -256,19 +264,13 @@ export function JournalCommandCenter({
         <JournalIntelligenceMode trades={trades} maxRiskPerTrade={1} />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
-        <Link href="/war-room" className="text-[11px] font-medium text-cyan-glow hover:underline">
-          Weekly War Room →
+      <div className="border-t border-white/[0.05] pt-2">
+        <Link
+          href="/war-room"
+          className="text-[10px] font-medium text-muted-foreground/60 hover:text-cyan-glow"
+        >
+          War Room →
         </Link>
-        {journalMode !== "calendar" && hasTrades ? (
-          <button
-            type="button"
-            onClick={() => setJournalMode("calendar")}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            View calendar
-          </button>
-        ) : null}
       </div>
     </section>
   )

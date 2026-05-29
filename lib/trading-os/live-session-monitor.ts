@@ -1,3 +1,4 @@
+import { isFreshTradingDay, isHistoricalCautionOnly } from "@/lib/intelligence/trading-day-boundary"
 import { detectTradingSession } from "@/lib/trading/session-timing"
 import type {
   LiveSessionAlert,
@@ -20,6 +21,8 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
   const shadow = context.autonomous?.shadow
   const cognitive = context.cognitive
   const recovery = context.sessionRecovery
+  const freshDay = isFreshTradingDay(context)
+  const historicalOnly = isHistoricalCautionOnly(context)
 
   const volatilityState: LiveSessionMonitoring["volatilityState"] =
     cognitive?.marketEnvironment.labels.includes("expanding_volatility")
@@ -33,18 +36,25 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
   let overtradingLevel: LiveSessionMonitoring["overtradingLevel"] = "low"
   const overProb = shadow?.overtradingProbability ?? cognitive?.predictions.overtradingProbability ?? 0
   if (todayCount >= maxTrades) overtradingLevel = "critical"
-  else if (overProb >= 70 || todayCount >= maxTrades - 1) overtradingLevel = "high"
-  else if (overProb >= 45 || todayCount >= Math.max(2, maxTrades - 2)) overtradingLevel = "moderate"
+  else if (todayCount >= maxTrades - 1) overtradingLevel = "high"
+  else if (!freshDay && (overProb >= 70 || todayCount >= Math.max(2, maxTrades - 2))) {
+    overtradingLevel = "high"
+  } else if (!freshDay && overProb >= 45) {
+    overtradingLevel = "moderate"
+  }
 
-  const emotionalDriftScore = clamp(
+  let emotionalDriftScore = clamp(
     context.sessionRecovery?.adjustedEmotionalRisk ??
-    shadow?.emotionalRiskScore ??
+      shadow?.emotionalRiskScore ??
       (context.emotionalState.trend === "volatile"
         ? 78
         : context.emotionalState.trend === "elevated"
           ? 58
           : 28),
   )
+  if (freshDay && historicalOnly) {
+    emotionalDriftScore = Math.min(emotionalDriftScore, 58)
+  }
 
   const emotionalDriftNarrative =
     recovery?.probabilityNarrative ??
@@ -94,10 +104,10 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
     })
   }
 
-  if (emotionalDriftScore >= 65) {
+  if (emotionalDriftScore >= 65 && !(freshDay && historicalOnly && emotionalDriftScore < 72)) {
     alerts.push({
       id: "emotional-drift",
-      severity: emotionalDriftScore >= 80 ? "critical" : "warning",
+      severity: emotionalDriftScore >= 80 && !freshDay ? "critical" : "warning",
       category: "emotional_drift",
       message: emotionalDriftNarrative,
       actionHint: "Run a 60-second reset before confirming any entry.",

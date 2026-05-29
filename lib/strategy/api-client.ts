@@ -53,6 +53,11 @@ export async function updateCoachSessionContext(
   patch: {
     strategy_playbook_id?: string | null
     strategy_name?: string | null
+    pair?: string
+    direction?: string
+    higher_timeframe?: string
+    entry_timeframe?: string
+    confirmation_timeframe?: string
   },
 ): Promise<import("@/lib/trade-coach/types").TradeCoachSessionWithMessages> {
   const response = await fetch(`/api/coach/sessions/${sessionId}/context`, {

@@ -129,16 +129,27 @@ export function ScreenshotViewerModal({
           </div>
         </div>
 
-        <div className="flex min-h-[200px] items-center justify-center bg-black/35 p-3 sm:min-h-[240px] sm:p-6">
+        <div className="relative flex min-h-[200px] items-center justify-center bg-black/35 p-3 sm:min-h-[240px] sm:p-6">
           {imageUrl ? (
-            <ChartAnnotatedImage
-              src={imageUrl}
-              alt={`${title} chart screenshot`}
-              annotations={annotations}
-              mode={overlayMode}
-              className="max-h-[70vh] w-full sm:max-h-[75vh]"
-              imageClassName="max-h-[70vh] rounded-xl border border-white/[0.08] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:max-h-[75vh]"
-            />
+            <>
+              <ChartAnnotatedImage
+                src={imageUrl}
+                alt={`${title} chart screenshot`}
+                annotations={annotations}
+                mode={overlayMode}
+                className="max-h-[70vh] w-full sm:max-h-[75vh]"
+                imageClassName="max-h-[70vh] rounded-xl border border-white/[0.08] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:max-h-[75vh]"
+              />
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/75 px-3 py-1.5 text-[12px] font-semibold text-foreground shadow-lg backdrop-blur-sm transition-colors hover:bg-black/90 sm:right-5 sm:top-5"
+                aria-label="Close chart view"
+              >
+                <X className="size-4" />
+                Close
+              </button>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12">
               <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] sm:size-16">

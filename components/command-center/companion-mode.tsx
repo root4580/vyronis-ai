@@ -67,6 +67,7 @@ export function CompanionMode() {
             vyronisCore: context.vyronisCore,
             autonomous: context.autonomous,
             freshWarnings: context.freshWarnings,
+            snapshot: context.snapshot,
           }}
         />
       )}
