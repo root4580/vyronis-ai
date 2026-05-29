@@ -53,10 +53,40 @@ function safeCompareSecret(provided: string, expected: string): boolean {
   return timingSafeEqual(a, b)
 }
 
+type WebhookUserContext = {
+  user_id: string
+  max_risk_per_trade: number
+  preferred_session: string | null
+}
+
+function mapWebhookUserRow(
+  row: {
+    user_id: string
+    max_risk_per_trade: number | null
+    preferred_session: string | null
+    tradingview_webhook_secret: string | null
+    tradingview_webhook_enabled: boolean | null
+  },
+  providedSecret: string,
+): WebhookUserContext {
+  const trimmed = providedSecret.trim()
+  if (!row.tradingview_webhook_enabled) {
+    throw new TradingViewWebhookError("TradingView webhook is disabled in Account Settings.", 400)
+  }
+  if (!row.tradingview_webhook_secret || !safeCompareSecret(trimmed, row.tradingview_webhook_secret)) {
+    throw new TradingViewWebhookError("Invalid webhook secret.", 401)
+  }
+  return {
+    user_id: row.user_id,
+    max_risk_per_trade: row.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
+    preferred_session: row.preferred_session ?? null,
+  }
+}
+
 async function resolveUserBySecret(
   supabase: SupabaseClient,
   secret: string,
-): Promise<{ user_id: string; max_risk_per_trade: number; preferred_session: string | null }> {
+): Promise<WebhookUserContext> {
   const trimmed = secret.trim()
   const { data, error } = await supabase
     .from("user_settings")
@@ -67,18 +97,44 @@ async function resolveUserBySecret(
 
   if (error) {
     if (isMissingTableError(error.message)) throw new TradingViewTableMissingError()
-    throw new TradingViewWebhookError("Could not validate webhook secret.", 500)
+    throw new TradingViewWebhookError(
+      `Could not validate webhook secret. ${error.message} (check SUPABASE_SERVICE_ROLE_KEY on Vercel).`,
+      500,
+    )
   }
 
-  if (!data?.tradingview_webhook_secret || !safeCompareSecret(trimmed, data.tradingview_webhook_secret)) {
+  if (!data) {
     throw new TradingViewWebhookError("Invalid webhook secret.", 401)
   }
 
-  return {
-    user_id: data.user_id,
-    max_risk_per_trade: data.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
-    preferred_session: data.preferred_session ?? null,
+  return mapWebhookUserRow(data, trimmed)
+}
+
+/** Authenticated test alerts — avoid secret index lookup (service role must still be configured). */
+async function resolveUserByUserId(
+  supabase: SupabaseClient,
+  userId: string,
+  secret: string,
+): Promise<WebhookUserContext> {
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("user_id, max_risk_per_trade, preferred_session, tradingview_webhook_secret, tradingview_webhook_enabled")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) {
+    if (isMissingTableError(error.message)) throw new TradingViewTableMissingError()
+    throw new TradingViewWebhookError(
+      `Could not load webhook settings. ${error.message} (add SUPABASE_SERVICE_ROLE_KEY on Vercel).`,
+      500,
+    )
   }
+
+  if (!data) {
+    throw new TradingViewWebhookError("User settings not found.", 404)
+  }
+
+  return mapWebhookUserRow(data, secret)
 }
 
 async function isDuplicateAlert(
@@ -115,12 +171,15 @@ export async function ingestTradingViewAlert(
   supabase: SupabaseClient,
   payload: TradingViewAlertPayload,
   rawPayload: Record<string, unknown>,
+  options?: { trustedUserId?: string },
 ): Promise<TradingViewIngestOutcome> {
   if (!payload.secret?.trim()) {
     throw new TradingViewWebhookError("Missing webhook secret.", 401)
   }
 
-  const user = await resolveUserBySecret(supabase, payload.secret.trim())
+  const user = options?.trustedUserId
+    ? await resolveUserByUserId(supabase, options.trustedUserId, payload.secret.trim())
+    : await resolveUserBySecret(supabase, payload.secret.trim())
   const normalized = normalizeAlertPayload(payload)
 
   if (!normalized.symbol || normalized.symbol === "UNKNOWN") {
