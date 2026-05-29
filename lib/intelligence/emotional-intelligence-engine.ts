@@ -77,19 +77,33 @@ export function buildEmotionalIntelligence(input: {
       "",
   ).toLowerCase()
 
-  const driftScore = os?.liveSession.emotionalDriftScore ?? 0
+  const recovery = context.sessionRecovery
+  const softHistorical =
+    recovery?.sessionGuardMode === "soft_caution" &&
+    recovery.carryoverMode === "historical_caution"
+
+  const driftScore = recovery?.adjustedEmotionalRisk ?? os?.liveSession.emotionalDriftScore ?? 0
   const driftRising = timeline?.emotionalDriftTrend === "declining"
   const emotionalDrift =
-    context.emotionalState.trend === "volatile" ||
-    context.emotionalState.impulsiveCount >= 2 ||
-    driftScore >= 55 ||
-    driftRising
+    recovery?.carryoverMode === "active_instability" ||
+    recovery?.phase === "UNSTABLE" ||
+    recovery?.phase === "REVENGE_RISK" ||
+    (!softHistorical &&
+      (context.emotionalState.trend === "volatile" ||
+        context.emotionalState.impulsiveCount >= 2)) ||
+    driftScore >= (softHistorical ? 62 : 55) ||
+    (driftRising && !softHistorical)
 
   const revengeBehavior =
+    recovery?.phase === "REVENGE_RISK" ||
     emotion === "revenge" ||
-    patterns.some((p) => p.id === "reversal_chasing") ||
-    (shadow?.revengeTradingSignal ?? 0) >= 45 ||
-    recent.filter((t) => /revenge|fomo/i.test(t.emotion || "")).length >= 2
+    (recovery?.carryoverMode !== "historical_caution" &&
+      patterns.some((p) => p.id === "reversal_chasing")) ||
+    (shadow?.revengeTradingSignal ?? 0) >= (softHistorical ? 55 : 45) ||
+    (recovery?.carryoverMode === "active_instability" &&
+      recent.filter((t) => /revenge|fomo/i.test(t.emotion || "")).length >= 1) ||
+    (!softHistorical &&
+      recent.filter((t) => /revenge|fomo/i.test(t.emotion || "")).length >= 2)
 
   const hesitation =
     input.recentMessageTone === "hesitant" ||
@@ -142,10 +156,15 @@ export function buildEmotionalIntelligence(input: {
       emotionalDrift,
       emotionalDrift ? Math.max(driftScore, 62) : 15,
       emotionalDrift
-        ? driftRising
-          ? "Emotional drift is rising across recent sessions — pause before adding risk."
-          : "Journal shows volatile emotional tone — protect process over setup quality."
-        : "Emotional tone looks relatively stable.",
+        ? softHistorical
+          ? recovery?.probabilityNarrative ??
+            "Prior sessions suggest caution — current session has not confirmed instability."
+          : driftRising
+            ? "Emotional drift is rising across recent sessions — pause before adding risk."
+            : "Journal shows volatile emotional tone — protect process over setup quality."
+        : recovery?.phase === "RECOVERING"
+          ? "Recovering — historical stress is fading with time and clean session behavior."
+          : "Emotional tone looks relatively stable.",
     ),
     buildSignal(
       "revenge_behavior",
@@ -243,11 +262,13 @@ export function buildEmotionalIntelligence(input: {
     )
     .sort((a, b) => b.strength - a.strength)[0]
 
-  const headline = topRisk
-    ? topRisk.message.split("—")[0].trim()
-    : topStrength
-      ? topStrength.message.split("—")[0].trim()
-      : "Process-aligned — standard coaching."
+  const headline = recovery?.cautionSummary
+    ? recovery.cautionSummary
+    : topRisk
+      ? topRisk.message.split("—")[0].trim()
+      : topStrength
+        ? topStrength.message.split("—")[0].trim()
+        : "Process-aligned — standard coaching."
 
   const narrative = [
     topRisk ? `Watch: ${topRisk.message}` : null,

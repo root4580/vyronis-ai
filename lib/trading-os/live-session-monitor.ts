@@ -19,6 +19,7 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
   const maxTrades = context.settings.max_trades_per_day
   const shadow = context.autonomous?.shadow
   const cognitive = context.cognitive
+  const recovery = context.sessionRecovery
 
   const volatilityState: LiveSessionMonitoring["volatilityState"] =
     cognitive?.marketEnvironment.labels.includes("expanding_volatility")
@@ -36,6 +37,7 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
   else if (overProb >= 45 || todayCount >= Math.max(2, maxTrades - 2)) overtradingLevel = "moderate"
 
   const emotionalDriftScore = clamp(
+    context.sessionRecovery?.adjustedEmotionalRisk ??
     shadow?.emotionalRiskScore ??
       (context.emotionalState.trend === "volatile"
         ? 78
@@ -45,11 +47,12 @@ export function monitorLiveSession(input: TradingOsEngineInput): LiveSessionMoni
   )
 
   const emotionalDriftNarrative =
-    context.emotionalState.trend === "volatile"
+    recovery?.probabilityNarrative ??
+    (context.emotionalState.trend === "volatile"
       ? "Emotional drift is elevated — impulse risk rising through the session."
       : context.emotionalState.trend === "elevated"
         ? "Mild emotional drift — stay with playbook rules."
-        : "Emotional baseline stable so far today."
+        : "Emotional baseline stable so far today.")
 
   const sessionTransitionPending = Boolean(
     lastKnownSession && lastKnownSession !== session.name && session.isActive,

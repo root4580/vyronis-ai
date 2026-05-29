@@ -1,3 +1,4 @@
+import { getCalendarDateKey } from "@/lib/journal/trade-date-parser"
 import { getSignedPnL } from "@/lib/trade-utils"
 
 export type HeatmapTrade = {
@@ -42,11 +43,6 @@ function formatDateKey(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-function parseTradeDate(trade: HeatmapTrade): string {
-  if (trade.trade_date) return trade.trade_date.split("T")[0]
-  return trade.created_at.split("T")[0]
-}
-
 function buildDailyMap(trades: HeatmapTrade[]) {
   const map = new Map<
     string,
@@ -54,7 +50,9 @@ function buildDailyMap(trades: HeatmapTrade[]) {
   >()
 
   for (const trade of trades) {
-    const date = parseTradeDate(trade)
+    const date = getCalendarDateKey(trade)
+    if (!date) continue
+
     const current = map.get(date) || { pnl: 0, tradeCount: 0, wins: 0, losses: 0 }
     current.pnl += getSignedPnL(trade.pnl, trade.result)
     current.tradeCount += 1
@@ -171,7 +169,8 @@ export function buildPerformanceHeatmap(
       tradeCount,
       wins,
       losses,
-      winRate: tradeCount > 0 ? Math.round((wins / tradeCount) * 100) : 0,
+      winRate:
+        wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0,
       isToday: date === todayKey,
       inMonth: true,
       isPadding: false,

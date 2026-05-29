@@ -13,6 +13,7 @@ import type { VyronisCoreSnapshot } from "@/lib/vyronis-core/types"
 import type { CompanionIntent } from "@/lib/intelligence/companion-intent-engine"
 import type { OutcomeLessonRecord } from "@/lib/learning/outcome-learning-engine"
 import type { EmotionalIntelligenceSnapshot } from "@/lib/intelligence/emotional-intelligence-engine"
+import type { SessionRecoverySnapshot } from "@/lib/intelligence/session-recovery-engine"
 import type { ToneMemorySnapshot } from "@/lib/intelligence/tone-memory-engine"
 import type { TraderStateTimelineSnapshot } from "@/lib/intelligence/trader-state-timeline-engine"
 import type { VerdictCalibrationSnapshot } from "@/lib/intelligence/verdict-calibration-engine"
@@ -42,6 +43,8 @@ export type EmotionalStateSnapshot = {
   recentEmotions: string[]
   trend: "stable" | "elevated" | "volatile"
   note: string
+  /** Session phase from recovery engine (when available) */
+  phase?: SessionRecoverySnapshot["phase"] | null
 }
 
 export type MistakeHeatmapEntry = {
@@ -73,6 +76,7 @@ export type FullTraderContext = {
   vyronisCore?: VyronisCoreSnapshot | null
   outcomeLessons?: OutcomeLessonRecord[]
   emotionalIntelligence?: EmotionalIntelligenceSnapshot | null
+  sessionRecovery?: SessionRecoverySnapshot | null
   traderStateTimeline?: TraderStateTimelineSnapshot | null
   verdictCalibration?: VerdictCalibrationSnapshot | null
   toneMemory?: ToneMemorySnapshot | null

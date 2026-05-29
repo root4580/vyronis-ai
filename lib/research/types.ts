@@ -54,6 +54,7 @@ export type NormalizedResearchTrade = {
   trade_date: string
   opened_at: string | null
   closed_at: string | null
+  entry_price?: number | null
   lots: number | null
   commission: number | null
   swap: number | null
@@ -72,6 +73,9 @@ export type ParsedMt5CsvResult = {
   headers: string[]
   rows: Mt5CsvRow[]
   format: "deals" | "orders" | "history" | "unknown"
+  delimiter?: string
+  headerMapping?: Record<string, string>
+  columnDiagnostics?: import("@/lib/journal/journal-csv-mapper").JournalCsvColumnDiagnostics
 }
 
 export type ImportPreviewRow = {

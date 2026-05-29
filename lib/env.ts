@@ -43,9 +43,10 @@ export function getServerAiEnv() {
 export function getServiceRoleKey(): string {
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY_VYRONIS?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SECRET_KEY?.trim()
   return requireEnv(
-    "SUPABASE_SERVICE_ROLE_KEY_VYRONIS (or SUPABASE_SERVICE_ROLE_KEY)",
+    "SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SERVICE_ROLE_KEY_VYRONIS, or SUPABASE_SECRET_KEY",
     key,
   )
 }

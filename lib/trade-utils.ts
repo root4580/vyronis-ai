@@ -19,6 +19,13 @@ export function normalizePnL(pnl: number, result: string): number {
   return getSignedPnL(pnl, result)
 }
 
+/** Preview/import rows: show signed dollar amount without BE zeroing. */
+export function formatSignedDollarPnl(pnl: number): string {
+  const abs = Math.abs(Number(pnl) || 0)
+  const formatted = Number.isInteger(abs) ? String(abs) : abs.toFixed(2)
+  return pnl >= 0 ? `+$${formatted}` : `-$${formatted}`
+}
+
 export function formatPnL(pnl: number, result: string): string {
   const signed = getSignedPnL(pnl, result)
   const abs = Math.abs(signed)

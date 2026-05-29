@@ -25,7 +25,9 @@ export function buildImportPreview(
   trades: NormalizedResearchTrade[],
   existingTickets: Set<string>,
   duplicatesInBatch: string[],
+  options?: { replaceExisting?: boolean },
 ): ImportPreviewRow[] {
+  const replaceExisting = options?.replaceExisting ?? false
   const batchDupes = new Set(duplicatesInBatch)
 
   return trades.map((trade, index) => {
@@ -52,8 +54,10 @@ export function buildImportPreview(
         result: trade.result,
         pnl: trade.pnl,
         closed_at: trade.closed_at,
-        status: "duplicate",
-        message: "Already imported — skipped.",
+        status: replaceExisting ? "ready" : "duplicate",
+        message: replaceExisting
+          ? "Will replace existing trade by ticket."
+          : "Already imported — skipped.",
       }
     }
 
@@ -73,7 +77,9 @@ export function buildImportPreview(
 export function filterImportableTrades(
   trades: NormalizedResearchTrade[],
   existingTickets: Set<string>,
+  options?: { replaceExisting?: boolean },
 ): NormalizedResearchTrade[] {
   const { unique } = dedupeWithinBatch(trades)
+  if (options?.replaceExisting) return unique
   return unique.filter((trade) => !existingTickets.has(trade.external_ticket))
 }

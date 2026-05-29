@@ -1,5 +1,6 @@
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
+import { effectiveEmotionalRisk } from "@/lib/intelligence/session-recovery-engine"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import type { ShadowAssessment, ShadowRiskLevel } from "@/lib/autonomous/types"
 
@@ -42,21 +43,30 @@ export function evaluateShadowMode(input: {
   if (IMPULSIVE.has(plannedEmotion)) {
     emotionalRisk += 28
     impulsiveLikelihood += 32
-    flags.push(`Emotional state flagged: ${plannedEmotion}`)
+    flags.push(`Current session emotion reads ${plannedEmotion} — active instability`)
   }
 
+  const recovery = context.sessionRecovery
+  const historicalOnly =
+    recovery?.carryoverMode === "historical_caution" &&
+    recovery.sessionGuardMode === "soft_caution"
+
   if (context.emotionalState.trend === "volatile") {
-    emotionalRisk += 22
-    disciplineDrift += 20
-    flags.push("Emotional volatility in recent journal")
+    emotionalRisk += historicalOnly ? 10 : 22
+    disciplineDrift += historicalOnly ? 8 : 20
+    flags.push(
+      historicalOnly
+        ? "Prior-session volatility noted — decay applied; session not yet confirmed"
+        : "Emotional volatility in recent journal",
+    )
   } else if (context.emotionalState.trend === "elevated") {
-    emotionalRisk += 12
-    disciplineDrift += 10
+    emotionalRisk += historicalOnly ? 6 : 12
+    disciplineDrift += historicalOnly ? 4 : 10
   }
 
   if (context.emotionalState.impulsiveCount >= 2) {
-    impulsiveLikelihood += 24
-    emotionalRisk += 14
+    impulsiveLikelihood += historicalOnly ? 12 : 24
+    emotionalRisk += historicalOnly ? 6 : 14
   }
 
   const maxTrades = context.settings.max_trades_per_day
@@ -113,6 +123,9 @@ export function evaluateShadowMode(input: {
   }
 
   emotionalRisk = clamp(emotionalRisk)
+  if (recovery) {
+    emotionalRisk = effectiveEmotionalRisk(context, emotionalRisk)
+  }
   disciplineConfidence = clamp(disciplineConfidence)
   executionQuality = clamp(executionQuality)
   overtradingProb = clamp(overtradingProb)
@@ -129,7 +142,10 @@ export function evaluateShadowMode(input: {
   )
 
   const overallRiskLevel = riskLevel(composite)
-  const shouldPause = overallRiskLevel === "critical" || emotionalRisk >= 78
+  const shouldPause =
+    overallRiskLevel === "critical" ||
+    emotionalRisk >= 78 ||
+    (recovery?.sessionGuardMode === "aggressive_protect" && emotionalRisk >= 65)
 
   let proactiveMessage = "Shadow read: conditions look manageable — stay with your plan."
   if (shouldPause) {
@@ -138,6 +154,9 @@ export function evaluateShadowMode(input: {
   } else if (overallRiskLevel === "elevated") {
     proactiveMessage =
       "Heads-up: elevated risk. Size down, wait for clean confirmation, and check emotion before entry."
+  } else if (recovery?.sessionGuardMode === "soft_caution") {
+    proactiveMessage =
+      "Prior sessions warrant caution, but today has not confirmed instability — trade smaller if you engage."
   } else if (revengeSignal >= 40) {
     proactiveMessage =
       "Recent losses are in the room — make sure this trade is plan-driven, not reaction."

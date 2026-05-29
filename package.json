@@ -9,6 +9,18 @@
     "lint": "eslint .",
     "test:auth": "npx tsx scripts/test-auth-email.ts",
     "test:research": "npx tsx scripts/test-research-mt5-csv.ts",
+    "test:journal": "npx tsx scripts/test-journal-trade-date.ts",
+    "verify:journal-import": "npx tsx scripts/verify-journal-csv-import.ts",
+    "test:trading-journal-clean-csv": "npx tsx scripts/test-trading-journal-clean-csv.ts",
+    "test:date-only-csv": "npx tsx scripts/test-date-only-csv.ts",
+    "test:journal-profit-csv": "npx tsx scripts/test-journal-profit-csv.ts",
+    "test:tradezella-csv": "npx tsx scripts/test-tradezella-csv.ts",
+    "test:mt5-webhook": "npx tsx scripts/test-mt5-webhook.ts",
+    "validate:mt5-pipeline": "npx tsx scripts/validate-mt5-pipeline.ts",
+    "send:mt5-test-trade": "npx tsx scripts/send-mt5-test-trade.ts --keep",
+    "mt5:check-env": "npx tsx scripts/check-mt5-env.ts",
+    "mt5:quick-test": "npx tsx scripts/run-mt5-quick-test.ts",
+    "mt5:cleanup-test-trades": "npx tsx scripts/cleanup-mt5-test-trades.ts",
     "test:intelligence": "npx tsx scripts/verify-intelligence-stack.ts"
   },
   "dependencies": {

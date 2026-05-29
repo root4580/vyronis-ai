@@ -265,7 +265,10 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
             chart screenshots.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild className="h-9 border-violet-500/25 text-violet-200">
+            <Link href="/strategy-brain">Strategy Brain</Link>
+          </Button>
           <Button
             type="button"
             variant="outline"

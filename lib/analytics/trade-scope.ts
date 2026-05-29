@@ -5,14 +5,14 @@ export function isManualImportSource(importSource: string | null | undefined): b
   return !importSource || importSource === "manual"
 }
 
-/** Journal CSV / screenshot imports. */
+/** Journal CSV / MT5 EA webhook imports. */
 export function isJournalCsvImportSource(importSource: string | null | undefined): boolean {
-  return importSource === "journal_csv"
+  return importSource === "journal_csv" || importSource === "mt5_webhook"
 }
 
-/** Research Lab MT5 imports — not shown in journal. */
+/** Research Lab MT5 CSV imports — not shown in journal. */
 export function isResearchImportSource(importSource: string | null | undefined): boolean {
-  return importSource === "mt5_csv" || importSource === "mt5_webhook"
+  return importSource === "mt5_csv"
 }
 
 export function isJournalTrade<T extends { import_source?: string | null }>(trade: T): boolean {
@@ -34,7 +34,7 @@ export function filterTradesByScope<T extends { import_source?: string | null }>
 
 /** Journal list: manual entries + journal CSV imports (excludes research lab). */
 export function journalTradesOrFilter(): string {
-  return "import_source.eq.manual,import_source.eq.journal_csv,import_source.is.null"
+  return "import_source.eq.manual,import_source.eq.journal_csv,import_source.eq.mt5_webhook,import_source.is.null"
 }
 
 /** @deprecated Use journalTradesOrFilter — kept for backwards compatibility. */

@@ -93,6 +93,7 @@ import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
+import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import {
   buildDailyRules,
@@ -128,7 +129,7 @@ import {
   Pie,
 } from "recharts"
 
-type Trade = {
+export type DashboardTradeRow = {
   id: string
   pair: string
   direction: string
@@ -526,7 +527,7 @@ export function StatsCards({ totalPnL, winRate, tradeCount, avgRisk, startingBal
   )
 }
 
-export function EquityCurveChart({ trades, startingBalance }: { trades?: Trade[]; startingBalance?: number }) {
+export function EquityCurveChart({ trades, startingBalance }: { trades?: DashboardTradeRow[]; startingBalance?: number }) {
   const baseBalance = startingBalance || 10000
   const hasTrades = trades && trades.length > 0
   
@@ -633,7 +634,7 @@ export function EquityCurveChart({ trades, startingBalance }: { trades?: Trade[]
   )
 }
 
-export function WeeklyPerformance({ trades }: { trades?: Trade[] }) {
+export function WeeklyPerformance({ trades }: { trades?: DashboardTradeRow[] }) {
   const hasTrades = trades && trades.length > 0
   
   // Group trades by weekday
@@ -697,13 +698,15 @@ export function RecentTradesTable({
   onScreenshotClick,
   onViewTrade,
   headerActions,
+  title = "Trade Journal",
 }: {
-  trades?: Trade[]
-  onEdit?: (trade: Trade) => void
-  onDelete?: (trade: Trade) => void
-  onScreenshotClick?: (trade: Trade) => void
-  onViewTrade?: (trade: Trade) => void
+  trades?: DashboardTradeRow[]
+  onEdit?: (trade: DashboardTradeRow) => void
+  onDelete?: (trade: DashboardTradeRow) => void
+  onScreenshotClick?: (trade: DashboardTradeRow) => void
+  onViewTrade?: (trade: DashboardTradeRow) => void
   headerActions?: ReactNode
+  title?: string
 }) {
   const safeTrades = trades ?? []
   const hasTrades = safeTrades.length > 0
@@ -776,7 +779,7 @@ export function RecentTradesTable({
   return (
     <DashboardCard className="col-span-2 glass-card floating-glow" interactive glow>
       <DashboardCardHeader
-        title="Trade Journal"
+        title={title}
         icon={BookOpen}
         badge={
           <Badge variant="outline" className="h-6 text-[10px] font-medium">
@@ -838,7 +841,15 @@ export function RecentTradesTable({
         ) : filteredTrades.length === 0 ? (
           <DashboardEmptyState icon={Search} title="No trades match your filters." description="Try adjusting search or filter criteria" className="min-h-[160px]" />
         ) : (
-          <div className="overflow-x-auto -mx-1 px-1">
+          <>
+          <JournalTradeCards
+            trades={filteredTrades}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onViewTrade={onViewTrade}
+            onScreenshotClick={onScreenshotClick}
+          />
+          <div className="hidden md:block overflow-x-auto -mx-1 px-1">
             <table className="w-full text-[13px]">
               <thead>
               <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70">
@@ -1007,13 +1018,14 @@ export function RecentTradesTable({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </DashboardCardBody>
     </DashboardCard>
   )
 }
 
-export function AIPsychologyInsights({ trades }: { trades?: Trade[] }) {
+export function AIPsychologyInsights({ trades }: { trades?: DashboardTradeRow[] }) {
   const hasTrades = trades && trades.length > 0
   
   // Analyze psychology from real trades
@@ -1125,7 +1137,7 @@ export function DisciplineScore({
   startingBalance = 10000,
 }: {
   settings?: UserSettingsForm
-  trades?: Trade[]
+  trades?: DashboardTradeRow[]
   startingBalance?: number
 }) {
   const resolvedSettings = settings ?? DEFAULT_USER_SETTINGS
@@ -1279,7 +1291,7 @@ export function RiskManagement({
   )
 }
 
-export function EmotionalStateTracker({ trades = [] }: { trades?: Trade[] }) {
+export function EmotionalStateTracker({ trades = [] }: { trades?: DashboardTradeRow[] }) {
   const emotions = useMemo(() => {
     const recent = trades.slice(0, 15)
     if (recent.length === 0) {
@@ -1369,7 +1381,7 @@ export function DailyRulesChecklist({
   )
 }
 
-export function WinRateAnalytics({ trades }: { trades?: Trade[] }) {
+export function WinRateAnalytics({ trades }: { trades?: DashboardTradeRow[] }) {
   const safeTrades = trades ?? []
   const winCount = safeTrades.filter((trade) => trade.result === "WIN").length
   const lossCount = safeTrades.filter((trade) => trade.result === "LOSS").length
@@ -1443,7 +1455,7 @@ export function WinRateAnalytics({ trades }: { trades?: Trade[] }) {
 }
 
 // Performance heatmap — premium monthly calendar view
-export function CalendarHeatmapPlaceholder({ trades }: { trades?: Trade[] }) {
+export function CalendarHeatmapPlaceholder({ trades }: { trades?: DashboardTradeRow[] }) {
   return <PerformanceHeatmap trades={trades} />
 }
 
@@ -1452,7 +1464,7 @@ export function AITradeCoachPlaceholder({
   patternMemoryRefreshKey = 0,
   onOpenCompanion,
 }: {
-  trades?: Trade[]
+  trades?: DashboardTradeRow[]
   patternMemoryRefreshKey?: number
   onOpenCompanion?: () => void
 }) {
@@ -1669,7 +1681,7 @@ export function AITradeCoachPlaceholder({
   )
 }
 
-export function StreakTrackerPlaceholder({ trades }: { trades?: Trade[] }) {
+export function StreakTrackerPlaceholder({ trades }: { trades?: DashboardTradeRow[] }) {
   const safeTradesArray = trades || []
   
   // Calculate current streak
@@ -1756,7 +1768,7 @@ export function StreakTrackerPlaceholder({ trades }: { trades?: Trade[] }) {
   )
 }
 
-export function QuantumAnalyticsPlaceholder({ trades }: { trades?: Trade[] }) {
+export function QuantumAnalyticsPlaceholder({ trades }: { trades?: DashboardTradeRow[] }) {
   const safeTradesArray = trades || []
   
   // Calculate pattern recognition data
@@ -1862,7 +1874,7 @@ export function QuantumAnalyticsPlaceholder({ trades }: { trades?: Trade[] }) {
   )
 }
 
-export function SessionStats({ trades }: { trades?: Trade[] }) {
+export function SessionStats({ trades }: { trades?: DashboardTradeRow[] }) {
   const hasTrades = trades && trades.length > 0
   
   // Calculate session analytics

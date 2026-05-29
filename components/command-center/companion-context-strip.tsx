@@ -45,7 +45,7 @@ function pickContextualStrip(
       headline: os.intervention.headline,
       detail: os.intervention.canProceedToEntry
         ? os.intervention.message
-        : `${os.intervention.message} Entry paused until you reset.`,
+        : `${os.intervention.message} Pause is discipline — reset, then re-engage when process is clear.`,
       tone: os.intervention.severity === "critical" ? "protective" : "caution",
     }
   }

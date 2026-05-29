@@ -23,6 +23,11 @@ assert.equal(trade1.pair, "EUR/USD")
 assert.equal(trade1.direction, "BUY")
 assert.equal(trade1.result, "WIN")
 assert.equal(trade1.pnl, 25)
+assert.equal(trade1.trade_date, "2026-01-02")
+
+const trade2 = normalizeMt5CsvRow(parsed.rows[1], 3)
+assert.equal(trade2.trade_date, "2026-01-03")
+assert.notEqual(trade1.trade_date, trade2.trade_date)
 
 const { unique, duplicatesInBatch } = dedupeWithinBatch([
   trade1,

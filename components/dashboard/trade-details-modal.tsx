@@ -2,29 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  AlertTriangle,
   Brain,
   Calendar,
   Clock,
   Image as ImageIcon,
   Maximize2,
   Pencil,
-  Shield,
-  Sparkles,
   TrendingDown,
   TrendingUp,
   X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
-import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { TradeCoachFeedbackPanel } from "@/components/dashboard/trade-coach-feedback-panel"
-import { JournalIntelligencePanel } from "@/components/dashboard/journal-intelligence-panel"
+import { TradeIntelligencePanel } from "@/components/dashboard/trade-intelligence-panel"
 import { ExecutionReplayPanel } from "@/components/dashboard/execution-replay-panel"
 import { TradeQualityTradeSection } from "@/components/dashboard/trade-quality-trade-section"
-import { SetupScorePanel } from "@/components/dashboard/setup-score-panel"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import {
   resolveStoredSetupScore,
@@ -36,7 +30,6 @@ import {
   getEmotionDisplay,
   type TradeDetailInsight,
 } from "@/lib/trade-detail-insights"
-import { getTradeDisplayMistakeTags } from "@/lib/mistake-tags"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
@@ -175,11 +168,9 @@ export function TradeDetailsModal({
     [trade],
   )
   const riskReward = useMemo(() => (trade ? getTradeRiskReward(trade) : null), [trade])
-  const mistakeTags = useMemo(() => (trade ? getTradeDisplayMistakeTags(trade) : []), [trade])
 
   if (!mounted || !trade || !analysis || !setupScore) return null
 
-  const dangerousCount = mistakeTags.filter((tag) => tag.dangerous).length
   const resultTone =
     trade.result === "WIN" ? "profit" : trade.result === "LOSS" ? "loss" : "neutral"
   const emotionBefore = getEmotionDisplay(trade.emotion)
@@ -415,68 +406,27 @@ export function TradeDetailsModal({
             </div>
 
             <aside className="space-y-4">
-              <SetupScorePanel result={setupScore} />
+              <TradeIntelligencePanel
+                tradeId={trade.id}
+                refreshKey={coachFeedbackRefreshKey}
+                onScreenshotClick={
+                  trade.screenshot_url ? () => onScreenshotClick?.(trade) : undefined
+                }
+              />
 
-              <DashboardInsetPanel className="glass space-y-3">
-                <div className="flex items-center justify-between gap-2">
+              {analysis.insights.length > 0 && (
+                <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
                   <div className="flex items-center gap-2">
-                    <Shield className="size-4 text-cyan-glow" />
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Discipline Score</p>
-                  </div>
-                  <span
-                    className={cn(
-                      "text-2xl font-bold tabular-nums",
-                      analysis.disciplineScore >= 75
-                        ? "text-profit"
-                        : analysis.disciplineScore >= 50
-                          ? "text-amber-400"
-                          : "text-loss",
-                    )}
-                  >
-                    {analysis.disciplineScore}
-                  </span>
-                </div>
-                <Progress value={analysis.disciplineScore} className="h-2 bg-white/[0.06]" />
-                <p className="text-[11px] leading-relaxed text-muted-foreground/75">
-                  Based on rule adherence, risk sizing, emotional state, and mistake flags for this trade.
-                </p>
-              </DashboardInsetPanel>
-
-              <DashboardInsetPanel
-                className={cn(
-                  "glass space-y-3",
-                  dangerousCount > 0
-                    ? "border-loss/25 bg-loss/[0.04] shadow-[0_0_24px_rgba(239,68,68,0.08)]"
-                    : "border-amber-500/15 bg-amber-500/[0.03]",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className={cn("size-4", dangerousCount > 0 ? "text-loss" : "text-amber-400")} />
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Mistake Tags</p>
-                  </div>
-                  <span className="text-[10px] tabular-nums text-muted-foreground/70">{mistakeTags.length} flagged</span>
-                </div>
-                <MistakeTagList tags={mistakeTags} size="md" />
-              </DashboardInsetPanel>
-
-              <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-cyan-glow/[0.08]">
                     <Brain className="size-4 text-cyan-glow" />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Quick Insights</p>
                   </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">AI Feedback</p>
-                    <p className="text-[10px] text-muted-foreground/70">Trade-specific coaching insights</p>
+                  <div className="space-y-2">
+                    {analysis.insights.map((insight) => (
+                      <InsightRow key={insight.id} insight={insight} />
+                    ))}
                   </div>
-                  <Sparkles className="ml-auto size-4 text-cyan-glow/70" />
-                </div>
-                <div className="space-y-2">
-                  {analysis.insights.map((insight) => (
-                    <InsightRow key={insight.id} insight={insight} />
-                  ))}
-                </div>
-              </DashboardInsetPanel>
+                </DashboardInsetPanel>
+              )}
 
               <TradeQualityTradeSection
                 tradeId={trade.id}
@@ -485,8 +435,6 @@ export function TradeDetailsModal({
               />
 
               <TradeCoachFeedbackPanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
-
-              <JournalIntelligencePanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
 
               <DashboardInsetPanel className="glass flex items-center gap-2 text-[11px] text-muted-foreground/70">
                 <Clock className="size-3.5 shrink-0" />

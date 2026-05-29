@@ -101,7 +101,7 @@ export const TRADE_SETUPS = [
 
 export const NOTES_MAX_LENGTH = 500
 
-export function createInitialTradeForm(): TradeFormState {
+export function createInitialTradeForm(overrides?: Partial<TradeFormState>): TradeFormState {
   return {
     pair: "",
     direction: "BUY",
@@ -125,6 +125,7 @@ export function createInitialTradeForm(): TradeFormState {
     entry_timeframe: "",
     confirmation_timeframe: "",
     confirmation_signal: "",
+    ...overrides,
   }
 }
 

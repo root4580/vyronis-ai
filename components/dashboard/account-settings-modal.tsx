@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { TradingViewWebhookSettings } from "@/components/tradingview/tradingview-webhook-settings"
+import { Mt5IntegrationsCollapsible } from "@/components/integrations/mt5-integrations-collapsible"
 import { PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
 
 type AccountSettingsModalProps = {
@@ -24,6 +25,7 @@ type AccountSettingsModalProps = {
   isSaving: boolean
   accountBalance: number
   totalPnL: number
+  onMt5TradeSynced?: () => void
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -43,6 +45,7 @@ export function AccountSettingsModal({
   isSaving,
   accountBalance,
   totalPnL,
+  onMt5TradeSynced,
 }: AccountSettingsModalProps) {
   if (!open) return null
 
@@ -222,6 +225,8 @@ export function AccountSettingsModal({
             </DashboardInsetPanel>
 
             <TradingViewWebhookSettings />
+
+            <Mt5IntegrationsCollapsible onTradeSynced={onMt5TradeSynced} />
           </div>
 
           <div className="relative shrink-0 border-t border-white/[0.06] bg-black/20 px-4 py-4 backdrop-blur-md md:px-6">

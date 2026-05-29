@@ -12,6 +12,7 @@ import type { CompanionConversationalState } from "@/lib/intelligence/conversati
 import { COMPANION_STATE_LABELS } from "@/lib/intelligence/conversational-types"
 import { StreamingText } from "@/components/command-center/streaming-text"
 import { CompanionThinkingIndicator } from "@/components/command-center/companion-thinking-indicator"
+import { SessionGuardVerdictCard } from "@/components/command-center/session-guard-verdict-card"
 import { cn } from "@/lib/utils"
 
 type AiMessageThreadProps = {
@@ -188,131 +189,8 @@ function VisionChecklist({ items }: { items: VisionChecklistItem[] }) {
   )
 }
 
-function VerdictPill({ verdict }: { verdict: "TAKE" | "CAUTION" | "SKIP" }) {
-  return (
-    <span
-      className={cn(
-        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-        verdict === "TAKE" && "bg-profit/15 text-profit",
-        verdict === "CAUTION" && "bg-amber-500/15 text-amber-200",
-        verdict === "SKIP" && "bg-loss/15 text-loss",
-      )}
-    >
-      {verdict}
-    </span>
-  )
-}
-
 function VerdictReasoningPanel({ reasoning }: { reasoning: VerdictReasoning }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="mt-2 rounded-lg border border-white/[0.07] bg-black/30">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/70 hover:text-foreground/85"
-      >
-        Verdict reasoning
-        {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-      </button>
-      {open ? (
-        <div className="space-y-2 border-t border-white/[0.05] px-2.5 pb-2.5 pt-2 text-[11px]">
-          <div className="space-y-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-muted-foreground/70">Technical quality</span>
-              <VerdictPill verdict={reasoning.technicalSetupVerdict} />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-muted-foreground/70">Emotional state</span>
-              <VerdictPill verdict={reasoning.traderStateVerdict} />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-muted-foreground/70">Risk conditions</span>
-              <VerdictPill verdict={reasoning.riskConditionsVerdict} />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] pt-1.5">
-              <span className="font-medium text-foreground/88">Final</span>
-              <VerdictPill verdict={reasoning.verdict} />
-            </div>
-          </div>
-          <p className="leading-relaxed text-foreground/85">{reasoning.finalDecisionExplanation}</p>
-          {reasoning.psychologyClarification ? (
-            <p className="rounded-md border border-amber-500/20 bg-amber-500/[0.06] px-2 py-1.5 leading-relaxed text-amber-100/90">
-              {reasoning.psychologyClarification}
-            </p>
-          ) : null}
-          {reasoning.humanSignals.length > 0 ? (
-            <div>
-              <p className="mb-1 font-medium text-violet-200/85">Psychology read</p>
-              <ul className="list-inside list-disc space-y-0.5 text-foreground/82">
-                {reasoning.humanSignals.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {reasoning.overrideReasons.length > 0 ? (
-            <div>
-              <p className="mb-1 font-medium text-amber-200/90">Override conditions</p>
-              <ul className="list-inside list-disc space-y-0.5 text-foreground/82">
-                {reasoning.overrideReasons.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          <p className="text-foreground/88">
-            <span className="text-muted-foreground/70">Dominant factor · </span>
-            {reasoning.dominantDecidingFactor}
-          </p>
-          {reasoning.verdict !== "TAKE" && reasoning.whyNotTake.length > 0 ? (
-            <div>
-              <p className="mb-1 font-medium text-amber-200/90">Why not TAKE?</p>
-              <ul className="list-inside list-disc space-y-0.5 text-foreground/82">
-                {reasoning.whyNotTake.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {reasoning.positiveFactors.length > 0 ? (
-            <div>
-              <p className="mb-1 text-profit/85">Positive factors</p>
-              <ul className="space-y-0.5 text-foreground/78">
-                {reasoning.positiveFactors.slice(0, 4).map((f) => (
-                  <li key={f.label}>
-                    {f.label} ({f.score}) — {f.note}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {reasoning.negativeFactors.length > 0 ? (
-            <div>
-              <p className="mb-1 text-amber-200/80">Negative factors</p>
-              <ul className="space-y-0.5 text-foreground/78">
-                {reasoning.negativeFactors.slice(0, 4).map((f) => (
-                  <li key={f.label}>
-                    {f.label} ({f.score}) — {f.note}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {reasoning.criticalBlockers.length > 0 ? (
-            <div>
-              <p className="mb-1 text-loss/90">Critical blockers</p>
-              <ul className="list-inside list-disc space-y-0.5 text-foreground/82">
-                {reasoning.criticalBlockers.map((b) => (
-                  <li key={b.id}>{b.message}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  )
+  return <SessionGuardVerdictCard reasoning={reasoning} />
 }
 
 function ChartReviewBody({

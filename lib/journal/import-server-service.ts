@@ -1,16 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { parseMt5Csv } from "@/lib/research/mt5-csv-parser"
-import { normalizeMt5CsvRow } from "@/lib/research/trade-normalizer"
-import {
-  buildImportPreview,
-  dedupeWithinBatch,
-  filterImportableTrades,
-} from "@/lib/research/dedupe"
 import type { NormalizedResearchTrade } from "@/lib/research/types"
+import {
+  countValidRows,
+  filterJournalImportableTrades,
+  parseJournalCsvContent,
+} from "@/lib/journal/csv-parse-pipeline"
+import { logJournalImportRow } from "@/lib/journal/trade-date-parser"
 import {
   normalizedToJournalInsert,
   screenshotToJournalInsert,
-  suggestJournalTags,
   type JournalImportPreviewRow,
   type JournalImportResult,
 } from "@/lib/journal/csv-import"
@@ -26,13 +24,13 @@ function isMissingColumnError(message: string): boolean {
   return /import_source|external_ticket|journal_csv|does not exist|PGRST205/i.test(message)
 }
 
-async function fetchExistingJournalTickets(
+async function fetchExistingJournalByTicket(
   supabase: SupabaseClient,
   userId: string,
-): Promise<Set<string>> {
+): Promise<Map<string, string>> {
   const { data, error } = await supabase
     .from("trades")
-    .select("external_ticket")
+    .select("id, external_ticket")
     .eq("user_id", userId)
     .eq("import_source", "journal_csv")
     .not("external_ticket", "is", null)
@@ -42,11 +40,13 @@ async function fetchExistingJournalTickets(
     throw new Error(error.message)
   }
 
-  return new Set(
-    (data ?? [])
-      .map((row) => row.external_ticket)
-      .filter((ticket): ticket is string => Boolean(ticket)),
-  )
+  const map = new Map<string, string>()
+  for (const row of data ?? []) {
+    if (row.external_ticket && row.id) {
+      map.set(row.external_ticket, row.id)
+    }
+  }
+  return map
 }
 
 async function insertJournalTrade(
@@ -83,40 +83,96 @@ async function insertJournalTrade(
   return null
 }
 
-function toJournalPreview(
-  researchPreview: ReturnType<typeof buildImportPreview>,
-  normalized: NormalizedResearchTrade[],
-  screenshotUrls: string[],
-): JournalImportPreviewRow[] {
-  const byTicket = new Map(normalized.map((t) => [t.external_ticket, t]))
-  let screenshotIndex = 0
+async function replaceJournalTradeById(
+  supabase: SupabaseClient,
+  tradeId: string,
+  payload: Record<string, unknown>,
+): Promise<string | null> {
+  const { user_id, ...updatePayload } = payload
+  void user_id
 
-  return researchPreview.map((row) => {
-    const trade = byTicket.get(row.external_ticket)
-    const suggestions = trade ? suggestJournalTags(trade) : null
-    const screenshot_url =
-      row.status === "ready" && screenshotUrls[screenshotIndex]
-        ? screenshotUrls[screenshotIndex++]
-        : null
+  let { error } = await supabase.from("trades").update(updatePayload).eq("id", tradeId)
 
-    return {
-      rowNumber: row.rowNumber,
-      external_ticket: row.external_ticket,
-      pair: row.pair,
-      direction: row.direction,
-      result: row.result,
-      pnl: row.pnl,
-      session: trade?.session ?? null,
-      risk_reward: trade?.risk_reward ?? null,
-      trade_date: trade?.trade_date ?? "",
-      status: row.status === "invalid" ? "error" : row.status,
-      message: row.message,
-      suggested_emotion: suggestions?.emotion,
-      suggested_setup: suggestions?.setup,
-      suggested_mistake_tags: suggestions?.mistake_tags,
-      screenshot_url,
-    }
-  })
+  if (error && /column|schema cache/i.test(error.message)) {
+    const {
+      import_source,
+      external_ticket,
+      opened_at,
+      closed_at,
+      lots,
+      commission,
+      swap,
+      raw_payload,
+      research_strategy_id,
+      setup_score,
+      setup_classification,
+      setup_score_breakdown,
+      setup_coaching_insights,
+      ...core
+    } = updatePayload
+    ;({ error } = await supabase.from("trades").update(core).eq("id", tradeId))
+  }
+
+  if (error) {
+    if (isMissingColumnError(error.message)) throw new JournalImportTableMissingError()
+    return error.message
+  }
+
+  return null
+}
+
+function buildSummaryMessage(total: number, ready: number, skipped: number, needsDateFix: number) {
+  const parts = [`Found ${total} rows`, `import-ready ${ready}`, `skipped ${skipped}`]
+  if (needsDateFix > 0) parts.push(`${needsDateFix} need date fix`)
+  return parts.join(", ")
+}
+
+function emptyImportResult(dryRun: boolean, errors: string[]): JournalImportResult {
+  return {
+    dryRun,
+    preview: [],
+    dateLogs: [],
+    importedCount: 0,
+    replacedCount: 0,
+    skippedCount: 0,
+    errorCount: errors.length,
+    errors,
+    totalRowsFound: 0,
+    importReadyCount: 0,
+    needsDateFixCount: 0,
+    summaryMessage: buildSummaryMessage(0, 0, 0, 0),
+  }
+}
+
+function resultFromPipeline(
+  dryRun: boolean,
+  pipeline: ReturnType<typeof parseJournalCsvContent>,
+  extra?: Partial<JournalImportResult>,
+): JournalImportResult {
+  const importReadyCount = pipeline.validRowCount
+  const skippedCount = pipeline.preview.filter(
+    (row) => row.status === "duplicate" || row.status === "error",
+  ).length
+
+  return {
+    dryRun,
+    preview: pipeline.preview,
+    dateLogs: pipeline.dateLogs,
+    importedCount: importReadyCount,
+    replacedCount: pipeline.preview.filter((row) => row.status === "replace").length,
+    skippedCount,
+    errorCount: pipeline.debug.errorCount,
+    errors: pipeline.parseErrors,
+    totalRowsFound: pipeline.debug.rawRowCount,
+    importReadyCount,
+    validRowCount: importReadyCount,
+    needsDateFixCount: pipeline.debug.needsDateFixCount,
+    summaryMessage: pipeline.summaryMessage,
+    parseDebug: pipeline.debug,
+    columnDiagnostics: pipeline.debug.columnDiagnostics,
+    calendarSummary: pipeline.calendarSummary,
+    ...extra,
+  }
 }
 
 function buildScreenshotPreview(screenshotUrls: string[]): JournalImportPreviewRow[] {
@@ -148,20 +204,19 @@ export async function importJournalUpload(
     screenshotUrls?: string[]
     dryRun: boolean
     maxRiskPerTrade?: number
+    replaceExisting?: boolean
+    /** YYYY-MM-DD for rows with no Date / Close Time / Open Time in CSV */
+    fallbackDateForMissing?: string
   },
 ): Promise<JournalImportResult> {
   const screenshotUrls = options.screenshotUrls ?? []
   const maxRisk = options.maxRiskPerTrade ?? 1
+  const replaceExisting = options.replaceExisting ?? false
 
   if (!options.csvContent?.trim() && screenshotUrls.length === 0) {
-    return {
-      dryRun: options.dryRun,
-      preview: [],
-      importedCount: 0,
-      skippedCount: 0,
-      errorCount: 1,
-      errors: ["Upload a CSV file and/or at least one chart screenshot."],
-    }
+    return emptyImportResult(options.dryRun, [
+      "Upload a CSV file and/or at least one chart screenshot.",
+    ])
   }
 
   if (!options.csvContent?.trim()) {
@@ -170,10 +225,16 @@ export async function importJournalUpload(
       return {
         dryRun: true,
         preview,
+        dateLogs: [],
         importedCount: preview.length,
+        replacedCount: 0,
         skippedCount: 0,
         errorCount: 0,
         errors: [],
+        totalRowsFound: preview.length,
+        importReadyCount: preview.length,
+        needsDateFixCount: 0,
+        summaryMessage: buildSummaryMessage(preview.length, preview.length, 0, 0),
       }
     }
 
@@ -189,62 +250,53 @@ export async function importJournalUpload(
     return {
       dryRun: false,
       preview,
+      dateLogs: [],
       importedCount,
+      replacedCount: 0,
       skippedCount: 0,
       errorCount: insertErrors.length,
       errors: insertErrors,
+      totalRowsFound: preview.length,
+      importReadyCount: importedCount,
+      needsDateFixCount: 0,
+      summaryMessage: buildSummaryMessage(preview.length, importedCount, 0, 0),
     }
   }
 
-  const parsed = parseMt5Csv(options.csvContent)
-  const normalized: NormalizedResearchTrade[] = []
-  const parseErrors: string[] = []
+  const existingByTicket = await fetchExistingJournalByTicket(supabase, userId)
+  const existingTickets = new Set(existingByTicket.keys())
 
-  parsed.rows.forEach((row, index) => {
-    try {
-      normalized.push(normalizeMt5CsvRow(row, index + 2))
-    } catch (error) {
-      parseErrors.push(
-        error instanceof Error ? error.message : `Row ${index + 2}: invalid trade row`,
-      )
-    }
+  const pipeline = parseJournalCsvContent(options.csvContent, {
+    existingTickets,
+    replaceExisting,
+    screenshotUrls,
+    fallbackDateForMissing: options.fallbackDateForMissing,
   })
 
-  if (normalized.length === 0) {
-    return {
-      dryRun: options.dryRun,
-      preview: [],
-      importedCount: 0,
-      skippedCount: 0,
-      errorCount: parseErrors.length || 1,
-      errors: parseErrors.length ? parseErrors : ["No valid trade rows found in CSV."],
-    }
+  for (const log of pipeline.dateLogs) {
+    console.log("[journal-import-date]", log)
   }
 
-  const existingTickets = await fetchExistingJournalTickets(supabase, userId)
-  const { unique, duplicatesInBatch } = dedupeWithinBatch(normalized)
-  const preview = toJournalPreview(
-    buildImportPreview(normalized, existingTickets, duplicatesInBatch),
-    normalized,
-    screenshotUrls,
+  if (pipeline.preview.length === 0) {
+    return emptyImportResult(
+      options.dryRun,
+      pipeline.parseErrors.length ? pipeline.parseErrors : ["No trade rows found in CSV."],
+    )
+  }
+
+  const importable = filterJournalImportableTrades(
+    pipeline.trades,
+    existingTickets,
+    replaceExisting,
   )
 
-  const importable = filterImportableTrades(unique, existingTickets)
-  const skippedCount = preview.filter((row) => row.status === "duplicate").length
-
   if (options.dryRun) {
-    return {
-      dryRun: true,
-      preview,
-      importedCount: preview.filter((row) => row.status === "ready").length,
-      skippedCount,
-      errorCount: parseErrors.length,
-      errors: parseErrors,
-    }
+    return resultFromPipeline(true, pipeline)
   }
 
   let importedCount = 0
-  const insertErrors: string[] = [...parseErrors]
+  let replacedCount = 0
+  const insertErrors: string[] = [...pipeline.parseErrors]
   let screenshotIndex = 0
 
   for (const trade of importable) {
@@ -252,9 +304,43 @@ export async function importJournalUpload(
     if (screenshotUrl) screenshotIndex += 1
 
     const payload = normalizedToJournalInsert(trade, userId, maxRisk, screenshotUrl)
-    const err = await insertJournalTrade(supabase, payload)
-    if (err) insertErrors.push(`Ticket ${trade.external_ticket}: ${err}`)
-    else importedCount += 1
+    const existingId = existingByTicket.get(trade.external_ticket)
+    const duplicateFound = Boolean(existingId)
+
+    if (existingId && replaceExisting) {
+      const err = await replaceJournalTradeById(supabase, existingId, payload)
+      logJournalImportRow({
+        ticket: trade.external_ticket,
+        rawDateValue: trade.trade_date,
+        parsedTradeDate: trade.trade_date,
+        tradeTime: trade.closed_at?.split("T")[1] ?? null,
+        duplicateFound: true,
+        action: err ? "rejected" : "replace",
+      })
+      if (err) insertErrors.push(`Ticket ${trade.external_ticket}: ${err}`)
+      else replacedCount += 1
+    } else if (!existingId) {
+      const err = await insertJournalTrade(supabase, payload)
+      logJournalImportRow({
+        ticket: trade.external_ticket,
+        rawDateValue: trade.trade_date,
+        parsedTradeDate: trade.trade_date,
+        tradeTime: trade.closed_at?.split("T")[1] ?? null,
+        duplicateFound: false,
+        action: err ? "rejected" : "insert",
+      })
+      if (err) insertErrors.push(`Ticket ${trade.external_ticket}: ${err}`)
+      else importedCount += 1
+    } else {
+      logJournalImportRow({
+        ticket: trade.external_ticket,
+        rawDateValue: trade.trade_date,
+        parsedTradeDate: trade.trade_date,
+        tradeTime: null,
+        duplicateFound: true,
+        action: "skipped_duplicate",
+      })
+    }
   }
 
   for (let i = screenshotIndex; i < screenshotUrls.length; i += 1) {
@@ -264,14 +350,65 @@ export async function importJournalUpload(
     else importedCount += 1
   }
 
-  return {
-    dryRun: false,
-    preview,
+  return resultFromPipeline(false, pipeline, {
     importedCount,
-    skippedCount,
+    replacedCount,
     errorCount: insertErrors.length,
     errors: insertErrors,
+  })
+}
+
+export type DeleteJournalCsvImportsResult = {
+  deletedCount: number
+}
+
+export async function deleteAllJournalCsvImports(
+  supabase: SupabaseClient,
+  userId: string,
+  options?: { tradeDate?: string },
+): Promise<DeleteJournalCsvImportsResult> {
+  let query = supabase
+    .from("trades")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("import_source", "journal_csv")
+
+  if (options?.tradeDate) {
+    query = query.eq("trade_date", options.tradeDate)
   }
+
+  const { data: rows, error: selectError } = await query
+
+  if (selectError) {
+    if (isMissingColumnError(selectError.message)) throw new JournalImportTableMissingError()
+    throw new Error(selectError.message)
+  }
+
+  const ids = (rows ?? []).map((row) => row.id).filter(Boolean)
+  if (ids.length === 0) return { deletedCount: 0 }
+
+  let deleteQuery = supabase
+    .from("trades")
+    .delete()
+    .eq("user_id", userId)
+    .eq("import_source", "journal_csv")
+
+  if (options?.tradeDate) {
+    deleteQuery = deleteQuery.eq("trade_date", options.tradeDate)
+  }
+
+  const { error: deleteError } = await deleteQuery
+
+  if (deleteError) {
+    if (isMissingColumnError(deleteError.message)) throw new JournalImportTableMissingError()
+    throw new Error(deleteError.message)
+  }
+
+  console.log("[journal-import] deleted journal_csv trades", {
+    deletedCount: ids.length,
+    tradeDate: options?.tradeDate ?? "all",
+  })
+  return { deletedCount: ids.length }
 }
 
 /** @deprecated Use importJournalUpload */

@@ -21,6 +21,7 @@ import type {
   EmotionalStateSnapshot,
   FullTraderContext,
 } from "@/lib/intelligence/intelligence-types"
+import { buildSessionRecovery } from "@/lib/intelligence/session-recovery-engine"
 import type { CommandCenterMessageRecord } from "@/lib/command-center/types"
 import { buildAutonomousIntelligenceSnapshot } from "@/lib/autonomous/orchestrator"
 import { buildCognitiveIntelligenceSnapshot } from "@/lib/cognitive/orchestrator"
@@ -231,7 +232,17 @@ export async function buildFullTraderContext(
     autonomous.recentLessons = [...new Set([...dbLessons, ...autonomous.recentLessons])].slice(0, 5)
   }
 
-  const withAutonomous = { ...baseContext, autonomous }
+  let withAutonomous = { ...baseContext, autonomous }
+  const sessionRecovery = buildSessionRecovery(withAutonomous)
+  withAutonomous = {
+    ...withAutonomous,
+    sessionRecovery,
+    emotionalState: {
+      ...withAutonomous.emotionalState,
+      phase: sessionRecovery.phase,
+      note: sessionRecovery.probabilityNarrative,
+    },
+  }
 
   const cognitive = buildCognitiveIntelligenceSnapshot({
     context: withAutonomous,

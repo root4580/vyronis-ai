@@ -12,6 +12,25 @@ import {
   pickEmotionalIntelligenceLines,
   type EmotionalSignalId,
 } from "@/lib/intelligence/emotional-intelligence-engine"
+import {
+  buildCoachHeadline,
+  buildConfidenceExplanation,
+  buildHistoricalPatternMemory,
+  buildWhatWouldMakeTradable,
+  dedupeReasonLines,
+  deriveBestAction,
+  deriveExecutionRiskLevel,
+  deriveFinalActionLabel,
+  scoreToTechnicalLabel,
+  scoreToTraderLabel,
+  softenBlockerMessage,
+} from "@/lib/intelligence/session-guard-copy"
+import {
+  effectiveEmotionalRisk,
+  emotionalInstabilityBlockerMessage,
+  shouldTreatEmotionalBlockerAsCritical,
+} from "@/lib/intelligence/session-recovery-engine"
+import type { EmotionalConfidenceLevel } from "@/lib/intelligence/session-recovery-engine"
 
 export type BlockerPriority = "critical" | "elevated"
 
@@ -59,6 +78,19 @@ export type VerdictReasoning = {
   reasoningSummary: string
   marketEnvironmentNote: string | null
   humanSignals: string[]
+  /** Human-readable layer labels for Session Guard UI */
+  technicalLayerLabel: ReturnType<typeof scoreToTechnicalLabel>
+  traderLayerLabel: ReturnType<typeof scoreToTraderLabel>
+  finalActionLabel: ReturnType<typeof deriveFinalActionLabel>
+  executionRiskLevel: ReturnType<typeof deriveExecutionRiskLevel>
+  bestAction: string
+  coachHeadline: string
+  confidenceExplanation: string | null
+  historicalPatternMemory: string | null
+  whatWouldMakeTradable: string[]
+  emotionalConfidence?: EmotionalConfidenceLevel | null
+  emotionalConfidenceReasons?: string[]
+  sessionRecoveryPhase?: string | null
 }
 
 const STRONG_THRESHOLD = 68
@@ -98,7 +130,7 @@ const RISK_BLOCKER_IDS = new Set([
 const IMPULSIVE = new Set(["fomo", "revenge", "euphoric", "anxious", "tilted", "impulsive", "frustrated"])
 
 const PSYCHOLOGY_CLARIFICATION =
-  "The market setup is not the main problem. The issue is trader state: a good setup can still become a bad trade if taken in a compromised state."
+  "The chart is not the main problem — your process state is. A workable setup can still become a poor trade when execution is compromised."
 
 function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)))
@@ -130,17 +162,28 @@ function collectBlockers(input: {
     })
   }
 
-  if (
-    context.emotionalState.trend === "volatile" ||
-    context.emotionalState.impulsiveCount >= 2 ||
-    IMPULSIVE.has(plannedEmotion)
-  ) {
+  const emotionalCritical = shouldTreatEmotionalBlockerAsCritical(context)
+  const emotionalElevated =
+    !emotionalCritical &&
+    (context.emotionalState.trend === "elevated" ||
+      context.emotionalState.impulsiveCount >= 1 ||
+      context.sessionRecovery?.carryoverMode === "historical_caution")
+
+  if (emotionalCritical || IMPULSIVE.has(plannedEmotion)) {
     blockers.push({
       id: "emotional_instability",
-      message: plannedEmotion
-        ? `Emotional state flagged: ${plannedEmotion} — instability overrides strong structure.`
-        : "Emotional volatility in recent journal overrides otherwise clean metrics.",
-      priority: "critical",
+      message: softenBlockerMessage(
+        "emotional_instability",
+        emotionalInstabilityBlockerMessage(context),
+        plannedEmotion,
+      ),
+      priority: emotionalCritical ? "critical" : "elevated",
+    })
+  } else if (emotionalElevated && context.sessionRecovery?.sessionGuardMode === "soft_caution") {
+    blockers.push({
+      id: "emotional_instability",
+      message: emotionalInstabilityBlockerMessage(context),
+      priority: "elevated",
     })
   }
 
@@ -188,11 +231,23 @@ function collectBlockers(input: {
     })
   }
 
-  if (patterns.some((p) => p.id === "reversal_chasing") || plannedEmotion === "revenge") {
+  const revengeActive =
+    context.sessionRecovery?.phase === "REVENGE_RISK" ||
+    plannedEmotion === "revenge" ||
+    (context.sessionRecovery?.carryoverMode === "active_instability" &&
+      patterns.some((p) => p.id === "reversal_chasing"))
+
+  if (revengeActive) {
     blockers.push({
       id: "revenge_behavior",
-      message: "Revenge or counter-trend behavior pattern is active in your journal.",
-      priority: "critical",
+      message:
+        context.sessionRecovery?.sessionGuardMode === "soft_caution"
+          ? "Prior revenge-style losses noted — stay plan-driven if you trade."
+          : "Revenge or counter-trend behavior is active in this session.",
+      priority:
+        context.sessionRecovery?.sessionGuardMode === "aggressive_protect"
+          ? "critical"
+          : "elevated",
     })
   }
 
@@ -413,8 +468,12 @@ function buildTraderStateScore(
 ): { score: number; metrics: VerdictReasoning["traderStateMetrics"] } {
   const base = weightedScoreForKeys(factors, TRADER_FACTOR_KEYS)
   const shadow = context.autonomous?.shadow
+  const rawEmotional = shadow?.emotionalRiskScore ?? null
   const metrics = {
-    emotionalRisk: shadow?.emotionalRiskScore ?? null,
+    emotionalRisk:
+      rawEmotional != null
+        ? effectiveEmotionalRisk(context, rawEmotional)
+        : context.sessionRecovery?.adjustedEmotionalRisk ?? null,
     disciplineConfidence: shadow?.disciplineConfidence ?? null,
     executionQuality: shadow?.executionQualityPrediction ?? null,
   }
@@ -456,8 +515,19 @@ function buildOverrideReasons(input: {
       reasons.push(b.message)
     }
   }
+  const recovery = input.context.sessionRecovery
   if (input.metrics.emotionalRisk != null && input.metrics.emotionalRisk >= 70) {
-    reasons.push(`Elevated emotional risk (${input.metrics.emotionalRisk}/100)`)
+    reasons.push(
+      recovery?.carryoverMode === "historical_caution"
+        ? `Historical emotional caution (~${input.metrics.emotionalRisk}/100, decay applied)`
+        : `Elevated emotional risk (${input.metrics.emotionalRisk}/100)`,
+    )
+  } else if (
+    input.metrics.emotionalRisk != null &&
+    input.metrics.emotionalRisk >= 55 &&
+    recovery?.sessionGuardMode === "soft_caution"
+  ) {
+    reasons.push(recovery.probabilityNarrative)
   }
   if (
     input.metrics.executionQuality != null &&
@@ -465,7 +535,10 @@ function buildOverrideReasons(input: {
   ) {
     reasons.push(`Low execution quality forecast (${input.metrics.executionQuality}/100)`)
   }
-  if (input.context.emotionalState.trend === "volatile") {
+  if (
+    input.context.emotionalState.trend === "volatile" &&
+    recovery?.carryoverMode !== "historical_caution"
+  ) {
     reasons.push("Emotional drift in recent journal")
   }
   const comparative = buildComparativeMemoryLine({ context: input.context })
@@ -509,18 +582,22 @@ function buildFinalDecisionExplanation(input: {
   technicalVerdict: TradeDecisionRecommendation
   traderVerdict: TradeDecisionRecommendation
   psychologyOverride: boolean
+  technicalLabel: string
+  traderLabel: string
+  finalAction: string
 }): string {
-  const { finalVerdict, technicalVerdict, traderVerdict, psychologyOverride } = input
+  const { finalVerdict, technicalVerdict, traderVerdict, psychologyOverride, technicalLabel, traderLabel, finalAction } =
+    input
   if (psychologyOverride) {
-    return `Final verdict: ${finalVerdict} because psychology and risk protection override setup quality (technical: ${technicalVerdict}, trader state: ${traderVerdict}).`
+    return `Technical setup: ${technicalLabel} · Trader state: ${traderLabel} → Best action: ${finalAction}. The chart is not the blocker — protect process first.`
   }
   if (finalVerdict === technicalVerdict && finalVerdict === traderVerdict) {
-    return `Final verdict: ${finalVerdict} — chart structure and trader state align.`
+    return `Technical ${technicalLabel} and trader state ${traderLabel} align → ${finalAction}.`
   }
   if (technicalVerdict !== traderVerdict) {
-    return `Final verdict: ${finalVerdict} — technical setup (${technicalVerdict}) and trader state (${traderVerdict}) diverge; the more conservative read wins.`
+    return `Technical ${technicalLabel} (${technicalVerdict}) vs trader ${traderLabel} (${traderVerdict}) → ${finalAction}.`
   }
-  return `Final verdict: ${finalVerdict}.`
+  return `Best action: ${finalAction}.`
 }
 
 /**
@@ -538,6 +615,7 @@ export function resolveVerdictWithReasoning(input: {
 }): VerdictReasoning {
   const factors = input.factors
   const marketEnv = input.context.cognitive?.marketEnvironment
+  const patterns = detectTraderPatterns(input.context)
   const blockers = collectBlockers({
     context: input.context,
     chartVision: input.chartVision,
@@ -610,12 +688,14 @@ export function resolveVerdictWithReasoning(input: {
     riskConditionsVerdict,
   )
 
-  const overrideReasons = buildOverrideReasons({
-    traderBlockers: [...traderCritical, ...traderElevated],
-    riskBlockers: [...riskCritical, ...riskElevated],
-    metrics: traderStateMetrics,
-    context: input.context,
-  })
+  const overrideReasons = dedupeReasonLines(
+    buildOverrideReasons({
+      traderBlockers: [...traderCritical, ...traderElevated],
+      riskBlockers: [...riskCritical, ...riskElevated],
+      metrics: traderStateMetrics,
+      context: input.context,
+    }),
+  )
 
   const psychologyOverride =
     (technicalSetupVerdict === "TAKE" || technicalSetupVerdict === "CAUTION") &&
@@ -662,11 +742,46 @@ export function resolveVerdictWithReasoning(input: {
     traderStateMetrics,
     overrideReasons,
   )
+  const technicalLayerLabel = scoreToTechnicalLabel(technicalSetupScore)
+  const traderLayerLabel = scoreToTraderLabel(traderStateScore)
+  const finalActionLabel = deriveFinalActionLabel(verdict)
+  const executionRiskLevel = deriveExecutionRiskLevel({
+    finalVerdict: verdict,
+    traderScore: traderStateScore,
+    riskScore: riskConditionsScore,
+    criticalCount: criticalBlockers.length,
+  })
+  const bestAction = deriveBestAction(verdict, executionRiskLevel)
+  const confidenceExplanation = buildConfidenceExplanation({
+    technicalScore: technicalSetupScore,
+    traderScore: traderStateScore,
+    metrics: traderStateMetrics,
+    psychologyOverride,
+    sessionRecovery: input.context.sessionRecovery,
+  })
+  const historicalPatternMemory = buildHistoricalPatternMemory(input.context, patterns)
+  const whatWouldMakeTradable = buildWhatWouldMakeTradable({
+    context: input.context,
+    technicalBlockers,
+    traderBlockers: traderStateBlockers,
+    riskBlockers,
+    traderScore: traderStateScore,
+  })
+  const coachHeadline = buildCoachHeadline({
+    finalVerdict: verdict,
+    technicalLabel: technicalLayerLabel,
+    traderLabel: traderLayerLabel,
+    psychologyOverride,
+  })
+
   const finalDecisionExplanation = buildFinalDecisionExplanation({
     finalVerdict: verdict,
     technicalVerdict: technicalSetupVerdict,
     traderVerdict: traderStateVerdict,
     psychologyOverride,
+    technicalLabel: technicalLayerLabel,
+    traderLabel: traderLayerLabel,
+    finalAction: finalActionLabel,
   })
   const finalWithRisk = psychologyOverride
     ? `${finalDecisionExplanation} Risk conditions: ${riskConditionsVerdict} (${riskConditionsScore}/100).`
@@ -685,52 +800,33 @@ export function resolveVerdictWithReasoning(input: {
       positiveFactors[0]?.note ??
       `Weighted score ${input.score}/100`
 
-  const whyNotTake: string[] = []
+  const whyNotTakeRaw: string[] = []
   if (verdict !== "TAKE") {
     if (psychologyOverride) {
-      whyNotTake.push(
-        `Technical setup: ${technicalSetupVerdict} (${technicalSetupScore}/100) — chart is not the main problem.`,
+      whyNotTakeRaw.push(
+        `Chart reads ${technicalLayerLabel} (${technicalSetupScore}/100) — process is the limiter, not structure.`,
       )
-      whyNotTake.push(
-        `Emotional state: ${traderStateVerdict} (${traderStateScore}/100).`,
-      )
-      whyNotTake.push(
-        `Risk conditions: ${riskConditionsVerdict} (${riskConditionsScore}/100).`,
-      )
-      for (const r of overrideReasons.slice(0, 2)) {
-        if (!whyNotTake.includes(r)) whyNotTake.push(r)
+      whyNotTakeRaw.push(`Trader state ${traderLayerLabel} (${traderStateScore}/100).`)
+    }
+    for (const r of overrideReasons.slice(0, 3)) {
+      whyNotTakeRaw.push(r)
+    }
+    for (const b of [...traderCritical, ...riskCritical, ...techCritical, ...elevatedBlockers]) {
+      if (whyNotTakeRaw.length >= 5) break
+      whyNotTakeRaw.push(b.message)
+    }
+    if (whyNotTakeRaw.length === 0 && negativeFactors.length > 0) {
+      for (const f of negativeFactors.slice(0, 2)) {
+        whyNotTakeRaw.push(`${f.label} (${f.score}): ${f.note}`)
       }
     }
-    for (const b of riskCritical) {
-      if (whyNotTake.length >= 6) break
-      if (!whyNotTake.some((l) => l === b.message)) whyNotTake.push(b.message)
-    }
-    for (const b of traderCritical) {
-      if (whyNotTake.length >= 5) break
-      whyNotTake.push(b.message)
-    }
-    for (const b of techCritical) {
-      if (whyNotTake.length >= 5) break
-      if (!whyNotTake.some((l) => l === b.message)) whyNotTake.push(b.message)
-    }
-    for (const b of elevatedBlockers) {
-      if (whyNotTake.length >= 5) break
-      if (!whyNotTake.some((line) => line === b.message)) whyNotTake.push(b.message)
-    }
-    if (whyNotTake.length === 0 && negativeFactors.length > 0) {
-      for (const f of negativeFactors.slice(0, 3)) {
-        whyNotTake.push(`${f.label} (${f.score}/100): ${f.note}`)
-      }
-    }
-    if (whyNotTake.length === 0) {
-      whyNotTake.push(`Score ${input.score}/100 — wait for cleaner alignment before full size.`)
+    if (whyNotTakeRaw.length === 0) {
+      whyNotTakeRaw.push(`Composite ${input.score}/100 — wait for cleaner alignment before full size.`)
     }
   }
+  const whyNotTake = dedupeReasonLines(whyNotTakeRaw).slice(0, 5)
 
-  let reasoningSummary = `Technical ${technicalSetupVerdict} (${technicalSetupScore}) · Emotional ${traderStateVerdict} (${traderStateScore}) · Risk ${riskConditionsVerdict} (${riskConditionsScore}) → Final ${verdict}.`
-  if (psychologyOverride) {
-    reasoningSummary += " Psychology risk overrides setup quality."
-  }
+  let reasoningSummary = `${coachHeadline} Technical ${technicalSetupScore} · Psychology ${traderStateScore} · Risk ${riskConditionsScore} → ${finalActionLabel}.`
 
   const marketEnvironmentNote = marketEnv
     ? `Market environment: ${marketEnv.labels.filter((l) => l !== "neutral").join(", ") || marketEnv.primary} — ${marketEnv.tradingBias}`
@@ -766,10 +862,22 @@ export function resolveVerdictWithReasoning(input: {
     traderStateBlockers,
     riskBlockers,
     dominantDecidingFactor,
-    whyNotTake: whyNotTake.slice(0, 6),
+    whyNotTake,
     reasoningSummary,
     marketEnvironmentNote,
     humanSignals,
+    technicalLayerLabel,
+    traderLayerLabel,
+    finalActionLabel,
+    executionRiskLevel,
+    bestAction,
+    coachHeadline,
+    confidenceExplanation,
+    historicalPatternMemory,
+    whatWouldMakeTradable,
+    emotionalConfidence: input.context.sessionRecovery?.emotionalConfidence ?? null,
+    emotionalConfidenceReasons: input.context.sessionRecovery?.confidenceReasons ?? [],
+    sessionRecoveryPhase: input.context.sessionRecovery?.phase ?? null,
   }
 }
 
@@ -777,11 +885,14 @@ export function resolveVerdictWithReasoning(input: {
 export function formatVerdictReasoningBrief(reasoning: VerdictReasoning): string {
   const lines: string[] = [
     "",
-    `**Technical quality:** ${reasoning.technicalSetupVerdict} (${reasoning.technicalSetupScore}/100)`,
-    `**Emotional state:** ${reasoning.traderStateVerdict} (${reasoning.traderStateScore}/100)`,
-    `**Risk conditions:** ${reasoning.riskConditionsVerdict} (${reasoning.riskConditionsScore}/100)`,
-    `**Final reasoning:** ${reasoning.finalDecisionExplanation}`,
+    `**Technical setup:** ${reasoning.technicalLayerLabel} (${reasoning.technicalSetupScore}/100)`,
+    `**Trader state:** ${reasoning.traderLayerLabel} (${reasoning.traderStateScore}/100)`,
+    `**Best action:** ${reasoning.finalActionLabel} — ${reasoning.bestAction}`,
+    reasoning.coachHeadline,
   ]
+  if (reasoning.confidenceExplanation) {
+    lines.push(reasoning.confidenceExplanation)
+  }
   if (reasoning.psychologyClarification) {
     lines.push("", reasoning.psychologyClarification)
   }

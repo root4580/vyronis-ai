@@ -45,11 +45,11 @@ export function evaluateAutonomousIntervention(input: {
     severity = "critical"
     canProceedToEntry = false
     actions.push("stand_down", "block_impulsive_confirmation")
-    headline = "Stand down — capital protection"
+    headline = "Pause — protect capital and process"
     message =
       shadow?.proactiveMessage ??
-      "Daily limits or drawdown guard triggered. No new executions until you reset."
-    reflectionPrompt = "What emotion is driving the urge to trade right now? Write one sentence before returning."
+      "Daily limits or drawdown guard are in play. Step away until you have a clear, calm plan."
+    reflectionPrompt = "What emotion is driving the urge to trade right now? One honest sentence before you return."
     suggestedRiskMultiplier = 0
     expiresAfterMinutes = 60
   } else if (lowQualityStreak >= 3) {
@@ -57,8 +57,8 @@ export function evaluateAutonomousIntervention(input: {
     severity = "critical"
     canProceedToEntry = false
     actions.push("require_reflection", "block_impulsive_confirmation", "stand_down")
-    headline = "Process break — pause required"
-    message = `You've entered ${lowQualityStreak} lower-quality setups in a row. Pause before next execution.`
+    headline = "Process break — reset first"
+    message = `Last ${lowQualityStreak} executions showed process slippage. A short reset will sharpen the next decision.`
     reflectionPrompt =
       "Name the pattern (revenge, FOMO, boredom). What is one rule you will follow on the next trade?"
     suggestedRiskMultiplier = 0
@@ -96,8 +96,8 @@ export function evaluateAutonomousIntervention(input: {
     severity = "warning"
     canProceedToEntry = false
     actions.push("block_impulsive_confirmation", "require_reflection")
-    headline = "Impulse guard active"
-    message = `Trader state is ${cognitive.state.primary.replace(/_/g, " ")} — reflection required before entry.`
+    headline = "Impulse guard — slow down"
+    message = `State reads ${cognitive.state.primary.replace(/_/g, " ")}. A few minutes of reflection will protect execution quality.`
     reflectionPrompt = cognitive.state.narrative
     suggestedRiskMultiplier = 0
     expiresAfterMinutes = 10

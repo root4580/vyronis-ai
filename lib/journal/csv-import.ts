@@ -1,6 +1,16 @@
+import { getRawTradeDateTime } from "@/lib/journal/trade-date-parser"
 import type { NormalizedResearchTrade } from "@/lib/research/types"
 import { computeSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import type { SetupScoreTradeInput } from "@/lib/trade-coach/setup-score-engine"
+
+export type JournalImportDateLog = {
+  rowNumber: number
+  ticket: string
+  originalCsvDateTime: string
+  parsedDate: string
+  calendarDate: string
+  pnl: number
+}
 
 export type JournalImportPreviewRow = {
   rowNumber: number
@@ -12,7 +22,7 @@ export type JournalImportPreviewRow = {
   session: string | null
   risk_reward: number | null
   trade_date: string
-  status: "ready" | "duplicate" | "error"
+  status: "ready" | "duplicate" | "replace" | "needs_date_fix" | "error"
   message?: string
   suggested_emotion?: string
   suggested_setup?: string
@@ -23,10 +33,45 @@ export type JournalImportPreviewRow = {
 export type JournalImportResult = {
   dryRun: boolean
   preview: JournalImportPreviewRow[]
+  dateLogs: JournalImportDateLog[]
   importedCount: number
+  replacedCount: number
   skippedCount: number
   errorCount: number
   errors: string[]
+  totalRowsFound: number
+  importReadyCount: number
+  validRowCount?: number
+  needsDateFixCount: number
+  summaryMessage: string
+  parseDebug?: import("@/lib/journal/csv-parse-pipeline").JournalCsvParseDebug
+  columnDiagnostics?: import("@/lib/journal/journal-csv-mapper").JournalCsvColumnDiagnostics
+  calendarSummary?: {
+    uniqueDates: string[]
+    tradesPerDate: Record<string, number>
+  }
+}
+
+export function buildJournalDateLogs(trades: NormalizedResearchTrade[]): JournalImportDateLog[] {
+  return trades.map((trade, index) => ({
+    rowNumber: index + 2,
+    ticket: trade.external_ticket,
+    originalCsvDateTime: getRawTradeDateTime(trade.raw_payload) ?? "",
+    parsedDate: trade.closed_at ?? trade.opened_at ?? trade.trade_date,
+    calendarDate: trade.trade_date,
+    pnl: trade.pnl,
+  }))
+}
+
+export function buildJournalCalendarSummary(trades: NormalizedResearchTrade[]) {
+  const tradesPerDate: Record<string, number> = {}
+  for (const trade of trades) {
+    tradesPerDate[trade.trade_date] = (tradesPerDate[trade.trade_date] ?? 0) + 1
+  }
+  return {
+    uniqueDates: Object.keys(tradesPerDate).sort(),
+    tradesPerDate,
+  }
 }
 
 export function suggestJournalTags(trade: NormalizedResearchTrade): {

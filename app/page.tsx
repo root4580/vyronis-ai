@@ -23,7 +23,9 @@ import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-
 import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
+import { JournalCommandCenter } from "@/components/journal/journal-command-center"
 import { JournalImportModal } from "@/components/dashboard/journal-import-modal"
+import { deleteJournalCsvImports } from "@/lib/journal/api-client"
 import {
   deleteCoachSession,
   fetchCoachSession,
@@ -1395,6 +1397,14 @@ function Home() {
     setRiskGuardResult(null)
   }
 
+  const openManualTrade = useCallback((tradeDate?: string) => {
+    setSelectedTrade(null)
+    setEditingTrade(null)
+    setConvertSessionId(null)
+    setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
+    setIsModalOpen(true)
+  }, [])
+
   function handleEditTrade(trade: Trade) {
     setSelectedTrade(null)
     setEditingTrade(trade)
@@ -1428,6 +1438,36 @@ function Home() {
   function handleDeleteClick(trade: Trade) {
     setTradeToDelete(trade)
     setIsDeleteModalOpen(true)
+  }
+
+  async function handleClearJournalCsvDay(dateKey: string) {
+    if (!user) return
+    const dayLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })
+    const confirmed = window.confirm(
+      `Remove all journal CSV trades on ${dayLabel}? Manual entries on this day are kept.`,
+    )
+    if (!confirmed) return
+
+    try {
+      const { deletedCount } = await deleteJournalCsvImports({ tradeDate: dateKey })
+      await fetchTrades(user.id)
+      toast({
+        title: deletedCount > 0 ? "Day cleared" : "Nothing to remove",
+        description:
+          deletedCount > 0
+            ? `Removed ${deletedCount} CSV import${deletedCount === 1 ? "" : "s"} from ${dayLabel}. Re-import trading-journal-clean.csv to fix dates.`
+            : `No journal CSV trades found on ${dayLabel}.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Could not clear day",
+        description: error instanceof Error ? error.message : "Delete failed",
+        variant: "destructive",
+      })
+    }
   }
 
   async function confirmDeleteTrade() {
@@ -1585,19 +1625,14 @@ function Home() {
       onOpenSettings={() => setIsSettingsOpen(true)}
       onLogout={() => void handleLogout()}
       isLoggingOut={isLoggingOut}
-      showFab={Boolean(user) && activeTab !== "journal"}
+      showFab={Boolean(user)}
       showSignalBell={Boolean(user)}
       aiLauncher={user ? <CommandCenterLauncher /> : null}
       onSignalAlertClick={() => {
         setActiveTab("journal")
         void refreshPlannedSessions(undefined, true)
       }}
-      onFabClick={() => {
-        setEditingTrade(null)
-        setConvertSessionId(null)
-        setForm(createInitialTradeForm())
-        setIsModalOpen(true)
-      }}
+      onFabClick={() => openManualTrade()}
       banner={
         showLoadFallbackBanner ? (
           <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
@@ -1633,12 +1668,7 @@ function Home() {
                       openCommandCenterRef.current()
                       if (user.id) markRitualCoachEngaged(user.id)
                     }}
-                    onOpenLog={() => {
-                      setEditingTrade(null)
-                      setConvertSessionId(null)
-                      setForm(createInitialTradeForm())
-                      setIsModalOpen(true)
-                    }}
+                    onOpenLog={() => openManualTrade()}
                   />
                 ) : null}
 
@@ -1691,6 +1721,14 @@ function Home() {
                     Strategy Playbook
                   </a>
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-9 border-violet-500/25 bg-violet-500/[0.06] text-violet-200 hover:bg-violet-500/10"
+                >
+                  <a href="/strategy-brain">Strategy Brain</a>
+                </Button>
               </div>
               <StrategyPerformance
                 trades={trades}
@@ -1709,59 +1747,56 @@ function Home() {
                 </div>
               </section>
             ) : (
-              <section className="dashboard-section space-y-3">
+              <div className="dashboard-stagger space-y-3">
                 <RiskGuardBanner
                   trades={trades}
                   settings={settingsForm}
                   startingBalance={startingBalance}
                 />
-                <div className="dashboard-stagger space-y-3">
-                  <PlannedTradesSection
-                    sessions={plannedSessions}
-                    isLoading={isLoadingPlannedSessions}
-                    deletingSessionId={deletingPlannedSessionId}
-                    onContinueCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
-                    onConvertToTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
-                    onDeletePlanned={(sessionId) => void handleDeletePlannedSession(sessionId)}
-                    onNewCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
-                  />
-                  <RecentTradesTable
-                    trades={trades}
-                    onEdit={handleEditTrade}
-                    onDelete={handleDeleteClick}
-                    onViewTrade={setSelectedTrade}
-                    onScreenshotClick={(trade) =>
-                      setScreenshotViewer({ url: trade?.screenshot_url ?? null, label: trade?.pair ?? "Trade" })
-                    }
-                    headerActions={
-                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setEditingTrade(null)
-                            setConvertSessionId(null)
-                            setForm(createInitialTradeForm())
-                            setIsModalOpen(true)
-                          }}
-                          className="h-9 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
-                        >
-                          <Plus className="mr-2 size-4" />
-                          New Trade
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsJournalImportOpen(true)}
-                          className="h-9 w-full border-white/[0.08] bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06] sm:w-auto"
-                        >
-                          <FileUp className="mr-2 size-4" />
-                          Import CSV
-                        </Button>
-                      </div>
-                    }
-                  />
-                </div>
-              </section>
+                <JournalCommandCenter
+                  trades={trades}
+                  startingBalance={startingBalance}
+                  plannedSessions={plannedSessions}
+                  isLoadingPlanned={isLoadingPlannedSessions}
+                  deletingSessionId={deletingPlannedSessionId}
+                  onContinueCoach={(sessionId) => void handleContinuePlannedCoach(sessionId)}
+                  onConvertToTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
+                  onDeletePlanned={(sessionId) => void handleDeletePlannedSession(sessionId)}
+                  onNewCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
+                  onEditTrade={handleEditTrade}
+                  onDeleteTrade={handleDeleteClick}
+                  onViewTrade={setSelectedTrade}
+                  onScreenshotClick={(trade) =>
+                    setScreenshotViewer({
+                      url: trade?.screenshot_url ?? null,
+                      label: trade?.pair ?? "Trade",
+                    })
+                  }
+                  onClearJournalCsvDay={(dateKey) => void handleClearJournalCsvDay(dateKey)}
+                  onLogTrade={openManualTrade}
+                  headerActions={
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                      <Button
+                        type="button"
+                        onClick={() => openManualTrade()}
+                        className="h-9 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+                      >
+                        <Plus className="mr-2 size-4" />
+                        New Trade
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsJournalImportOpen(true)}
+                        className="h-9 w-full border-white/[0.08] bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06] sm:w-auto"
+                      >
+                        <FileUp className="mr-2 size-4" />
+                        Import CSV
+                      </Button>
+                    </div>
+                  }
+                />
+              </div>
             )
           )}
         </TabTransition>
@@ -1834,6 +1869,9 @@ function Home() {
         isSaving={isSavingSettings}
         accountBalance={accountBalance}
         totalPnL={totalPnL}
+        onMt5TradeSynced={() => {
+          if (user?.id) void fetchTrades(user.id)
+        }}
       />
 
       {isDeleteModalOpen && tradeToDelete && (

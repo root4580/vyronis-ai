@@ -31,6 +31,8 @@ async function postJournalImport(options: {
   csvFile: File | null
   screenshotFiles: File[]
   dryRun: boolean
+  replaceExisting?: boolean
+  useTodayForMissingDates?: boolean
 }): Promise<JournalImportResult> {
   const screenshotUrls = options.screenshotFiles.length
     ? await uploadScreenshots(options.screenshotFiles)
@@ -38,6 +40,11 @@ async function postJournalImport(options: {
 
   const formData = new FormData()
   formData.set("dryRun", options.dryRun ? "true" : "false")
+  formData.set("replaceExisting", options.replaceExisting ? "true" : "false")
+  formData.set(
+    "useTodayForMissingDates",
+    options.useTodayForMissingDates ? "true" : "false",
+  )
   if (options.csvFile) formData.set("file", options.csvFile)
   if (screenshotUrls.length) formData.set("screenshotUrls", JSON.stringify(screenshotUrls))
 
@@ -53,13 +60,30 @@ async function postJournalImport(options: {
 export async function previewJournalImport(options: {
   csvFile: File | null
   screenshotFiles: File[]
+  replaceExisting?: boolean
+  useTodayForMissingDates?: boolean
 }): Promise<JournalImportResult> {
   return postJournalImport({ ...options, dryRun: true })
+}
+
+export async function deleteJournalCsvImports(options?: {
+  tradeDate?: string
+}): Promise<{ deletedCount: number }> {
+  const params = options?.tradeDate
+    ? `?date=${encodeURIComponent(options.tradeDate)}`
+    : ""
+  const response = await fetch(`/api/journal/import/csv${params}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  })
+  return parseJson(response)
 }
 
 export async function confirmJournalImport(options: {
   csvFile: File | null
   screenshotFiles: File[]
+  replaceExisting?: boolean
+  useTodayForMissingDates?: boolean
 }): Promise<JournalImportResult> {
   return postJournalImport({ ...options, dryRun: false })
 }

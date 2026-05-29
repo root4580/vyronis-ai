@@ -148,16 +148,38 @@ function scoreRr(planned?: PreTradePlannedContext | null): ConfidenceFactor {
 
 function scoreEmotional(context: FullTraderContext): ConfidenceFactor {
   const { emotionalState, memory } = context
+  const recovery = context.sessionRecovery
+  const softHistorical =
+    recovery?.sessionGuardMode === "soft_caution" &&
+    recovery.carryoverMode === "historical_caution"
+
   let score = 70
-  if (emotionalState.trend === "volatile") score = 32
-  else if (emotionalState.trend === "elevated") score = 48
-  if (emotionalState.impulsiveCount >= 2) score -= 18
+  if (recovery?.carryoverMode === "active_instability" || recovery?.phase === "UNSTABLE") {
+    score = 30
+  } else if (emotionalState.trend === "volatile") {
+    score = softHistorical ? 52 : 32
+  } else if (emotionalState.trend === "elevated") {
+    score = softHistorical ? 58 : 48
+  } else if (recovery?.phase === "RECOVERING" || recovery?.phase === "CALM") {
+    score = Math.max(score, 62)
+  }
+
+  if (emotionalState.impulsiveCount >= 2) score -= softHistorical ? 8 : 18
+  else if (emotionalState.impulsiveCount === 1 && !softHistorical) score -= 10
+
   const risky = ["fomo", "revenge", "tilted", "euphoric", "anxious"]
   if (
     emotionalState.dominantEmotion &&
-    risky.includes(emotionalState.dominantEmotion.toLowerCase())
+    risky.includes(emotionalState.dominantEmotion.toLowerCase()) &&
+    recovery?.carryoverMode === "active_instability"
   ) {
     score -= 22
+  } else if (
+    emotionalState.dominantEmotion &&
+    risky.includes(emotionalState.dominantEmotion.toLowerCase()) &&
+    softHistorical
+  ) {
+    score -= 8
   }
   if (memory.primaryLeak.status === "active") score -= 10
   const ei = context.emotionalIntelligence
@@ -174,7 +196,11 @@ function scoreEmotional(context: FullTraderContext): ConfidenceFactor {
     label: "Emotional state",
     score: clamp(score),
     weight: WEIGHTS.emotional,
-    note: emotionalState.note || emotionalState.dominantEmotion || "Stable mood",
+    note:
+      recovery?.probabilityNarrative ||
+      emotionalState.note ||
+      emotionalState.dominantEmotion ||
+      "Stable mood",
   }
 }
 

@@ -1,24 +1,30 @@
-# Vyronis London Breakout EA (MT5)
+# Vyronis MT5 Experts
 
-Demo-only research EA for Vyronis Research Lab CSV import.
+## VyronisTradeSync (production journal sync)
 
-## Install
+Real-time closed-trade sync to Vyronis via webhook.
 
-1. Copy `experts/Vyronis_LondonBreakout_EA.mq5` to:
-   `MetaTrader 5/MQL5/Experts/`
-2. Open MetaEditor → compile (F7).
-3. Attach to **EURUSD M15** on a **demo** account.
-4. Enable **Algo Trading** in MT5.
+| File | Role |
+|------|------|
+| `experts/VyronisTradeSync.mq5` | Attach to any chart — detects closes, POSTs webhook |
+| `include/VyronisTradeWebhook.mqh` | JSON builder, dedupe, retries, WebRequest |
 
-## Vyronis setup
+**Full setup:** [docs/MT5-EA-WEBHOOK.md](../docs/MT5-EA-WEBHOOK.md)
 
-1. Research Lab → create strategy **London Breakout EA**
-2. Set magic number: **92601001**
-3. After trades run, export MT5 Account History as CSV
-4. Import at `/research-lab/import`
+Quick steps:
 
-## Safety
+1. Run Supabase `023` + `024` migrations.
+2. Copy `.mq5` → `MQL5/Experts/`, `.mqh` → `MQL5/Include/`.
+3. Whitelist `https://vyronis-ai.vercel.app` (and `http://localhost:3000` for dev) in MT5 WebRequest list.
+4. Copy API key from Vyronis **Trade Journal → MT5 Connection**.
+5. Compile, attach EA, enable Algo Trading.
 
-- Refuses to run on live accounts (`RequireDemoAccount = true`)
+## Vyronis London Breakout EA (research demo)
+
+Demo-only strategy for Research Lab CSV import (`experts/Vyronis_LondonBreakout_EA.mq5`).
+
 - Magic: `92601001`
-- Comments: `Vyronis-LBO|BUY|range=...` for CSV traceability
+- Refuses live accounts when `RequireDemoAccount = true`
+- CSV import: Research Lab → Import MT5 CSV
+
+For live journal sync, use **VyronisTradeSync** instead of CSV.

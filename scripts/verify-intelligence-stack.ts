@@ -11,6 +11,7 @@ import {
   toneMemoryFromMessages,
 } from "../lib/intelligence/tone-memory-engine"
 import { resolveVerdictWithReasoning } from "../lib/intelligence/verdict-reasoning-engine"
+import { buildSessionRecovery } from "../lib/intelligence/session-recovery-engine"
 import { buildVisionIntelligenceSnapshot } from "../lib/vyronis-core/phase7-engine"
 import { buildOutcomeLesson } from "../lib/learning/outcome-learning-engine"
 import type { FullTraderContext } from "../lib/intelligence/intelligence-types"
@@ -156,6 +157,63 @@ const cal = computeVerdictCalibration([
   { ...lesson, tradeId: "3", vyronisWasRight: true },
 ])
 assert(cal.sampleCount >= 2, "calibration samples")
+
+console.log("\n=== Session recovery ===")
+const yKey = "2020-06-01"
+const recoveryCtx = baseContext({
+  autonomous: null,
+  memory: {
+    snapshot: { todayTradeCount: 0, todayPnL: 0, winRate: 42, plannedCount: 0 },
+    primaryLeak: { status: "inactive", headline: "", correctiveAction: "" },
+    warnings: [],
+    topPatterns: [],
+    plannedSessions: [],
+    greeting: { headline: "", sessionLabel: "NY" },
+  },
+  recentTrades: [
+    {
+      pair: "EURUSD",
+      direction: "LONG",
+      result: "LOSS",
+      pnl: -50,
+      emotion: "revenge",
+      session: "London",
+      trade_date: yKey,
+      created_at: `${yKey}T14:00:00Z`,
+      rule_followed: false,
+    },
+    {
+      pair: "GBPUSD",
+      direction: "SHORT",
+      result: "LOSS",
+      pnl: -30,
+      emotion: "fomo",
+      session: "London",
+      trade_date: yKey,
+      created_at: `${yKey}T16:00:00Z`,
+      rule_followed: false,
+    },
+  ],
+  emotionalState: {
+    dominantEmotion: "revenge",
+    impulsiveCount: 2,
+    recentEmotions: ["revenge", "fomo"],
+    trend: "volatile",
+    note: "Prior",
+  },
+})
+const recovery = buildSessionRecovery(recoveryCtx)
+assert(recovery.sessionGuardMode === "soft_caution", "soft caution when no trades today")
+assert(
+  recovery.carryoverMode === "historical_caution" || recovery.phase === "RECOVERING",
+  "historical not active instability",
+)
+assert(
+  recovery.probabilityNarrative.includes("not confirmed") ||
+    recovery.probabilityNarrative.includes("caution"),
+  "probability narrative",
+)
+assert(recovery.adjustedEmotionalRisk < recovery.rawHistoricalRisk, "emotional risk decays")
 
 console.log("\n=== Verdict reasoning + human signals ===")
 const vr = resolveVerdictWithReasoning({

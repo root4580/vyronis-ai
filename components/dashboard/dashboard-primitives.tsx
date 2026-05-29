@@ -109,11 +109,13 @@ export function DashboardEmptyState({
   title,
   description,
   className,
+  children,
 }: {
   icon: LucideIcon
   title: string
   description?: string
   className?: string
+  children?: React.ReactNode
 }) {
   return (
     <div className={cn("dashboard-empty-state", className)}>
@@ -122,6 +124,7 @@ export function DashboardEmptyState({
       </div>
       <p className="text-sm text-muted-foreground font-medium">{title}</p>
       {description && <p className="text-xs text-muted-foreground/55 mt-1 max-w-[220px]">{description}</p>}
+      {children}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { getCalendarDateKey } from "@/lib/journal/trade-date-parser"
 import { getSignedPnL } from "@/lib/trade-utils"
 import type { DashboardPreferences } from "@/lib/user-preferences"
 
@@ -69,9 +70,8 @@ export function normalizeUserSettings(data: Partial<UserSettingsRecord> | null |
 }
 
 export function getTradeDateKey(trade: Pick<SettingsTrade, "trade_date" | "created_at">): string {
-  if (trade.trade_date) {
-    return trade.trade_date.split("T")[0]
-  }
+  const fromTradeDate = getCalendarDateKey(trade)
+  if (fromTradeDate) return fromTradeDate
 
   const created = new Date(trade.created_at)
   const year = created.getFullYear()

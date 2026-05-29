@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import {
+  deleteAllJournalCsvImports,
   importJournalUpload,
   JournalImportTableMissingError,
 } from "@/lib/journal/import-server-service"
 import { MAX_CSV_BYTES } from "@/lib/research/mt5-csv-parser"
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const tradeDate = request.nextUrl.searchParams.get("date")?.trim() || undefined
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const result = await deleteAllJournalCsvImports(supabase, user.id, {
+      tradeDate,
+    })
+    return NextResponse.json(result)
+  } catch (error) {
+    if (error instanceof JournalImportTableMissingError) {
+      return NextResponse.json({ error: error.message }, { status: 503 })
+    }
+    console.error("Journal CSV delete error:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Delete failed" },
+      { status: 500 },
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +51,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get("file")
     const dryRun = String(formData.get("dryRun") || "true") === "true"
+    const replaceExisting = String(formData.get("replaceExisting") || "false") === "true"
+    const useTodayForMissingDates =
+      String(formData.get("useTodayForMissingDates") || "false") === "true"
+    const fallbackDateForMissing = useTodayForMissingDates
+      ? new Date().toISOString().slice(0, 10)
+      : undefined
     const screenshotUrlsRaw = String(formData.get("screenshotUrls") || "")
 
     let screenshotUrls: string[] = []
@@ -57,6 +93,8 @@ export async function POST(request: NextRequest) {
       csvContent,
       screenshotUrls,
       dryRun,
+      replaceExisting,
+      fallbackDateForMissing,
       maxRiskPerTrade: settings?.max_risk_per_trade ?? 1,
     })
 
