@@ -285,9 +285,17 @@ type DashboardHeaderProps = {
   onOpenSettings?: () => void
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
+  /** When true, bottom tab bar is hidden — mobile dock handles navigation. */
+  hideMobileNav?: boolean
 }
 
-export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onSignalAlertClick }: DashboardHeaderProps) {
+export function DashboardHeader({
+  activeTab,
+  onOpenSettings,
+  showSignalBell,
+  onSignalAlertClick,
+  hideMobileNav = false,
+}: DashboardHeaderProps) {
   const pathname = usePathname()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
@@ -446,7 +454,7 @@ export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onS
         </div>
       </div>
 
-      <div className="border-t border-white/[0.04] lg:hidden">
+      <div className={cn("border-t border-white/[0.04] lg:hidden", hideMobileNav && "hidden")}>
         <nav className="flex items-center justify-around px-2 py-2">
           {navItems.map((item) => (
             <Link

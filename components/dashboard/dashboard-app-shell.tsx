@@ -16,6 +16,7 @@ type DashboardAppShellProps = {
   banner?: ReactNode
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
+  hideMobileHeaderNav?: boolean
 }
 
 export function DashboardAppShell({
@@ -30,6 +31,7 @@ export function DashboardAppShell({
   banner,
   showSignalBell,
   onSignalAlertClick,
+  hideMobileHeaderNav = false,
 }: DashboardAppShellProps) {
   return (
     <div className={cn("dashboard-shell", mobileDock && "dashboard-shell-has-dock")}>
@@ -38,6 +40,7 @@ export function DashboardAppShell({
         onOpenSettings={onOpenSettings}
         showSignalBell={showSignalBell}
         onSignalAlertClick={onSignalAlertClick}
+        hideMobileNav={hideMobileHeaderNav}
       />
       {userBar}
       <main className={cn("dashboard-shell-main", mainClassName)}>

@@ -100,7 +100,7 @@ import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-
 import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
-import { getDashboardHomeHref } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
 import { markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
   buildRepeatTradeDraft,
@@ -1635,11 +1635,17 @@ function Home() {
         setActiveTab("dashboard")
         router.replace(getDashboardHomeHref())
       }}
-      onDockCoach={() => {
-        openCommandCenterRef.current()
-        if (user?.id) markRitualCoachEngaged(user.id)
+      onDockJournal={() => {
+        setActiveTab("journal")
+        router.replace(getDashboardTabHref("journal"))
       }}
+      onDockCoach={() => void handleOpenCoach()}
       onDockLog={() => openManualTrade()}
+      onDockStrategies={() => {
+        setActiveTab("strategies")
+        router.replace(getDashboardTabHref("strategies"))
+      }}
+      onDockAnalytics={() => router.replace("/analytics")}
       banner={
         showLoadFallbackBanner ? (
           <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
@@ -1682,10 +1688,7 @@ function Home() {
                     hasPlannedCoachInProgress={plannedSessions.some(
                       (session) => session.status === "in_progress",
                     )}
-                    onOpenCoach={() => {
-                      openCommandCenterRef.current()
-                      if (user.id) markRitualCoachEngaged(user.id)
-                    }}
+                    onOpenCoach={() => void handleOpenCoach()}
                     onOpenLog={() => openManualTrade()}
                     onCoachEngaged={() => {
                       if (user.id) markRitualCoachEngaged(user.id)

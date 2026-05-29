@@ -31,7 +31,7 @@ This document shows what the **Today-first** dashboard feels like after the 10/1
 │ ▼ Performance (collapsed)           │
 │ ▼ Intelligence (collapsed)          │
 ├─────────────────────────────────────┤
-│  [Home]    [Coach]    [Log]         │  ← fixed dock
+│ Home · Journal · Coach · Log · Prep · Stats │  ← dock (no header tabs)
 └─────────────────────────────────────┘
 ```
 

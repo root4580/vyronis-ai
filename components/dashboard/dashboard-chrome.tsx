@@ -20,8 +20,11 @@ type DashboardChromeProps = {
   onFabClick?: () => void
   showMobileDock?: boolean
   onDockHome?: () => void
+  onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
+  onDockStrategies?: () => void
+  onDockAnalytics?: () => void
   aiLauncher?: ReactNode
   banner?: ReactNode
   mainClassName?: string
@@ -41,8 +44,11 @@ export function DashboardChrome({
   onFabClick,
   showMobileDock = false,
   onDockHome,
+  onDockJournal,
   onDockCoach,
   onDockLog,
+  onDockStrategies,
+  onDockAnalytics,
   aiLauncher,
   banner,
   mainClassName,
@@ -56,6 +62,7 @@ export function DashboardChrome({
       mainClassName={mainClassName}
       showSignalBell={showSignalBell}
       onSignalAlertClick={onSignalAlertClick}
+      hideMobileHeaderNav={showMobileDock}
       userBar={
         <DashboardUserBar
           profileCard={profileCard}
@@ -68,12 +75,15 @@ export function DashboardChrome({
       aiLauncher={aiLauncher}
       fab={showFab && onFabClick ? <DashboardFab onClick={onFabClick} /> : null}
       mobileDock={
-        showMobileDock && onDockHome && onDockCoach && onDockLog ? (
+        showMobileDock && onDockHome && onDockJournal && onDockCoach && onDockLog ? (
           <DashboardMobileDock
-            activeHome={activeTab === "dashboard"}
+            activeTab={activeTab}
             onHome={onDockHome}
+            onJournal={onDockJournal}
             onCoach={onDockCoach}
             onLog={onDockLog}
+            onStrategies={onDockStrategies}
+            onAnalytics={onDockAnalytics}
           />
         ) : null
       }

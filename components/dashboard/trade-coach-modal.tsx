@@ -805,6 +805,10 @@ export function TradeCoachPanel({
   )
 }
 
-export function TradeCoachModal({ open, onClose, ...rest }: TradeCoachModalProps) {
-  return <TradeCoachPanel active={open} embedded={false} onClose={onClose} {...rest} />
+/**
+ * Standalone modal removed — pre-trade coach runs inside Command Center only.
+ * Kept for API compatibility; renders nothing. Use `openPreTradeCoach` from AI context.
+ */
+export function TradeCoachModal(_props: TradeCoachModalProps) {
+  return null
 }

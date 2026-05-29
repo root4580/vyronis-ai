@@ -3,7 +3,6 @@
 import { CognitiveSurface } from "@/components/command-center/cognitive-surface"
 import { TradingOsAlertStrip } from "@/components/trading-os/trading-os-alert-strip"
 import { TradeCoachPanel } from "@/components/dashboard/trade-coach-modal"
-import { CommandCenterInput } from "@/components/command-center/command-center-input"
 import { useAIContext } from "@/providers/ai-context-provider"
 
 export function PreTradeMode() {
@@ -16,10 +15,6 @@ export function PreTradeMode() {
     handleCoachSessionChange,
     handleCoachCompleted,
     returnToCompanion,
-    sendMessage,
-    isLoading,
-    isThinking,
-    streamingMessage,
   } = useAIContext()
 
   const active = mode === "pre_trade"
@@ -39,16 +34,6 @@ export function PreTradeMode() {
           onSessionChange={handleCoachSessionChange}
           onCompleted={handleCoachCompleted}
           onClose={() => void returnToCompanion()}
-        />
-      </div>
-      <div className="mobile-form-footer shrink-0 border-t border-white/[0.06] pt-1.5 sm:pt-2">
-        <p className="mb-1 px-1 text-[10px] leading-snug text-muted-foreground/65">
-          Upload one or more charts — AI infers timeframes and links analysis to this pre-trade session.
-        </p>
-        <CommandCenterInput
-          onSend={sendMessage}
-          disabled={isLoading || isThinking || Boolean(streamingMessage)}
-          placeholder="Ask about this setup or upload a chart…"
         />
       </div>
     </div>
