@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useVisualViewportCssVars } from "@/hooks/use-visual-viewport-css-vars"
 import { ArrowLeft, Brain, Eye, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,15 @@ export function VyronisCommandCenter() {
   } = useAIContext()
 
   useVisualViewportCssVars(isOpen)
+
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 

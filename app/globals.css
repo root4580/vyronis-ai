@@ -1818,8 +1818,17 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   pointer-events: none;
 }
 
+/* iOS Safari auto-zooms focused inputs below 16px — keep compose fields at 16px on phones */
 @media (max-width: 639px) {
+  .command-center-input textarea,
+  .command-center-input-field,
+  .command-center-input input {
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
+
   .command-center-panel {
+    touch-action: manipulation;
     top: var(--vyronis-vv-top, 0px);
     right: 0;
     left: 0;

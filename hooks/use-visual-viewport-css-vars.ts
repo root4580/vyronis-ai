@@ -16,9 +16,11 @@ export function useVisualViewportCssVars(enabled: boolean) {
     const root = document.documentElement
 
     const update = () => {
-      root.style.setProperty("--vyronis-vv-height", `${vv.height}px`)
-      root.style.setProperty("--vyronis-vv-top", `${vv.offsetTop}px`)
-      const keyboardOpen = vv.height < window.innerHeight * 0.82
+      const height = Math.round(vv.height)
+      const top = Math.round(vv.offsetTop)
+      root.style.setProperty("--vyronis-vv-height", `${height}px`)
+      root.style.setProperty("--vyronis-vv-top", `${top}px`)
+      const keyboardOpen = height < window.innerHeight * 0.82
       root.classList.toggle("keyboard-open", keyboardOpen)
     }
 
