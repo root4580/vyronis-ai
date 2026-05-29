@@ -7,7 +7,7 @@ Concise step-by-step guide. Complete in order.
 ## 1. Environment variables (Vercel)
 
 **Project:** `vyronis-ai`  
-**Production URL:** `https://vyronis-ai.vercel.app`
+**Production URL:** `https://vyronishq.com`
 
 **Path:** Vercel → Project → Settings → Environment Variables → **Production**
 
@@ -15,7 +15,7 @@ Concise step-by-step guide. Complete in order.
 |----------|----------|------------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | **Yes** | `https://xxxxx.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Supabase anon public key |
-| `NEXT_PUBLIC_APP_URL` | **Yes** | `https://vyronis-ai.vercel.app` (no trailing `/`) |
+| `NEXT_PUBLIC_APP_URL` | **Yes** | `https://vyronishq.com` (no trailing `/`) |
 | `OPENAI_API_KEY` | No | Only if AI narrative/vision enabled |
 | `AI_PROVIDER` | No | `openai` · `claude` · `gemini` · `heuristic` |
 | `CHART_VISION_PROVIDER` | No | Usually same as `AI_PROVIDER` |
@@ -37,13 +37,13 @@ Concise step-by-step guide. Complete in order.
 | Field | Value |
 |-------|--------|
 | **Site URL** | Same as `NEXT_PUBLIC_APP_URL` |
-| **Redirect URLs** | `https://vyronis-ai.vercel.app/auth/callback` |
+| **Redirect URLs** | `https://vyronishq.com/auth/callback` |
 | | `http://localhost:3000/auth/callback` (local dev only) |
 
 Password reset emails use `/auth/callback?next=/auth/reset-password` — the callback URL above covers this flow.
 
 **Password reset email not arriving?**
-1. Use **production** only: `https://vyronis-ai.vercel.app/auth/forgot-password` (not a `*.vercel.app` preview URL).
+1. Use **production** only: `https://vyronishq.com/auth/forgot-password` (not a `*.vercel.app` preview URL).
 2. Supabase → **Authentication** → **Users** — confirm the email exists in this project.
 3. Check **spam/promotions**; Supabase default mail can take 5–10 minutes.
 4. Supabase → **Authentication** → **Logs** — look for `user.recovery` or mail errors (free tier: ~4 auth emails/hour).
@@ -83,7 +83,7 @@ Password reset emails use `/auth/callback?next=/auth/reset-password` — the cal
 
 If localhost has features Vercel does not, read **`docs/VERCEL-LOCAL-PARITY.md`**.
 
-**Use only:** `https://vyronis-ai.vercel.app`
+**Use only:** `https://vyronishq.com`
 
 ---
 
@@ -184,7 +184,7 @@ See **`docs/PRODUCTION-QA-LAUNCH.md`** for live status, full QA matrix, and post
 
 | Field | Value |
 |-------|--------|
-| Production URL | https://vyronis-ai.vercel.app |
+| Production URL | https://vyronishq.com |
 | Status | **LIVE** (2026-05-27) |
 | Migrations verified | ☐ |
 | Two-account test passed | ☐ |

@@ -157,7 +157,7 @@ export function StrategyHeader() {
                 <Zap className="size-5 text-cyan-glow" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">Vyronis AI</h1>
+                <h1 className="text-xl font-bold tracking-tight">Vyronis HQ</h1>
                 <p className="text-xs text-muted-foreground">Strategy Builder</p>
               </div>
             </div>

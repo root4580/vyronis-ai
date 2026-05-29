@@ -1,4 +1,7 @@
-export const APP_NAME = "Vyronis AI"
-export const APP_TAGLINE = "AI Trading Intelligence Platform"
+/** Canonical production host (custom domain). */
+export const APP_PRODUCTION_URL = "https://vyronishq.com"
+
+export const APP_NAME = "Vyronis HQ"
+export const APP_TAGLINE = "Prop trading command center"
 export const APP_DESCRIPTION =
-  "Premium AI-powered trading journal for serious funded traders. Track psychology, discipline, and execution with institutional-grade analytics."
+  "Vyronis HQ is your AI-powered trading command center — War Room planning, setup alerts, coach, journal, and discipline analytics for funded traders."

@@ -1,6 +1,6 @@
 # Deploy checklist (Vercel + Supabase)
 
-Use this before sharing **https://vyronis-ai.vercel.app** with testers.
+Use this before sharing **https://vyronishq.com** with testers.
 
 ## 1. Code
 
@@ -14,7 +14,7 @@ Use this before sharing **https://vyronis-ai.vercel.app** with testers.
 | `NEXT_PUBLIC_SUPABASE_URL` | Same project as local |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same project as local |
 | `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` | **Same Supabase project** as URL/anon (TradingView webhook + vision) |
-| `NEXT_PUBLIC_APP_URL` | `https://vyronis-ai.vercel.app` (auth redirects) |
+| `NEXT_PUBLIC_APP_URL` | `https://vyronishq.com` (auth redirects) |
 | `OPENAI_API_KEY` | Vision coach + War Room autofill |
 
 ## 3. Supabase SQL (production project)
@@ -33,7 +33,7 @@ Minimum for current trading OS:
 Sync env from local (includes service role):
 
 ```bash
-./scripts/sync-vercel-env.sh vyronis-ai https://vyronis-ai.vercel.app
+./scripts/sync-vercel-env.sh vyronis-ai https://vyronishq.com
 ```
 
 See `docs/VERCEL-LOCAL-PARITY.md` for the full feature matrix.

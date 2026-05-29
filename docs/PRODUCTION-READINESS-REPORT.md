@@ -1,7 +1,7 @@
 # Vyronis AI — Production Readiness Report
 
 **Date:** 2026-05-27  
-**Production URL:** https://vyronis-ai.vercel.app  
+**Production URL:** https://vyronishq.com  
 **Vercel project:** `vyronis-ai`  
 **Supabase project:** `jjdxodqipdjfkjanjywf`  
 **Latest deploy:** commit after QA sweep (safe fixes applied)
@@ -22,7 +22,7 @@ Vyronis AI is **ready for closed beta** with manual Supabase dashboard steps com
 |---|------|-------|--------|--------|
 | C1 | Auth email | Default Supabase SMTP is unreliable; reset/verify emails may not arrive | **Manual** | Enable Resend SMTP per [`SUPABASE-RESEND-SETUP.md`](./SUPABASE-RESEND-SETUP.md) |
 | C2 | Database | Migrations 005/006/008 may be missing on prod (trade insert default, coach feedback upsert, weekly_reviews table) | **Verify in Supabase** | Run repair SQL if not applied — see checklist below |
-| C3 | Deployment | `NEXT_PUBLIC_APP_URL` set on **Production only** — Preview deploys crash or leak preview URLs in emails | **Open** | Add `NEXT_PUBLIC_APP_URL=https://vyronis-ai.vercel.app` to Vercel Preview env, or disable preview auth testing |
+| C3 | Deployment | `NEXT_PUBLIC_APP_URL` set on **Production only** — Preview deploys crash or leak preview URLs in emails | **Open** | Add `NEXT_PUBLIC_APP_URL=https://vyronishq.com` to Vercel Preview env, or disable preview auth testing |
 | C4 | UI | Home page does not use `DashboardAppShell` — analytics page lacks FAB, profile bar, logout parity | **Deferred refactor** | See “Refactors requiring approval” |
 
 ---
@@ -142,7 +142,7 @@ WHERE relname IN ('trades','user_profiles','weekly_reviews','trade_coach_session
 
 | Check | Result |
 |-------|--------|
-| Production URL | ✅ https://vyronis-ai.vercel.app |
+| Production URL | ✅ https://vyronishq.com |
 | `NEXT_PUBLIC_APP_URL` on Production | ✅ Set in Vercel |
 | Supabase keys on Production | ✅ Set |
 | Localhost in runtime TS | ✅ Dev fallback only; `assertProductionEnv()` blocks localhost in prod |
@@ -192,7 +192,7 @@ These are larger changes — confirm before implementing:
 
 - [ ] Resend SMTP enabled in Supabase
 - [ ] Branded email templates pasted (`supabase/email-templates/`)
-- [ ] Site URL + redirect URLs = `https://vyronis-ai.vercel.app/auth/callback`
+- [ ] Site URL + redirect URLs = `https://vyronishq.com/auth/callback`
 - [ ] Run migration verification SQL above
 - [ ] Sign up on production URL (not preview) in incognito
 - [ ] Create → edit → delete a trade

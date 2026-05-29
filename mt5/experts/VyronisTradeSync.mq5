@@ -9,7 +9,7 @@
 #include <VyronisTradeWebhook.mqh>
 
 //--- inputs
-input string InpVyronisWebhookUrl = "https://vyronis-ai.vercel.app/api/webhooks/mt5/trades";
+input string InpVyronisWebhookUrl = "https://vyronishq.com/api/webhooks/mt5/trades";
 input string InpVyronisApiKey     = "";
 input int    InpSyncHistoryHours   = 0;     // backfill on attach: 0 = full account history
 input int    InpScanLookbackHours  = 168;   // timer scan window (all symbols)

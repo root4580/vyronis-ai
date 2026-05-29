@@ -1,6 +1,7 @@
 "use client"
 
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import { APP_PRODUCTION_URL } from "@/lib/branding"
 
 const CHECKLIST = [
   {
@@ -18,7 +19,7 @@ const CHECKLIST = [
   },
   {
     title: "NEXT_PUBLIC_APP_URL",
-    detail: "Set on Production and Preview to https://vyronis-ai.vercel.app (auth redirects).",
+    detail: `Set on Production and Preview to ${APP_PRODUCTION_URL} (auth redirects).`,
   },
   {
     title: "Resend SMTP in Supabase",

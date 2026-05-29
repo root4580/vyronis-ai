@@ -15,7 +15,7 @@ Quick steps:
 
 1. Run Supabase `023` + `024` migrations.
 2. Copy `.mq5` → `MQL5/Experts/`, `.mqh` → `MQL5/Include/`.
-3. Whitelist `https://vyronis-ai.vercel.app` (and `http://localhost:3000` for dev) in MT5 WebRequest list.
+3. Whitelist `https://vyronishq.com` (and `http://localhost:3000` for dev) in MT5 WebRequest list.
 4. Copy API key from Vyronis **Trade Journal → MT5 Connection**.
 5. Compile, attach EA, enable Algo Trading.
 

@@ -18,7 +18,7 @@ supabase/024-mt5-sync-status.sql
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY` | Yes | Server webhook ingest (never expose to EA) |
-| `NEXT_PUBLIC_APP_URL` | Production | Canonical URL, e.g. `https://vyronis-ai.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | Production | Canonical URL, e.g. `https://vyronishq.com` |
 
 ## 3. Get your API key
 
@@ -51,7 +51,7 @@ Store the key in the EA inputs only (never commit to git).
 1. Enable **Algo Trading** (toolbar).
 2. Drag **VyronisTradeSync** onto **one** chart only (e.g. EURUSD H1). It watches **all symbols** on the account — do not attach to every pair.
 3. Inputs:
-   - **InpVyronisWebhookUrl** — `https://vyronis-ai.vercel.app/api/webhooks/mt5/trades` (or `http://localhost:3000/api/webhooks/mt5/trades` for local dev)
+   - **InpVyronisWebhookUrl** — `https://vyronishq.com/api/webhooks/mt5/trades` (or `http://localhost:3000/api/webhooks/mt5/trades` for local dev)
    - **InpVyronisApiKey** — from Vyronis MT5 Connection panel
    - **InpSyncHistoryHours** — `72` backfills recent closes on attach (set `0` to disable)
    - **InpMaxRetries** — `3`
@@ -67,7 +67,7 @@ Store the key in the EA inputs only (never commit to git).
 
 | Environment | Add to list |
 |-------------|-------------|
-| Production | `https://vyronis-ai.vercel.app` |
+| Production | `https://vyronishq.com` |
 | Local dev | `http://localhost:3000` |
 | Custom domain | `https://your-domain.com` |
 

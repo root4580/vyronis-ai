@@ -42,10 +42,10 @@ export function AuthShell({
               </div>
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Vyronis AI</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Vyronis HQ</h1>
               <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-glow">
                 <Zap className="size-3" />
-                Trading Intelligence
+                Command Center
               </p>
             </div>
           </Link>
@@ -64,7 +64,7 @@ export function AuthShell({
 
         {footer ?? (
           <p className="mt-6 text-center text-xs text-muted-foreground/70">
-            Secure cloud sync · Per-user data isolation · Vyronis AI
+            Secure cloud sync · Per-user data isolation · Vyronis HQ
           </p>
         )}
       </div>

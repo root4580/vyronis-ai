@@ -29,8 +29,8 @@ Recommended sender: `Vyronis AI <noreply@yourdomain.com>`
 
 | Field | Value |
 |-------|--------|
-| **Site URL** | `https://vyronis-ai.vercel.app` |
-| **Redirect URLs** | `https://vyronis-ai.vercel.app/auth/callback` |
+| **Site URL** | `https://vyronishq.com` |
+| **Redirect URLs** | `https://vyronishq.com/auth/callback` |
 | | `http://localhost:3000/auth/callback` |
 
 ## 4. Email templates
@@ -62,7 +62,7 @@ Resend credentials live **only in Supabase SMTP**, not in Next.js env.
 |----------|----------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes |
-| `NEXT_PUBLIC_APP_URL` | Yes — `https://vyronis-ai.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | Yes — `https://vyronishq.com` |
 
 The app uses `NEXT_PUBLIC_APP_URL` for all `emailRedirectTo` / `redirectTo` values so preview deploys do not break email links.
 
@@ -78,7 +78,7 @@ The app uses `NEXT_PUBLIC_APP_URL` for all `emailRedirectTo` / `redirectTo` valu
 
 ## 8. Verify delivery
 
-1. Sign up on **https://vyronis-ai.vercel.app** (not preview URL).
+1. Sign up on **https://vyronishq.com** (not preview URL).
 2. Check inbox + spam within 5 minutes.
 3. Supabase → **Authentication → Logs** — confirm `user.signup` / mail events.
 4. Resend dashboard → **Logs** — confirm sent/delivered.

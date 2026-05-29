@@ -1,8 +1,8 @@
-# Vyronis AI
+# Vyronis HQ
 
-AI-powered trading intelligence platform for serious funded traders. Track psychology, discipline, and execution with institutional-grade analytics, trade coaching, and weekly debriefs.
+Prop trading command center for serious funded traders. Track psychology, discipline, and execution with War Room planning, setup alerts, coach, journal, and weekly debriefs.
 
-**Production (LIVE):** [vyronis-ai.vercel.app](https://vyronis-ai.vercel.app) · QA checklist: [`docs/PRODUCTION-QA-LAUNCH.md`](docs/PRODUCTION-QA-LAUNCH.md)
+**Production (LIVE):** [vyronishq.com](https://vyronishq.com) · QA checklist: [`docs/PRODUCTION-QA-LAUNCH.md`](docs/PRODUCTION-QA-LAUNCH.md)
 
 ## Features
 

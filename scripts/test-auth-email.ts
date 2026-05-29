@@ -13,15 +13,15 @@ import {
 } from "../lib/auth-email"
 import { formatAuthError, isEmailNotConfirmedError } from "../lib/auth-errors"
 
-process.env.NEXT_PUBLIC_APP_URL = "https://vyronis-ai.vercel.app"
+process.env.NEXT_PUBLIC_APP_URL = "https://vyronishq.com"
 
-assert.equal(getAuthSiteOrigin(), "https://vyronis-ai.vercel.app")
-assert.equal(getSignupEmailRedirectUrl(), "https://vyronis-ai.vercel.app/auth/callback")
+assert.equal(getAuthSiteOrigin(), "https://vyronishq.com")
+assert.equal(getSignupEmailRedirectUrl(), "https://vyronishq.com/auth/callback")
 assert.equal(
   getPasswordResetRedirectUrl(),
-  "https://vyronis-ai.vercel.app/auth/callback?next=%2Fauth%2Freset-password",
+  "https://vyronishq.com/auth/callback?next=%2Fauth%2Freset-password",
 )
-assert.equal(getAuthCallbackUrl("/analytics"), "https://vyronis-ai.vercel.app/auth/callback?next=%2Fanalytics")
+assert.equal(getAuthCallbackUrl("/analytics"), "https://vyronishq.com/auth/callback?next=%2Fanalytics")
 
 const cooldown = getResendCooldown(Date.now() - 30_000, Date.now())
 assert.equal(cooldown.allowed, false)

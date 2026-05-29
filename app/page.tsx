@@ -1752,7 +1752,7 @@ function Home() {
   if (!user && !isLoadingTrades && !dashboardLoadTimedOut) {
     return (
       <AuthLoadingState
-        title="Vyronis AI"
+        title="Vyronis HQ"
         subtitle="Loading your dashboard…"
       />
     )

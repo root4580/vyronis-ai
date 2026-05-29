@@ -4,7 +4,7 @@
 //|  London session breakout of Asian range. CSV export → Vyronis.   |
 //+------------------------------------------------------------------+
 #property copyright "Vyronis AI"
-#property link      "https://vyronis-ai.vercel.app/research-lab"
+#property link      "https://vyronishq.com/research-lab"
 #property version   "1.00"
 #property description "Demo-only London Breakout EA for Vyronis Research Lab CSV import."
 #property strict

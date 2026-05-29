@@ -20,8 +20,8 @@ This only changes the name in the Supabase dashboard (for you), not emails.
 
 | Field | Value |
 |-------|--------|
-| **Site URL** | `https://vyronis-ai.vercel.app` |
-| **Redirect URLs** | `https://vyronis-ai.vercel.app/auth/callback` |
+| **Site URL** | `https://vyronishq.com` |
+| **Redirect URLs** | `https://vyronishq.com/auth/callback` |
 | | `http://localhost:3000/auth/callback` |
 
 ---

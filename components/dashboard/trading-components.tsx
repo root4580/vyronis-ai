@@ -375,7 +375,7 @@ export function DashboardHeader({
               <Zap className="size-[18px] text-cyan-glow" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-[15px] font-semibold leading-none tracking-tight">Vyronis AI</h1>
+              <h1 className="text-[15px] font-semibold leading-none tracking-tight">Vyronis HQ</h1>
               <p className="mt-1 text-[11px] text-muted-foreground/70">Trading Intelligence</p>
             </div>
           </Link>
@@ -1746,7 +1746,7 @@ export function AITradeCoachPlaceholder({
             className="h-9 w-full border-cyan-glow/25 bg-cyan-glow/[0.06] text-[11px] text-cyan-glow hover:bg-cyan-glow/[0.12]"
           >
             <Sparkles className="mr-2 size-3.5" />
-            Open Vyronis Command Center
+            Open Vyronis HQ
           </Button>
         ) : null}
       </DashboardCardBody>

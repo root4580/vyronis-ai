@@ -1,21 +1,21 @@
-# Vyronis AI — Production QA & Launch Status
+# Vyronis HQ — Production QA & Launch Status
 
 ## Live deployment
 
 | Field | Value |
 |-------|--------|
 | **Status** | **LIVE** |
-| **Production URL** | https://vyronis-ai.vercel.app |
+| **Production URL** | https://vyronishq.com |
 | **Vercel project** | `vyronis-ai` |
 | **GitHub repo** | `root4580/vyronis-ai` · branch `main` |
 | **Latest deploy** | `d1226b5` — auth reset redirect fix + unified Analytics shell |
 | **Supabase project** | `jjdxodqipdjfkjanjywf` (shared with local `.env.local`) |
 | **Launch date** | 2026-05-27 |
 
-**Canonical URL for testers:** https://vyronis-ai.vercel.app  
+**Canonical URL for testers:** https://vyronishq.com  
 Do **not** use preview URLs (`*.vercel.app` deployment hashes) or the deleted duplicate project.
 
-Legacy alias (still works): `v0-vyronis-ai-dashboard.vercel.app` → same deployment.
+Primary: `https://vyronishq.com`. Legacy Vercel URLs may still redirect to the same deployment.
 
 ---
 
@@ -23,10 +23,10 @@ Legacy alias (still works): `v0-vyronis-ai-dashboard.vercel.app` → same deploy
 
 Run before inviting external testers.
 
-- [ ] Vercel **Production** env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL=https://vyronis-ai.vercel.app`
+- [ ] Vercel **Production** env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL=https://vyronishq.com`
 - [ ] Vercel **Production** env: `AI_PROVIDER`, `OPENAI_API_KEY` (if AI coach/vision enabled)
-- [ ] Supabase **Site URL** = `https://vyronis-ai.vercel.app`
-- [ ] Supabase **Redirect URLs** include `https://vyronis-ai.vercel.app/auth/callback` + `http://localhost:3000/auth/callback`
+- [ ] Supabase **Site URL** = `https://vyronishq.com`
+- [ ] Supabase **Redirect URLs** include `https://vyronishq.com/auth/callback` + `http://localhost:3000/auth/callback`
 - [ ] Supabase migrations run (minimum set in `CLOSED-BETA-DEPLOY-CHECKLIST.md` §4)
 - [ ] Vercel deployment **Ready** on latest `main` commit
 - [ ] SSO / deployment protection **disabled** for public beta access
@@ -36,7 +36,7 @@ Run before inviting external testers.
 
 ## Final production QA checklist
 
-Test on **https://vyronis-ai.vercel.app** in **incognito**. Use two separate test accounts (Account A, Account B).
+Test on **https://vyronishq.com** in **incognito**. Use two separate test accounts (Account A, Account B).
 
 ### A. Auth & session
 
@@ -153,7 +153,7 @@ Ordered by user impact and known beta friction from launch week.
 ### 1. Reliable auth email delivery (Custom SMTP + Vyronis templates)
 
 **Why:** Password reset and signup emails are unreliable on Supabase default mail (spam, rate limits, preview URL confusion).  
-**Do:** Enable Custom SMTP (Resend/SendGrid), sender name **Vyronis AI**, paste templates from `SUPABASE-VYRONIS-BRANDING.md`.  
+**Do:** Enable Custom SMTP (Resend/SendGrid), sender name **Vyronis HQ**, paste templates from `SUPABASE-VYRONIS-BRANDING.md`.  
 **Done when:** Reset email lands in Gmail inbox within 2 minutes on production URL.
 
 ### 2. Unified app shell on Strategy + Profile routes

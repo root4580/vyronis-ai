@@ -72,7 +72,7 @@ function VerifyEmailForm() {
     return (
       <AuthShell
         title="Verification Sent"
-        subtitle="Check your inbox to activate your Vyronis AI account"
+        subtitle="Check your inbox to activate your Vyronis HQ account"
         accent="profit"
       >
         <AuthEmailSentPanel
@@ -90,7 +90,7 @@ function VerifyEmailForm() {
   return (
     <AuthShell
       title="Verify Your Email"
-      subtitle="Resend the confirmation link for your Vyronis AI account"
+      subtitle="Resend the confirmation link for your Vyronis HQ account"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField

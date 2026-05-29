@@ -23,7 +23,7 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
   return (
     <button
       type="button"
-      aria-label="Open Vyronis AI Command Center"
+      aria-label="Open Vyronis HQ Command Center"
       aria-expanded={isOpen}
       onMouseEnter={warmCommandCenter}
       onFocus={warmCommandCenter}
@@ -34,7 +34,7 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
       )}
     >
       <Brain className="size-5 transition-transform duration-300 group-hover:scale-110" />
-      <span className="hidden text-[13px] font-medium md:inline">Vyronis AI</span>
+      <span className="hidden text-[13px] font-medium md:inline">Vyronis HQ</span>
       {criticalCount > 0 ? (
         <span className="command-center-launcher-badge">{criticalCount}</span>
       ) : null}

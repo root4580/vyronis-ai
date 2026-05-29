@@ -109,7 +109,7 @@ export default function SignUpPage() {
     return (
       <AuthShell
         title="Check Your Email"
-        subtitle="Confirm your email to activate your Vyronis AI account"
+        subtitle="Confirm your email to activate your Vyronis HQ account"
         accent="profit"
       >
         <AuthEmailSentPanel

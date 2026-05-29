@@ -73,7 +73,7 @@ export function VyronisCommandCenter() {
           isTransitioning && "command-center-panel-transitioning",
         )}
         role="dialog"
-        aria-label="Vyronis AI Command Center"
+        aria-label="Vyronis HQ Command Center"
       >
         <header className="command-center-header sticky top-0 z-20 flex items-start justify-between gap-2 overflow-hidden border-b border-white/[0.08] px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
           <div className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ export function VyronisCommandCenter() {
               </div>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-foreground">
-                  {mode === "companion" ? "Vyronis Command Center" : MODE_LABELS[mode]}
+                  {mode === "companion" ? "Vyronis HQ" : MODE_LABELS[mode]}
                 </p>
                 <p className="text-[10px] text-muted-foreground/75">
                   {mode === "companion"
