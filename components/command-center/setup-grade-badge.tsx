@@ -1,14 +1,21 @@
 "use client"
 
 import type { TradeQualityGrade } from "@/lib/trade-coach/trade-quality-engine"
+import type { SetupGrade } from "@/lib/strategy-brain/types"
 import {
   GRADE_TONE_CLASSES,
   gradeTone,
 } from "@/lib/intelligence/setup-grade-display"
 import { cn } from "@/lib/utils"
 
+export type DisplaySetupGrade = TradeQualityGrade | SetupGrade
+
+function toneGrade(grade: DisplaySetupGrade): TradeQualityGrade {
+  return grade === "A+" ? "A" : grade
+}
+
 type SetupGradeBadgeProps = {
-  grade: TradeQualityGrade
+  grade: DisplaySetupGrade
   label?: string
   className?: string
   size?: "sm" | "md"
@@ -20,7 +27,7 @@ export function SetupGradeBadge({
   className,
   size = "sm",
 }: SetupGradeBadgeProps) {
-  const tone = gradeTone(grade)
+  const tone = gradeTone(toneGrade(grade))
 
   return (
     <span

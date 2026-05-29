@@ -1,5 +1,5 @@
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
-import { countMtfScreenshots, getMtfScreenshotsFromSession, hasMtfAnalysis, resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
+import { countMtfScreenshots, getMtfScreenshotsFromSession, resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
 import type {
   PreTradePlannedContext,
   PreTradeQuestion,
@@ -31,6 +31,19 @@ const QUESTION_BANK: Record<string, PreTradeQuestion> = {
 
 const BASE_FLOW = ["emotional_state", "planned_risk", "rule_check"] as const
 
+export type CoachSessionWorkflowSlice = Pick<
+  TradeCoachSessionRecord,
+  | "mtf_analysis"
+  | "planned_context"
+  | "chart_url"
+  | "screenshot_url"
+  | "weekly_screenshot_url"
+  | "daily_screenshot_url"
+  | "h4_screenshot_url"
+  | "h1_screenshot_url"
+  | "m15_screenshot_url"
+>
+
 function parsePercent(value: string | undefined): number | null {
   if (!value) return null
   const parsed = parseFloat(value.replace("%", "").trim())
@@ -40,9 +53,9 @@ function parsePercent(value: string | undefined): number | null {
 export function hasChartUploaded(
   context: PreTradePlannedContext,
   chartUrl?: string | null,
-  session?: TradeCoachSessionRecord | null,
+  session?: CoachSessionWorkflowSlice | null,
 ): boolean {
-  if (session && hasMtfAnalysis(session)) return true
+  if (session && isMtfAnalysisComplete(session)) return true
   if (context.mtf_analysis) return true
   if (session && countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0) return true
   return Boolean(
@@ -60,7 +73,7 @@ export function hasChartUploaded(
 export function isPreTradeCheckInReady(
   context: PreTradePlannedContext,
   chartUrl?: string | null,
-  session?: TradeCoachSessionRecord | null,
+  session?: CoachSessionWorkflowSlice | null,
 ): boolean {
   const sessionRecord = session ?? {
     planned_context: context,
@@ -122,7 +135,7 @@ export function getNextQuestionKey(
   responses: Record<string, string>,
   maxRiskPerTrade: number,
   chartUrl?: string | null,
-  session?: TradeCoachSessionRecord | null,
+  session?: CoachSessionWorkflowSlice | null,
 ): string | null {
   if (!isPreTradeCheckInReady(context, chartUrl, session)) {
     return null
@@ -141,7 +154,7 @@ export function getActiveQuestionFromSession(
   messages: Array<{ role: string; question_key: string | null; content: string }>,
   context: PreTradePlannedContext,
   chartUrl?: string | null,
-  session?: TradeCoachSessionRecord | null,
+  session?: CoachSessionWorkflowSlice | null,
 ): { key: string; prompt: string } | null {
   if (!isPreTradeCheckInReady(context, chartUrl, session)) {
     return null
@@ -233,7 +246,7 @@ export function getCoachWorkflowPhase(input: {
   chartUrl?: string | null
   plannedContext: PreTradePlannedContext
   responses: Record<string, string>
-  session?: Pick<TradeCoachSessionRecord, "mtf_analysis" | "planned_context"> | null
+  session?: CoachSessionWorkflowSlice | null
 }): CoachWorkflowPhase {
   if (input.status === "completed" || input.status === "linked") return "complete"
 

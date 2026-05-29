@@ -46,7 +46,7 @@ export function TradingViewAlertCoachSummary({
         {plannedContext.strategy_name ? ` · ${plannedContext.strategy_name}` : ""}
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {grade ? <SetupGradeBadge grade={grade as SetupGrade} /> : null}
+        {grade ? <SetupGradeBadge grade={grade} label="Grade" /> : null}
         {verdict ? (
           <span className="rounded-md border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-muted-foreground/85">
             {setupVerdictLabel(verdict)}

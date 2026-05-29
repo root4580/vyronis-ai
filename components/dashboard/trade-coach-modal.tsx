@@ -747,7 +747,9 @@ export function TradeCoachPanel({
               {tradeQuality && (
                 <TradeQualityPanel
                   quality={tradeQuality}
-                  warRoomAlertGrade={session.planned_context.tradingview_setup_grade ?? null}
+                  warRoomAlertGrade={
+                    session?.planned_context?.tradingview_setup_grade ?? null
+                  }
                 />
               )}
 
