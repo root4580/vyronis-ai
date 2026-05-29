@@ -4,9 +4,11 @@ import { useMemo, useState, type ReactNode } from "react"
 import {
   ArrowLeft,
   BookOpen,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  List,
   Plus,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -61,8 +63,8 @@ function JournalCalendarGrid({
   onSelectDate: (date: string) => void
 }) {
   return (
-    <div className="hidden md:block">
-      <div className="mb-2 grid grid-cols-7 gap-2">
+    <div className="hidden sm:block">
+      <div className="mb-2 grid grid-cols-7 gap-1 sm:gap-2">
         {WEEK_HEADERS.map((label) => (
           <div
             key={label}
@@ -133,13 +135,13 @@ function JournalMobileDayCards({
         icon={LayoutGrid}
         title="No trades this month"
         description="Log trades or change month to review your journal"
-        className="min-h-[160px] md:hidden"
+        className="min-h-[160px] sm:hidden"
       />
     )
   }
 
   return (
-    <div className="space-y-2 md:hidden">
+    <div className="space-y-2 sm:hidden">
       {traded.map((day) => {
         const tone = getJournalDayTone(day)
         const selected = selectedDate === day.date
@@ -224,6 +226,7 @@ export function JournalCommandCenter({
   const [viewYear, setViewYear] = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [journalView, setJournalView] = useState<"calendar" | "list">("calendar")
 
   const referenceDate = useMemo(
     () => new Date(viewYear, viewMonth, 1),
@@ -383,6 +386,35 @@ export function JournalCommandCenter({
         <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
       </div>
 
+      <div className="flex gap-1 rounded-lg border border-white/[0.08] bg-black/30 p-1">
+        <button
+          type="button"
+          onClick={() => setJournalView("calendar")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-[11px] font-medium transition-colors sm:flex-none",
+            journalView === "calendar"
+              ? "bg-cyan-glow/15 text-cyan-glow"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <CalendarDays className="size-3.5" />
+          Calendar
+        </button>
+        <button
+          type="button"
+          onClick={() => setJournalView("list")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-[11px] font-medium transition-colors sm:flex-none",
+            journalView === "list"
+              ? "bg-cyan-glow/15 text-cyan-glow"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <List className="size-3.5" />
+          All trades
+        </button>
+      </div>
+
       <PlannedTradesSection
         sessions={plannedSessions}
         isLoading={isLoadingPlanned}
@@ -393,7 +425,23 @@ export function JournalCommandCenter({
         onNewCoach={onNewCoach}
       />
 
-      <div className="flex flex-col gap-4 xl:flex-row">
+      {journalView === "list" && hasTrades ? (
+        <RecentTradesTable
+          trades={trades as DashboardTradeRow[]}
+          onEdit={onEditTrade}
+          onDelete={onDeleteTrade}
+          onViewTrade={onViewTrade}
+          onScreenshotClick={onScreenshotClick}
+          title="All journal trades"
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "flex flex-col gap-4 xl:flex-row",
+          journalView === "list" && "hidden",
+        )}
+      >
         <div className="min-w-0 flex-1 space-y-4">
           <DashboardCard interactive glow className="glass-card col-span-2">
             <DashboardCardHeader

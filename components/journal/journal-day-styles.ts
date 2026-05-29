@@ -10,7 +10,7 @@ export function journalDayCellClass(
   const selected = options?.selected ?? false
 
   return cn(
-    "group relative flex min-h-[4.5rem] flex-col rounded-xl border p-2 text-left transition-all duration-200 sm:min-h-[5.5rem]",
+    "group relative flex min-h-[3.25rem] flex-col rounded-lg border p-1.5 text-left transition-all duration-200 sm:min-h-[4.5rem] sm:rounded-xl sm:p-2 md:min-h-[5.5rem]",
     day.isPadding && "pointer-events-none invisible border-transparent",
     !day.isPadding &&
       day.inMonth &&
