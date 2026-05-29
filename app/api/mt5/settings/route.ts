@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getAppBaseUrl } from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
 import {
   ensureMt5WebhookSettings,
@@ -6,8 +7,9 @@ import {
 } from "@/lib/mt5/settings-server-service"
 import { Mt5WebhookTableMissingError } from "@/lib/mt5/webhook-server-service"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const baseUrl = getAppBaseUrl(request)
     const supabase = await createClient()
     const {
       data: { user },
@@ -18,7 +20,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const settings = await ensureMt5WebhookSettings(supabase, user.id)
+    const settings = await ensureMt5WebhookSettings(supabase, user.id, baseUrl)
     return NextResponse.json(settings)
   } catch (error) {
     if (error instanceof Mt5WebhookTableMissingError) {
@@ -49,7 +51,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
 
-    const settings = await regenerateMt5WebhookApiKey(supabase, user.id)
+    const baseUrl = getAppBaseUrl(request)
+    const settings = await regenerateMt5WebhookApiKey(supabase, user.id, baseUrl)
     return NextResponse.json(settings)
   } catch (error) {
     if (error instanceof Mt5WebhookTableMissingError) {

@@ -143,6 +143,7 @@ export async function getTradingViewSignal(
 export async function ensureTradingViewWebhookSettings(
   supabase: SupabaseClient,
   userId: string,
+  baseUrl: string = getAppBaseUrl(),
 ): Promise<{ secret: string; enabled: boolean; webhookUrl: string }> {
   const { data, error } = await supabase
     .from("user_settings")
@@ -188,13 +189,14 @@ export async function ensureTradingViewWebhookSettings(
   return {
     secret,
     enabled,
-    webhookUrl: `${getAppBaseUrl()}/api/webhooks/tradingview`,
+    webhookUrl: `${baseUrl}/api/webhooks/tradingview`,
   }
 }
 
 export async function regenerateTradingViewWebhookSecret(
   supabase: SupabaseClient,
   userId: string,
+  baseUrl: string = getAppBaseUrl(),
 ): Promise<{ secret: string; enabled: boolean; webhookUrl: string }> {
   const { generateWebhookSecret } = await import("@/lib/tradingview/webhook-server-service")
   const secret = generateWebhookSecret()
@@ -215,6 +217,6 @@ export async function regenerateTradingViewWebhookSecret(
   return {
     secret,
     enabled: true,
-    webhookUrl: `${getAppBaseUrl()}/api/webhooks/tradingview`,
+    webhookUrl: `${baseUrl}/api/webhooks/tradingview`,
   }
 }

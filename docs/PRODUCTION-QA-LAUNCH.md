@@ -182,4 +182,4 @@ Ordered by user impact and known beta friction from launch week.
 
 ---
 
-*Last updated: 2026-05-27 · Vyronis AI closed beta*
+*Last updated: 2026-05-27 · Vyronis HQ closed beta*

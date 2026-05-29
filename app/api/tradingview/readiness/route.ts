@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getAppBaseUrl } from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
 import {
   ensureTradingViewWebhookSettings,
@@ -6,8 +7,9 @@ import {
 } from "@/lib/tradingview/signal-server-service"
 import { getTradingViewSetupReadiness } from "@/lib/tradingview/setup-readiness"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const baseUrl = getAppBaseUrl(request)
     const supabase = await createClient()
     const {
       data: { user },
@@ -18,7 +20,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const settings = await ensureTradingViewWebhookSettings(supabase, user.id)
+    const settings = await ensureTradingViewWebhookSettings(supabase, user.id, baseUrl)
 
     const { count: signalCount } = await supabase
       .from("tradingview_signals")

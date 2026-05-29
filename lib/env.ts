@@ -1,3 +1,5 @@
+import { APP_PRODUCTION_URL } from "@/lib/branding"
+
 type PublicEnv = {
   supabaseUrl: string
   supabaseAnonKey: string
@@ -12,8 +14,69 @@ function requireEnv(name: string, value: string | undefined): string {
   return trimmed
 }
 
+function stripTrailingSlash(url: string): string {
+  return url.trim().replace(/\/$/, "")
+}
+
+function isVercelPreviewOrDevHost(host: string): boolean {
+  const h = host.toLowerCase()
+  return h.startsWith("localhost") || h.includes("127.0.0.1") || h.endsWith(".vercel.app")
+}
+
+function baseUrlFromHostHeader(hostHeader: string | null): string | null {
+  if (!hostHeader?.trim()) return null
+  const host = hostHeader.split(",")[0]?.trim().split(":")[0]?.trim()
+  if (!host || isVercelPreviewOrDevHost(host)) return null
+  return `https://${host}`
+}
+
+function isVercelProduction(): boolean {
+  return process.env.VERCEL_ENV === "production"
+}
+
+/** Production canonical host when env is not set (custom domain). */
+export function getCanonicalProductionBaseUrl(): string {
+  return stripTrailingSlash(APP_PRODUCTION_URL)
+}
+
+/**
+ * Canonical app URL for webhooks, auth redirects, and metadata.
+ * Prefer NEXT_PUBLIC_APP_URL; on production use vyronishq.com instead of *.vercel.app.
+ */
+export function getAppBaseUrl(request?: Request): string {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (fromEnv) return stripTrailingSlash(fromEnv)
+
+  if (request) {
+    const forwarded =
+      request.headers.get("x-forwarded-host") || request.headers.get("host")
+    const fromRequest = baseUrlFromHostHeader(forwarded)
+    if (fromRequest) return fromRequest
+  }
+
+  if (isVercelProduction() || (process.env.NODE_ENV === "production" && process.env.VERCEL)) {
+    return getCanonicalProductionBaseUrl()
+  }
+
+  if (process.env.VERCEL_URL?.trim()) {
+    return `https://${stripTrailingSlash(process.env.VERCEL_URL)}`
+  }
+
+  return stripTrailingSlash(
+    process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
+      "http://localhost:3000",
+  )
+}
+
 /** Client-safe Supabase + app URL — validated at module load in the browser. */
 export function getPublicEnv(): PublicEnv {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (process.env.NODE_ENV === "production"
+      ? getCanonicalProductionBaseUrl()
+      : process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
+        "http://localhost:3000")
+
   return {
     supabaseUrl: requireEnv(
       "NEXT_PUBLIC_SUPABASE_URL",
@@ -23,10 +86,7 @@ export function getPublicEnv(): PublicEnv {
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     ),
-    appUrl:
-      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
-      "http://localhost:3000",
+    appUrl: stripTrailingSlash(appUrl),
   }
 }
 
@@ -53,25 +113,10 @@ export function getServiceRoleKey(): string {
   )
 }
 
-/** Canonical app URL for webhooks and redirects. */
-export function getAppBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL?.trim()) {
-    return process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, "")
-  }
-  if (process.env.VERCEL_URL?.trim()) {
-    return `https://${process.env.VERCEL_URL.trim().replace(/\/$/, "")}`
-  }
-  return (
-    process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "")
-}
-
 export function assertProductionEnv(): void {
   if (process.env.NODE_ENV !== "production") return
 
-  const env = getPublicEnv()
-  const appUrl = env.appUrl.trim()
+  const appUrl = getPublicEnv().appUrl.trim()
 
   if (appUrl.startsWith("http://localhost")) {
     throw new Error(

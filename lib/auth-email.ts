@@ -1,18 +1,11 @@
 import { sanitizeRedirectPath } from "@/lib/auth-routes"
+import { getAppBaseUrl } from "@/lib/env"
 
 export const AUTH_RESEND_COOLDOWN_MS = 60_000
 
 /** Canonical app origin for auth email redirectTo (production-safe). */
 export function getAuthSiteOrigin(): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (appUrl) return appUrl.replace(/\/$/, "")
-
-  const devRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim()
-  if (devRedirect) {
-    return devRedirect.replace(/\/auth\/callback$/, "")
-  }
-
-  return "http://localhost:3000"
+  return getAppBaseUrl()
 }
 
 /** OAuth/email callback; optional post-login path via `next`. */

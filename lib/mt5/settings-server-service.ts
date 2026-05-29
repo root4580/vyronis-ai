@@ -39,9 +39,10 @@ async function buildMt5SettingsResponse(
   userId: string,
   apiKey: string,
   enabled: boolean,
+  baseUrl: string = getAppBaseUrl(),
 ): Promise<Mt5SettingsPayload> {
   const sync = await fetchMt5SyncSnapshot(supabase, userId)
-  const base = getAppBaseUrl()
+  const base = baseUrl
   const diagnostics: string[] = []
   if (!sync.lastSyncAt && !sync.lastPingAt) {
     diagnostics.push(
@@ -75,6 +76,7 @@ async function buildMt5SettingsResponse(
 export async function ensureMt5WebhookSettings(
   supabase: SupabaseClient,
   userId: string,
+  baseUrl: string = getAppBaseUrl(),
 ): Promise<Mt5SettingsPayload> {
   const { data, error } = await supabase
     .from("user_settings")
@@ -116,12 +118,13 @@ export async function ensureMt5WebhookSettings(
     enabled = true
   }
 
-  return buildMt5SettingsResponse(supabase, userId, apiKey, enabled)
+  return buildMt5SettingsResponse(supabase, userId, apiKey, enabled, baseUrl)
 }
 
 export async function regenerateMt5WebhookApiKey(
   supabase: SupabaseClient,
   userId: string,
+  baseUrl: string = getAppBaseUrl(),
 ): Promise<Mt5SettingsPayload> {
   const apiKey = generateMt5ApiKey()
 
@@ -141,5 +144,5 @@ export async function regenerateMt5WebhookApiKey(
     throw new Error(error.message)
   }
 
-  return buildMt5SettingsResponse(supabase, userId, apiKey, true)
+  return buildMt5SettingsResponse(supabase, userId, apiKey, true, baseUrl)
 }

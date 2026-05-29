@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server"
+import { getAppBaseUrl } from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
 import {
@@ -23,7 +24,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const settings = await ensureTradingViewWebhookSettings(supabase, user.id)
+    const settings = await ensureTradingViewWebhookSettings(
+      supabase,
+      user.id,
+      getAppBaseUrl(request),
+    )
 
     let symbol =
       typeof body.symbol === "string" && body.symbol.trim()

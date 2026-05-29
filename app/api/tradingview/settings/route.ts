@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getAppBaseUrl } from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
 import {
   ensureTradingViewWebhookSettings,
@@ -7,8 +8,9 @@ import {
 } from "@/lib/tradingview/signal-server-service"
 import { buildTradingViewAlertTemplatePlain } from "@/lib/tradingview/alert-template"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const baseUrl = getAppBaseUrl(request)
     const supabase = await createClient()
     const {
       data: { user },
@@ -19,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const settings = await ensureTradingViewWebhookSettings(supabase, user.id)
+    const settings = await ensureTradingViewWebhookSettings(supabase, user.id, baseUrl)
     return NextResponse.json({
       ...settings,
       alertTemplate: buildTradingViewAlertTemplatePlain(settings.secret),
@@ -53,7 +55,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
 
-    const settings = await regenerateTradingViewWebhookSecret(supabase, user.id)
+    const baseUrl = getAppBaseUrl(request)
+    const settings = await regenerateTradingViewWebhookSecret(supabase, user.id, baseUrl)
     return NextResponse.json({
       ...settings,
       alertTemplate: buildTradingViewAlertTemplatePlain(settings.secret),
