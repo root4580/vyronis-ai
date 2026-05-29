@@ -17,10 +17,7 @@ process.env.NEXT_PUBLIC_APP_URL = "https://vyronishq.com"
 
 assert.equal(getAuthSiteOrigin(), "https://vyronishq.com")
 assert.equal(getSignupEmailRedirectUrl(), "https://vyronishq.com/auth/callback")
-assert.equal(
-  getPasswordResetRedirectUrl(),
-  "https://vyronishq.com/auth/callback?next=%2Fauth%2Freset-password",
-)
+assert.equal(getPasswordResetRedirectUrl(), "https://vyronishq.com/auth/reset-password")
 assert.equal(getAuthCallbackUrl("/analytics"), "https://vyronishq.com/auth/callback?next=%2Fanalytics")
 
 const cooldown = getResendCooldown(Date.now() - 30_000, Date.now())

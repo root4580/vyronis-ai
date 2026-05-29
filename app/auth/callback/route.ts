@@ -7,7 +7,11 @@ import { DEFAULT_DASHBOARD_PREFERENCES } from "@/lib/user-preferences"
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const next = sanitizeRedirectPath(searchParams.get("next"))
+  const type = searchParams.get("type")
+  const next =
+    type === "recovery"
+      ? sanitizeRedirectPath(searchParams.get("next"), "/auth/reset-password")
+      : sanitizeRedirectPath(searchParams.get("next"))
   const authError = searchParams.get("error")
   const errorDescription = searchParams.get("error_description")
 

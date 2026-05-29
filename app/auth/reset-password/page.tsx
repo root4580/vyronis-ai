@@ -29,7 +29,10 @@ export default function ResetPasswordPage() {
     let cancelled = false
 
     async function verifyRecoverySession() {
-      const code = new URLSearchParams(window.location.search).get("code")
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get("code")
+      const tokenHash = params.get("token_hash")
+      const type = params.get("type")
 
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -42,18 +45,44 @@ export default function ResetPasswordPage() {
         }
 
         window.history.replaceState({}, "", "/auth/reset-password")
+      } else if (tokenHash && type === "recovery") {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        })
+        if (cancelled) return
+
+        if (otpError) {
+          setPhase("invalid")
+          setError(formatAuthError("This reset link is invalid or has expired. Request a new one."))
+          return
+        }
+
+        window.history.replaceState({}, "", "/auth/reset-password")
       }
 
       const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
       if (cancelled) return
 
-      if (userError || !user) {
-        setPhase("invalid")
-        setError("Your reset session expired. Request a new password reset link.")
+      if (sessionError || !session?.user) {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (cancelled) return
+
+        if (userError || !user) {
+          setPhase("invalid")
+          setError("Your reset session expired. Request a new password reset link.")
+          return
+        }
+
+        setPhase("ready")
         return
       }
 

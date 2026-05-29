@@ -9,7 +9,12 @@ export function createClient() {
   if (client) return client
 
   const { supabaseUrl, supabaseAnonKey } = getPublicEnv()
-  client = createBrowserClient(supabaseUrl, supabaseAnonKey)
+  client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      flowType: "pkce",
+      detectSessionInUrl: true,
+    },
+  })
 
   return client
 }

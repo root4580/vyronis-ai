@@ -22,8 +22,9 @@ export function getSignupEmailRedirectUrl(): string {
   return getAuthCallbackUrl("/")
 }
 
+/** Supabase appends ?code= to this URL; must be in Auth redirect allow list. */
 export function getPasswordResetRedirectUrl(): string {
-  return getAuthCallbackUrl("/auth/reset-password")
+  return `${getAuthSiteOrigin()}/auth/reset-password`
 }
 
 export function getVerifyEmailPageUrl(email?: string): string {
