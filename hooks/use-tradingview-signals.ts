@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import {
+  deleteTradingViewSignal,
   fetchTradingViewSignals,
   markAllTradingViewSignalsRead,
   markTradingViewSignalRead,
@@ -56,5 +57,19 @@ export function useTradingViewSignals(enabled = true) {
     await refresh()
   }, [refresh])
 
-  return { signals, unreadCount, isLoading, refresh, markRead, markAllRead }
+  const removeSignal = useCallback(
+    async (signalId: string) => {
+      await deleteTradingViewSignal(signalId)
+      setSignals((prev) => {
+        const removed = prev.find((row) => row.id === signalId)
+        if (removed && !removed.read_at) {
+          setUnreadCount((count) => Math.max(0, count - 1))
+        }
+        return prev.filter((row) => row.id !== signalId)
+      })
+    },
+    [],
+  )
+
+  return { signals, unreadCount, isLoading, refresh, markRead, markAllRead, removeSignal }
 }

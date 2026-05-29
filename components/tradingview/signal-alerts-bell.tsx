@@ -1,12 +1,12 @@
 "use client"
 
-import { Bell, Loader2, Radio } from "lucide-react"
+import { useState } from "react"
+import { Bell, ExternalLink, Loader2, Radio, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -45,8 +45,24 @@ function formatRelativeTime(iso: string) {
 }
 
 export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlertsBellProps) {
-  const { signals, unreadCount, isLoading, markRead, markAllRead } = useTradingViewSignals(enabled)
+  const { signals, unreadCount, isLoading, markRead, markAllRead, removeSignal } =
+    useTradingViewSignals(enabled)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const hasUnread = unreadCount > 0
+
+  async function handleOpen(signal: TradingViewSignalListItem) {
+    if (!signal.read_at) await markRead(signal.id)
+    onSelectSignal(signal)
+  }
+
+  async function handleDelete(signalId: string) {
+    setDeletingId(signalId)
+    try {
+      await removeSignal(signalId)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -74,7 +90,8 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-[min(100vw-2rem,22rem)] border-white/[0.08] bg-[#0a0f14]/98 p-0 backdrop-blur-xl"
+        className="w-[min(100vw-2rem,24rem)] border-white/[0.08] bg-[#0a0f14]/98 p-0 backdrop-blur-xl"
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">
           <DropdownMenuLabel className="flex items-center gap-2 p-0 text-[12px] font-semibold text-foreground">
@@ -87,14 +104,17 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
               variant="ghost"
               size="sm"
               className="h-7 text-[10px] text-cyan-glow hover:bg-cyan-glow/10"
-              onClick={() => void markAllRead()}
+              onClick={(event) => {
+                event.preventDefault()
+                void markAllRead()
+              }}
             >
               Mark all read
             </Button>
           ) : null}
         </div>
 
-        <div className="max-h-[320px] overflow-y-auto p-1">
+        <div className="max-h-[360px] space-y-1 overflow-y-auto p-1.5">
           {isLoading && signals.length === 0 ? (
             <div className="flex min-h-[120px] items-center justify-center">
               <Loader2 className="size-4 animate-spin text-cyan-glow" />
@@ -107,19 +127,17 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
             signals.map((signal) => {
               const unread = !signal.read_at
               return (
-                <DropdownMenuItem
+                <div
                   key={signal.id}
                   className={cn(
-                    "cursor-pointer flex-col items-start gap-1.5 rounded-lg px-3 py-2.5 focus:bg-cyan-glow/[0.08]",
-                    unread && "bg-cyan-glow/[0.04]",
+                    "rounded-lg border px-3 py-2.5",
+                    unread
+                      ? "border-cyan-glow/25 bg-cyan-glow/[0.05]"
+                      : "border-white/[0.06] bg-white/[0.02]",
                   )}
-                  onClick={() => {
-                    if (unread) void markRead(signal.id)
-                    onSelectSignal(signal)
-                  }}
                 >
-                  <div className="flex w-full items-start justify-between gap-2">
-                    <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-semibold text-foreground">
                         {signal.symbol}{" "}
                         <span className="text-cyan-glow/90">{signal.direction}</span>
@@ -131,11 +149,25 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                         </p>
                       ) : null}
                     </div>
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
-                      {formatRelativeTime(signal.received_at)}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "h-5 text-[9px] font-semibold uppercase tracking-wide",
+                          unread
+                            ? "border-cyan-glow/35 bg-cyan-glow/[0.12] text-cyan-glow"
+                            : "border-white/[0.1] bg-white/[0.04] text-muted-foreground/75",
+                        )}
+                      >
+                        {unread ? "Unread" : "Read"}
+                      </Badge>
+                      <span className="text-[10px] tabular-nums text-muted-foreground/55">
+                        {formatRelativeTime(signal.received_at)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     {signal.ai_analysis?.setup_grade ? (
                       <Badge
                         variant="outline"
@@ -161,25 +193,47 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                         {Math.round(signal.ai_confidence_score)}/100
                       </Badge>
                     ) : null}
-                    {unread ? (
-                      <Badge
-                        variant="outline"
-                        className="h-5 border-cyan-glow/30 bg-cyan-glow/[0.1] text-[9px] text-cyan-glow"
-                      >
-                        New
-                      </Badge>
-                    ) : null}
                   </div>
+
                   {signal.ai_analysis?.verdict_summary ? (
-                    <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
+                    <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
                       {signal.ai_analysis.verdict_summary}
                     </p>
                   ) : signal.message ? (
-                    <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
+                    <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground/70">
                       {signal.message}
                     </p>
                   ) : null}
-                </DropdownMenuItem>
+
+                  <div className="mt-2.5 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 flex-1 bg-cyan-glow/90 text-[11px] text-background hover:bg-cyan-glow"
+                      onClick={() => void handleOpen(signal)}
+                    >
+                      <ExternalLink className="mr-1.5 size-3.5" />
+                      Open
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 shrink-0 border-white/[0.1] px-3 text-[11px] text-muted-foreground hover:border-loss/30 hover:bg-loss/[0.08] hover:text-loss"
+                      disabled={deletingId === signal.id}
+                      onClick={() => void handleDelete(signal.id)}
+                    >
+                      {deletingId === signal.id ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 className="mr-1.5 size-3.5" />
+                          Delete
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               )
             })
           )}

@@ -80,6 +80,28 @@ export async function markTradingViewSignalRead(
   }
 }
 
+export async function archiveTradingViewSignal(
+  supabase: SupabaseClient,
+  userId: string,
+  signalId: string,
+): Promise<void> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from("tradingview_signals")
+    .update({
+      status: "archived",
+      archived_at: now,
+      updated_at: now,
+    })
+    .eq("user_id", userId)
+    .eq("id", signalId)
+
+  if (error) {
+    if (isMissingTableError(error.message)) throw new TradingViewSignalsTableMissingError()
+    throw new Error(error.message)
+  }
+}
+
 export async function markAllTradingViewSignalsRead(
   supabase: SupabaseClient,
   userId: string,

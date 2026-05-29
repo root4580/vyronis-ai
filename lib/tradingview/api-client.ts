@@ -35,6 +35,15 @@ export async function markTradingViewSignalRead(signalId: string): Promise<void>
   await parseJson(response)
 }
 
+export async function deleteTradingViewSignal(signalId: string): Promise<void> {
+  const response = await fetch(`/api/tradingview/signals/${signalId}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  })
+  await parseJson(response)
+  notifyTradingViewSignalsRefresh()
+}
+
 export async function markAllTradingViewSignalsRead(): Promise<void> {
   const response = await fetch("/api/tradingview/signals", {
     method: "PATCH",
