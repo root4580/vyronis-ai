@@ -13,6 +13,8 @@ import { COMPANION_STATE_LABELS } from "@/lib/intelligence/conversational-types"
 import { StreamingText } from "@/components/command-center/streaming-text"
 import { CompanionThinkingIndicator } from "@/components/command-center/companion-thinking-indicator"
 import { SessionGuardVerdictCard } from "@/components/command-center/session-guard-verdict-card"
+import { MessageHistoryToggle } from "@/components/ui/message-history-toggle"
+import { partitionCompanionMessages } from "@/lib/command-center/message-display"
 import { cn } from "@/lib/utils"
 
 type AiMessageThreadProps = {
@@ -98,7 +100,7 @@ function MessageImageGrid({ urls }: { urls: string[] }) {
     <div
       className={cn(
         "mt-2 grid gap-1.5",
-        urls.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3",
+        "grid-cols-1 sm:grid-cols-2",
       )}
     >
       {urls.map((url, index) => (
@@ -107,7 +109,7 @@ function MessageImageGrid({ urls }: { urls: string[] }) {
           key={`${url}-${index}`}
           src={url}
           alt={`Chart ${index + 1}`}
-          className="h-20 w-full rounded-lg border border-white/[0.08] object-cover"
+          className="max-h-40 w-full rounded-lg border border-white/[0.08] object-cover sm:max-h-32 sm:h-20"
         />
       ))}
     </div>
@@ -214,15 +216,15 @@ function ChartReviewBody({
       ) : (
         <p className="whitespace-pre-wrap leading-[1.6] text-foreground/90">{narrative}</p>
       )}
-      {footerParts?.summary ? (
-        <div className="rounded-lg border border-white/[0.07] bg-black/25 px-2.5 py-2 text-[12px] leading-[1.55] text-foreground/82">
+      {footerParts?.summary && !verdictReasoning ? (
+        <div className="rounded-lg border border-white/[0.07] bg-black/25 px-2.5 py-2 text-[12px] leading-[1.5] text-foreground/82">
           <p className="whitespace-pre-wrap">{footerParts.summary}</p>
         </div>
       ) : null}
       {verdictReasoning ? (
         <VerdictReasoningPanel reasoning={verdictReasoning} />
       ) : footerParts?.reasoning ? (
-        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 text-[11px] leading-[1.5] text-foreground/78">
+        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 text-[11px] leading-[1.45] text-foreground/78">
           <p className="whitespace-pre-wrap">{footerParts.reasoning}</p>
         </div>
       ) : null}
@@ -328,7 +330,11 @@ export function AiMessageThread({
         : messages,
     [messages, streamingMessage],
   )
-  const groups = useMemo(() => groupMessages(displayMessages), [displayMessages])
+  const { visible: visibleMessages, history: historyMessages } = useMemo(
+    () => partitionCompanionMessages(displayMessages),
+    [displayMessages],
+  )
+  const groups = useMemo(() => groupMessages(visibleMessages), [visibleMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -336,7 +342,7 @@ export function AiMessageThread({
 
   return (
     <div className={cn("companion-terminal-thread flex min-h-0 flex-1 flex-col", className)}>
-      <div className="companion-terminal-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-1">
+      <div className="companion-terminal-scroll min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-1 sm:space-y-4">
         {groups.map((group, groupIndex) => {
           if (group.role === "system") {
             return group.messages.map((message) => (
@@ -368,6 +374,14 @@ export function AiMessageThread({
         {isThinking ? (
           <CompanionThinkingIndicator phases={thinkingPhases} />
         ) : null}
+
+        <MessageHistoryToggle count={historyMessages.length} label="analyses">
+          {historyMessages.map((message) => (
+            <div key={message.id} className="flex justify-start">
+              <AssistantBubble message={message} />
+            </div>
+          ))}
+        </MessageHistoryToggle>
 
         {streamingMessage ? (
           <div className="flex flex-col items-start gap-1.5">

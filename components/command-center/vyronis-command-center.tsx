@@ -115,8 +115,8 @@ export function VyronisCommandCenter() {
 
         <div
           className={cn(
-            "command-center-body flex min-h-0 flex-1 flex-col gap-3 px-4 py-3",
-            isExpanded && "px-3 sm:px-4",
+            "command-center-body flex min-h-0 flex-1 flex-col gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
+            isExpanded && "px-2 sm:px-4",
           )}
         >
           <div

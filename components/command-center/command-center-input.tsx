@@ -132,19 +132,14 @@ export function CommandCenterInput({
               </span>
             ) : null}
           </div>
-          <div
-            className={cn(
-              "grid gap-2",
-              pendingImages.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3",
-            )}
-          >
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
             {pendingImages.map((item, index) => (
               <div key={item.id} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.previewUrl}
                   alt={`Chart ${index + 1} preview`}
-                  className="h-24 w-full rounded-lg border border-white/[0.1] object-cover"
+                  className="max-h-40 w-full rounded-lg border border-white/[0.1] object-cover sm:max-h-32 sm:h-24"
                 />
                 <button
                   type="button"

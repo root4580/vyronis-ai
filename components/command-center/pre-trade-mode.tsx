@@ -25,10 +25,10 @@ export function PreTradeMode() {
   const active = mode === "pre_trade"
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="command-center-pre-trade flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
       <TradingOsAlertStrip tradingOs={context?.tradingOs} />
       <CognitiveSurface cognitive={context?.cognitive} />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="mobile-safe-scroll min-h-0 flex-1 overflow-hidden">
         <TradeCoachPanel
           active={active}
           embedded
@@ -41,8 +41,8 @@ export function PreTradeMode() {
           onClose={() => void returnToCompanion()}
         />
       </div>
-      <div className="shrink-0 border-t border-white/[0.06] pt-2">
-        <p className="mb-1.5 px-1 text-[10px] text-muted-foreground/65">
+      <div className="mobile-form-footer shrink-0 border-t border-white/[0.06] pt-1.5 sm:pt-2">
+        <p className="mb-1 px-1 text-[10px] leading-snug text-muted-foreground/65">
           Upload one or more charts — AI infers timeframes and links analysis to this pre-trade session.
         </p>
         <CommandCenterInput

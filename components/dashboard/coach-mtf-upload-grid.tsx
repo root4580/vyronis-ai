@@ -42,7 +42,7 @@ function MtfSlot({
   if (url) {
     return (
       <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
-        <img src={url} alt={label} className="h-24 w-full object-cover" />
+        <img src={url} alt={label} className="coach-mtf-slot-preview h-20 w-full object-cover sm:h-24" />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
           <p className="text-[10px] font-medium text-foreground/90">{label}</p>
         </div>
@@ -89,7 +89,7 @@ function MtfSlot({
     <label
       htmlFor={inputId}
       className={cn(
-        "add-trade-dropzone flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-2 transition-all",
+        "add-trade-dropzone flex h-20 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-2 transition-all sm:h-24",
         disabled || isUploading
           ? "cursor-not-allowed opacity-60"
           : isDragging
@@ -204,7 +204,7 @@ export function CoachMtfUploadGrid({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="coach-mtf-upload-grid">
         {MTF_SLOTS.map((slot) => (
           <MtfSlot
             key={slot.id}
@@ -231,7 +231,7 @@ export function CoachMtfUploadGrid({
         type="button"
         disabled={disabled || uploadedCount === 0 || isAnalyzing || Boolean(uploadingTimeframe)}
         onClick={() => void onRunAnalysis()}
-        className="h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
+        className="mobile-sticky-submit h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
       >
         {isAnalyzing ? (
           <Loader2 className="size-4 animate-spin" />

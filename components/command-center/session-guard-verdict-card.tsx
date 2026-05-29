@@ -61,7 +61,7 @@ export function SessionGuardVerdictCard({ reasoning }: { reasoning: VerdictReaso
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   return (
-    <div className="mt-2 space-y-2.5 rounded-xl border border-white/[0.08] bg-gradient-to-br from-black/40 via-black/25 to-cyan-glow/[0.03] p-3 sm:p-3.5">
+    <div className="session-guard-verdict-card mt-2 space-y-2 rounded-xl border border-white/[0.08] bg-gradient-to-br from-black/40 via-black/25 to-cyan-glow/[0.03] p-2.5 sm:space-y-2.5 sm:p-3.5">
       <div className="flex items-start gap-2">
         <Shield className="mt-0.5 size-4 shrink-0 text-cyan-glow/80" />
         <div className="min-w-0 flex-1 space-y-1">

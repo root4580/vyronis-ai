@@ -20,11 +20,11 @@ export function StrategyBrainSetupBanner({ onRetry }: { onRetry?: () => void }) 
               Open Supabase → <span className="text-foreground/90">SQL Editor</span>
             </li>
             <li>
-              Run{" "}
+              New query: copy the <strong>entire</strong> file{" "}
               <code className="rounded bg-black/40 px-1 py-0.5 text-[10px] text-cyan-glow/90">
                 supabase/RUN-STRATEGY-BRAIN-AND-WAR-ROOM.sql
               </code>{" "}
-              (or {WAR_ROOM_MIGRATION_FILES.join(" then ")})
+              from line 1 through the end (not only the bottom ALTER TABLE block)
             </li>
             <li>Wait for success, then refresh this page</li>
           </ol>

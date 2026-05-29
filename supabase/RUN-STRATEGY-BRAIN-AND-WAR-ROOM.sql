@@ -1,13 +1,7 @@
--- Vyronis Strategy Brain + Weekly War Room (run once in Supabase → SQL Editor)
--- Project must match your Vercel env: NEXT_PUBLIC_SUPABASE_URL
---
--- Order:
---   1. This file (026 + 027 combined), OR run 026 then 027 separately
---   2. Refresh War Room / Strategy Brain in the app
+-- Vyronis Strategy Brain + Weekly War Room (run once in Supabase SQL Editor)
+-- Project: NEXT_PUBLIC_SUPABASE_URL (jjdxodqipdjfkjanjywf)
 
--- ═══════════════════════════════════════════════════════════════════════════
--- 026 — Strategy Brain foundation
--- ═══════════════════════════════════════════════════════════════════════════
+-- 026 Strategy Brain foundation
 
 CREATE TABLE IF NOT EXISTS public.strategy_brain_market_bias (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -169,9 +163,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════
--- 027 — War Room columns
--- ═══════════════════════════════════════════════════════════════════════════
+-- 027 War Room columns
 
 ALTER TABLE public.strategy_brain_weekly_plans
   ADD COLUMN IF NOT EXISTS session_focus text NOT NULL DEFAULT '',

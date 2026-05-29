@@ -49,9 +49,11 @@ import type {
   TradeCoachMessageRecord,
   TradeCoachSessionWithMessages,
 } from "@/lib/trade-coach/types"
+import { partitionCoachThreadMessages } from "@/lib/trade-coach/coach-message-display"
 import { resolveTradeQualityFromSession } from "@/lib/trade-coach/trade-quality-utils"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { TRADE_QUALITY_BLOCK_THRESHOLD } from "@/lib/trade-coach/trade-quality-engine"
+import { MessageHistoryToggle } from "@/components/ui/message-history-toggle"
 import { cn } from "@/lib/utils"
 
 const StrategyPlaybookMatchPanel = dynamic(
@@ -111,7 +113,7 @@ function CoachBubble({ message }: { message: TradeCoachMessageRecord }) {
     <div className={cn("flex", isCoach ? "justify-start" : "justify-end")}>
       <div
         className={cn(
-          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
+          "max-w-[88%] rounded-2xl px-3 py-2 text-[12px] leading-snug sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-relaxed",
           isCoach
             ? isRedFlag
               ? "border border-amber-500/25 bg-amber-500/[0.08] text-foreground/90"
@@ -426,6 +428,15 @@ export function TradeCoachPanel({
     }
   }
 
+  const hideCoachNarrativeWhenMtf = Boolean(mtfAnalysis && workflowPhase !== "upload")
+  const { visible: visibleCoachMessages, history: historyCoachMessages } = useMemo(
+    () =>
+      partitionCoachThreadMessages(session?.messages ?? [], {
+        hideNarrativeWhenMtfVisible: hideCoachNarrativeWhenMtf,
+      }),
+    [session?.messages, hideCoachNarrativeWhenMtf],
+  )
+
   if (!active) return null
 
   const isComplete = workflowPhase === "complete"
@@ -505,7 +516,7 @@ export function TradeCoachPanel({
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           ref={scrollRef}
-          className="trade-coach-modal-scroll min-h-0 flex-1 space-y-3 px-4 py-3 md:px-6 md:py-4"
+          className="trade-coach-modal-scroll mobile-safe-scroll min-h-0 flex-1 space-y-2 px-3 py-2 sm:space-y-3 sm:px-4 sm:py-3 md:px-6 md:py-4"
         >
           {isLoading ? (
             <div className="flex min-h-[240px] items-center justify-center">
@@ -539,7 +550,14 @@ export function TradeCoachPanel({
                 />
               )}
 
-              {session?.messages.map((message) => <CoachBubble key={message.id} message={message} />)}
+              {visibleCoachMessages.map((message) => (
+                <CoachBubble key={message.id} message={message} />
+              ))}
+              <MessageHistoryToggle count={historyCoachMessages.length} label="coach messages">
+                {historyCoachMessages.map((message) => (
+                  <CoachBubble key={message.id} message={message} />
+                ))}
+              </MessageHistoryToggle>
             </>
           )}
 
@@ -550,7 +568,7 @@ export function TradeCoachPanel({
           )}
         </div>
 
-        <footer className="trade-coach-modal-scroll relative max-h-[min(38vh,340px)] shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-4 py-3.5 backdrop-blur-md md:px-6 md:py-4">
+        <footer className="trade-coach-modal-footer mobile-form-footer relative shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:max-h-[min(38vh,340px)] sm:px-4 sm:py-3.5 md:px-6 md:py-4">
           {isComplete ? (
             <div className="space-y-3">
               {mtfAnalysis && session && (
@@ -728,7 +746,7 @@ export function TradeCoachPanel({
                 type="button"
                 disabled={isSubmitting || isLoading}
                 onClick={() => void handleSubmitAnswer()}
-                className="h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
+                className="mobile-sticky-submit h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -768,7 +786,7 @@ export function TradeCoachPanel({
       <div className="add-trade-backdrop absolute inset-0" onClick={onClose} aria-hidden />
 
       <div
-        className="add-trade-modal glass-card relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden"
+        className="add-trade-modal glass-card relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="trade-coach-title"

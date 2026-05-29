@@ -43,7 +43,7 @@ export function CompanionMode() {
   if (!context) return null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
       {viewingArchivedSession ? (
         <div className="flex shrink-0 items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
           <p className="min-w-0 truncate text-[11px] text-muted-foreground/85">
@@ -76,7 +76,7 @@ export function CompanionMode() {
         thinkingPhases={thinkingPhases}
         streamingMessage={streamingMessage}
         onStreamComplete={clearStreamingMessage}
-        className="min-h-[280px] flex-1"
+        className="min-h-0 flex-1"
       />
 
       {plannedCount > 0 ? (
@@ -127,20 +127,22 @@ export function CompanionMode() {
         </p>
       ) : null}
 
-      <CommandCenterInput
-        onSend={sendMessage}
-        disabled={
-          viewingArchivedSession ||
-          isLoading ||
-          isThinking ||
-          Boolean(streamingMessage)
-        }
-        placeholder={
-          viewingArchivedSession
-            ? "Past session — start a new session to chat"
-            : "Talk to Vyronis — setups, emotions, journal…"
-        }
-      />
+      <div className="mobile-form-footer shrink-0 pt-1">
+        <CommandCenterInput
+          onSend={sendMessage}
+          disabled={
+            viewingArchivedSession ||
+            isLoading ||
+            isThinking ||
+            Boolean(streamingMessage)
+          }
+          placeholder={
+            viewingArchivedSession
+              ? "Past session — start a new session to chat"
+              : "Talk to Vyronis — setups, emotions, journal…"
+          }
+        />
+      </div>
     </div>
   )
 }

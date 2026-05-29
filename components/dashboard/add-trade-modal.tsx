@@ -230,7 +230,7 @@ export function AddTradeModal({
         </div>
 
         <form onSubmit={onSubmit} className="relative flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
+          <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3 sm:space-y-5 sm:px-4 sm:py-4 md:px-6 md:py-5">
             <section className="space-y-3">
               <SectionLabel>Market Setup</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -655,7 +655,7 @@ export function AddTradeModal({
             </section>
           </div>
 
-          <div className="relative shrink-0 border-t border-white/[0.06] bg-black/20 px-4 py-4 backdrop-blur-md md:px-6">
+          <div className="mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/20 px-3 py-3 backdrop-blur-md sm:px-4 sm:py-4 md:px-6">
             {canRepeatLast && onRepeatLast && !isEditing && (
               <Button
                 type="button"
@@ -683,7 +683,7 @@ export function AddTradeModal({
             <Button
               type="submit"
               disabled={isSubmitting || isUploading}
-              className="h-12 w-full bg-gradient-to-r from-cyan-glow to-profit text-base font-bold text-background shadow-[0_0_24px_rgba(34,211,238,0.2)] transition-all hover:from-cyan-glow/90 hover:to-profit/90"
+              className="mobile-sticky-submit h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-sm font-bold text-background shadow-[0_0_24px_rgba(34,211,238,0.2)] transition-all hover:from-cyan-glow/90 hover:to-profit/90 sm:h-12 sm:text-base"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">

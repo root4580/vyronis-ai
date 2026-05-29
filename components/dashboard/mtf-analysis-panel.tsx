@@ -58,7 +58,7 @@ export function MtfAnalysisPanel({
   )
 
   return (
-    <DashboardInsetPanel className="space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-3">
+    <DashboardInsetPanel className="dashboard-inset-panel-mobile-compact space-y-2 border-cyan-glow/15 bg-cyan-glow/[0.03] px-2.5 py-2.5 sm:space-y-3 sm:px-3 sm:py-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Layers className="size-3.5 text-cyan-glow" />
@@ -109,7 +109,7 @@ export function MtfAnalysisPanel({
             </p>
             <ChartOverlayToggle mode={overlayMode} onChange={setOverlayMode} compact />
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
             {chartCards.map((card) => (
               <button
                 key={card.timeframe}
@@ -124,8 +124,8 @@ export function MtfAnalysisPanel({
                   alt={card.label}
                   annotations={card.annotations}
                   mode={overlayMode}
-                  className="h-16"
-                  imageClassName="h-16 object-cover"
+                  className="h-28 sm:h-16"
+                  imageClassName="h-28 max-h-40 w-full object-cover sm:h-16 sm:max-h-none"
                 />
                 <div className="space-y-0.5 px-2 py-1">
                   <p className="text-[9px] font-medium text-foreground/85">{card.shortLabel}</p>
@@ -142,7 +142,7 @@ export function MtfAnalysisPanel({
       )}
 
       {visual && !compact && (
-        <div className="grid grid-cols-2 gap-2 text-[9px] sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1.5 text-[9px] max-[639px]:grid-cols-1 sm:grid-cols-4">
           {[
             { label: "BOS", active: visual.bosDetected },
             { label: "CHOCH", active: visual.chochDetected },
@@ -171,7 +171,7 @@ export function MtfAnalysisPanel({
       )}
 
       {visual && (
-        <div className="grid grid-cols-2 gap-2 text-[10px]">
+        <div className="grid grid-cols-1 gap-1.5 text-[10px] sm:grid-cols-2 sm:gap-2">
           <div className="rounded-lg border border-white/[0.06] bg-black/15 px-2 py-1.5">
             <p className="text-muted-foreground/65">Trade Quality</p>
             <p className={cn("mt-0.5 font-semibold tabular-nums", scoreColor(visual.tradeQualityScore))}>
@@ -188,7 +188,7 @@ export function MtfAnalysisPanel({
       )}
 
       {!compact && (
-        <div className="grid grid-cols-3 gap-2 text-[10px]">
+        <div className="grid grid-cols-1 gap-1.5 text-[10px] sm:grid-cols-3 sm:gap-2">
           <div className="rounded-lg border border-white/[0.06] bg-black/15 px-2 py-1.5">
             <p className="text-muted-foreground/65">Weekly</p>
             <p className="mt-0.5 font-semibold capitalize">{bias.weeklyBias}</p>
@@ -204,7 +204,7 @@ export function MtfAnalysisPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
         <div className="rounded-lg border border-white/[0.06] bg-black/15 px-2 py-1.5">
           <p className="text-[9px] text-muted-foreground/65">Bias Alignment</p>
           <p className={cn("mt-0.5 text-sm font-semibold tabular-nums", scoreColor(bias.biasAlignmentScore))}>
@@ -221,7 +221,7 @@ export function MtfAnalysisPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[10px]">
+      <div className="grid grid-cols-1 gap-1.5 text-[10px] sm:grid-cols-2 sm:gap-2">
         <div className="rounded-lg border border-white/[0.06] bg-black/15 px-2 py-1.5">
           <p className="text-muted-foreground/65">H1 Setup Quality</p>
           <p className={cn("mt-0.5 font-semibold tabular-nums", scoreColor(entry.h1SetupQuality))}>

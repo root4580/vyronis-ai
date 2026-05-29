@@ -1683,6 +1683,8 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
     max-width: 100%;
     max-height: 100dvh;
     height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     border-radius: 0;
     border-left: none;
     border-right: none;
@@ -1691,7 +1693,7 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   }
 
   .command-center-body {
-    max-height: calc(100dvh - 64px);
+    max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
   }
 
   .command-center-launcher {
@@ -1736,5 +1738,87 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Mobile safe-area + sticky form actions (iPhone Safari) */
+.mobile-safe-scroll {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    180deg,
+    rgba(8, 10, 14, 0) 0%,
+    rgba(8, 10, 14, 0.92) 24%,
+    rgba(8, 10, 14, 0.98) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mobile-sticky-submit {
+  position: sticky;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+}
+
+.coach-mtf-upload-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .coach-mtf-upload-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .coach-mtf-slot-preview {
+    max-height: 7rem;
+    width: 100%;
+    object-fit: cover;
+  }
+
+  .command-center-panel .command-center-body {
+    max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .command-center-pre-trade {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .add-trade-modal,
+  .dashboard-modal-panel {
+    max-height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .trade-coach-modal-footer.mobile-form-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .trade-coach-modal-scroll.mobile-safe-scroll {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .companion-terminal-scroll {
+    padding-bottom: 0.5rem;
+  }
+
+  .session-guard-verdict-card {
+    padding: 0.625rem !important;
+  }
+
+  .dashboard-inset-panel-mobile-compact {
+    padding: 0.625rem 0.75rem !important;
   }
 }
