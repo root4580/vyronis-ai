@@ -14,6 +14,7 @@ import {
   type TradingViewSetupReadiness,
 } from "@/lib/tradingview/api-client"
 import { useToast } from "@/hooks/use-toast"
+import { notifyTradingViewSignalsRefresh } from "@/lib/tradingview/signals-events"
 import { cn } from "@/lib/utils"
 
 type WebhookSettings = {
@@ -91,13 +92,14 @@ export function TradingViewWebhookSettings() {
         symbol: override?.symbol ?? readiness?.suggestedTestSymbol ?? undefined,
         direction: override?.direction ?? readiness?.suggestedTestDirection,
       })
+      notifyTradingViewSignalsRefresh()
       toast({
         title: result.setup_grade
           ? `Test alert · Grade ${result.setup_grade}`
           : "Test alert sent",
         description:
           result.message ??
-          `Check the bell icon for ${result.symbol} ${result.direction}.`,
+          `Close settings — bell (top right) shows ${result.symbol} ${result.direction}.`,
       })
       await loadSettings()
     } catch (testError) {

@@ -14,7 +14,10 @@ import { fetchCoachSession } from "@/lib/trade-coach/api-client"
 import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
-import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
+import type {
+  PreTradePlannedContext,
+  TradeCoachSessionWithMessages,
+} from "@/lib/trade-coach/types"
 import {
   archiveCommandCenterSession,
   fetchCommandCenterContext,
@@ -63,6 +66,7 @@ type AIContextValue = {
   context: CommandCenterContext | null
   coachSessionId: string | null
   coachPlannedContext: PreTradePlannedContext
+  coachPreloadedSession: TradeCoachSessionWithMessages | null
   maxRiskPerTrade: number
   open: (mode?: CommandCenterMode) => void
   close: () => void
@@ -76,6 +80,7 @@ type AIContextValue = {
   }) => Promise<void>
   clearStreamingMessage: () => void
   handleCoachSessionChange: (sessionId: string | null) => void
+  handleCoachSessionLoaded: (session: TradeCoachSessionWithMessages) => void
   handleCoachCompleted: (sessionId: string) => void
   logPlannedTrade: (sessionId: string) => void
   historySessionId: string | null
@@ -116,6 +121,9 @@ export function AIContextProvider({
   const panelEpochRef = useRef(0)
   const needsFreshSessionRef = useRef(false)
   const preTradeOpenInFlightRef = useRef(false)
+  const coachSessionCacheRef = useRef<Map<string, TradeCoachSessionWithMessages>>(new Map())
+  const [coachPreloadedSession, setCoachPreloadedSession] =
+    useState<TradeCoachSessionWithMessages | null>(null)
 
   const viewingArchivedSession = context?.viewingArchivedSession ?? false
 
@@ -185,10 +193,15 @@ export function AIContextProvider({
 
   useEffect(() => {
     if (!userId || mode !== "pre_trade" || !focusId) return
+    if (coachPreloadedSession?.id === focusId) return
     void fetchCoachSession(focusId)
-      .then((session) => setCoachPlannedContext(session.planned_context))
+      .then((session) => {
+        coachSessionCacheRef.current.set(session.id, session)
+        setCoachPreloadedSession(session)
+        setCoachPlannedContext(session.planned_context)
+      })
       .catch(() => undefined)
-  }, [userId, mode, focusId])
+  }, [userId, mode, focusId, coachPreloadedSession?.id])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -303,19 +316,63 @@ export function AIContextProvider({
       setIsTransitioning(true)
       setError(null)
 
-      try {
-        let sessionId = options.sessionId ?? null
-        let plannedContext = options.plannedContext ?? buildEmptyPlannedContext()
+      let sessionId = options.sessionId ?? null
+      let plannedContext = {
+        ...(options.plannedContext ?? buildEmptyPlannedContext()),
+        max_risk_per_trade: maxRiskPerTrade,
+      }
 
+      const label = plannedContext.pair
+        ? `Pre-trade · ${plannedContext.pair} ${plannedContext.direction || ""}`.trim()
+        : "Pre-trade coach"
+
+      const openShell = (preload: TradeCoachSessionWithMessages | null) => {
+        setCoachPlannedContext(plannedContext)
+        setCoachSessionId(sessionId)
+        setCoachPreloadedSession(preload)
+        setMode("pre_trade")
+        setFocusId(sessionId)
+        setIsOpen(true)
+        setIsTransitioning(false)
+      }
+
+      try {
         if (sessionId) {
-          const session = await fetchCoachSession(sessionId)
-          plannedContext = session.planned_context
-        } else {
-          plannedContext = {
-            ...plannedContext,
-            max_risk_per_trade: maxRiskPerTrade,
+          const cached = coachSessionCacheRef.current.get(sessionId) ?? null
+          if (cached) {
+            plannedContext = {
+              ...cached.planned_context,
+              max_risk_per_trade: maxRiskPerTrade,
+            }
           }
-          sessionId = null
+          openShell(cached)
+
+          void (async () => {
+            try {
+              const session =
+                cached ?? (await fetchCoachSession(sessionId!))
+              coachSessionCacheRef.current.set(session.id, session)
+              plannedContext = {
+                ...session.planned_context,
+                max_risk_per_trade: maxRiskPerTrade,
+              }
+              setCoachPlannedContext(plannedContext)
+              setCoachPreloadedSession(session)
+
+              const next = await switchCommandCenterMode({
+                mode: "pre_trade",
+                focusId: sessionId,
+                label,
+                direction: "enter",
+              })
+              setContext(next)
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Could not open pre-trade coach")
+            } finally {
+              preTradeOpenInFlightRef.current = false
+            }
+          })()
+          return
         }
 
         const gate = await checkCoachReadiness(plannedContext.pair)
@@ -338,14 +395,7 @@ export function AIContextProvider({
           }
         }
 
-        setCoachPlannedContext(plannedContext)
-        setCoachSessionId(sessionId)
-        setMode("pre_trade")
-        setFocusId(sessionId)
-
-        const label = plannedContext.pair
-          ? `Pre-trade · ${plannedContext.pair} ${plannedContext.direction || ""}`.trim()
-          : "Pre-trade coach"
+        openShell(null)
 
         const next = await switchCommandCenterMode({
           mode: "pre_trade",
@@ -353,16 +403,14 @@ export function AIContextProvider({
           label,
           direction: "enter",
         })
-
         setContext(next)
-        setIsOpen(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not open pre-trade coach")
       } finally {
-        window.setTimeout(() => {
+        if (!sessionId) {
           preTradeOpenInFlightRef.current = false
-        }, 0)
-        setIsTransitioning(false)
+          setIsTransitioning(false)
+        }
       }
     },
     [userId, maxRiskPerTrade, toast],
@@ -531,6 +579,12 @@ export function AIContextProvider({
     [onLogPlannedTrade],
   )
 
+  const handleCoachSessionLoaded = useCallback((session: TradeCoachSessionWithMessages) => {
+    coachSessionCacheRef.current.set(session.id, session)
+    setCoachPreloadedSession(session)
+    setCoachPlannedContext(session.planned_context)
+  }, [])
+
   const value = useMemo<AIContextValue>(
     () => ({
       enabled,
@@ -547,6 +601,7 @@ export function AIContextProvider({
       context,
       coachSessionId,
       coachPlannedContext,
+      coachPreloadedSession,
       maxRiskPerTrade,
       open,
       close,
@@ -556,6 +611,7 @@ export function AIContextProvider({
       sendMessage,
       clearStreamingMessage,
       handleCoachSessionChange,
+      handleCoachSessionLoaded,
       handleCoachCompleted,
       logPlannedTrade,
       historySessionId,
@@ -578,6 +634,7 @@ export function AIContextProvider({
       context,
       coachSessionId,
       coachPlannedContext,
+      coachPreloadedSession,
       maxRiskPerTrade,
       open,
       close,
@@ -587,6 +644,7 @@ export function AIContextProvider({
       sendMessage,
       clearStreamingMessage,
       handleCoachSessionChange,
+      handleCoachSessionLoaded,
       handleCoachCompleted,
       logPlannedTrade,
       historySessionId,

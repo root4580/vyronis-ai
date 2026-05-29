@@ -107,6 +107,8 @@ import { WeeklyWatchlistBanner } from "@/components/dashboard/weekly-watchlist-b
 import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
 import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
 import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
+import { buildPlannedContextFromSignalItem } from "@/lib/tradingview/planned-context-from-list-item"
+import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
@@ -1804,8 +1806,17 @@ function Home() {
       showFab={Boolean(user)}
       showSignalBell={Boolean(user)}
       aiLauncher={user ? <CommandCenterLauncher /> : null}
-      onSignalAlertClick={(signal) => {
+      onSignalAlertClick={(signal: TradingViewSignalListItem) => {
         setActiveTab("journal")
+        setIsSettingsOpen(false)
+        if (signal.coach_session_id && openPreTradeCoachRef.current) {
+          void openPreTradeCoachRef.current({
+            sessionId: signal.coach_session_id,
+            plannedContext: buildPlannedContextFromSignalItem(signal, maxRiskPerTrade),
+          })
+          if (user?.id) markRitualCoachEngaged(user.id)
+          return
+        }
         if (signal.coach_session_id) {
           router.replace(getTradingViewSignalHref(signal))
         } else {

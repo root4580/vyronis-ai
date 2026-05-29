@@ -7,6 +7,7 @@ import {
   markTradingViewSignalRead,
 } from "@/lib/tradingview/api-client"
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
+import { TRADINGVIEW_SIGNALS_REFRESH_EVENT } from "@/lib/tradingview/signals-events"
 
 const POLL_MS = 30_000
 
@@ -34,7 +35,12 @@ export function useTradingViewSignals(enabled = true) {
     void refresh()
     if (!enabled) return
     const interval = window.setInterval(() => void refresh(), POLL_MS)
-    return () => window.clearInterval(interval)
+    const onSignalsRefresh = () => void refresh()
+    window.addEventListener(TRADINGVIEW_SIGNALS_REFRESH_EVENT, onSignalsRefresh)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener(TRADINGVIEW_SIGNALS_REFRESH_EVENT, onSignalsRefresh)
+    }
   }, [enabled, refresh])
 
   const markRead = useCallback(

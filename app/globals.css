@@ -413,13 +413,34 @@
   z-index: 10;
 }
 
+.command-center-pre-trade .trade-coach-modal-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .command-center-pre-trade .trade-coach-modal-scroll.mobile-safe-scroll {
-  padding-bottom: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.command-center-pre-trade .trade-coach-footer-embedded {
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.trade-coach-checkin .trade-coach-checkin-submit {
+  position: static;
+  z-index: auto;
+}
+
+.command-center-pre-trade .trade-coach-checkin .add-trade-input {
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 639px) {
-  .command-center-pre-trade .trade-coach-modal-scroll.mobile-safe-scroll {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  .command-center-pre-trade .trade-coach-footer-embedded {
+    max-height: min(50dvh, 440px);
   }
 }
 

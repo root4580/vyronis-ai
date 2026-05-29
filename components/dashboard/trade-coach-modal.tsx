@@ -109,7 +109,9 @@ type TradeCoachPanelProps = {
   plannedContext: PreTradePlannedContext
   maxRiskPerTrade?: number
   sessionId?: string | null
+  preloadedSession?: TradeCoachSessionWithMessages | null
   onSessionChange?: (sessionId: string | null) => void
+  onSessionLoaded?: (session: TradeCoachSessionWithMessages) => void
   onCompleted?: (sessionId: string) => void
   onLogPlannedTrade?: (sessionId: string) => void
   onWorkflowPhaseChange?: (phase: CoachWorkflowPhase) => void
@@ -156,7 +158,9 @@ export function TradeCoachPanel({
   plannedContext,
   maxRiskPerTrade = DEFAULT_USER_SETTINGS.max_risk_per_trade,
   sessionId,
+  preloadedSession,
   onSessionChange,
+  onSessionLoaded,
   onCompleted,
   onLogPlannedTrade,
   onWorkflowPhaseChange,
@@ -308,15 +312,25 @@ export function TradeCoachPanel({
     let cancelled = false
 
     async function bootstrap() {
-      setIsLoading(true)
       setError(null)
       setDraft("")
       setRiskAcknowledged(false)
 
+      if (sessionId && preloadedSession?.id === sessionId) {
+        setSession(preloadedSession)
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+
       try {
         if (sessionId) {
           const existing = await fetchCoachSession(sessionId)
-          if (!cancelled) setSession(existing)
+          if (!cancelled) {
+            setSession(existing)
+            onSessionLoaded?.(existing)
+          }
           return
         }
 
@@ -346,7 +360,21 @@ export function TradeCoachPanel({
     return () => {
       cancelled = true
     }
-  }, [active, sessionId, maxRiskPerTrade, plannedContext, onSessionChange])
+  }, [
+    active,
+    sessionId,
+    preloadedSession,
+    maxRiskPerTrade,
+    plannedContext,
+    onSessionChange,
+    onSessionLoaded,
+  ])
+
+  useEffect(() => {
+    if (!active || !sessionId || !preloadedSession || preloadedSession.id !== sessionId) return
+    setSession(preloadedSession)
+    setIsLoading(false)
+  }, [active, sessionId, preloadedSession])
 
   useEffect(() => {
     if (!active) return
@@ -553,13 +581,30 @@ export function TradeCoachPanel({
   }
 
   const hideCoachNarrativeWhenMtf = Boolean(mtfAnalysis && workflowPhase !== "upload")
-  const { visible: visibleCoachMessages, history: historyCoachMessages } = useMemo(
-    () =>
-      partitionCoachThreadMessages(session?.messages ?? [], {
-        hideNarrativeWhenMtfVisible: hideCoachNarrativeWhenMtf,
-      }),
-    [session?.messages, hideCoachNarrativeWhenMtf],
-  )
+  const { visible: visibleCoachMessages, history: historyCoachMessages } = useMemo(() => {
+    const partitioned = partitionCoachThreadMessages(session?.messages ?? [], {
+      hideNarrativeWhenMtfVisible: hideCoachNarrativeWhenMtf,
+    })
+    if (workflowPhase !== "questions" || !activeQuestion?.key) {
+      return partitioned
+    }
+    const pendingPrompt = partitioned.visible.filter(
+      (message) =>
+        message.role === "coach" && message.question_key === activeQuestion.key,
+    )
+    return {
+      visible: partitioned.visible.filter(
+        (message) =>
+          !(message.role === "coach" && message.question_key === activeQuestion.key),
+      ),
+      history: [...pendingPrompt, ...partitioned.history],
+    }
+  }, [
+    session?.messages,
+    hideCoachNarrativeWhenMtf,
+    workflowPhase,
+    activeQuestion?.key,
+  ])
 
   if (!active) return null
 
@@ -712,6 +757,16 @@ export function TradeCoachPanel({
                   <CoachBubble key={message.id} message={message} />
                 ))}
               </MessageHistoryToggle>
+
+              {embedded && isComplete && tradeQuality ? (
+                <TradeQualityPanel
+                  quality={tradeQuality}
+                  compact
+                  warRoomAlertGrade={
+                    session?.planned_context?.tradingview_setup_grade ?? null
+                  }
+                />
+              ) : null}
             </>
           )}
 
@@ -724,12 +779,15 @@ export function TradeCoachPanel({
 
         <footer
           className={cn(
-            "trade-coach-modal-footer mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3.5 md:px-6 md:py-4",
+            "trade-coach-modal-footer shrink-0 border-t border-white/[0.06] bg-[rgba(6,10,14,0.96)] px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3.5 md:px-6 md:py-4",
+            embedded ? "trade-coach-footer-embedded" : "mobile-form-footer relative",
             workflowPhase === "upload"
               ? "mobile-form-footer--upload overflow-visible"
               : embedded && workflowPhase === "questions"
-                ? "overflow-visible"
-                : "overflow-y-auto sm:max-h-[min(38vh,340px)]",
+                ? "shrink-0"
+                : embedded
+                  ? "max-h-[min(46dvh,420px)] overflow-y-auto overscroll-contain"
+                  : "overflow-y-auto sm:max-h-[min(38vh,340px)]",
             uploadFocusMode && "min-h-0 flex-1 overflow-y-auto",
           )}
         >
@@ -744,14 +802,14 @@ export function TradeCoachPanel({
                 />
               )}
 
-              {tradeQuality && (
+              {tradeQuality && !embedded ? (
                 <TradeQualityPanel
                   quality={tradeQuality}
                   warRoomAlertGrade={
                     session?.planned_context?.tradingview_setup_grade ?? null
                   }
                 />
-              )}
+              ) : null}
 
               {requiresOverride && (
                 <DashboardInsetPanel className="border-loss/25 bg-loss/[0.06] px-3 py-3">
@@ -911,9 +969,9 @@ export function TradeCoachPanel({
               )}
             </div>
           ) : questionDef && activeQuestion ? (
-            <div className="space-y-3">
+            <div className="trade-coach-checkin space-y-2.5">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-[12px] font-semibold leading-snug text-foreground/90">
+                <p className="text-[13px] font-medium leading-snug text-foreground/92">
                   {activeQuestion.prompt}
                 </p>
                 <span className="shrink-0 rounded-md border border-cyan-glow/20 bg-cyan-glow/[0.06] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-cyan-glow">
@@ -921,68 +979,95 @@ export function TradeCoachPanel({
                 </span>
               </div>
               {questionDef.type === "select" ? (
-                <Select
-                  value={draft || undefined}
-                  onValueChange={(value) => {
-                    setDraft(value)
-                    setError(null)
-                  }}
-                >
-                  <SelectTrigger className="add-trade-input h-11 w-full">
-                    <SelectValue placeholder="Select your emotional state" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[70] glass-card border-white/[0.08]">
-                    {(questionDef.options || []).map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select
+                    value={draft || undefined}
+                    onValueChange={(value) => {
+                      setDraft(value)
+                      setError(null)
+                    }}
+                  >
+                    <SelectTrigger className="add-trade-input h-10 w-full">
+                      <SelectValue placeholder="Select your emotional state" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70] glass-card border-white/[0.08]">
+                      {(questionDef.options || []).map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    disabled={isSubmitting || isLoading || !draft}
+                    onClick={() => void handleSubmitAnswer()}
+                    className="trade-coach-checkin-submit h-10 w-full bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      "Continue"
+                    )}
+                  </Button>
+                </>
               ) : questionDef.type === "boolean" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {["Yes", "No"].map((option) => (
-                    <Button
-                      key={option}
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        "h-11 border-white/[0.08]",
-                        draft === option && "border-cyan-glow/40 bg-cyan-glow/[0.08] text-cyan-glow",
-                      )}
-                      onClick={() => setDraft(option)}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Yes", "No"].map((option) => (
+                      <Button
+                        key={option}
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "h-10 border-white/[0.08]",
+                          draft === option && "border-cyan-glow/40 bg-cyan-glow/[0.08] text-cyan-glow",
+                        )}
+                        onClick={() => setDraft(option)}
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={isSubmitting || isLoading || !draft}
+                    onClick={() => void handleSubmitAnswer()}
+                    className="trade-coach-checkin-submit h-10 w-full bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                  >
+                    {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Continue"}
+                  </Button>
+                </>
               ) : (
-                <Input
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder={questionDef.placeholder}
-                  className="add-trade-input h-11"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") void handleSubmitAnswer()
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder={questionDef.placeholder}
+                    inputMode={activeQuestion.key === "planned_risk" ? "decimal" : undefined}
+                    className="add-trade-input h-10 min-w-0 flex-1 text-[15px]"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleSubmitAnswer()
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    disabled={isSubmitting || isLoading || !draft.trim()}
+                    onClick={() => void handleSubmitAnswer()}
+                    className="trade-coach-checkin-submit h-10 shrink-0 px-4 bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                    aria-label="Submit answer"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="size-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Submit</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
-
-              <Button
-                type="button"
-                disabled={isSubmitting || isLoading}
-                onClick={() => void handleSubmitAnswer()}
-                className="mobile-sticky-submit h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="mr-2 size-4" />
-                    Submit Answer
-                  </>
-                )}
-              </Button>
             </div>
           ) : null}
         </footer>

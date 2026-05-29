@@ -1,10 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CognitiveSurface } from "@/components/command-center/cognitive-surface"
 import { SessionRulesStrip } from "@/components/command-center/session-rules-strip"
-import { PreTradeApprovalStrip } from "@/components/vyronis-core/pre-trade-approval-strip"
-import { TradingOsAlertStrip } from "@/components/trading-os/trading-os-alert-strip"
 import { TradeCoachPanel } from "@/components/dashboard/trade-coach-modal"
 import { useAIContext } from "@/providers/ai-context-provider"
 import { fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
@@ -20,16 +17,26 @@ export function PreTradeMode() {
     coachPlannedContext,
     maxRiskPerTrade,
     handleCoachSessionChange,
+    handleCoachSessionLoaded,
     handleCoachCompleted,
     logPlannedTrade,
+    coachPreloadedSession,
     returnToCompanion,
   } = useAIContext()
 
-  const [coachPhase, setCoachPhase] = useState<CoachWorkflowPhase>("upload")
+  const isTradingViewAlert = coachPlannedContext?.signal_source === "tradingview"
+  const [coachPhase, setCoachPhase] = useState<CoachWorkflowPhase>(() =>
+    isTradingViewAlert ? "questions" : "upload",
+  )
   const [watchlistPairs, setWatchlistPairs] = useState<string[]>([])
   const active = mode === "pre_trade"
-  const showIntelStrips = coachPhase !== "upload" && coachPhase !== "questions"
-  const showSessionRules = coachPhase !== "upload"
+  const showSessionRules = true
+
+  useEffect(() => {
+    if (isTradingViewAlert && coachPhase === "upload") {
+      setCoachPhase("questions")
+    }
+  }, [isTradingViewAlert, coachPhase])
 
   useEffect(() => {
     void fetchWeeklyPlan()
@@ -51,13 +58,6 @@ export function PreTradeMode() {
   return (
     <div className="command-center-pre-trade flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
       {showSessionRules ? <SessionRulesStrip summary={sessionRulesSummary} /> : null}
-      {showIntelStrips ? (
-        <>
-          <TradingOsAlertStrip tradingOs={context?.tradingOs} />
-          <PreTradeApprovalStrip vyronisCore={context?.vyronisCore} />
-          <CognitiveSurface cognitive={context?.cognitive} />
-        </>
-      ) : null}
       <TradeCoachPanel
         active={active}
         embedded
@@ -65,7 +65,9 @@ export function PreTradeMode() {
         plannedContext={coachPlannedContext}
         maxRiskPerTrade={maxRiskPerTrade}
         sessionId={coachSessionId}
+        preloadedSession={coachPreloadedSession}
         onSessionChange={handleCoachSessionChange}
+        onSessionLoaded={handleCoachSessionLoaded}
         onCompleted={handleCoachCompleted}
         onLogPlannedTrade={logPlannedTrade}
         onWorkflowPhaseChange={setCoachPhase}

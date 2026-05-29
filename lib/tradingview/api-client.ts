@@ -1,4 +1,5 @@
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
+import { notifyTradingViewSignalsRefresh } from "@/lib/tradingview/signals-events"
 
 async function parseJson<T>(response: Response): Promise<T> {
   const payload = await response.json()
@@ -92,7 +93,18 @@ export async function sendTradingViewTestAlert(input?: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input ?? {}),
   })
-  return parseJson(response)
+  const result = await parseJson<{
+    ok: boolean
+    setup_grade?: string
+    setup_verdict?: string
+    email_sent?: boolean
+    message?: string
+    symbol?: string
+    direction?: string
+    coachSessionId?: string
+  }>(response)
+  notifyTradingViewSignalsRefresh()
+  return result
 }
 
 export async function regenerateTradingViewWebhookSecret(): Promise<{
