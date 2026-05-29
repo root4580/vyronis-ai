@@ -9,21 +9,25 @@ import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import {
   StatsCards,
-  EquityCurveChart,
-  WeeklyPerformance,
   RecentTradesTable,
   CalendarHeatmapPlaceholder,
   AITradeCoachPlaceholder,
   type DashboardTab,
 } from "@/components/dashboard/trading-components"
-import { StrategyPerformance } from "@/components/dashboard/strategy-performance"
+import {
+  LazyEquityCurveChart,
+  LazyJournalCommandCenter,
+  LazyStrategyPerformance,
+  LazyVyronisCommandCenter,
+  LazyWeeklyDebriefPanel,
+  LazyWeeklyPerformance,
+} from "@/components/dashboard/lazy-dashboard-modules"
 import { TabTransition } from "@/components/dashboard/tab-transition"
 import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
-import { JournalCommandCenter } from "@/components/journal/journal-command-center"
 import { JournalImportModal } from "@/components/dashboard/journal-import-modal"
 import { deleteJournalCsvImports } from "@/lib/journal/api-client"
 import {
@@ -112,7 +116,6 @@ import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
-import { WeeklyDebriefPanel } from "@/components/dashboard/weekly-debrief-panel"
 import { parseDashboardPreferences } from "@/lib/user-preferences"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
@@ -123,13 +126,16 @@ import {
 import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
 import { AIContextProvider } from "@/providers/ai-context-provider"
-import { VyronisCommandCenter } from "@/components/command-center/vyronis-command-center"
 import { CommandCenterLauncher } from "@/components/command-center/command-center-launcher"
 import { CommandCenterBridge } from "@/components/command-center/command-center-bridge"
 import {
   evaluateTradeRiskGuard,
   type TradeRiskGuardResult,
 } from "@/lib/trade-risk-guard"
+import {
+  DASHBOARD_TRADE_SELECT,
+  DASHBOARD_TRADES_LIMIT,
+} from "@/lib/trades/dashboard-trade-query"
 
 type Trade = {
   id: string
@@ -734,10 +740,11 @@ function Home() {
     try {
       let query = supabase
         .from("trades")
-        .select("*")
+        .select(DASHBOARD_TRADE_SELECT)
         .eq("user_id", uid)
         .or(journalTradesOrFilter())
         .order("created_at", { ascending: false })
+        .limit(DASHBOARD_TRADES_LIMIT)
 
       let { data, error } = await withTimeout(
         query as Promise<{
@@ -752,9 +759,10 @@ function Home() {
         const fallback = await withTimeout(
           supabase
             .from("trades")
-            .select("*")
+            .select(DASHBOARD_TRADE_SELECT)
             .eq("user_id", uid)
-            .order("created_at", { ascending: false }) as Promise<{
+            .order("created_at", { ascending: false })
+            .limit(DASHBOARD_TRADES_LIMIT) as Promise<{
             data: Trade[] | null
             error: { message: string; code?: string } | null
           }>,
@@ -1958,8 +1966,8 @@ function Home() {
                   className="dashboard-section scroll-mt-24"
                 >
                   <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
-                    <EquityCurveChart trades={trades} startingBalance={startingBalance} />
-                    <WeeklyPerformance trades={trades} />
+                    <LazyEquityCurveChart trades={trades} startingBalance={startingBalance} />
+                    <LazyWeeklyPerformance trades={trades} />
                   </div>
                   <p className="mt-2 text-center text-[10px] text-muted-foreground/65">
                     Deeper charts and weekly review in{" "}
@@ -2018,7 +2026,7 @@ function Home() {
                   <a href="/strategy-brain">Strategy Brain</a>
                 </Button>
               </div>
-              <StrategyPerformance
+              <LazyStrategyPerformance
                 trades={trades}
                 isLoading={showTradesSkeleton}
                 loadError={tradesLoadError}
@@ -2048,11 +2056,11 @@ function Home() {
                   defaultOpen={false}
                   collapseOnMobile
                 >
-                  <WeeklyDebriefPanel
+                  <LazyWeeklyDebriefPanel
                     onViewTrade={(tradeId) => router.push(`/journal/trade/${tradeId}`)}
                   />
                 </CollapsibleDashboardSection>
-                <JournalCommandCenter
+                <LazyJournalCommandCenter
                   trades={trades}
                   startingBalance={startingBalance}
                   plannedSessions={plannedSessions}
@@ -2289,7 +2297,7 @@ function Home() {
         }
       />
 
-      <VyronisCommandCenter />
+      <LazyVyronisCommandCenter />
       <Toaster />
     </>
     </AIContextProvider>

@@ -10,7 +10,8 @@ import {
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { TRADINGVIEW_SIGNALS_REFRESH_EVENT } from "@/lib/tradingview/signals-events"
 
-const POLL_MS = 30_000
+const POLL_MS = 45_000
+const INITIAL_FETCH_DELAY_MS = 1_500
 
 export function useTradingViewSignals(enabled = true) {
   const [signals, setSignals] = useState<TradingViewSignalListItem[]>([])
@@ -33,12 +34,14 @@ export function useTradingViewSignals(enabled = true) {
   }, [enabled])
 
   useEffect(() => {
-    void refresh()
     if (!enabled) return
+
+    const initialDelay = window.setTimeout(() => void refresh(), INITIAL_FETCH_DELAY_MS)
     const interval = window.setInterval(() => void refresh(), POLL_MS)
     const onSignalsRefresh = () => void refresh()
     window.addEventListener(TRADINGVIEW_SIGNALS_REFRESH_EVENT, onSignalsRefresh)
     return () => {
+      window.clearTimeout(initialDelay)
       window.clearInterval(interval)
       window.removeEventListener(TRADINGVIEW_SIGNALS_REFRESH_EVENT, onSignalsRefresh)
     }

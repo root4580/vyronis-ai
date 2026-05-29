@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getAppBaseUrl } from "@/lib/env"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+import { slimTradingViewSignalListItem } from "@/lib/tradingview/slim-signal-list-analysis"
 import type { TradingViewSignalListItem, TradingViewSignalRecord } from "@/lib/tradingview/types"
 
 export class TradingViewSignalsTableMissingError extends Error {
@@ -41,7 +42,7 @@ export async function listTradingViewSignals(
     throw new Error(error.message)
   }
 
-  return (data ?? []) as TradingViewSignalListItem[]
+  return ((data ?? []) as TradingViewSignalListItem[]).map(slimTradingViewSignalListItem)
 }
 
 export async function countUnreadTradingViewSignals(
