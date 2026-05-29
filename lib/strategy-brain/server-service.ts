@@ -97,7 +97,7 @@ export async function getOrCreateWeeklyPlan(
 
   throwIfMissing(fetchErr)
   if (fetchErr) throw new Error(fetchErr.message)
-  if (existing) return existing as WeeklyPlanRecord
+  if (existing) return normalizeWeeklyPlan(existing as Record<string, unknown>)
 
   const { data, error } = await supabase
     .from("strategy_brain_weekly_plans")
@@ -107,18 +107,22 @@ export async function getOrCreateWeeklyPlan(
 
   throwIfMissing(error)
   if (error) throw new Error(error.message)
-  return data as WeeklyPlanRecord
+  return normalizeWeeklyPlan(data as Record<string, unknown>)
 }
 
-export async function updateWeeklyPlanNotes(
+export async function updateWeeklyPlanMeta(
   supabase: SupabaseClient,
   userId: string,
   planId: string,
-  session_notes: string,
+  meta: {
+    session_notes?: string
+    session_focus?: string
+    expected_scenarios?: string
+  },
 ): Promise<WeeklyPlanRecord> {
   const { data, error } = await supabase
     .from("strategy_brain_weekly_plans")
-    .update({ session_notes, updated_at: new Date().toISOString() })
+    .update({ ...meta, updated_at: new Date().toISOString() })
     .eq("id", planId)
     .eq("user_id", userId)
     .select("*")
@@ -126,7 +130,23 @@ export async function updateWeeklyPlanNotes(
 
   throwIfMissing(error)
   if (error) throw new Error(error.message)
-  return data as WeeklyPlanRecord
+  return normalizeWeeklyPlan(data as Record<string, unknown>)
+}
+
+function normalizeWeeklyPlan(row: Record<string, unknown>): WeeklyPlanRecord {
+  return {
+    ...(row as unknown as WeeklyPlanRecord),
+    session_focus: String(row.session_focus ?? ""),
+    expected_scenarios: String(row.expected_scenarios ?? ""),
+  }
+}
+
+function normalizePairPlan(row: Record<string, unknown>): PairPlanRecord {
+  const urls = row.screenshot_urls
+  return {
+    ...(row as unknown as PairPlanRecord),
+    screenshot_urls: Array.isArray(urls) ? (urls as string[]) : [],
+  }
 }
 
 export async function listPairPlans(
@@ -141,7 +161,7 @@ export async function listPairPlans(
 
   throwIfMissing(error)
   if (error) throw new Error(error.message)
-  return (data || []) as PairPlanRecord[]
+  return (data || []).map((row) => normalizePairPlan(row as Record<string, unknown>))
 }
 
 export async function getWeeklyPlanWithPairs(
@@ -162,7 +182,7 @@ export async function getWeeklyPlanWithPairs(
   if (!plan) return null
 
   const pairs = await listPairPlans(supabase, plan.id)
-  return { ...(plan as WeeklyPlanRecord), pairs }
+  return { ...normalizeWeeklyPlan(plan as Record<string, unknown>), pairs }
 }
 
 export async function saveWeeklyPairPlans(
@@ -197,6 +217,7 @@ export async function saveWeeklyPairPlans(
     weekly_thesis: p.weekly_thesis ?? "",
     notes: p.notes ?? "",
     aoi_status: p.aoi_status ?? "WAITING",
+    screenshot_urls: p.screenshot_urls ?? [],
     sort_order: p.sort_order ?? i,
   }))
 
@@ -207,7 +228,7 @@ export async function saveWeeklyPairPlans(
 
   throwIfMissing(error)
   if (error) throw new Error(error.message)
-  return (data || []) as PairPlanRecord[]
+  return (data || []).map((row) => normalizePairPlan(row as Record<string, unknown>))
 }
 
 export async function updatePairPlanStatus(

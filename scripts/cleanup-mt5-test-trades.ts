@@ -4,11 +4,10 @@
  *   npx tsx scripts/cleanup-mt5-test-trades.ts
  *   npx tsx scripts/cleanup-mt5-test-trades.ts --dry-run
  */
-import { resolve } from "node:path"
 import { loadEnvLocal } from "./load-env-local"
 import { createServiceRoleClient } from "../lib/supabase/admin"
 
-loadEnvLocal(resolve(process.cwd(), ".env.local"))
+loadEnvLocal()
 
 const dryRun = process.argv.includes("--dry-run")
 

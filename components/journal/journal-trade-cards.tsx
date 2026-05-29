@@ -27,7 +27,7 @@ export function JournalTradeCards({
   if (trades.length === 0) return null
 
   return (
-    <div className="space-y-3 md:hidden">
+    <div className="space-y-3">
       {trades.map((trade) => {
         const setupScore = resolveStoredSetupScore(trade)
         const mistakes = getTradeDisplayMistakeTags(trade)
@@ -65,8 +65,13 @@ export function JournalTradeCards({
                   {trade.session || "—"} · {trade.strategy_name || "No strategy"}
                 </p>
               </button>
-              <p className={cn("text-lg font-bold tabular-nums", getPnLTextClass(trade.pnl))}>
-                {formatPnL(trade.pnl)}
+              <p
+                className={cn(
+                  "text-lg font-bold tabular-nums",
+                  getPnLTextClass(trade.pnl, trade.result ?? ""),
+                )}
+              >
+                {formatPnL(trade.pnl, trade.result ?? "")}
               </p>
             </div>
 
@@ -96,7 +101,7 @@ export function JournalTradeCards({
 
             {mistakes.length > 0 ? (
               <div className="relative mt-2">
-                <MistakeTagList tags={mistakes} maxVisible={3} />
+                <MistakeTagList tags={mistakes} limit={3} compact />
               </div>
             ) : null}
 

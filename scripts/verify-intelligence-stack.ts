@@ -22,6 +22,18 @@ function assert(cond: boolean, msg: string) {
   console.log(`  ✓ ${msg}`)
 }
 
+const stubPrimaryLeak = {
+  id: "stub",
+  status: "insufficient_data" as const,
+  confidence: 0,
+  headline: "",
+  correctiveAction: "",
+  dimensions: [],
+  evidence: null,
+  minTradesRequired: 10,
+  tradesRemaining: 10,
+}
+
 function baseContext(overrides: Partial<FullTraderContext> = {}): FullTraderContext {
   return {
     traderName: "Alex",
@@ -38,15 +50,23 @@ function baseContext(overrides: Partial<FullTraderContext> = {}): FullTraderCont
     risk: { todayLossPercent: 2, todayPnL: -80, tradesRemaining: 1 },
     dailyRules: [{ rule: "Max 3 trades", checked: true }],
     memory: {
-      snapshot: { todayTradeCount: 2, todayPnL: -80, winRate: 42, plannedCount: 0 },
-      primaryLeak: { status: "inactive", headline: "", correctiveAction: "" },
+      snapshot: {
+        tradeCount: 5,
+        todayTradeCount: 2,
+        todayPnL: -80,
+        winRate: 42,
+        plannedCount: 0,
+        unreadSignalCount: 0,
+      },
+      primaryLeak: stubPrimaryLeak,
       warnings: [],
       topPatterns: [],
       plannedSessions: [],
-      greeting: { headline: "", sessionLabel: "NY" },
+      greeting: { headline: "", subline: "", sessionLabel: "NY" },
     },
     recentTrades: [
       {
+        id: "t1",
         pair: "EURUSD",
         direction: "LONG",
         result: "LOSS",
@@ -58,6 +78,7 @@ function baseContext(overrides: Partial<FullTraderContext> = {}): FullTraderCont
         rule_followed: false,
       },
       {
+        id: "t2",
         pair: "GBPUSD",
         direction: "SHORT",
         result: "LOSS",
@@ -163,15 +184,23 @@ const yKey = "2020-06-01"
 const recoveryCtx = baseContext({
   autonomous: null,
   memory: {
-    snapshot: { todayTradeCount: 0, todayPnL: 0, winRate: 42, plannedCount: 0 },
-    primaryLeak: { status: "inactive", headline: "", correctiveAction: "" },
+    snapshot: {
+      tradeCount: 0,
+      todayTradeCount: 0,
+      todayPnL: 0,
+      winRate: 42,
+      plannedCount: 0,
+      unreadSignalCount: 0,
+    },
+    primaryLeak: stubPrimaryLeak,
     warnings: [],
     topPatterns: [],
     plannedSessions: [],
-    greeting: { headline: "", sessionLabel: "NY" },
+    greeting: { headline: "", subline: "", sessionLabel: "NY" },
   },
   recentTrades: [
     {
+      id: "y1",
       pair: "EURUSD",
       direction: "LONG",
       result: "LOSS",
@@ -183,6 +212,7 @@ const recoveryCtx = baseContext({
       rule_followed: false,
     },
     {
+      id: "y2",
       pair: "GBPUSD",
       direction: "SHORT",
       result: "LOSS",

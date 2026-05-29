@@ -10,6 +10,12 @@ import { getTradeTimestamp } from "@/lib/user-settings"
 
 export type JournalCalendarTrade = HeatmapTrade & {
   session?: string | null
+  emotion?: string | null
+  rule_followed?: boolean | null
+  setup_score?: number | null
+  mistake_tags?: string | null
+  risk_reward?: number | null
+  import_source?: string | null
 }
 
 export type JournalDayTone = "win" | "loss" | "neutral" | "empty" | "padding"

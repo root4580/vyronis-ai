@@ -40,6 +40,8 @@ export type WeeklyPlanRecord = {
   user_id: string
   week_start: string
   session_notes: string
+  session_focus: string
+  expected_scenarios: string
   created_at: string
   updated_at: string
 }
@@ -56,6 +58,7 @@ export type PairPlanRecord = {
   weekly_thesis: string
   notes: string
   aoi_status: AoiStatus
+  screenshot_urls: string[]
   sort_order: number
   created_at: string
   updated_at: string
@@ -74,6 +77,7 @@ export type PairPlanInput = {
   weekly_thesis?: string
   notes?: string
   aoi_status?: AoiStatus
+  screenshot_urls?: string[]
   sort_order?: number
 }
 

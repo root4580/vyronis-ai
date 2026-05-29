@@ -221,7 +221,7 @@ export function Mt5ConnectionPanel({
                 Last MT5 Sync
               </p>
               <p className="mt-1 text-sm font-semibold tabular-nums text-foreground/90">
-                {formatLastSync(lastActivity)}
+                {formatLastSync(lastActivity ?? null)}
               </p>
               {settings.lastSyncTicket && (
                 <p className="mt-0.5 text-[10px] text-muted-foreground/60">

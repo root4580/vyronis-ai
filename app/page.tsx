@@ -1765,7 +1765,7 @@ function Home() {
                   onNewCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
                   onEditTrade={handleEditTrade}
                   onDeleteTrade={handleDeleteClick}
-                  onViewTrade={setSelectedTrade}
+                  onViewTrade={(trade) => router.push(`/journal/trade/${trade.id}`)}
                   onScreenshotClick={(trade) =>
                     setScreenshotViewer({
                       url: trade?.screenshot_url ?? null,

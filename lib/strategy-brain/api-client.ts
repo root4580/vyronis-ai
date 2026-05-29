@@ -48,6 +48,8 @@ export async function fetchWeeklyPlan(weekStart?: string): Promise<WeeklyPlanWit
 export async function saveWeeklyPlan(input: {
   week_start?: string
   session_notes?: string
+  session_focus?: string
+  expected_scenarios?: string
   pairs: PairPlanInput[]
 }): Promise<WeeklyPlanWithPairs> {
   const res = await fetch("/api/strategy-brain/weekly-plan", {

@@ -5,7 +5,7 @@ import {
   getWeeklyPlanWithPairs,
   saveWeeklyPairPlans,
   StrategyBrainTableMissingError,
-  updateWeeklyPlanNotes,
+  updateWeeklyPlanMeta,
 } from "@/lib/strategy-brain/server-service"
 import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
 import type { PairPlanInput } from "@/lib/strategy-brain/types"
@@ -56,14 +56,26 @@ export async function PUT(request: NextRequest) {
     const body = (await request.json()) as {
       week_start?: string
       session_notes?: string
+      session_focus?: string
+      expected_scenarios?: string
       pairs?: PairPlanInput[]
     }
 
     const week = body.week_start ?? getWeekStartSunday()
     const plan = await getOrCreateWeeklyPlan(supabase, user.id, week)
 
-    if (typeof body.session_notes === "string") {
-      await updateWeeklyPlanNotes(supabase, user.id, plan.id, body.session_notes)
+    const meta: {
+      session_notes?: string
+      session_focus?: string
+      expected_scenarios?: string
+    } = {}
+    if (typeof body.session_notes === "string") meta.session_notes = body.session_notes
+    if (typeof body.session_focus === "string") meta.session_focus = body.session_focus
+    if (typeof body.expected_scenarios === "string") {
+      meta.expected_scenarios = body.expected_scenarios
+    }
+    if (Object.keys(meta).length > 0) {
+      await updateWeeklyPlanMeta(supabase, user.id, plan.id, meta)
     }
 
     if (Array.isArray(body.pairs)) {
