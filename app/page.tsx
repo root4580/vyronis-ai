@@ -54,11 +54,11 @@ import {
   type UserSettingsForm,
   type UserSettingsRecord,
 } from "@/lib/user-settings"
+import { DEFAULT_DASHBOARD_PREFERENCES } from "@/lib/user-preferences"
 import {
-  DEFAULT_DASHBOARD_PREFERENCES,
-  parseDashboardPreferences,
-  type DashboardPreferences,
-} from "@/lib/user-preferences"
+  buildDashboardHomePath,
+  parseTabSearchParam,
+} from "@/lib/dashboard-nav"
 import {
   DEFAULT_USER_PROFILE,
   loadUserProfile,
@@ -75,7 +75,6 @@ import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/li
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { AuthLoadingState } from "@/components/auth/auth-loading-state"
 import { clearClientSessionData } from "@/lib/client-session"
-import { parseTabSearchParam, readTabFromLocation } from "@/lib/dashboard-nav"
 import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import {
   readCachedTrades,
@@ -98,7 +97,10 @@ import {
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
 import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
-import { DailyRitualStrip } from "@/components/ritual/daily-ritual-strip"
+import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
+import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
+import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import { markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
   buildRepeatTradeDraft,
@@ -229,6 +231,7 @@ function Home() {
   const [isLoadingTrades, setIsLoadingTrades] = useState(false)
   const [tradesLoadError, setTradesLoadError] = useState<string | null>(null)
   const [dashboardLoadTimedOut, setDashboardLoadTimedOut] = useState(false)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const dashboardLoadTimedOutRef = useRef(false)
   const globalLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tradesFetchSettledRef = useRef(false)
@@ -236,6 +239,7 @@ function Home() {
   const openPreTradeCoachRef = useRef<
     (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>
   >(async () => {})
+  const skipUrlTabSyncRef = useRef(true)
   const bindOpenCommandCenter = useCallback((open: () => void) => {
     openCommandCenterRef.current = open
   }, [])
@@ -275,6 +279,7 @@ function Home() {
     setIsLoadingTrades(false)
     setIsLoadingProfile(false)
     setTradesLoadError(null)
+    setLastSyncedAt(new Date())
 
     logDashboardLoading("markDashboardDataReady", {
       reason,
@@ -728,8 +733,21 @@ function Home() {
   }
 
   useEffect(() => {
+    setActiveTab("dashboard")
+    if (pathname === "/" && searchParams.get("tab")) {
+      router.replace(buildDashboardHomePath(searchParams))
+    }
+    skipUrlTabSyncRef.current = false
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- run once on full page load
+
+  useEffect(() => {
+    if (skipUrlTabSyncRef.current) return
+
     const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
-    if (!tabFromUrl) return
+    if (!tabFromUrl) {
+      setActiveTab("dashboard")
+      return
+    }
 
     setActiveTab(tabFromUrl)
     if (user?.id) {
@@ -744,7 +762,6 @@ function Home() {
     const trade = trades.find((row) => String(row.id) === String(tradeId))
     if (trade) {
       setSelectedTrade(trade)
-      setActiveTab("journal")
     }
   }, [searchParams, trades])
 
@@ -796,17 +813,7 @@ function Home() {
         setUserSettings(data)
         setSettingsForm(normalizeUserSettings(data))
 
-        const tabFromUrl = readTabFromLocation()
-        if (tabFromUrl) {
-          setActiveTab(tabFromUrl)
-        } else {
-          const savedTab = parseDashboardPreferences(data.dashboard_preferences).activeTab
-          if (savedTab === "analytics") {
-            router.replace("/analytics")
-          } else {
-            setActiveTab(savedTab)
-          }
-        }
+        setActiveTab("dashboard")
 
         logDashboardLoading("fetchUserSettings:success", { userId })
         return
@@ -832,17 +839,7 @@ function Home() {
         setUserSettings(createdSettings)
         setSettingsForm(normalizeUserSettings(createdSettings))
 
-        const tabFromUrl = readTabFromLocation()
-        if (tabFromUrl) {
-          setActiveTab(tabFromUrl)
-        } else {
-          const savedTab = parseDashboardPreferences(createdSettings.dashboard_preferences).activeTab
-          if (savedTab === "analytics") {
-            router.replace("/analytics")
-          } else {
-            setActiveTab(savedTab)
-          }
-        }
+        setActiveTab("dashboard")
 
         logDashboardLoading("fetchUserSettings:created-defaults", { userId })
         return
@@ -1633,6 +1630,16 @@ function Home() {
         void refreshPlannedSessions(undefined, true)
       }}
       onFabClick={() => openManualTrade()}
+      showMobileDock={Boolean(user)}
+      onDockHome={() => {
+        setActiveTab("dashboard")
+        router.replace(getDashboardHomeHref())
+      }}
+      onDockCoach={() => {
+        openCommandCenterRef.current()
+        if (user?.id) markRitualCoachEngaged(user.id)
+      }}
+      onDockLog={() => openManualTrade()}
       banner={
         showLoadFallbackBanner ? (
           <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
@@ -1646,7 +1653,7 @@ function Home() {
             showTradesSkeleton ? (
               <DashboardOverviewSkeleton />
             ) : (
-              <div className="space-y-6 md:space-y-8">
+              <div className="space-y-4 md:space-y-6">
                 <StatsCards
                   accountBalance={accountBalance}
                   totalPnL={totalPnL}
@@ -1656,8 +1663,19 @@ function Home() {
                   tradeCount={trades.length}
                 />
 
+                <DashboardTrustStrip
+                  tradeCount={trades.length}
+                  lastSyncedLabel={
+                    lastSyncedAt
+                      ? `Synced ${lastSyncedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                      : isLoadingTrades
+                        ? "Syncing…"
+                        : null
+                  }
+                />
+
                 {user?.id ? (
-                  <DailyRitualStrip
+                  <TodayHeroStrip
                     userId={user.id}
                     trades={trades}
                     maxRiskPerTrade={maxRiskPerTrade}
@@ -1669,12 +1687,16 @@ function Home() {
                       if (user.id) markRitualCoachEngaged(user.id)
                     }}
                     onOpenLog={() => openManualTrade()}
+                    onCoachEngaged={() => {
+                      if (user.id) markRitualCoachEngaged(user.id)
+                    }}
                   />
                 ) : null}
 
                 <PrimaryLeakCardWithSettings
                   trades={trades}
                   settings={settingsForm}
+                  className="today-hero-leak"
                 />
 
                 <RiskGuardBanner
@@ -1683,16 +1705,29 @@ function Home() {
                   startingBalance={startingBalance}
                 />
 
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Performance</p>
-                  <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
+                <CollapsibleDashboardSection
+                  title="Performance"
+                  subtitle="Equity and weekly stats"
+                  defaultOpen={false}
+                  collapseOnMobile
+                  className="dashboard-section"
+                >
+                  <div
+                    id="dashboard-performance"
+                    className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4"
+                  >
                     <EquityCurveChart trades={trades} startingBalance={startingBalance} />
                     <WeeklyPerformance trades={trades} />
                   </div>
-                </section>
+                </CollapsibleDashboardSection>
 
-                <section className="dashboard-section">
-                  <p className="dashboard-section-title">Intelligence</p>
+                <CollapsibleDashboardSection
+                  title="Intelligence"
+                  subtitle="Patterns and coach memory"
+                  defaultOpen={false}
+                  collapseOnMobile
+                  className="dashboard-section"
+                >
                   <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
                     <CalendarHeatmapPlaceholder trades={trades} />
                     <AITradeCoachPlaceholder
@@ -1701,7 +1736,7 @@ function Home() {
                       onOpenCompanion={() => openCommandCenterRef.current()}
                     />
                   </div>
-                </section>
+                </CollapsibleDashboardSection>
               </div>
             )
           )}

@@ -1,0 +1,232 @@
+"use client"
+
+import { useCallback, useMemo, useState } from "react"
+import { ArrowRight, CheckCircle2, Circle, Sparkles } from "lucide-react"
+import { formatPnL } from "@/lib/trade-utils"
+import { Button } from "@/components/ui/button"
+import { EMOTION_OPTIONS } from "@/lib/trade-form-config"
+import type { LeakEngineInput } from "@/lib/behavior"
+import {
+  buildDailyRitualView,
+  loadDailyRitualState,
+  markRitualCheckIn,
+  markRitualDebriefComplete,
+  type RitualStepId,
+} from "@/lib/daily-ritual"
+import { getTodayPrimaryAction } from "@/lib/dashboard-today"
+import { cn } from "@/lib/utils"
+
+type TodayHeroStripProps = {
+  userId: string
+  trades: LeakEngineInput["trades"]
+  maxRiskPerTrade: number
+  hasPlannedCoachInProgress: boolean
+  onOpenCoach: () => void
+  onOpenLog: () => void
+  onViewPerformance?: () => void
+  onCoachEngaged?: () => void
+  className?: string
+}
+
+export function TodayHeroStrip({
+  userId,
+  trades,
+  maxRiskPerTrade,
+  hasPlannedCoachInProgress,
+  onOpenCoach,
+  onOpenLog,
+  onViewPerformance,
+  onCoachEngaged,
+  className,
+}: TodayHeroStripProps) {
+  const [storedVersion, setStoredVersion] = useState(0)
+  const [showCheckIn, setShowCheckIn] = useState(false)
+  const [debriefOpen, setDebriefOpen] = useState(false)
+  const [selectedEmotion, setSelectedEmotion] = useState("Calm")
+
+  const storedState = useMemo(() => {
+    void storedVersion
+    return loadDailyRitualState(userId)
+  }, [userId, storedVersion])
+
+  const view = useMemo(
+    () =>
+      buildDailyRitualView({
+        userId,
+        trades,
+        maxRiskPerTrade,
+        hasPlannedCoachInProgress,
+        storedState,
+      }),
+    [userId, trades, maxRiskPerTrade, hasPlannedCoachInProgress, storedState],
+  )
+
+  const action = useMemo(() => getTodayPrimaryAction(view), [view])
+  const bumpStorage = useCallback(() => setStoredVersion((v) => v + 1), [])
+
+  function handlePrimaryCta() {
+    if (view.allComplete) {
+      onViewPerformance?.()
+      document.getElementById("dashboard-performance")?.scrollIntoView({ behavior: "smooth" })
+      return
+    }
+
+    switch (action.stepId) {
+      case "check-in":
+        setShowCheckIn(true)
+        break
+      case "coach":
+        onCoachEngaged?.()
+        onOpenCoach()
+        break
+      case "log":
+        onOpenLog()
+        break
+      case "debrief":
+        setShowCheckIn(false)
+        setDebriefOpen(true)
+        break
+      default:
+        setShowCheckIn(true)
+    }
+  }
+
+  function handleCheckIn() {
+    markRitualCheckIn(userId, selectedEmotion)
+    bumpStorage()
+    setShowCheckIn(false)
+  }
+
+  return (
+    <section
+      aria-label="Today"
+      className={cn(
+        "today-hero-strip relative overflow-hidden rounded-2xl border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.08] via-white/[0.02] to-profit/[0.04] p-4 shadow-[0_0_40px_rgba(34,211,238,0.08)] sm:p-5",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-glow/85">
+            Today
+          </p>
+          <h2 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-foreground sm:text-[18px]">
+            {action.title}
+          </h2>
+          <p className="mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground/80">
+            {action.subtitle}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/20 px-2.5 py-1">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-glow to-profit/80 transition-all"
+              style={{ width: `${view.progressPercent}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-medium tabular-nums text-foreground/85">
+            {view.completedCount}/4
+          </span>
+        </div>
+      </div>
+
+      <Button
+        type="button"
+        onClick={handlePrimaryCta}
+        className="today-hero-cta mt-4 h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-[13px] font-semibold text-background shadow-[0_0_28px_rgba(34,211,238,0.2)] hover:from-cyan-glow/95 hover:to-profit/95 sm:h-12"
+      >
+        {action.ctaLabel}
+        <ArrowRight className="ml-2 size-4" />
+      </Button>
+
+      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {view.steps.map((step) => (
+          <span
+            key={step.id}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium",
+              step.status === "complete"
+                ? "border-cyan-glow/25 bg-cyan-glow/[0.06] text-cyan-glow/90"
+                : step.status === "current"
+                  ? "border-cyan-glow/35 bg-cyan-glow/[0.1] text-foreground"
+                  : "border-white/[0.06] text-muted-foreground/55",
+            )}
+          >
+            {step.status === "complete" ? (
+              <CheckCircle2 className="size-3" />
+            ) : (
+              <Circle className="size-3" />
+            )}
+            {step.shortLabel}
+          </span>
+        ))}
+      </div>
+
+      {showCheckIn && action.stepId === "check-in" && !view.allComplete && (
+        <div className="mt-3 space-y-3 rounded-xl border border-white/[0.08] bg-black/25 p-3">
+          <p className="text-[11px] text-muted-foreground/80">How are you showing up today?</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {EMOTION_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSelectedEmotion(option.value)}
+                className={cn(
+                  "rounded-lg border px-1 py-1.5 text-center text-[10px] transition-colors",
+                  selectedEmotion === option.value
+                    ? "border-cyan-glow/40 bg-cyan-glow/[0.12] text-cyan-glow"
+                    : "border-white/[0.06] text-muted-foreground/75",
+                )}
+              >
+                <span className="block text-sm">{option.emoji}</span>
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            onClick={handleCheckIn}
+            className="h-10 w-full bg-cyan-glow/90 text-background"
+          >
+            <Sparkles className="mr-2 size-4" />
+            Save check-in
+          </Button>
+        </div>
+      )}
+
+      {(debriefOpen || view.steps.find((s) => s.id === "debrief")?.status === "current") &&
+        !view.allComplete && (
+          <div className="mt-3 space-y-3 rounded-xl border border-white/[0.08] bg-black/25 p-3">
+            <div className="flex flex-wrap gap-3 text-[11px] tabular-nums text-muted-foreground/80">
+              <span>{view.debrief.tradeCount} trades today</span>
+              <span>
+                {view.debrief.winCount}W / {view.debrief.lossCount}L
+              </span>
+              <span className={view.debrief.todayPnL >= 0 ? "text-profit" : "text-loss"}>
+                {formatPnL(
+                  Math.abs(view.debrief.todayPnL),
+                  view.debrief.todayPnL >= 0 ? "WIN" : "LOSS",
+                )}
+              </span>
+            </div>
+            <p className="text-[12px] leading-relaxed text-foreground/90">
+              {view.debrief.correctiveAction}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 w-full border-white/[0.1] bg-white/[0.03]"
+              disabled={view.debrief.tradeCount === 0}
+              onClick={() => {
+                markRitualDebriefComplete(userId)
+                bumpStorage()
+                setDebriefOpen(false)
+              }}
+            >
+              Close today&apos;s session
+            </Button>
+          </div>
+        )}
+    </section>
+  )
+}

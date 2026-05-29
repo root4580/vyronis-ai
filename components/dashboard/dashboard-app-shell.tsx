@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { DashboardHeader, type DashboardTab } from "@/components/dashboard/trading-components"
+import { cn } from "@/lib/utils"
 
 type DashboardAppShellProps = {
   activeTab: DashboardTab
@@ -10,6 +11,7 @@ type DashboardAppShellProps = {
   mainClassName?: string
   userBar?: ReactNode
   fab?: ReactNode
+  mobileDock?: ReactNode
   aiLauncher?: ReactNode
   banner?: ReactNode
   showSignalBell?: boolean
@@ -23,13 +25,14 @@ export function DashboardAppShell({
   mainClassName = "dashboard-container space-y-6 px-4 py-5 pb-28 md:space-y-8 md:px-6 md:py-6 md:pb-24",
   userBar,
   fab,
+  mobileDock,
   aiLauncher,
   banner,
   showSignalBell,
   onSignalAlertClick,
 }: DashboardAppShellProps) {
   return (
-    <div className="dashboard-shell">
+    <div className={cn("dashboard-shell", mobileDock && "dashboard-shell-has-dock")}>
       <DashboardHeader
         activeTab={activeTab}
         onOpenSettings={onOpenSettings}
@@ -37,12 +40,13 @@ export function DashboardAppShell({
         onSignalAlertClick={onSignalAlertClick}
       />
       {userBar}
-      <main className={mainClassName}>
+      <main className={cn("dashboard-shell-main", mainClassName)}>
         {banner}
         {children}
       </main>
       {aiLauncher}
       {fab}
+      {mobileDock}
     </div>
   )
 }

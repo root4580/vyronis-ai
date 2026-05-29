@@ -88,7 +88,7 @@ import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
-import { getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
 import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
@@ -311,12 +311,28 @@ export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onS
     return () => clearInterval(interval)
   }, [])
 
-  const navItems: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "strategies", label: "Strategies", icon: Target },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "journal", label: "Journal", icon: BookOpen },
+  const navGroups: Array<{
+    group: string
+    items: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[]
+  }> = [
+    {
+      group: "Today",
+      items: [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    },
+    {
+      group: "Prepare",
+      items: [{ id: "strategies", label: "Strategies", icon: Target }],
+    },
+    {
+      group: "Review",
+      items: [
+        { id: "analytics", label: "Analytics", icon: BarChart3 },
+        { id: "journal", label: "Journal", icon: BookOpen },
+      ],
+    },
   ]
+
+  const navItems = navGroups.flatMap((g) => g.items)
 
   const researchLabActive = pathname.startsWith("/research-lab")
   
@@ -324,7 +340,11 @@ export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onS
     <header className="dashboard-header">
       <div className="dashboard-container px-4 md:px-6 py-3">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href={getDashboardHomeHref()}
+            className="flex items-center gap-3 shrink-0 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40"
+            aria-label="Go to Dashboard"
+          >
             <div className="relative flex size-9 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/15 to-profit/10 glow-cyan">
               <Zap className="size-[18px] text-cyan-glow" />
             </div>
@@ -332,35 +352,48 @@ export function DashboardHeader({ activeTab, onOpenSettings, showSignalBell, onS
               <h1 className="text-[15px] font-semibold leading-none tracking-tight">Vyronis AI</h1>
               <p className="mt-1 text-[11px] text-muted-foreground/70">Trading Intelligence</p>
             </div>
-          </div>
+          </Link>
 
-          <nav className="hidden lg:flex items-center gap-0.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.id}
-                href={getDashboardTabHref(item.id)}
-                className={`dashboard-nav-pill ${
-                  activeTab === item.id
-                    ? "dashboard-nav-pill-active text-cyan-glow"
-                    : "dashboard-nav-pill-inactive"
-                }`}
-              >
-                <item.icon className="size-3.5" />
-                <span>{item.label}</span>
-              </Link>
+          <nav className="hidden lg:flex items-center gap-1 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-1">
+            {navGroups.map((group, groupIndex) => (
+              <div key={group.group} className="flex items-center gap-0.5">
+                {groupIndex > 0 ? (
+                  <span className="mx-1 h-5 w-px bg-white/[0.08]" aria-hidden />
+                ) : null}
+                <span className="px-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/45">
+                  {group.group}
+                </span>
+                {group.items.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={getDashboardTabHref(item.id)}
+                    className={`dashboard-nav-pill ${
+                      activeTab === item.id
+                        ? "dashboard-nav-pill-active text-cyan-glow"
+                        : "dashboard-nav-pill-inactive"
+                    }`}
+                  >
+                    <item.icon className="size-3.5" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
             ))}
             {researchLabEnabled ? (
-              <Link
-                href="/research-lab"
-                className={`dashboard-nav-pill ${
-                  researchLabActive
-                    ? "dashboard-nav-pill-active text-cyan-glow"
-                    : "dashboard-nav-pill-inactive"
-                }`}
-              >
-                <FlaskConical className="size-3.5" />
-                <span>Research Lab</span>
-              </Link>
+              <>
+                <span className="mx-1 h-5 w-px bg-white/[0.08]" aria-hidden />
+                <Link
+                  href="/research-lab"
+                  className={`dashboard-nav-pill ${
+                    researchLabActive
+                      ? "dashboard-nav-pill-active text-cyan-glow"
+                      : "dashboard-nav-pill-inactive"
+                  }`}
+                >
+                  <FlaskConical className="size-3.5" />
+                  <span>Research Lab</span>
+                </Link>
+              </>
             ) : null}
           </nav>
 

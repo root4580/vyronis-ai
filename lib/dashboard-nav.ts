@@ -18,3 +18,18 @@ export function readTabFromLocation(): DashboardTab | null {
   if (typeof window === "undefined") return null
   return parseTabSearchParam(new URLSearchParams(window.location.search).get("tab"))
 }
+
+/** Home route — always lands on the main Dashboard overview. */
+export function getDashboardHomeHref(): string {
+  return "/"
+}
+
+/** Strip `tab` from the URL while keeping deep-link actions (e.g. new-trade). */
+export function buildDashboardHomePath(searchParams: URLSearchParams | null): string {
+  const preserve = new URLSearchParams()
+  if (searchParams?.get("action") === "new-trade") {
+    preserve.set("action", "new-trade")
+  }
+  const query = preserve.toString()
+  return query ? `/?${query}` : "/"
+}

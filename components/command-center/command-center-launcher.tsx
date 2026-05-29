@@ -22,7 +22,10 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
       aria-label="Open Vyronis AI Command Center"
       aria-expanded={isOpen}
       onClick={() => open()}
-      className={cn("command-center-launcher group relative", className)}
+      className={cn(
+        "command-center-launcher group relative hidden md:flex",
+        className,
+      )}
     >
       <Brain className="size-5 transition-transform duration-300 group-hover:scale-110" />
       <span className="hidden text-[13px] font-medium md:inline">Vyronis AI</span>
