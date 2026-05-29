@@ -128,7 +128,7 @@ export function CompanionMode() {
         </p>
       ) : null}
 
-      <div className="mobile-form-footer shrink-0 pt-1">
+      <div className="command-center-compose-footer shrink-0 pt-1">
         <CommandCenterInput
           onSend={sendMessage}
           disabled={

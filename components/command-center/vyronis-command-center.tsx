@@ -1,5 +1,6 @@
 "use client"
 
+import { useVisualViewportCssVars } from "@/hooks/use-visual-viewport-css-vars"
 import { ArrowLeft, Brain, Eye, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CompanionMode } from "@/components/command-center/companion-mode"
@@ -26,6 +27,8 @@ export function VyronisCommandCenter() {
     coachPlannedContext,
     returnToCompanion,
   } = useAIContext()
+
+  useVisualViewportCssVars(isOpen)
 
   if (!isOpen) return null
 

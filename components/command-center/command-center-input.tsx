@@ -194,6 +194,11 @@ export function CommandCenterInput({
           }
           disabled={busy}
           className="min-h-[40px] min-w-0 max-h-20 flex-1 resize-none bg-transparent px-1 py-1.5 text-[13px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none sm:max-h-24 sm:min-h-[44px]"
+          onFocus={(event) => {
+            requestAnimationFrame(() => {
+              event.target.scrollIntoView({ block: "end", behavior: "smooth" })
+            })
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault()
