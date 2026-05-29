@@ -24,11 +24,15 @@ export function getDashboardHomeHref(): string {
   return "/"
 }
 
-/** Strip `tab` from the URL while keeping deep-link actions (e.g. new-trade). */
+/** Home path after refresh — strips `tab`, keeps safe deep-link params only. */
 export function buildDashboardHomePath(searchParams: URLSearchParams | null): string {
   const preserve = new URLSearchParams()
   if (searchParams?.get("action") === "new-trade") {
     preserve.set("action", "new-trade")
+  }
+  const trade = searchParams?.get("trade")?.trim()
+  if (trade) {
+    preserve.set("trade", trade)
   }
   const query = preserve.toString()
   return query ? `/?${query}` : "/"

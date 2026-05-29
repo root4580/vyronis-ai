@@ -115,7 +115,6 @@ import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
-import { parseDashboardPreferences } from "@/lib/user-preferences"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
   buildRepeatTradeDraft,
@@ -248,10 +247,7 @@ function Home() {
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
   const [performanceSectionOpen, setPerformanceSectionOpen] = useState(false)
   const [convertSessionId, setConvertSessionId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
-    if (typeof window === "undefined") return "dashboard"
-    return parseTabSearchParam(new URLSearchParams(window.location.search).get("tab")) ?? "dashboard"
-  })
+  const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard")
   const [isLoadingTrades, setIsLoadingTrades] = useState(false)
   const [tradesLoadError, setTradesLoadError] = useState<string | null>(null)
   const [dashboardLoadTimedOut, setDashboardLoadTimedOut] = useState(false)
@@ -836,18 +832,12 @@ function Home() {
   }
 
   useEffect(() => {
-    const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
-    if (tabFromUrl) {
-      setActiveTab(tabFromUrl)
-    } else {
-      setActiveTab("dashboard")
-    }
-    // Clean URL only for redundant ?tab=dashboard (keep journal, strategies, etc.)
-    if (pathname === "/" && searchParams.get("tab") === "dashboard") {
+    setActiveTab("dashboard")
+    if (pathname === "/" && searchParams.get("tab")) {
       router.replace(buildDashboardHomePath(searchParams))
     }
     skipUrlTabSyncRef.current = false
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- run once on full page load
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- full refresh always starts on dashboard
 
   useEffect(() => {
     if (skipUrlTabSyncRef.current) return
@@ -924,9 +914,10 @@ function Home() {
 
     void openPreTradeCoachRef.current({ sessionId: coachSession })
     markRitualCoachEngaged(user.id)
-    setActiveTab("journal")
+    setActiveTab("dashboard")
     const params = new URLSearchParams(searchParams.toString())
     params.delete("coach")
+    params.delete("tab")
     const next = params.toString() ? `/?${params.toString()}` : getDashboardHomeHref()
     router.replace(next)
   }, [searchParams, user?.id, router])
@@ -961,19 +952,6 @@ function Home() {
       if (data) {
         setUserSettings(data)
         setSettingsForm(normalizeUserSettings(data))
-
-        const tabFromUrl = parseTabSearchParam(searchParams.get("tab"))
-        if (!tabFromUrl) {
-          const pref = parseDashboardPreferences(data.dashboard_preferences).activeTab
-          if (pref === "analytics") {
-            router.replace("/analytics")
-          } else if (pref !== "dashboard") {
-            setActiveTab(pref)
-            router.replace(getDashboardTabHref(pref))
-          } else {
-            setActiveTab("dashboard")
-          }
-        }
 
         logDashboardLoading("fetchUserSettings:success", { userId })
         return
