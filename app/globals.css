@@ -1767,6 +1767,48 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   z-index: 50;
 }
 
+/* Compact chart upload thumbnails (mobile) */
+.chart-upload-thumb {
+  width: 88px;
+  height: 88px;
+  min-width: 88px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.chart-upload-thumb-row {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.chart-upload-thumb-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chart-upload-thumb-label {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 2px 4px 3px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.82) 100%);
+}
+
+.chart-upload-add-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-upload-compact-zone {
+  max-height: 160px;
+}
+
 .coach-mtf-upload-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1776,6 +1818,41 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 @media (min-width: 640px) {
   .coach-mtf-upload-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chart-upload-compact-zone {
+    max-height: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .coach-mtf-upload-zone {
+    max-height: 160px;
+    overflow: hidden;
+  }
+
+  .coach-mtf-upload-grid {
+    display: none;
+  }
+
+  .coach-mtf-upload-strip {
+    display: flex;
+  }
+
+  .trade-coach-modal-footer.mobile-form-footer--upload,
+  .mobile-form-footer--upload {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .command-center-input .chart-upload-compact-zone {
+    max-height: 120px;
+  }
+}
+
+@media (min-width: 640px) {
+  .coach-mtf-upload-strip {
+    display: none;
   }
 }
 

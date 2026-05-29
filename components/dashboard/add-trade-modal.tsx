@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import { ChartUploadThumbnailStrip } from "@/components/ui/chart-upload-thumbnail-strip"
 import { MistakeTagBadge } from "@/components/dashboard/mistake-tag-badge"
 import { isDangerousMistakeLabel, normalizeMistakeLabel } from "@/lib/mistake-tags"
 import {
@@ -590,28 +591,47 @@ export function AddTradeModal({
             <section className="space-y-2">
               <FieldLabel>Chart Screenshot</FieldLabel>
               {form.screenshot_url ? (
-                <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
-                  <img
-                    src={form.screenshot_url}
-                    alt="Trade chart"
-                    className="dashboard-image-zoom h-36 w-full cursor-pointer object-cover"
-                    onClick={onScreenshotPreview}
-                  />
-                  <button
-                    type="button"
-                    onClick={onScreenshotRemove}
-                    className="absolute right-2 top-2 rounded-lg border border-white/[0.08] bg-background/80 p-1.5 hover:border-loss/40 hover:bg-loss/10"
-                  >
-                    <X className="size-4 text-muted-foreground" />
-                  </button>
-                  <Badge className="absolute bottom-2 left-2 border-profit/30 bg-background/80 text-profit">
-                    Screenshot attached
-                  </Badge>
-                </div>
+                <>
+                  <div className="sm:hidden">
+                    <ChartUploadThumbnailStrip
+                      items={[
+                        {
+                          id: "screenshot",
+                          url: form.screenshot_url,
+                          label: "Chart",
+                          alt: "Trade chart",
+                        },
+                      ]}
+                      countLabel="1 chart uploaded"
+                      onRemove={() => onScreenshotRemove()}
+                      onPreview={() => onScreenshotPreview()}
+                      disabled={isUploading}
+                      canAdd={false}
+                    />
+                  </div>
+                  <div className="relative hidden overflow-hidden rounded-xl border border-white/[0.08] bg-black/20 sm:block">
+                    <img
+                      src={form.screenshot_url}
+                      alt="Trade chart"
+                      className="dashboard-image-zoom h-36 w-full cursor-pointer object-cover"
+                      onClick={onScreenshotPreview}
+                    />
+                    <button
+                      type="button"
+                      onClick={onScreenshotRemove}
+                      className="absolute right-2 top-2 rounded-lg border border-white/[0.08] bg-background/80 p-1.5 hover:border-loss/40 hover:bg-loss/10"
+                    >
+                      <X className="size-4 text-muted-foreground" />
+                    </button>
+                    <Badge className="absolute bottom-2 left-2 border-profit/30 bg-background/80 text-profit">
+                      Screenshot attached
+                    </Badge>
+                  </div>
+                </>
               ) : (
                 <label
                   className={cn(
-                    "add-trade-dropzone flex h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300",
+                    "add-trade-dropzone flex h-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300 sm:h-32",
                     isDragging
                       ? "scale-[1.01] border-cyan-glow bg-cyan-glow/[0.1] shadow-[0_0_24px_rgba(34,211,238,0.15)]"
                       : "border-white/[0.08] bg-white/[0.02] hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.04]",

@@ -568,7 +568,14 @@ export function TradeCoachPanel({
           )}
         </div>
 
-        <footer className="trade-coach-modal-footer mobile-form-footer relative shrink-0 overflow-y-auto border-t border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:max-h-[min(38vh,340px)] sm:px-4 sm:py-3.5 md:px-6 md:py-4">
+        <footer
+          className={cn(
+            "trade-coach-modal-footer mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3.5 md:px-6 md:py-4",
+            workflowPhase === "upload"
+              ? "mobile-form-footer--upload overflow-visible"
+              : "overflow-y-auto sm:max-h-[min(38vh,340px)]",
+          )}
+        >
           {isComplete ? (
             <div className="space-y-3">
               {mtfAnalysis && session && (

@@ -1,9 +1,9 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { Loader2, RefreshCw, Trash2, Upload, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Loader2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ChartUploadThumbnailStrip } from "@/components/ui/chart-upload-thumbnail-strip"
 import { useCoachChartUpload } from "@/hooks/use-coach-chart-upload"
 import { cn } from "@/lib/utils"
 
@@ -49,42 +49,15 @@ export function CoachChartUpload({
   if (chartUrl) {
     return (
       <div className="space-y-2">
-        <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
-          <img
-            src={chartUrl}
-            alt="Trade chart"
-            className="dashboard-image-zoom h-40 w-full cursor-pointer object-cover"
-          />
-          <Badge className="absolute bottom-2 left-2 border-profit/30 bg-background/80 text-profit">
-            Chart attached
-          </Badge>
-          {allowReplace && onRemove && (
-            <div className="absolute right-2 top-2 flex gap-1.5">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                disabled={disabled || busy}
-                className="size-8 border-white/[0.08] bg-background/80"
-                onClick={() => replaceInputRef.current?.click()}
-                aria-label="Replace chart"
-              >
-                <RefreshCw className="size-3.5" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                disabled={disabled || busy}
-                className="size-8 border-loss/25 bg-background/80 hover:bg-loss/10"
-                onClick={() => void onRemove()}
-                aria-label="Remove chart"
-              >
-                <Trash2 className="size-3.5 text-loss" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <ChartUploadThumbnailStrip
+          items={[{ id: "chart", url: chartUrl, label: "Chart", alt: "Trade chart" }]}
+          countLabel="1 chart uploaded"
+          onAdd={allowReplace ? () => replaceInputRef.current?.click() : undefined}
+          addLabel="+ Replace"
+          onRemove={allowReplace && onRemove ? () => void onRemove() : undefined}
+          disabled={disabled || busy}
+          canAdd={allowReplace}
+        />
         {busy && (
           <div className="flex items-center gap-2 text-[11px] text-cyan-glow">
             <Loader2 className="size-4 animate-spin" />
@@ -111,7 +84,7 @@ export function CoachChartUpload({
     <div className="space-y-2">
       <label
         className={cn(
-          "add-trade-dropzone flex h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300",
+          "add-trade-dropzone flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300 sm:h-36",
           disabled || busy
             ? "cursor-not-allowed opacity-60"
             : isDragging

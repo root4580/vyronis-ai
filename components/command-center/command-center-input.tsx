@@ -1,8 +1,12 @@
 "use client"
 
 import { FormEvent, useRef, useState } from "react"
-import { ImagePlus, Loader2, SendHorizonal, X } from "lucide-react"
+import { ImagePlus, Loader2, SendHorizonal } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  ChartUploadThumbnailStrip,
+  type ChartThumbnailItem,
+} from "@/components/ui/chart-upload-thumbnail-strip"
 import { useCoachChartUpload } from "@/hooks/use-coach-chart-upload"
 import { cn } from "@/lib/utils"
 
@@ -110,53 +114,48 @@ export function CommandCenterInput({
   const busy = disabled || isSending || isUploading
   const isBundle = pendingImages.length > 1
 
+  const thumbnailItems: ChartThumbnailItem[] = pendingImages.map((item, index) => ({
+    id: item.id,
+    url: item.previewUrl,
+    label: isBundle ? `${index + 1}` : undefined,
+    alt: `Chart ${index + 1}`,
+  }))
+
+  const countLabel =
+    pendingImages.length === 0
+      ? ""
+      : pendingImages.length === 1
+        ? "1 chart uploaded"
+        : `${pendingImages.length} charts uploaded`
+
   return (
     <form
       onSubmit={(event) => void handleSubmit(event)}
       className={cn(
-        "command-center-input flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-black/30 p-2",
+        "command-center-input flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-black/30 p-2",
         className,
       )}
     >
       {pendingImages.length > 0 ? (
-        <div className="mx-1 mt-1 space-y-2">
-          <div className="flex items-center justify-between gap-2 px-0.5">
-            <p className="text-[10px] text-muted-foreground/70">
-              {isBundle
-                ? `${pendingImages.length} charts — timeframe bundle`
-                : "1 chart selected"}
+        <div className="shrink-0">
+          <ChartUploadThumbnailStrip
+            items={thumbnailItems}
+            countLabel={countLabel}
+            onAdd={() => fileInputRef.current?.click()}
+            addLabel="+ Add Charts"
+            onRemove={removeImage}
+            disabled={busy}
+            canAdd={pendingImages.length < MAX_BUNDLE_IMAGES}
+          />
+          {isUploading ? (
+            <p className="mt-1 px-0.5 text-[10px] tabular-nums text-cyan-glow/80">
+              Uploading… {uploadProgress}%
             </p>
-            {isUploading ? (
-              <span className="text-[10px] tabular-nums text-cyan-glow/80">
-                Uploading… {uploadProgress}%
-              </span>
-            ) : null}
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-            {pendingImages.map((item, index) => (
-              <div key={item.id} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.previewUrl}
-                  alt={`Chart ${index + 1} preview`}
-                  className="max-h-40 w-full rounded-lg border border-white/[0.1] object-cover sm:max-h-32 sm:h-24"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(item.id)}
-                  disabled={busy}
-                  className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full border border-white/10 bg-black/85 text-muted-foreground hover:text-foreground"
-                  aria-label={`Remove chart ${index + 1}`}
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="flex items-end gap-2">
+      <div className="flex shrink-0 items-end gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -165,21 +164,23 @@ export function CommandCenterInput({
           className="hidden"
           onChange={(event) => handleFilesSelect(event.target.files)}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={busy || pendingImages.length >= MAX_BUNDLE_IMAGES}
-          onClick={() => fileInputRef.current?.click()}
-          className="size-9 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.06] hover:text-cyan-glow"
-          aria-label="Upload chart images"
-        >
-          {isUploading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ImagePlus className="size-4" />
-          )}
-        </Button>
+        {pendingImages.length === 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={busy}
+            onClick={() => fileInputRef.current?.click()}
+            className="size-9 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.06] hover:text-cyan-glow"
+            aria-label="Upload chart images"
+          >
+            {isUploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ImagePlus className="size-4" />
+            )}
+          </Button>
+        ) : null}
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -192,7 +193,7 @@ export function CommandCenterInput({
               : placeholder
           }
           disabled={busy}
-          className="max-h-24 min-h-[44px] flex-1 resize-none bg-transparent px-1 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+          className="max-h-20 min-h-[40px] flex-1 resize-none bg-transparent px-1 py-1.5 text-[13px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none sm:max-h-24 sm:min-h-[44px]"
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault()
@@ -204,7 +205,8 @@ export function CommandCenterInput({
           type="submit"
           size="icon"
           disabled={busy || !canSend}
-          className="size-9 shrink-0 rounded-lg bg-cyan-glow/90 text-background hover:bg-cyan-glow"
+          className="mobile-sticky-submit size-9 shrink-0 rounded-lg bg-cyan-glow/90 text-background hover:bg-cyan-glow"
+          aria-label="Send message"
         >
           {isSending || isUploading ? (
             <Loader2 className="size-4 animate-spin" />
@@ -215,7 +217,7 @@ export function CommandCenterInput({
       </div>
 
       {uploadError ? (
-        <p className="px-1 text-[10px] text-amber-200/90">{uploadError}</p>
+        <p className="shrink-0 px-1 text-[10px] text-amber-200/90">{uploadError}</p>
       ) : null}
     </form>
   )
