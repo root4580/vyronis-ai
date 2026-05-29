@@ -46,4 +46,13 @@ upsert_env "CHART_VISION_PROVIDER" "${CHART_VISION_PROVIDER:-openai}"
 upsert_env "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
 upsert_env "OPENAI_VISION_MODEL" "${OPENAI_VISION_MODEL:-gpt-4o}"
 
+# Service role must be from the SAME Supabase project as NEXT_PUBLIC_SUPABASE_URL
+if [[ -n "${SUPABASE_SECRET_KEY:-}" ]]; then
+  upsert_env "SUPABASE_SECRET_KEY" "${SUPABASE_SECRET_KEY}"
+elif [[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+  upsert_env "SUPABASE_SERVICE_ROLE_KEY" "${SUPABASE_SERVICE_ROLE_KEY}"
+else
+  echo "WARN: No SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in .env.local — webhooks will fail."
+fi
+
 echo "Done: $PROJECT → $APP_URL (Supabase host: ${NEXT_PUBLIC_SUPABASE_URL#https://})"

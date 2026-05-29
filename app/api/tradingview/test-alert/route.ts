@@ -51,19 +51,10 @@ export async function POST(request: Request) {
       else if (best?.directional_bias === "Bullish") direction = "BUY"
     }
 
-    let service
-    try {
-      service = createServiceRoleClient()
-    } catch (envError) {
-      throw new Error(
-        envError instanceof Error
-          ? `${envError.message} Add SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY) in Vercel → Environment Variables, then redeploy.`
-          : "Missing Supabase service role key on server.",
-      )
-    }
-
+    // Use the logged-in user's Supabase session (same project as the UI).
+    // Service role is optional (chart vision / email only).
     const { result, chartVision } = await ingestTradingViewAlert(
-      service,
+      supabase,
       {
         secret: settings.secret,
         symbol,
@@ -79,12 +70,17 @@ export async function POST(request: Request) {
         alert_id: `test-${Date.now()}`,
       },
       { source: "vyronis_test_alert", user_id: user.id },
-      { trustedUserId: user.id },
+      { trustedUserId: user.id, skipSecretValidation: true },
     )
 
     if (chartVision) {
       after(() => {
-        runTradingViewChartVisionEnrichment(service, chartVision)
+        try {
+          const admin = createServiceRoleClient()
+          runTradingViewChartVisionEnrichment(admin, chartVision)
+        } catch {
+          runTradingViewChartVisionEnrichment(supabase, chartVision)
+        }
       })
     }
 

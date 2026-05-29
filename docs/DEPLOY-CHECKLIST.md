@@ -13,7 +13,7 @@ Use this before sharing **https://vyronis-ai.vercel.app** with testers.
 |----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Same project as local |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same project as local |
-| `SUPABASE_SERVICE_ROLE_KEY` | API routes / webhooks |
+| `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` | **Same Supabase project** as URL/anon (TradingView webhook + vision) |
 | `NEXT_PUBLIC_APP_URL` | `https://vyronis-ai.vercel.app` (auth redirects) |
 | `OPENAI_API_KEY` | Vision coach + War Room autofill |
 
@@ -26,6 +26,14 @@ Minimum for current trading OS:
 - [ ] `trades-migration.sql` + `trade-fields-migration.sql`
 - [ ] `user-settings-migration.sql` + `user-profiles-migration.sql`
 - [ ] Chart vision / MTF columns if using full coach
+- [ ] `013-tradingview-signals.sql`
+- [ ] `028-tradingview-signals-insert.sql` (in-app **Test GBPCAD** button)
+
+Sync env from local (includes service role):
+
+```bash
+./scripts/sync-vercel-env.sh vyronis-ai https://vyronis-ai.vercel.app
+```
 
 See `docs/VERCEL-LOCAL-PARITY.md` for the full feature matrix.
 
@@ -42,7 +50,13 @@ See `docs/VERCEL-LOCAL-PARITY.md` for the full feature matrix.
 - [ ] Journal: save trade + coach feedback
 - [ ] Weekly debrief on Journal tab
 
-## 6. Common “missing features” causes
+## 6. TradingView test alert (“Could not validate webhook secret”)
+
+1. **Vercel env:** `NEXT_PUBLIC_SUPABASE_URL`, anon key, and `SUPABASE_SECRET_KEY` must all be from **one** project (Dashboard → Project Settings → API). A service role JWT for a different `*.supabase.co` ref breaks webhooks and older test flows.
+2. **SQL:** Run `028-tradingview-signals-insert.sql` so logged-in users can insert test signals.
+3. **Redeploy** after `main` includes the session-based test route (no service role required for **Test GBPCAD**).
+
+## 7. Common “missing features” causes
 
 1. Wrong Supabase project on Vercel  
 2. Migrations not run on prod DB  

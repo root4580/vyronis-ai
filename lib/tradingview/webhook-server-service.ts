@@ -115,6 +115,7 @@ async function resolveUserByUserId(
   supabase: SupabaseClient,
   userId: string,
   secret: string,
+  skipSecretValidation = false,
 ): Promise<WebhookUserContext> {
   const { data, error } = await supabase
     .from("user_settings")
@@ -125,13 +126,24 @@ async function resolveUserByUserId(
   if (error) {
     if (isMissingTableError(error.message)) throw new TradingViewTableMissingError()
     throw new TradingViewWebhookError(
-      `Could not load webhook settings. ${error.message} (add SUPABASE_SERVICE_ROLE_KEY on Vercel).`,
+      `Could not load webhook settings. ${error.message}`,
       500,
     )
   }
 
   if (!data) {
     throw new TradingViewWebhookError("User settings not found.", 404)
+  }
+
+  if (skipSecretValidation) {
+    if (!data.tradingview_webhook_enabled) {
+      throw new TradingViewWebhookError("TradingView webhook is disabled in Account Settings.", 400)
+    }
+    return {
+      user_id: data.user_id,
+      max_risk_per_trade: data.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
+      preferred_session: data.preferred_session ?? null,
+    }
   }
 
   return mapWebhookUserRow(data, secret)
@@ -167,19 +179,30 @@ export type TradingViewIngestOutcome = {
   chartVision?: TradingViewIngestChartVisionContext
 }
 
+export type TradingViewIngestOptions = {
+  /** In-app test alert: use session client + skip secret DB lookup */
+  trustedUserId?: string
+  skipSecretValidation?: boolean
+}
+
 export async function ingestTradingViewAlert(
   supabase: SupabaseClient,
   payload: TradingViewAlertPayload,
   rawPayload: Record<string, unknown>,
-  options?: { trustedUserId?: string },
+  options?: TradingViewIngestOptions,
 ): Promise<TradingViewIngestOutcome> {
-  if (!payload.secret?.trim()) {
+  if (!payload.secret?.trim() && !options?.skipSecretValidation) {
     throw new TradingViewWebhookError("Missing webhook secret.", 401)
   }
 
   const user = options?.trustedUserId
-    ? await resolveUserByUserId(supabase, options.trustedUserId, payload.secret.trim())
-    : await resolveUserBySecret(supabase, payload.secret.trim())
+    ? await resolveUserByUserId(
+        supabase,
+        options.trustedUserId,
+        payload.secret?.trim() ?? "",
+        options.skipSecretValidation,
+      )
+    : await resolveUserBySecret(supabase, payload.secret!.trim())
   const normalized = normalizeAlertPayload(payload)
 
   if (!normalized.symbol || normalized.symbol === "UNKNOWN") {
@@ -278,7 +301,7 @@ export async function ingestTradingViewAlert(
   }
 
   let emailSent = false
-  if (gradeMeetsMinimum(analysis.setup_grade)) {
+  if (gradeMeetsMinimum(analysis.setup_grade) && typeof supabase.auth.admin?.getUserById === "function") {
     const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(
       user.user_id,
     )
