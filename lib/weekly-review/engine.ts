@@ -6,6 +6,7 @@ import {
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import { generatePatternMemory } from "@/lib/trade-coach/pattern-memory"
 import { getSignedPnL } from "@/lib/trade-utils"
+import { generateFinalSummaryWithVyronisRouter } from "@/lib/ai/vyronis-ai-integration"
 import { generateDebriefNarrativeWithProvider, getConfiguredAiProviderId } from "@/lib/ai/providers"
 import {
   buildVyronisReviewScores,
@@ -265,12 +266,29 @@ export function buildWeeklyReviewReport(input: BuildWeeklyReviewInput): WeeklyRe
 export async function enrichWeeklyReviewWithAi(
   report: WeeklyReviewReport,
 ): Promise<WeeklyReviewReport> {
-  const narrative = await generateDebriefNarrativeWithProvider({
+  const debriefInput = {
     summary: report.headline,
     tradeCount: report.tradeCount,
     winRate: report.winRate,
     recurringMistakes: report.recurringMistakes,
-  })
+  }
+
+  const router = await generateFinalSummaryWithVyronisRouter(debriefInput)
+  if (router.narrative) {
+    const routerProvider =
+      router.provider === "openai" ||
+      router.provider === "claude" ||
+      router.provider === "gemini"
+        ? router.provider
+        : getConfiguredAiProviderId() ?? "openai"
+    return {
+      ...report,
+      headline: router.narrative,
+      provider: routerProvider,
+    }
+  }
+
+  const narrative = await generateDebriefNarrativeWithProvider(debriefInput)
 
   if (!narrative) return report
 

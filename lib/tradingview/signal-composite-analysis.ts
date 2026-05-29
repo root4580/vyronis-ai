@@ -5,6 +5,7 @@ import { analyzeTradingViewSignal } from "@/lib/tradingview/signal-analysis-engi
 import { loadRecentOutcomeLessons } from "@/lib/learning/outcome-lessons-service"
 import { loadSignalMemoryTrades } from "@/lib/tradingview/signal-memory-loader"
 import { applyWarRoomGrading } from "@/lib/tradingview/signal-war-room-grader"
+import { enrichTradingSetupWithVyronisAI } from "@/lib/ai/vyronis-ai-integration"
 import { buildTradingViewWhyEngine } from "@/lib/tradingview/why-engine"
 import type { TradingViewSignalAnalysis } from "@/lib/tradingview/types"
 
@@ -57,7 +58,7 @@ export async function buildTradingViewSignalAnalysis(
     // Journal optional
   }
 
-  const why_engine = buildTradingViewWhyEngine({
+  const why_engine_base = buildTradingViewWhyEngine({
     symbol: input.symbol,
     direction: input.direction,
     analysis,
@@ -71,6 +72,13 @@ export async function buildTradingViewSignalAnalysis(
       confirmation_signal: input.message || input.strategy_name || undefined,
       higher_timeframe: technical.htf_alignment.label,
     },
+  })
+
+  const why_engine = await enrichTradingSetupWithVyronisAI({
+    symbol: input.symbol,
+    direction: input.direction,
+    analysis,
+    why_engine: why_engine_base,
   })
 
   return { ...analysis, why_engine }

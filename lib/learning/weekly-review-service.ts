@@ -1,5 +1,6 @@
 import { buildWeeklyDebrief, filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import type { WeeklyDebriefResult } from "@/lib/ai/weekly-debrief-types"
+import { generateFinalSummaryWithVyronisRouter } from "@/lib/ai/vyronis-ai-integration"
 import { generateDebriefNarrativeWithProvider } from "@/lib/ai/providers"
 import { generatePatternMemory } from "@/lib/trade-coach/pattern-memory"
 import { buildEmotionalTrends } from "@/lib/learning/pattern-detection"
@@ -92,12 +93,19 @@ export async function enrichWeeklyReviewWithProvider(
   weekTrades: LearningTradeRow[],
 ): Promise<AiReviewRecord> {
   const debrief = review.payload as WeeklyDebriefResult
-  const aiNarrative = await generateDebriefNarrativeWithProvider({
+  const debriefInput = {
     summary: review.summary,
     tradeCount: weekTrades.length,
     winRate: debrief.summary?.winRate ?? 0,
     recurringMistakes: review.recurring_mistakes,
-  })
+  }
+
+  const router = await generateFinalSummaryWithVyronisRouter(debriefInput)
+  if (router.narrative) {
+    return { ...review, summary: router.narrative }
+  }
+
+  const aiNarrative = await generateDebriefNarrativeWithProvider(debriefInput)
   if (!aiNarrative) return review
   return { ...review, summary: aiNarrative }
 }

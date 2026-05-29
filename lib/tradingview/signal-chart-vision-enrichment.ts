@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import {
+  analyzeScreenshotWithVyronisRouter,
+  hasVyronisAIConfigured,
+  vyronisSnapshotFromScreenshotAI,
+} from "@/lib/ai/vyronis-ai-integration"
 import { isOpenAiConfigured } from "@/lib/ai/providers/openai-provider"
 import { analyzeChartVisionForContext } from "@/lib/coach/chart-vision-engine"
 import { linkChartAnalysisToCoachSession } from "@/lib/intelligence/command-center-chart-link"
@@ -77,11 +82,13 @@ export async function enrichTradingViewSignalChartVision(
       .eq("user_id", input.userId)
   }
 
-  if (!isOpenAiConfigured()) {
+  const visionConfigured = hasVyronisAIConfigured() || isOpenAiConfigured()
+  if (!visionConfigured) {
     const snapshot: TradingViewChartVisionSnapshot = {
       available: false,
       image_source: "none",
-      skipped_reason: "Add OPENAI_API_KEY on the server to run chart vision on alerts.",
+      skipped_reason:
+        "Add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY on the server for chart vision.",
     }
     await patchAnalysis(snapshot)
     return { enriched: false, snapshot }
@@ -136,6 +143,34 @@ export async function enrichTradingViewSignalChartVision(
   })
 
   try {
+    const routerVision = await analyzeScreenshotWithVyronisRouter({
+      imageUrl: resolved.url,
+      symbol: input.symbol,
+      direction: input.direction,
+      plannedSummary: input.analysis.summary,
+    })
+
+    if (routerVision) {
+      const snapshot = vyronisSnapshotFromScreenshotAI(
+        resolved.url,
+        resolved.source,
+        routerVision,
+      )
+      await patchAnalysis(snapshot)
+      return { enriched: true, snapshot }
+    }
+
+    if (!isOpenAiConfigured()) {
+      const snapshot: TradingViewChartVisionSnapshot = {
+        available: false,
+        image_source: resolved.source,
+        image_url: resolved.url,
+        skipped_reason: "Vyronis AI router returned mock data; configure a vision provider.",
+      }
+      await patchAnalysis(snapshot)
+      return { enriched: false, snapshot }
+    }
+
     const { vision, legacy } = await analyzeChartVisionForContext(resolved.url, plannedContext)
     await linkChartAnalysisToCoachSession(supabase, input.userId, input.coachSessionId, {
       imageUrl: resolved.url,

@@ -70,6 +70,13 @@ export function TradingViewWhyPanel({ why, compact = false, className }: Trading
         Vyronis reasoning
       </p>
       <p className="mt-1 text-[11px] font-medium text-foreground/90">{why.headline}</p>
+      {why.ai_router && !why.ai_router.is_mock ? (
+        <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground/75">
+          <span className="font-medium text-cyan-glow/80">AI router ({why.ai_router.provider})</span>
+          {" · "}
+          Grade {why.ai_router.grade} · {why.ai_router.summary}
+        </p>
+      ) : null}
       <p className="mt-1 text-[10px] text-muted-foreground/65">
         Historical confidence {why.historical_confidence}%
         {memory.overall_similarity > 0 ? ` · ${memory.overall_similarity}% profile match` : ""}

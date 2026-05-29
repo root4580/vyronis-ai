@@ -35,6 +35,8 @@ export function getServerAiEnv() {
   return {
     provider: process.env.AI_PROVIDER?.trim() || "heuristic",
     openaiApiKey: process.env.OPENAI_API_KEY?.trim() || "",
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY?.trim() || "",
+    geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
     chartVisionProvider: process.env.CHART_VISION_PROVIDER?.trim() || "openai",
   }
 }

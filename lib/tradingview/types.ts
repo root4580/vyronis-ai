@@ -120,6 +120,8 @@ export type TradingViewWhyEngine = {
   recommendation: string
   /** Every ingested alert is stored for learning, including sub-B+ skips. */
   saved_for_training: boolean
+  /** Multi-provider AI Router enrichment (when API keys are configured). */
+  ai_router?: import("@/lib/ai/vyronis-ai-integration").VyronisAIEnrichment
 }
 
 export type TradingViewSignalAnalysis = TradingViewTechnicalSignalAnalysis & {
