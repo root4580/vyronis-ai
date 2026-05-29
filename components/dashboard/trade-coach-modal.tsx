@@ -641,7 +641,7 @@ export function TradeCoachPanel({
         <div
           ref={scrollRef}
           className={cn(
-            "trade-coach-modal-scroll mobile-safe-scroll min-h-0 flex-1 space-y-2 px-3 py-2 sm:space-y-3 sm:px-4 sm:py-3 md:px-6 md:py-4",
+            "trade-coach-modal-scroll mobile-safe-scroll min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto px-3 py-2 sm:space-y-3 sm:px-4 sm:py-3 md:px-6 md:py-4",
             uploadFocusMode && "max-h-0 flex-none overflow-hidden p-0 opacity-0",
           )}
         >
@@ -1001,7 +1001,7 @@ export function TradeCoachPanel({
 
   if (embedded) {
     return (
-      <div className="command-center-pre-trade flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="trade-coach-embedded-shell flex min-h-0 flex-1 flex-col overflow-hidden">
         {panelBody}
       </div>
     )

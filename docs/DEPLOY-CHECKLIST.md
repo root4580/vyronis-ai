@@ -28,6 +28,7 @@ Minimum for current trading OS:
 - [ ] Chart vision / MTF columns if using full coach
 - [ ] `013-tradingview-signals.sql`
 - [ ] `028-tradingview-signals-insert.sql` (in-app **Test GBPCAD** button)
+- [ ] `trade-quality-engine-migration.sql` (weekly debrief quality grades + coach scores)
 
 Sync env from local (includes service role):
 

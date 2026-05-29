@@ -50,8 +50,8 @@ export function VyronisCommandCenter() {
       <aside
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full flex-col overflow-visible",
-          "sm:bottom-4 sm:right-4 sm:max-h-[90vh]",
+          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full min-h-0 flex-col overflow-hidden",
+          "sm:bottom-4 sm:right-4 sm:h-[min(90dvh,900px)] sm:max-h-[90dvh]",
           "rounded-t-2xl sm:rounded-2xl",
           "command-center-mode-transition",
           isExpanded
@@ -119,7 +119,7 @@ export function VyronisCommandCenter() {
 
         <div
           className={cn(
-            "command-center-body flex min-h-0 flex-1 flex-col gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
+            "command-center-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
             isExpanded && "px-2 sm:px-4",
           )}
         >

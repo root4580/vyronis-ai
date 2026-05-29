@@ -5,27 +5,18 @@ import {
   filterTradesForWeek,
   getWeekRange,
 } from "@/lib/ai/weekly-debrief-engine"
-import type {
-  WeeklyDebriefCoachSession,
-  WeeklyDebriefFeedback,
-  WeeklyDebriefTrade,
-} from "@/lib/ai/weekly-debrief-types"
+import type { WeeklyDebriefTrade } from "@/lib/ai/weekly-debrief-types"
+import {
+  loadWeeklyDebriefCoachSessions,
+  loadWeeklyDebriefFeedback,
+  loadWeeklyDebriefTrades,
+} from "@/lib/ai/weekly-debrief-queries"
 import {
   generatePatternMemory,
   type PatternMemoryFeedback,
   type PatternMemoryTrade,
 } from "@/lib/trade-coach/pattern-memory"
-import type { PlannedVsActualComparison } from "@/lib/trade-coach/types"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
-
-function isMissingTableError(error: { message?: string; code?: string } | null) {
-  if (!error) return false
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    /relation .* does not exist|schema cache/i.test(error.message || "")
-  )
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,56 +43,11 @@ export async function GET(request: NextRequest) {
     const weekRange = getWeekRange(new Date(), Number.isFinite(weekOffset) ? weekOffset : 0)
     const previousWeekRange = getWeekRange(new Date(), (Number.isFinite(weekOffset) ? weekOffset : 0) - 1)
 
-    const { data: trades, error: tradesError } = await supabase
-      .from("trades")
-      .select(
-        "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url",
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-
-    if (tradesError) throw new Error(tradesError.message)
-
-    const tradeRows = (trades || []) as WeeklyDebriefTrade[]
-
-    const { data: feedbackRows, error: feedbackError } = await supabase
-      .from("trade_coach_feedback")
-      .select("trade_id, discipline_score, planned_vs_actual")
-      .eq("user_id", user.id)
-
-    let feedback: WeeklyDebriefFeedback[] = []
-    if (!feedbackError) {
-      feedback = (feedbackRows || []).map((row) => ({
-        trade_id: String(row.trade_id),
-        discipline_score: row.discipline_score,
-        planned_vs_actual: (row.planned_vs_actual || []) as PlannedVsActualComparison[],
-      }))
-    } else if (!isMissingTableError(feedbackError)) {
-      throw new Error(feedbackError.message)
-    }
-
-    const { data: sessionRows, error: sessionsError } = await supabase
-      .from("trade_coach_sessions")
-      .select(
-        "id, trade_id, quality_score, quality_grade, recommendation, confidence_score, updated_at",
-      )
-      .eq("user_id", user.id)
-      .not("trade_id", "is", null)
-
-    let coachSessions: WeeklyDebriefCoachSession[] = []
-    if (!sessionsError) {
-      coachSessions = (sessionRows || []).map((row) => ({
-        id: String(row.id),
-        trade_id: row.trade_id ? String(row.trade_id) : null,
-        quality_score: row.quality_score,
-        quality_grade: row.quality_grade,
-        recommendation: row.recommendation,
-        confidence_score: row.confidence_score,
-        updated_at: row.updated_at,
-      }))
-    } else if (!isMissingTableError(sessionsError)) {
-      throw new Error(sessionsError.message)
-    }
+    const [tradeRows, feedback, coachSessions] = await Promise.all([
+      loadWeeklyDebriefTrades(supabase, user.id),
+      loadWeeklyDebriefFeedback(supabase, user.id),
+      loadWeeklyDebriefCoachSessions(supabase, user.id),
+    ])
 
     const patternInputTrades = tradeRows as PatternMemoryTrade[]
     const patternFeedback = feedback as PatternMemoryFeedback[]

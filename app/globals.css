@@ -397,6 +397,30 @@
 
 .command-center-panel .command-center-pre-trade {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  min-height: 0;
+  flex: 1 1 0%;
+}
+
+.command-center-pre-trade .trade-coach-embedded-shell {
+  min-height: 0;
+  flex: 1 1 0%;
+}
+
+/* Sticky footer fights nested flex scroll inside Command Center */
+.command-center-pre-trade .trade-coach-footer-embedded {
+  position: relative;
+  bottom: auto;
+  z-index: 10;
+}
+
+.command-center-pre-trade .trade-coach-modal-scroll.mobile-safe-scroll {
+  padding-bottom: 1rem;
+}
+
+@media (max-width: 639px) {
+  .command-center-pre-trade .trade-coach-modal-scroll.mobile-safe-scroll {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (min-width: 1024px) {

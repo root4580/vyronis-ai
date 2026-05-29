@@ -4,7 +4,7 @@ import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import type { TradingViewSignalListItem, TradingViewSignalRecord } from "@/lib/tradingview/types"
 
 export class TradingViewSignalsTableMissingError extends Error {
-  constructor(message = "Run supabase/013-tradingview-signals.sql in Supabase first.") {
+  constructor(message = "Run supabase/RUN-TRADINGVIEW-SIGNALS.sql in Supabase SQL Editor, then retry.") {
     super(message)
     this.name = "TradingViewSignalsTableMissingError"
   }

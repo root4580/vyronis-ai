@@ -58,21 +58,19 @@ export function PreTradeMode() {
           <CognitiveSurface cognitive={context?.cognitive} />
         </>
       ) : null}
-      <div className="mobile-safe-scroll min-h-0 flex-1 overflow-y-auto">
-        <TradeCoachPanel
-          active={active}
-          embedded
-          showHeader={false}
-          plannedContext={coachPlannedContext}
-          maxRiskPerTrade={maxRiskPerTrade}
-          sessionId={coachSessionId}
-          onSessionChange={handleCoachSessionChange}
-          onCompleted={handleCoachCompleted}
-          onLogPlannedTrade={logPlannedTrade}
-          onWorkflowPhaseChange={setCoachPhase}
-          onClose={() => void returnToCompanion()}
-        />
-      </div>
+      <TradeCoachPanel
+        active={active}
+        embedded
+        showHeader={false}
+        plannedContext={coachPlannedContext}
+        maxRiskPerTrade={maxRiskPerTrade}
+        sessionId={coachSessionId}
+        onSessionChange={handleCoachSessionChange}
+        onCompleted={handleCoachCompleted}
+        onLogPlannedTrade={logPlannedTrade}
+        onWorkflowPhaseChange={setCoachPhase}
+        onClose={() => void returnToCompanion()}
+      />
     </div>
   )
 }
