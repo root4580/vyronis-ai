@@ -29,14 +29,6 @@ export const LazyWeeklyDebriefPanel = dynamic(
   },
 )
 
-export const LazyVyronisCommandCenter = dynamic(
-  () =>
-    import("@/components/command-center/vyronis-command-center").then((m) => ({
-      default: m.VyronisCommandCenter,
-    })),
-  { ssr: false },
-)
-
 export const LazyEquityCurveChart = dynamic(
   () =>
     import("@/components/dashboard/trading-components").then((m) => ({

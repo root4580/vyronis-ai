@@ -211,8 +211,10 @@ async function ensureDailyGreeting(
   memory: Awaited<ReturnType<typeof buildMemoryBundle>>["memory"],
   recentTrades: RecentTradeMemory[],
   traderName: string | null,
+  existingMessages?: CommandCenterMessageRecord[],
 ) {
-  const allMessages = await listThreadMessages(supabase, userId, threadId, 80)
+  const allMessages =
+    existingMessages ?? (await listThreadMessages(supabase, userId, threadId, 80))
   const lastGreeting = [...allMessages].reverse().find((m) => m.message_type === "greeting")
   const greetingDay = lastGreeting?.payload?.dayKey
 
@@ -327,14 +329,15 @@ export async function getCommandCenterContext(
   userId: string,
   mode: CommandCenterMode = "companion",
   focusId: string | null = null,
-  options?: { sessionThreadId?: string | null; fresh?: boolean },
+  options?: { sessionThreadId?: string | null; fresh?: boolean; lean?: boolean },
 ): Promise<CommandCenterContext> {
-  const { settings, memory, recentTrades, traderName } = await buildMemoryBundle(supabase, userId)
-
-  const activeCompanionThreadId =
-    options?.fresh && mode === "companion" && !options?.sessionThreadId
-      ? await rotateCompanionSession(supabase, userId, listThreadMessages)
-      : await getOrCreateCompanionThread(supabase, userId)
+  const [{ settings, memory, recentTrades, traderName }, activeCompanionThreadId] =
+    await Promise.all([
+      buildMemoryBundle(supabase, userId),
+      options?.fresh && mode === "companion" && !options?.sessionThreadId
+        ? rotateCompanionSession(supabase, userId, listThreadMessages)
+        : getOrCreateCompanionThread(supabase, userId),
+    ])
 
   const viewSessionId = options?.sessionThreadId?.trim() || null
   const viewingArchived =
@@ -349,6 +352,12 @@ export async function getCommandCenterContext(
     messages = await listThreadMessages(supabase, userId, viewSessionId, 80)
     companionThreadId = viewSessionId
   } else {
+    const initialMessages = await listThreadMessages(
+      supabase,
+      userId,
+      activeCompanionThreadId,
+      80,
+    )
     messages = await ensureDailyGreeting(
       supabase,
       userId,
@@ -356,6 +365,7 @@ export async function getCommandCenterContext(
       memory,
       recentTrades,
       traderName,
+      initialMessages,
     )
   }
 
@@ -369,10 +379,12 @@ export async function getCommandCenterContext(
   const companionState = resolveCompanionStateFromThread(messages, memory)
   const freshWarnings = getFreshWarnings(memory.warnings, messages)
 
-  const traderContext = await buildFullTraderContext(supabase, userId, {
-    focusId,
-    recentMessages: messages,
-  }).catch(() => null)
+  const traderContext = options?.lean
+    ? null
+    : await buildFullTraderContext(supabase, userId, {
+        focusId,
+        recentMessages: messages,
+      }).catch(() => null)
 
   let sessionTitle: string | null = null
   if (viewingArchived && viewSessionId) {

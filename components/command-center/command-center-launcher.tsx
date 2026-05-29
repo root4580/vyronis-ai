@@ -11,6 +11,10 @@ type CommandCenterLauncherProps = {
 export function CommandCenterLauncher({ className }: CommandCenterLauncherProps) {
   const { isOpen, open, context, enabled } = useAIContext()
 
+  function warmCommandCenter() {
+    void import("@/components/command-center/vyronis-command-center")
+  }
+
   if (!enabled) return null
 
   const criticalCount =
@@ -21,6 +25,8 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
       type="button"
       aria-label="Open Vyronis AI Command Center"
       aria-expanded={isOpen}
+      onMouseEnter={warmCommandCenter}
+      onFocus={warmCommandCenter}
       onClick={() => open()}
       className={cn(
         "command-center-launcher group relative hidden md:flex",

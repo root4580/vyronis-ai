@@ -24,12 +24,14 @@ export async function GET(request: Request) {
     const sessionThreadId = searchParams.get("sessionId")
     const fresh = searchParams.get("fresh") === "1"
 
+    const lean = searchParams.get("lean") === "1"
+
     const context = await getCommandCenterContext(
       supabase,
       user.id,
       mode,
       focusId || null,
-      { sessionThreadId, fresh },
+      { sessionThreadId, fresh, lean },
     )
     return NextResponse.json(context)
   } catch (error) {

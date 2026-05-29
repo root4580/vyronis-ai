@@ -12,12 +12,13 @@ export async function fetchCommandCenterContext(
   mode: CommandCenterMode = "companion",
   focusId?: string | null,
   sessionId?: string | null,
-  options?: { fresh?: boolean },
+  options?: { fresh?: boolean; lean?: boolean },
 ): Promise<CommandCenterContext> {
   const params = new URLSearchParams({ mode })
   if (focusId) params.set("focusId", focusId)
   if (sessionId) params.set("sessionId", sessionId)
   if (options?.fresh) params.set("fresh", "1")
+  if (options?.lean) params.set("lean", "1")
 
   const response = await fetch(`/api/command-center/context?${params.toString()}`, {
     method: "GET",

@@ -55,6 +55,7 @@ async function loadTrades(supabase: SupabaseClient, userId: string) {
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
+    .limit(300)
 
   if (error) throw new Error(error.message)
   return data || []

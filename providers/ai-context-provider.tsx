@@ -24,6 +24,10 @@ import {
   sendCommandCenterChat,
   switchCommandCenterMode,
 } from "@/lib/command-center/api-client"
+import {
+  readCommandCenterContextCache,
+  writeCommandCenterContextCache,
+} from "@/lib/command-center/context-cache"
 import type {
   CommandCenterContext,
   CommandCenterMessageRecord,
@@ -122,47 +126,107 @@ export function AIContextProvider({
   const needsFreshSessionRef = useRef(false)
   const preTradeOpenInFlightRef = useRef(false)
   const coachSessionCacheRef = useRef<Map<string, TradeCoachSessionWithMessages>>(new Map())
+  const contextRef = useRef<CommandCenterContext | null>(null)
+  const loadGenerationRef = useRef(0)
   const [coachPreloadedSession, setCoachPreloadedSession] =
     useState<TradeCoachSessionWithMessages | null>(null)
+
+  useEffect(() => {
+    contextRef.current = context
+  }, [context])
 
   const viewingArchivedSession = context?.viewingArchivedSession ?? false
 
   const enabled = context?.enabled ?? true
 
-  const refresh = useCallback(
-    async (options?: { fresh?: boolean }) => {
+  const loadContext = useCallback(
+    async (options?: { fresh?: boolean; showLoading?: boolean }) => {
       if (!userId) return
-      setIsLoading(true)
-      setError(null)
+
+      const generation = ++loadGenerationRef.current
       const useFresh =
         options?.fresh ??
         (needsFreshSessionRef.current && mode === "companion" && !historySessionId)
       if (useFresh) needsFreshSessionRef.current = false
 
+      const showLoading = options?.showLoading ?? !contextRef.current
+      if (showLoading) setIsLoading(true)
+      setError(null)
+
+      const cached = readCommandCenterContextCache(
+        userId,
+        mode,
+        focusId,
+        historySessionId,
+      )
+      if (cached && showLoading) {
+        setContext(cached)
+        setIsLoading(false)
+      }
+
       try {
-        const next = await fetchCommandCenterContext(mode, focusId, historySessionId, {
+        const lean = await fetchCommandCenterContext(mode, focusId, historySessionId, {
           fresh: useFresh,
+          lean: true,
         })
-        setContext(next)
-        setMode(next.mode)
-        setFocusId(next.focusId)
+        if (generation !== loadGenerationRef.current) return
+        setContext(lean)
+        setMode(lean.mode)
+        setFocusId(lean.focusId)
+        setIsLoading(false)
+        writeCommandCenterContextCache(userId, mode, focusId, historySessionId, lean)
+
+        const full = await fetchCommandCenterContext(mode, focusId, historySessionId, {
+          fresh: false,
+          lean: false,
+        })
+        if (generation !== loadGenerationRef.current) return
+        setContext(full)
+        setMode(full.mode)
+        setFocusId(full.focusId)
+        writeCommandCenterContextCache(userId, mode, focusId, historySessionId, full)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load AI context")
-      } finally {
+        if (generation !== loadGenerationRef.current) return
+        if (!contextRef.current) {
+          setError(err instanceof Error ? err.message : "Failed to load AI context")
+        }
         setIsLoading(false)
       }
     },
     [userId, mode, focusId, historySessionId],
   )
 
+  const refresh = useCallback(async () => {
+    await loadContext({ showLoading: !contextRef.current })
+  }, [loadContext])
+
   useEffect(() => {
     if (!userId) {
       setContext(null)
+      contextRef.current = null
       return
     }
     if (!sessionRestored || !isOpen) return
-    void refresh()
-  }, [userId, refreshKey, mode, focusId, historySessionId, sessionRestored, isOpen, refresh])
+    void loadContext({ showLoading: !contextRef.current })
+  }, [userId, mode, focusId, historySessionId, sessionRestored, isOpen, loadContext])
+
+  /** Warm lean context while panel is closed so open feels instant. */
+  useEffect(() => {
+    if (!userId || isOpen) return
+    const timer = window.setTimeout(() => {
+      void fetchCommandCenterContext("companion", null, null, { lean: true })
+        .then((lean) => {
+          writeCommandCenterContextCache(userId, "companion", null, null, lean)
+        })
+        .catch(() => undefined)
+    }, 3500)
+    return () => window.clearTimeout(timer)
+  }, [userId, isOpen, refreshKey])
+
+  useEffect(() => {
+    if (!userId) return
+    void import("@/components/command-center/vyronis-command-center")
+  }, [userId])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -217,16 +281,25 @@ export function AIContextProvider({
     (nextMode: CommandCenterMode = "companion") => {
       setHistorySessionId(null)
       needsFreshSessionRef.current = nextMode === "companion"
-      setIsOpen(true)
-      setContext(null)
-      setIsLoading(true)
       setError(null)
       if (nextMode === "companion") {
         setMode("companion")
         setFocusId(null)
       }
+
+      if (userId) {
+        const cached = readCommandCenterContextCache(userId, nextMode, null, null)
+        if (cached) {
+          setContext(cached)
+          setIsLoading(false)
+        } else if (!contextRef.current) {
+          setIsLoading(true)
+        }
+      }
+
+      setIsOpen(true)
     },
-    [],
+    [userId],
   )
 
   const close = useCallback(async () => {

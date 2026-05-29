@@ -1,3 +1,4 @@
+import { clearCommandCenterContextCache } from "@/lib/command-center/context-cache"
 import { clearCachedTrades } from "@/lib/dashboard-cache"
 import { getDailyRitualStorageKey } from "@/lib/daily-ritual"
 import { clearCachedUserProfile } from "@/lib/user-profile"
@@ -12,6 +13,7 @@ const JOURNAL_SESSION_KEYS = [
 export function clearClientSessionData(userId?: string | null) {
   clearCachedTrades()
   clearCachedUserProfile()
+  clearCommandCenterContextCache()
 
   if (typeof window === "undefined") return
 

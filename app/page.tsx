@@ -18,7 +18,6 @@ import {
   LazyEquityCurveChart,
   LazyJournalCommandCenter,
   LazyStrategyPerformance,
-  LazyVyronisCommandCenter,
   LazyWeeklyDebriefPanel,
   LazyWeeklyPerformance,
 } from "@/components/dashboard/lazy-dashboard-modules"
@@ -128,6 +127,7 @@ import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-mod
 import { AIContextProvider } from "@/providers/ai-context-provider"
 import { CommandCenterLauncher } from "@/components/command-center/command-center-launcher"
 import { CommandCenterBridge } from "@/components/command-center/command-center-bridge"
+import { VyronisCommandCenter } from "@/components/command-center/vyronis-command-center"
 import {
   evaluateTradeRiskGuard,
   type TradeRiskGuardResult,
@@ -2297,7 +2297,7 @@ function Home() {
         }
       />
 
-      <LazyVyronisCommandCenter />
+      <VyronisCommandCenter />
       <Toaster />
     </>
     </AIContextProvider>
