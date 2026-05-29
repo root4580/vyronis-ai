@@ -43,7 +43,7 @@ export function CompanionMode() {
   if (!context) return null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
+    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-1.5 sm:gap-2">
       {viewingArchivedSession ? (
         <div className="flex shrink-0 items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
           <p className="min-w-0 truncate text-[11px] text-muted-foreground/85">
@@ -140,7 +140,7 @@ export function CompanionMode() {
           placeholder={
             viewingArchivedSession
               ? "Past session — start a new session to chat"
-              : "Talk to Vyronis — setups, emotions, journal…"
+              : "Message Vyronis…"
           }
         />
       </div>

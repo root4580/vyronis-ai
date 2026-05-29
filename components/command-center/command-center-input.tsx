@@ -132,7 +132,7 @@ export function CommandCenterInput({
     <form
       onSubmit={(event) => void handleSubmit(event)}
       className={cn(
-        "command-center-input flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-black/30 p-2",
+        "command-center-input box-border flex w-full max-w-full min-w-0 flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-black/30 p-2",
         className,
       )}
     >
@@ -155,7 +155,7 @@ export function CommandCenterInput({
         </div>
       ) : null}
 
-      <div className="flex shrink-0 items-end gap-2">
+      <div className="flex w-full min-w-0 shrink-0 items-end gap-1.5 sm:gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -193,7 +193,7 @@ export function CommandCenterInput({
               : placeholder
           }
           disabled={busy}
-          className="max-h-20 min-h-[40px] flex-1 resize-none bg-transparent px-1 py-1.5 text-[13px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none sm:max-h-24 sm:min-h-[44px]"
+          className="min-h-[40px] min-w-0 max-h-20 flex-1 resize-none bg-transparent px-1 py-1.5 text-[13px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none sm:max-h-24 sm:min-h-[44px]"
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault()
@@ -205,7 +205,7 @@ export function CommandCenterInput({
           type="submit"
           size="icon"
           disabled={busy || !canSend}
-          className="mobile-sticky-submit size-9 shrink-0 rounded-lg bg-cyan-glow/90 text-background hover:bg-cyan-glow"
+          className="size-9 shrink-0 rounded-lg bg-cyan-glow/90 text-background hover:bg-cyan-glow"
           aria-label="Send message"
         >
           {isSending || isUploading ? (

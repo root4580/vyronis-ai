@@ -25,7 +25,7 @@ export function CompanionThinkingIndicator({
   const label = phases[phaseIndex] ?? "Thinking…"
 
   return (
-    <div className={cn("companion-thinking flex items-start gap-2.5", className)}>
+    <div className={cn("companion-thinking flex w-full min-w-0 max-w-full items-start gap-2.5", className)}>
       <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-cyan-glow/20 bg-cyan-glow/[0.06]">
         <span className="command-center-typing flex gap-0.5">
           <span />
@@ -33,8 +33,8 @@ export function CompanionThinkingIndicator({
           <span />
         </span>
       </div>
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
-        <p className="text-[11px] text-muted-foreground/80">{label}</p>
+      <div className="min-w-0 max-w-[calc(100%-2.5rem)] rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+        <p className="break-words text-[11px] text-muted-foreground/80 [overflow-wrap:anywhere]">{label}</p>
       </div>
     </div>
   )

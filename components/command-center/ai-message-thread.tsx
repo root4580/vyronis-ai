@@ -282,7 +282,7 @@ function CompactAssistantText({
     <>
       <p
         className={cn(
-          "whitespace-pre-wrap leading-[1.55]",
+          "break-words whitespace-pre-wrap leading-[1.55] [overflow-wrap:anywhere]",
           long && !expanded && "line-clamp-4",
         )}
       >
@@ -327,7 +327,8 @@ function AssistantBubble({
   return (
     <div
       className={cn(
-        "max-w-[92%] rounded-2xl rounded-tl-md border px-3.5 py-2.5 text-[13px] leading-[1.55]",
+        "min-w-0 w-fit max-w-[calc(100%-0.25rem)] break-words rounded-2xl rounded-tl-md border px-3 py-2.5 text-[13px] leading-[1.55] sm:max-w-[92%] sm:px-3.5",
+        "[overflow-wrap:anywhere]",
         isCritical
           ? "border-loss/30 bg-loss/[0.08] text-foreground/92"
           : state
@@ -378,8 +379,10 @@ function UserBubble({ message }: { message: CommandCenterMessageRecord }) {
   const imageUrls = resolveMessageImageUrls(message.payload)
 
   return (
-    <div className="max-w-[88%] rounded-2xl rounded-tr-md border border-white/[0.08] bg-white/[0.07] px-3.5 py-2.5 text-[13px] leading-[1.55] text-foreground/92">
-      {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : null}
+    <div className="min-w-0 w-fit max-w-[calc(100%-0.25rem)] break-words rounded-2xl rounded-tr-md border border-white/[0.08] bg-white/[0.07] px-3 py-2.5 text-[13px] leading-[1.55] text-foreground/92 sm:max-w-[88%] sm:px-3.5 [overflow-wrap:anywhere]">
+      {message.content ? (
+        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.content}</p>
+      ) : null}
       <MessageImageGrid urls={imageUrls} />
     </div>
   )
@@ -409,8 +412,8 @@ export function AiMessageThread({
   }, [messages.length, isThinking, streamingMessage?.id])
 
   return (
-    <div className={cn("companion-terminal-thread flex min-h-0 flex-1 flex-col", className)}>
-      <div className="companion-terminal-scroll min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-1 sm:space-y-4">
+    <div className={cn("companion-terminal-thread flex min-h-0 min-w-0 flex-1 flex-col", className)}>
+      <div className="companion-terminal-scroll min-h-0 min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-2 py-1 sm:space-y-4 sm:px-1">
         {groups.map((group, groupIndex) => {
           if (group.role === "system") {
             return group.messages.map((message) => (
@@ -424,7 +427,7 @@ export function AiMessageThread({
             <div
               key={`${group.role}-${groupIndex}`}
               className={cn(
-                "flex flex-col gap-1.5",
+                "flex w-full min-w-0 max-w-full flex-col gap-1.5",
                 group.role === "user" ? "items-end" : "items-start",
               )}
             >
@@ -452,7 +455,7 @@ export function AiMessageThread({
         </MessageHistoryToggle>
 
         {streamingMessage ? (
-          <div className="flex flex-col items-start gap-1.5">
+          <div className="flex w-full min-w-0 max-w-full flex-col items-start gap-1.5">
             <AssistantBubble
               message={streamingMessage}
               stream

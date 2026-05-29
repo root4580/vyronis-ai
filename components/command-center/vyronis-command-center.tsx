@@ -50,7 +50,7 @@ export function VyronisCommandCenter() {
       <aside
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full min-h-0 flex-col overflow-hidden",
+          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden",
           "sm:bottom-4 sm:right-4 sm:h-[min(90dvh,900px)] sm:max-h-[90dvh]",
           "rounded-t-2xl sm:rounded-2xl",
           "command-center-mode-transition",
@@ -62,7 +62,7 @@ export function VyronisCommandCenter() {
         role="dialog"
         aria-label="Vyronis AI Command Center"
       >
-        <header className="command-center-header sticky top-0 z-20 flex items-start justify-between gap-3 overflow-visible border-b border-white/[0.08] px-4 py-3.5">
+        <header className="command-center-header sticky top-0 z-20 flex items-start justify-between gap-2 overflow-hidden border-b border-white/[0.08] px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
           <div className="min-w-0 flex-1">
             {mode !== "companion" ? (
               <button
@@ -119,14 +119,14 @@ export function VyronisCommandCenter() {
 
         <div
           className={cn(
-            "command-center-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
+            "command-center-body flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
             isExpanded && "px-2 sm:px-4",
           )}
         >
           <div
             key={mode}
             className={cn(
-              "command-center-mode-content flex min-h-0 flex-1 flex-col gap-3",
+              "command-center-mode-content flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-3",
               isExpanded ? "overflow-hidden" : "",
             )}
           >

@@ -46,5 +46,9 @@ export function StreamingText({
     }
   }, [text, active, onComplete])
 
-  return <p className={cn("whitespace-pre-wrap leading-[1.6]", className)}>{visible}</p>
+  return (
+    <p className={cn("break-words whitespace-pre-wrap leading-[1.6] [overflow-wrap:anywhere]", className)}>
+      {visible}
+    </p>
+  )
 }
