@@ -117,14 +117,11 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
     setUser(null)
 
     await clearLocalAuthSession(supabase)
-    router.replace("/auth/login")
+    void signOutWithTimeout(supabase)
 
-    void signOutWithTimeout(supabase).then(({ timedOut }) => {
-      if (timedOut) {
-        redirectToLogin()
-      }
-    })
-  }, [isLoggingOut, router, supabase, toast, user?.id])
+    redirectToLogin()
+    window.setTimeout(() => redirectToLogin(), 1500)
+  }, [isLoggingOut, supabase, toast, user?.id])
 
   return {
     user,

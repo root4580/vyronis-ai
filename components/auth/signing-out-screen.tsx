@@ -1,9 +1,16 @@
 "use client"
 
+import { useEffect } from "react"
 import { Activity } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
+import { redirectToLogin } from "@/lib/auth-sign-out"
 
 export function SigningOutScreen() {
+  useEffect(() => {
+    const id = window.setTimeout(() => redirectToLogin(), 2500)
+    return () => window.clearTimeout(id)
+  }, [])
+
   return (
     <div className="auth-page flex min-h-screen flex-col items-center justify-center gap-5 bg-background p-6">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />

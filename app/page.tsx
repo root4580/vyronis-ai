@@ -625,7 +625,7 @@ function Home() {
         setDashboardLoadTimedOut(false)
 
         if (!signingOutRef.current) {
-          router.replace("/auth/login")
+          redirectToLogin()
         }
         return
       }
@@ -1736,13 +1736,11 @@ function Home() {
     clearSessionState()
 
     await clearLocalAuthSession(supabase)
-    router.replace("/auth/login")
+    void signOutWithTimeout(supabase)
 
-    void signOutWithTimeout(supabase).then(({ timedOut }) => {
-      if (timedOut) {
-        redirectToLogin()
-      }
-    })
+    // Hard redirect — client router.replace can hang if cookies lag behind middleware.
+    redirectToLogin()
+    window.setTimeout(() => redirectToLogin(), 1500)
   }
 
   if (isLoggingOut || signingOutRef.current) {
