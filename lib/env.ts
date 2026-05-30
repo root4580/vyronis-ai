@@ -41,18 +41,19 @@ export function getCanonicalProductionBaseUrl(): string {
 
 /**
  * Canonical app URL for webhooks, auth redirects, and metadata.
- * Prefer NEXT_PUBLIC_APP_URL; on production use vyronishq.com instead of *.vercel.app.
+ * When the request is on a custom domain (e.g. vyronishq.com), use that host even if
+ * NEXT_PUBLIC_APP_URL still points at a legacy *.vercel.app deployment.
  */
 export function getAppBaseUrl(request?: Request): string {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (fromEnv) return stripTrailingSlash(fromEnv)
-
   if (request) {
     const forwarded =
       request.headers.get("x-forwarded-host") || request.headers.get("host")
     const fromRequest = baseUrlFromHostHeader(forwarded)
     if (fromRequest) return fromRequest
   }
+
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (fromEnv) return stripTrailingSlash(fromEnv)
 
   if (isVercelProduction() || (process.env.NODE_ENV === "production" && process.env.VERCEL)) {
     return getCanonicalProductionBaseUrl()
