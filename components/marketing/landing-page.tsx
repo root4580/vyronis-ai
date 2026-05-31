@@ -15,9 +15,14 @@ import { Button } from "@/components/ui/button"
 import {
   APP_HOME_PATH,
   APP_NAME,
+  BETA_ACCESS_LABEL,
+  LAUNCH_PRICE_NOTE,
   MARKETING_DESCRIPTION,
   PRECISION_FLOW_TAGLINE,
 } from "@/lib/branding"
+import { ProductScreenshotsSection, ProductShowcase } from "@/components/marketing/product-showcase"
+import { TestimonialsSection } from "@/components/marketing/testimonials-section"
+import { getCanonicalSiteUrl } from "@/lib/site-url"
 
 const FEATURES = [
   {
@@ -52,6 +57,10 @@ const FAQ = [
     a: "Our structured setup framework: Weekly/Daily/H4 bias, area of interest, confirmation, entry quality, emotion gate, and minimum 1:2 risk-reward.",
   },
   {
+    q: "How much does Vyronis cost?",
+    a: "Vyronis is free during closed beta. Pro plans from $29/mo after public launch. No credit card required to join beta.",
+  },
+  {
     q: "Does Vyronis work for prop firm traders?",
     a: "Yes. Built for funded and independent traders who need institutional-grade review without institutional overhead.",
   },
@@ -77,15 +86,18 @@ function Nav() {
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-[13px] text-muted-foreground md:flex">
+          <a href="#product-preview" className="hover:text-foreground">
+            Product
+          </a>
           <a href="#precision-flow" className="hover:text-foreground">
             Precision Flow
           </a>
-          <a href="#journal" className="hover:text-foreground">
-            AI Journal
+          <a href="#pricing" className="hover:text-foreground">
+            Pricing
           </a>
-          <a href="#features" className="hover:text-foreground">
-            Features
-          </a>
+          <Link href="/blog" className="hover:text-foreground">
+            Journal
+          </Link>
           <a href="#faq" className="hover:text-foreground">
             FAQ
           </a>
@@ -96,7 +108,7 @@ function Nav() {
           </Button>
           <Button asChild size="sm" className="bg-cyan-glow text-background hover:bg-cyan-glow/90">
             <Link href="/auth/sign-up">
-              Get started
+              Start free beta
               <ArrowRight className="ml-1 size-3.5" />
             </Link>
           </Button>
@@ -106,46 +118,9 @@ function Nav() {
   )
 }
 
-function DemoPreview() {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-cyan-glow/[0.06] via-background to-profit/[0.04] p-4 shadow-[0_0_60px_rgba(34,211,238,0.08)] sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/80">
-            Vyronis Command Center
-          </p>
-          <p className="text-sm font-medium text-foreground/90">XAUUSD · Plan setup</p>
-        </div>
-        <span className="rounded-full border border-cyan-glow/35 bg-cyan-glow/[0.12] px-3 py-1 text-xs font-bold text-cyan-glow">
-          A+ · 94
-        </span>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {["HTF aligned", "Liquidity swept", "R:R 1:3"].map((label) => (
-          <div
-            key={label}
-            className="flex items-center gap-2 rounded-lg border border-profit/20 bg-profit/[0.06] px-3 py-2 text-[11px] text-foreground/85"
-          >
-            <CheckCircle2 className="size-3.5 shrink-0 text-profit" />
-            {label}
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <div className="rounded-lg border border-white/[0.06] bg-black/30 p-3">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60">Grade</p>
-          <p className="mt-1 text-2xl font-bold text-cyan-glow">A+</p>
-        </div>
-        <div className="rounded-lg border border-white/[0.06] bg-black/30 p-3">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60">Recommendation</p>
-          <p className="mt-1 text-sm font-semibold text-profit">Execute</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function LandingPage() {
+  const siteUrl = getCanonicalSiteUrl()
+
   return (
     <div className="marketing-page min-h-[100dvh] bg-background text-foreground">
       <script
@@ -155,9 +130,15 @@ export function LandingPage() {
             "@context": "https://schema.org",
             "@type": "SoftwareApplication",
             name: APP_NAME,
+            url: siteUrl,
             applicationCategory: "FinanceApplication",
             description: MARKETING_DESCRIPTION,
-            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "USD",
+              description: BETA_ACCESS_LABEL,
+            },
           }),
         }}
       />
@@ -172,7 +153,7 @@ export function LandingPage() {
             <div className="relative space-y-6">
               <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-glow/25 bg-cyan-glow/[0.08] px-3 py-1 text-[11px] font-medium text-cyan-glow">
                 <Sparkles className="size-3.5" />
-                AI-assisted trading operating system
+                {BETA_ACCESS_LABEL} · No card required
               </p>
               <h1 className="text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
                 Trade with{" "}
@@ -191,19 +172,22 @@ export function LandingPage() {
                   className="h-12 bg-gradient-to-r from-cyan-glow to-profit font-semibold text-background"
                 >
                   <Link href="/auth/sign-up">
-                    Start free
+                    Create free account
                     <ArrowRight className="ml-2 size-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="h-12 border-white/[0.12]">
-                  <Link href="/auth/login">Sign in to HQ</Link>
+                  <a href="#product-preview">See how it works</a>
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground/70">
-                Premium journal · Vyronis Core Model scoring · War Room · Analytics
+                {LAUNCH_PRICE_NOTE} · Already have access?{" "}
+                <Link href="/auth/login" className="text-cyan-glow/90 hover:underline">
+                  Sign in to {APP_HOME_PATH}
+                </Link>
               </p>
             </div>
-            <DemoPreview />
+            <ProductShowcase />
           </div>
           <div className="mx-auto mt-12 flex max-w-6xl justify-center">
             <a href="#precision-flow" className="flex flex-col items-center gap-1 text-muted-foreground/50">
@@ -212,6 +196,8 @@ export function LandingPage() {
             </a>
           </div>
         </section>
+
+        <ProductScreenshotsSection />
 
         {/* Precision Flow */}
         <section id="precision-flow" className="border-t border-white/[0.06] px-4 py-16 sm:px-6 sm:py-20">
@@ -303,22 +289,59 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing placeholder */}
+        <TestimonialsSection />
+
+        {/* Pricing */}
         <section id="pricing" className="border-t border-white/[0.06] px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto max-w-lg text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-glow/80">
+          <div className="mx-auto max-w-4xl">
+            <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-glow/80">
               Pricing
             </p>
-            <h2 className="mt-2 text-2xl font-bold">Early access — full platform</h2>
-            <p className="mt-3 text-muted-foreground">
-              Pricing tiers launching soon. Create an account now for full access during beta.
+            <h2 className="mt-2 text-center text-2xl font-bold sm:text-3xl">
+              Clear expectations. No surprises.
+            </h2>
+            <p className="mx-auto mt-3 max-w-lg text-center text-muted-foreground">
+              {LAUNCH_PRICE_NOTE}
             </p>
-            <div className="mt-8 rounded-2xl border border-cyan-glow/25 bg-cyan-glow/[0.04] p-6">
-              <p className="text-3xl font-bold">Beta</p>
-              <p className="mt-1 text-sm text-muted-foreground">Journal · Scoring · War Room · Analytics</p>
-              <Button asChild className="mt-6 w-full bg-cyan-glow text-background">
-                <Link href="/auth/sign-up">Create account</Link>
-              </Button>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-cyan-glow/30 bg-cyan-glow/[0.06] p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-glow">
+                  Closed beta
+                </p>
+                <p className="mt-2 text-4xl font-bold">Free</p>
+                <p className="mt-1 text-sm text-muted-foreground">Full platform access today</p>
+                <ul className="mt-4 space-y-2 text-[13px] text-foreground/85">
+                  {["Journal + Vyronis scoring", "War Room planning", "Analytics + AI review"].map(
+                    (item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <CheckCircle2 className="size-3.5 text-profit" />
+                        {item}
+                      </li>
+                    ),
+                  )}
+                </ul>
+                <Button asChild className="mt-6 w-full bg-cyan-glow text-background">
+                  <Link href="/auth/sign-up">Join closed beta</Link>
+                </Button>
+              </div>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  After launch
+                </p>
+                <p className="mt-2 text-4xl font-bold">
+                  From <span className="text-cyan-glow">$29</span>
+                  <span className="text-lg font-medium text-muted-foreground">/mo</span>
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Pro tier · beta users get early pricing</p>
+                <ul className="mt-4 space-y-2 text-[13px] text-muted-foreground">
+                  <li>· Everything in beta, plus priority support</li>
+                  <li>· MT5 import &amp; TradingView alerts</li>
+                  <li>· Evolution OS &amp; replay simulator</li>
+                </ul>
+                <Button asChild variant="outline" className="mt-6 w-full border-white/[0.12]">
+                  <a href="#product-preview">See how it works</a>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
@@ -349,13 +372,18 @@ export function LandingPage() {
         {/* Final CTA */}
         <section className="border-t border-white/[0.06] px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-3xl rounded-2xl border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.08] to-transparent p-8 text-center sm:p-12">
-            <h2 className="text-2xl font-bold sm:text-3xl">Open your command center</h2>
+            <h2 className="text-2xl font-bold sm:text-3xl">Ready to trade with discipline?</h2>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              Join traders using Vyronis to plan, score, and review every setup with AI discipline.
+              Create your command center — free during closed beta, no credit card required.
             </p>
-            <Button asChild size="lg" className="mt-6 h-12 bg-cyan-glow text-background">
-              <Link href="/auth/sign-up">Get started — it&apos;s free</Link>
-            </Button>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button asChild size="lg" className="h-12 bg-cyan-glow text-background">
+                <Link href="/auth/sign-up">Create free account</Link>
+              </Button>
+              <Button asChild variant="ghost" size="lg" className="h-12">
+                <Link href="/blog">Read the journal</Link>
+              </Button>
+            </div>
           </div>
         </section>
       </main>
@@ -365,12 +393,15 @@ export function LandingPage() {
           <p className="text-[12px] text-muted-foreground/70">
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
-          <div className="flex gap-4 text-[12px] text-muted-foreground">
+          <div className="flex flex-wrap justify-center gap-4 text-[12px] text-muted-foreground">
+            <Link href="/blog" className="hover:text-foreground">
+              Journal
+            </Link>
             <Link href="/auth/login" className="hover:text-foreground">
               Sign in
             </Link>
             <Link href="/auth/sign-up" className="hover:text-foreground">
-              Sign up
+              Start free beta
             </Link>
           </div>
         </div>

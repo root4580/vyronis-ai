@@ -1,12 +1,18 @@
 import type { MetadataRoute } from "next"
-import { APP_PRODUCTION_URL } from "@/lib/branding"
-
-const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  (process.env.NODE_ENV === "production" ? APP_PRODUCTION_URL : "http://localhost:3000")
+import { BLOG_POSTS } from "@/lib/marketing/blog-posts"
+import { getCanonicalSiteUrl } from "@/lib/site-url"
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const baseUrl = getCanonicalSiteUrl()
   const now = new Date()
+
+  const blogEntries = BLOG_POSTS.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: new Date(post.publishedAt),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }))
+
   return [
     {
       url: baseUrl,
@@ -14,6 +20,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    ...blogEntries,
     {
       url: `${baseUrl}/auth/login`,
       lastModified: now,

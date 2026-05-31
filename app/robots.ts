@@ -1,16 +1,14 @@
 import type { MetadataRoute } from "next"
-import { APP_PRODUCTION_URL } from "@/lib/branding"
-
-const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  (process.env.NODE_ENV === "production" ? APP_PRODUCTION_URL : "http://localhost:3000")
+import { getCanonicalSiteUrl } from "@/lib/site-url"
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = getCanonicalSiteUrl()
+
   return {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/auth/login", "/auth/sign-up"],
+        allow: ["/", "/blog", "/blog/", "/auth/login", "/auth/sign-up"],
         disallow: [
           "/hq",
           "/hq/",

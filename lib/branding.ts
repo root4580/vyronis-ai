@@ -27,3 +27,8 @@ export const MARKETING_KEYWORDS = [
 
 export const PRECISION_FLOW_TAGLINE =
   "Weekly → Daily → H4 alignment. AOI. Structure confirmation. Emotion gate. Minimum 1:2 R:R."
+
+/** Public pricing copy — set expectations during closed beta. */
+export const BETA_ACCESS_LABEL = "Free during closed beta"
+export const LAUNCH_PRICE_FROM = "$29"
+export const LAUNCH_PRICE_NOTE = "Pro plans from $29/mo after public launch. No card required for beta."

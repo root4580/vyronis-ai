@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { APP_DESCRIPTION, APP_NAME, APP_PRODUCTION_URL, APP_TAGLINE } from '@/lib/branding'
+import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from '@/lib/branding'
+import { getCanonicalSiteUrl } from '@/lib/site-url'
 import './globals.css'
 
 const geistSans = Geist({
@@ -15,9 +16,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-const appUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  (process.env.NODE_ENV === 'production' ? APP_PRODUCTION_URL : 'http://localhost:3000')
+const siteUrl = getCanonicalSiteUrl()
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -28,7 +27,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(appUrl),
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${APP_NAME} | ${APP_TAGLINE}`,
     template: `%s | ${APP_NAME}`,

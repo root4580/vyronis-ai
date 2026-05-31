@@ -1,24 +1,22 @@
 import type { Metadata } from "next"
 import {
-  APP_PRODUCTION_URL,
   MARKETING_DESCRIPTION,
   MARKETING_KEYWORDS,
   MARKETING_TITLE,
 } from "@/lib/branding"
+import { getCanonicalSiteUrl } from "@/lib/site-url"
 
-const appUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  (process.env.NODE_ENV === "production" ? APP_PRODUCTION_URL : "http://localhost:3000")
+const siteUrl = getCanonicalSiteUrl()
 
 export const metadata: Metadata = {
   title: MARKETING_TITLE,
   description: MARKETING_DESCRIPTION,
   keywords: MARKETING_KEYWORDS,
-  alternates: { canonical: appUrl },
+  alternates: { canonical: siteUrl },
   openGraph: {
     title: MARKETING_TITLE,
     description: MARKETING_DESCRIPTION,
-    url: appUrl,
+    url: siteUrl,
     siteName: "Vyronis",
     type: "website",
   },

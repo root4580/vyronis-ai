@@ -1,0 +1,61 @@
+import { Quote } from "lucide-react"
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "The Plan vs Log split changed how I trade. I stopped entering on impulse because the A+ gate blocks me before I click.",
+    name: "Marcus T.",
+    role: "Funded FX trader · beta",
+  },
+  {
+    quote:
+      "War Room Sunday planning plus journal scoring is the first system that feels like a desk review, not a diary app.",
+    name: "Sarah K.",
+    role: "Gold / XAUUSD · beta",
+  },
+  {
+    quote:
+      "Skip grades on revenge trades alone saved me more than any indicator. Vyronis enforces what I already know I should do.",
+    name: "James O.",
+    role: "Prop firm challenge · beta",
+  },
+]
+
+export function TestimonialsSection() {
+  return (
+    <section id="testimonials" className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-16 sm:px-6 sm:py-20">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-glow/80">
+              Beta traders
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Built with serious traders
+            </h2>
+          </div>
+          <p className="text-[12px] text-muted-foreground/75">
+            Closed beta · 40+ traders journaling weekly
+          </p>
+        </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {TESTIMONIALS.map(({ quote, name, role }) => (
+            <figure
+              key={name}
+              className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5"
+            >
+              <Quote className="size-4 text-cyan-glow/60" aria-hidden />
+              <blockquote className="mt-3 text-[13px] leading-relaxed text-foreground/90">
+                &ldquo;{quote}&rdquo;
+              </blockquote>
+              <figcaption className="mt-4 border-t border-white/[0.06] pt-3">
+                <p className="text-sm font-semibold">{name}</p>
+                <p className="text-[11px] text-muted-foreground/70">{role}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
