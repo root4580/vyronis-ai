@@ -3,11 +3,17 @@ import type { CommandCenterGreeting, CommandCenterTraderSnapshot } from "@/lib/c
 import type { PrimaryLeakInsight } from "@/lib/behavior/types"
 import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
 
+/** Local time-of-day greeting — midnight–4:59 is not "morning". */
+export function getTimeOfDayGreeting(date = new Date()): string {
+  const hour = date.getHours()
+  if (hour >= 5 && hour < 12) return "Good morning"
+  if (hour >= 12 && hour < 17) return "Good afternoon"
+  if (hour >= 17 && hour < 22) return "Good evening"
+  return "Good night"
+}
+
 function timeGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 12) return "Good morning"
-  if (hour < 17) return "Good afternoon"
-  return "Good evening"
+  return getTimeOfDayGreeting()
 }
 
 export function buildContextualGreeting(input: {
