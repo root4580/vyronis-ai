@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Camera, Pencil } from "lucide-react"
+import { ArrowLeft, ArrowRight, Camera, Pencil, Play } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { TradeCaseStudyView } from "@/components/journal/trade-case-study"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
@@ -22,7 +22,7 @@ import type { TradeDetails } from "@/components/dashboard/trade-details-modal"
 import type { TradeIntelligenceBundle } from "@/lib/intelligence/trade-intelligence-types"
 import type { FingerprintTradeInput } from "@/lib/journal/setup-fingerprint"
 import type { MarketBiasRecord, PairPlanRecord } from "@/lib/strategy-brain/types"
-import { getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardTabHref, getTradeReplayHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type TradeIntelligencePageProps = {
@@ -194,6 +194,16 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
             Emotion: {trade.emotion}
           </span>
         </div>
+        <Button
+          type="button"
+          size="sm"
+          className="mt-4 bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+          onClick={() => router.push(getTradeReplayHref(tradeId))}
+        >
+          <Play className="mr-1.5 size-3.5" />
+          Open Cinematic Replay
+          <ArrowRight className="ml-1.5 size-3.5" />
+        </Button>
       </DashboardInsetPanel>
 
       {trade.screenshot_url && (

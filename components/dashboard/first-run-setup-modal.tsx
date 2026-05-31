@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
-import { DEFAULT_USER_SETTINGS, PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
+import { PREFERRED_SESSION_OPTIONS, PROP_FIRM_SIZES, normalizePreferredSession, type UserSettingsForm } from "@/lib/user-settings"
 
 const PROP_BALANCE_MAP: Record<string, number> = {
   "5K": 5000,
@@ -25,26 +25,7 @@ const PROP_BALANCE_MAP: Record<string, number> = {
   "200K": 200000,
 }
 
-const SESSION_OPTIONS = [
-  "London Session",
-  "NY Session",
-  "Asia Session",
-  "London + NY Overlap",
-] as const
-
-function normalizePreferredSession(session?: string | null): (typeof SESSION_OPTIONS)[number] {
-  const value = session ?? DEFAULT_USER_SETTINGS.preferred_session ?? "NY Session"
-  if (SESSION_OPTIONS.includes(value as (typeof SESSION_OPTIONS)[number])) {
-    return value as (typeof SESSION_OPTIONS)[number]
-  }
-
-  const lower = value.toLowerCase()
-  if (lower.includes("overlap")) return "London + NY Overlap"
-  if (lower.includes("new york") || lower.includes("ny")) return "NY Session"
-  if (lower.includes("london")) return "London Session"
-  if (lower.includes("asia")) return "Asia Session"
-  return "NY Session"
-}
+const SESSION_OPTIONS = PREFERRED_SESSION_OPTIONS
 
 type FirstRunSetupModalProps = {
   open: boolean

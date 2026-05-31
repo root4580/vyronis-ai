@@ -7,6 +7,11 @@ export function getDashboardTabHref(tab: DashboardTab): string {
   return `${APP_HOME_PATH}?tab=${tab}`
 }
 
+/** Opens TradeDetailsModal with cinematic execution replay on HQ. */
+export function getTradeReplayHref(tradeId: string): string {
+  return `${APP_HOME_PATH}?tab=journal&trade=${encodeURIComponent(tradeId)}`
+}
+
 /** Parse `?tab=` for in-app sections. Analytics uses a dedicated route. */
 export function parseTabSearchParam(value: string | null): DashboardTab | null {
   if (value === "dashboard" || value === "strategies" || value === "journal") {

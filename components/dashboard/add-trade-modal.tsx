@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
   Calculator,
@@ -59,6 +59,8 @@ import {
   suggestPnLFromResult,
 } from "@/lib/trade-form-utils"
 import { cn } from "@/lib/utils"
+
+const PLAN_MODE_HINT_KEY = "seenPlanModeHint"
 
 type AddTradeModalProps = {
   open: boolean
@@ -178,6 +180,7 @@ export function AddTradeModal({
   onJournalModeChange,
 }: AddTradeModalProps) {
   const [logSetupOpen, setLogSetupOpen] = useState(false)
+  const [showPlanHint, setShowPlanHint] = useState(false)
 
   const isPlan = journalMode === "plan"
   const isLog = journalMode === "log"
@@ -198,6 +201,23 @@ export function AddTradeModal({
   const riskPercent = parseFloat(form.risk_percent)
   const isRiskTooHigh = Number.isFinite(riskPercent) && riskPercent > maxRiskPerTrade
   const rrBelowMinimum = riskReward != null && riskReward < 2
+
+  useEffect(() => {
+    if (!open || isEditing) {
+      setShowPlanHint(false)
+      return
+    }
+    if (typeof window === "undefined") return
+    if (window.localStorage.getItem(PLAN_MODE_HINT_KEY) === "1") return
+    setShowPlanHint(true)
+  }, [open, isEditing])
+
+  function dismissPlanHint() {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PLAN_MODE_HINT_KEY, "1")
+    }
+    setShowPlanHint(false)
+  }
 
   const toggleMistakeTag = (tag: string) => {
     const exists = form.mistake_tags.includes(tag)
@@ -264,6 +284,8 @@ export function AddTradeModal({
                 mode={journalMode}
                 onChange={onJournalModeChange}
                 disabled={isSubmitting || isUploading}
+                showPlanHint={showPlanHint}
+                onDismissPlanHint={dismissPlanHint}
               />
             )}
 

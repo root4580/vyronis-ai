@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo } from "react"
-import { Crown, Layers, Target, TrendingDown, TrendingUp, Zap, AlertTriangle } from "lucide-react"
+import { Crown, Layers, Target, TrendingDown, TrendingUp, Zap, AlertTriangle, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import {
   DashboardCard,
@@ -25,6 +26,7 @@ type StrategyPerformanceProps = {
   trades?: (StrategyTrade & Partial<MistakeTrade>)[]
   isLoading?: boolean
   loadError?: string | null
+  onPlanTrade?: () => void
 }
 
 function StrategyHighlightCard({
@@ -154,9 +156,16 @@ export function StrategyPerformance({
   trades,
   isLoading = false,
   loadError = null,
+  onPlanTrade,
 }: StrategyPerformanceProps) {
   const safeTrades = trades ?? []
   const summary = useMemo(() => buildStrategyPerformance(safeTrades), [safeTrades])
+  const unassignedStrategy = summary.strategies.find((strategy) => strategy.name === "Unassigned")
+  const unassignedPercent =
+    summary.totalTrades > 0 && unassignedStrategy
+      ? (unassignedStrategy.tradeCount / summary.totalTrades) * 100
+      : 0
+  const showUnassignedBanner = unassignedPercent > 50
   const mistakeAnalysis = useMemo(
     () => buildMistakeAnalysis(safeTrades as MistakeTrade[]),
     [safeTrades],
@@ -230,13 +239,36 @@ export function StrategyPerformance({
           </DashboardInsetPanel>
         )}
 
-        {!summary.hasStrategyData && (
+        {!summary.hasStrategyData && !showUnassignedBanner && (
           <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
             <p className="text-[11px] leading-relaxed text-muted-foreground/85">
               Assign strategy names when logging trades for sharper analytics. Showing unassigned trades for now.
             </p>
           </DashboardInsetPanel>
         )}
+
+        {showUnassignedBanner ? (
+          <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+            <p className="text-[12px] font-medium text-foreground/90">
+              Most of your trades have no strategy assigned.
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+              Add strategy names when planning setups to unlock this dashboard.
+            </p>
+            {onPlanTrade ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3 border-cyan-glow/25 text-cyan-glow hover:bg-cyan-glow/[0.08]"
+                onClick={onPlanTrade}
+              >
+                Plan a setup with strategy
+                <ArrowRight className="ml-1.5 size-3.5" />
+              </Button>
+            ) : null}
+          </DashboardInsetPanel>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <StrategyHighlightCard

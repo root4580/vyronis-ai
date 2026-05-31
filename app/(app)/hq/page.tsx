@@ -3,8 +3,9 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { X, Pencil, Trash2, Brain, FileUp, Plus } from "lucide-react"
+import { X, Pencil, Trash2, Brain, FileUp, Plus, ClipboardCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import {
@@ -62,13 +63,16 @@ import {
 import { DEFAULT_DASHBOARD_PREFERENCES, mergeDashboardPreferences, parseDashboardPreferences } from "@/lib/user-preferences"
 import { FirstRunBanner } from "@/components/dashboard/first-run-banner"
 import { FirstRunSetupModal } from "@/components/dashboard/first-run-setup-modal"
+import { TradeEntryActionSheet } from "@/components/dashboard/trade-entry-action-sheet"
 import { APP_HOME_PATH } from "@/lib/branding"
 import {
   buildDashboardHomePath,
   getDashboardHomeHref,
   getDashboardTabHref,
+  getTradeReplayHref,
   parseTabSearchParam,
 } from "@/lib/dashboard-nav"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   DEFAULT_USER_PROFILE,
   loadUserProfile,
@@ -221,6 +225,7 @@ export default function HomePage() {
 function Home() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [tradeEntrySheetOpen, setTradeEntrySheetOpen] = useState(false)
   const [isJournalImportOpen, setIsJournalImportOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -242,6 +247,7 @@ function Home() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const { toast } = useToast()
+  const isMobile = useIsMobile()
   const signingOutRef = useRef(false)
   const profileWarningShownRef = useRef(false)
   const loadedDashboardUserRef = useRef<string | null>(null)
@@ -1301,7 +1307,12 @@ function Home() {
 
     toast({
       title: "Setup complete",
-      description: "Open War Room to plan your first trade, then log it in the journal.",
+      description: "Set up your first War Room — your weekly plan unlocks analytics.",
+      action: (
+        <ToastAction altText="Open War Room" onClick={() => router.push("/war-room")}>
+          Open War Room
+        </ToastAction>
+      ),
     })
   }
 
@@ -1592,6 +1603,22 @@ function Home() {
     setIsModalOpen(true)
   }, [])
 
+  const openTradeEntrySheet = useCallback(() => {
+    setTradeEntrySheetOpen(true)
+  }, [])
+
+  const handleFabClick = useCallback(() => {
+    if (isMobile) {
+      openTradeEntrySheet()
+      return
+    }
+    openManualTrade()
+  }, [isMobile, openManualTrade, openTradeEntrySheet])
+
+  const handleDockLog = useCallback(() => {
+    openTradeEntrySheet()
+  }, [openTradeEntrySheet])
+
   function handleEditTrade(trade: Trade) {
     setSelectedTrade(null)
     setEditingTrade(trade)
@@ -1859,7 +1886,7 @@ function Home() {
           void refreshPlannedSessions(undefined, true)
         }
       }}
-      onFabClick={() => openManualTrade()}
+      onFabClick={handleFabClick}
       showMobileDock={Boolean(user)}
       onDockHome={() => {
         setActiveTab("dashboard")
@@ -1873,7 +1900,7 @@ function Home() {
         openCommandCenterRef.current()
         if (user?.id) markRitualCoachEngaged(user.id)
       }}
-      onDockLog={() => openManualTrade()}
+      onDockLog={handleDockLog}
       onDockWarRoom={() => router.push("/war-room")}
       onDockAnalytics={() => router.replace("/analytics")}
       banner={
@@ -2054,6 +2081,7 @@ function Home() {
                 trades={trades}
                 isLoading={showTradesSkeleton}
                 loadError={tradesLoadError}
+                onPlanTrade={openPlanTrade}
               />
             </section>
           )}
@@ -2081,7 +2109,7 @@ function Home() {
                   collapseOnMobile
                 >
                   <LazyWeeklyDebriefPanel
-                    onViewTrade={(tradeId) => router.push(`/journal/trade/${tradeId}`)}
+                    onViewTrade={(tradeId) => router.push(getTradeReplayHref(tradeId))}
                   />
                 </CollapsibleDashboardSection>
                 <LazyJournalCommandCenter
@@ -2107,6 +2135,15 @@ function Home() {
                   onLogTrade={openManualTrade}
                   headerActions={
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openPlanTrade()}
+                        className="h-9 w-full border-cyan-glow/25 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08] sm:w-auto"
+                      >
+                        <ClipboardCheck className="mr-2 size-4" />
+                        Plan Setup
+                      </Button>
                       <Button
                         type="button"
                         onClick={() => openManualTrade()}
@@ -2201,6 +2238,13 @@ function Home() {
         isSaving={isSavingSettings}
         onComplete={completeFirstRunSetup}
         onOpenWarRoom={() => router.push("/war-room")}
+      />
+
+      <TradeEntryActionSheet
+        open={tradeEntrySheetOpen}
+        onOpenChange={setTradeEntrySheetOpen}
+        onPlanSetup={() => openPlanTrade()}
+        onLogResult={() => openManualTrade()}
       />
 
       <AccountSettingsModal

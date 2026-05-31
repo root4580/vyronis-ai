@@ -31,6 +31,29 @@ export const DEFAULT_USER_SETTINGS: UserSettingsForm = {
 
 export const PROP_FIRM_SIZES = ["5K", "10K", "25K", "50K", "100K", "150K", "200K"] as const
 
+export const PREFERRED_SESSION_OPTIONS = [
+  "London Session",
+  "NY Session",
+  "Asia Session",
+  "London + NY Overlap",
+] as const
+
+export function normalizePreferredSession(
+  session?: string | null,
+): (typeof PREFERRED_SESSION_OPTIONS)[number] {
+  const value = session ?? DEFAULT_USER_SETTINGS.preferred_session ?? "NY Session"
+  if (PREFERRED_SESSION_OPTIONS.includes(value as (typeof PREFERRED_SESSION_OPTIONS)[number])) {
+    return value as (typeof PREFERRED_SESSION_OPTIONS)[number]
+  }
+
+  const lower = value.toLowerCase()
+  if (lower.includes("overlap")) return "London + NY Overlap"
+  if (lower.includes("new york") || lower.includes("ny")) return "NY Session"
+  if (lower.includes("london")) return "London Session"
+  if (lower.includes("asia")) return "Asia Session"
+  return "NY Session"
+}
+
 export type SettingsTrade = {
   risk_percent: number | null
   rule_followed: boolean | null

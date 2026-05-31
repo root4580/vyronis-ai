@@ -15,7 +15,12 @@ import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives
 import { TradingViewWebhookSettings } from "@/components/tradingview/tradingview-webhook-settings"
 import { Mt5IntegrationsCollapsible } from "@/components/integrations/mt5-integrations-collapsible"
 import { ProductionDeployChecklist } from "@/components/settings/production-deploy-checklist"
-import { PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
+import {
+  PREFERRED_SESSION_OPTIONS,
+  PROP_FIRM_SIZES,
+  normalizePreferredSession,
+  type UserSettingsForm,
+} from "@/lib/user-settings"
 
 type AccountSettingsModalProps = {
   open: boolean
@@ -166,6 +171,27 @@ export function AccountSettingsModal({
                     className="add-trade-input h-10 tabular-nums"
                   />
                   <p className="text-[10px] text-muted-foreground/70">Daily rules checklist uses this limit</p>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <FieldLabel>Preferred Session</FieldLabel>
+                  <Select
+                    value={normalizePreferredSession(form.preferred_session)}
+                    onValueChange={(value) => onFormChange({ preferred_session: value })}
+                  >
+                    <SelectTrigger className="add-trade-input h-10">
+                      <SelectValue placeholder="Select session" />
+                    </SelectTrigger>
+                    <SelectContent className="glass-card border-white/[0.08]">
+                      {PREFERRED_SESSION_OPTIONS.map((session) => (
+                        <SelectItem key={session} value={session}>
+                          {session}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground/70">
+                    War Room and analytics align to your primary session
+                  </p>
                 </div>
               </div>
             </section>
