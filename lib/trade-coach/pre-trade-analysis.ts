@@ -141,11 +141,17 @@ export function buildPreTradeCompletionMessages(analysis: PreTradeAnalysis): str
     messages.push(`Coaching notes: ${analysis.insights.join(" · ")}`)
   }
 
-  if (analysis.tradeQuality) {
-    messages.push(
-      `Trade Quality Score: ${analysis.tradeQuality.score}/100 (${analysis.tradeQuality.grade}) — ${analysis.tradeQuality.recommendation}.`,
-    )
-  }
+    if (analysis.tradeQuality) {
+      messages.push(
+        `Trade Quality Score: ${analysis.tradeQuality.score}/100 (${analysis.tradeQuality.grade}) — ${analysis.tradeQuality.recommendation}.`,
+      )
+    }
+
+    if (analysis.vyronisCoach) {
+      messages.push(analysis.vyronisCoach.summary)
+      messages.push(analysis.vyronisCoach.journal_cross_reference)
+      messages.push(`Focus: ${analysis.vyronisCoach.one_improvement}`)
+    }
 
   messages.push(
     "Pre-trade check-in saved. Log the trade when execution is done — I'll compare plan vs outcome and score discipline after close.",

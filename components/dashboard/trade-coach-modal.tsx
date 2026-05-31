@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { CoachWatchlistPairSelect } from "@/components/dashboard/coach-watchlist-pair-select"
 import { CoachVerdictBadge } from "@/components/dashboard/coach-verdict-badge"
+import { VyronisCoachAnalysisPanel } from "@/components/dashboard/vyronis-coach-analysis-panel"
 import { CoachMtfUploadGrid } from "@/components/dashboard/coach-mtf-upload-grid"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { CoachChartOverlayStrip } from "@/components/chart-annotations/coach-chart-overlay-strip"
@@ -305,6 +306,7 @@ export function TradeCoachPanel({
   const collapseMtfForCheckIn = embedded && workflowPhase === "questions" && !mtfDetailsOpen
 
   const coachAnalysis = session?.planned_context?.coach_analysis
+  const vyronisCoach = coachAnalysis?.vyronisCoach
   const tradeQuality = resolveTradeQualityFromSession(session)
 
   useEffect(() => {
@@ -940,7 +942,9 @@ export function TradeCoachPanel({
                   </p>
                 </div>
               )}
-              {analysisHasRun && (mtfAnalysis || coachAnalysis) ? (
+              {analysisHasRun && vyronisCoach ? (
+                <VyronisCoachAnalysisPanel coach={vyronisCoach} />
+              ) : analysisHasRun && (mtfAnalysis || coachAnalysis) ? (
                 <CoachVerdictBadge
                   recommendation={mtfAnalysis?.recommendation}
                   shouldTakeTrade={coachAnalysis?.shouldTakeTrade}

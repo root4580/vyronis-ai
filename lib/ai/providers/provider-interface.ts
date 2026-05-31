@@ -37,6 +37,7 @@ export type AiTextCompletionInput = {
 export type AiCoachTextInput = {
   context: PreTradePlannedContext
   prompt: string
+  systemPrompt?: string
   jsonMode?: boolean
 }
 

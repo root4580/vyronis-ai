@@ -17,13 +17,16 @@ export type TradeQualityBreakdown = {
 }
 
 export type TradeQualityHistoricalTrade = {
+  id?: string
   direction: string
   result: string
+  pnl: number
   emotion: string
   strategy_name?: string | null
   session?: string | null
   risk_percent?: number | null
   rule_followed?: boolean | null
+  mistake_tags?: string | null
   confirmation_signal?: string | null
   trade_date?: string | null
   created_at: string

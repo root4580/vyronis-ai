@@ -32,6 +32,15 @@ import {
   buildPreTradeCompletionMessages,
   generatePreTradeAnalysis,
 } from "@/lib/trade-coach/pre-trade-analysis"
+import {
+  buildCoachAnalysisBundle,
+  enrichVyronisCoachResponseWithLlm,
+} from "@/lib/coach/vyronis-coach-response"
+import {
+  evaluatePrecisionFlow,
+  mapVerdictToShouldTakeTrade,
+} from "@/lib/coach/precision-flow-engine"
+import { buildVyronisCoachTraderContext } from "@/lib/coach/vyronis-coach-trader-context"
 import { detectCoachRedFlags } from "@/lib/trade-coach/red-flags"
 import {
   extractPreTradeResponses,
@@ -58,7 +67,7 @@ import {
   type TradeQualitySessionRow,
 } from "@/lib/trade-coach/trade-quality-analytics"
 import { computeTradeQuality } from "@/lib/trade-coach/trade-quality-engine"
-import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+import { DEFAULT_USER_SETTINGS, normalizeUserSettings } from "@/lib/user-settings"
 import { buildPlaybookMatchMessages } from "@/lib/strategy/playbook-engine"
 import { resolveCoachPlaybook } from "@/lib/strategy/server-service"
 
@@ -881,6 +890,48 @@ export async function submitPreTradeAnswer(
       userId,
       maxRisk,
     )
+
+    const { data: settingsRow } = await supabase
+      .from("user_settings")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    const settings = settingsRow
+      ? normalizeUserSettings(settingsRow)
+      : { ...DEFAULT_USER_SETTINGS }
+
+    const precisionFlow = evaluatePrecisionFlow({
+      context: updatedContext,
+      responses,
+      historicalTrades: historicalTrades as unknown as import("@/lib/trade-risk-guard").TradeRiskGuardHistoryTrade[],
+      settings,
+      startingBalance: settings.starting_balance,
+    })
+
+    let vyronisCoach = buildCoachAnalysisBundle({
+      precisionFlow,
+      context: updatedContext,
+      responses,
+      historicalTrades: historicalTrades as unknown as import("@/lib/trade-risk-guard").TradeRiskGuardHistoryTrade[],
+      settings,
+      patternMemory,
+      startingBalance: settings.starting_balance,
+    })
+
+    const trader = buildVyronisCoachTraderContext({
+      settings,
+      historicalTrades: historicalTrades as unknown as import("@/lib/trade-risk-guard").TradeRiskGuardHistoryTrade[],
+      patternMemory,
+    })
+
+    vyronisCoach = await enrichVyronisCoachResponseWithLlm({
+      base: vyronisCoach,
+      precisionFlow,
+      context: updatedContext,
+      trader,
+    })
+
     const analysis = generatePreTradeAnalysis(updatedContext, responses, maxRisk)
     const tradeQuality = computeTradeQuality(
       buildTradeQualityInput(updatedContext, responses, maxRisk, historicalTrades, patternMemory),
@@ -889,7 +940,13 @@ export async function submitPreTradeAnswer(
       ...updatedContext,
       coach_analysis: {
         ...analysis,
+        confidenceScore: vyronisCoach.confidence,
+        shouldTakeTrade: mapVerdictToShouldTakeTrade(vyronisCoach.verdict),
+        summary: vyronisCoach.summary,
+        insights: [...vyronisCoach.why_it_passes, ...vyronisCoach.warnings].slice(0, 6),
         tradeQuality,
+        precisionFlow,
+        vyronisCoach,
       },
     }
 

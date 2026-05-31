@@ -118,10 +118,11 @@ export const openaiProvider: AiProvider = {
   async generateCoachInsight(input: AiCoachTextInput) {
     return completeOpenAiText({
       systemPrompt:
+        input.systemPrompt ||
         "You are Vyronis AI, a disciplined trading coach. Be concise, actionable, and risk-aware.",
       userPrompt: input.prompt,
       jsonMode: input.jsonMode,
-      maxTokens: 600,
+      maxTokens: 900,
     })
   },
   async generateDebriefNarrative(input: AiDebriefTextInput) {

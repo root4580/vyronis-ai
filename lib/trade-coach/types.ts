@@ -1,3 +1,5 @@
+import type { PrecisionFlowResult } from "@/lib/coach/precision-flow-engine"
+import type { VyronisCoachResponse } from "@/lib/coach/vyronis-coach-response"
 import type {
   TradeQualityBreakdown,
   TradeQualityGrade,
@@ -102,6 +104,8 @@ export type PreTradeAnalysis = {
   redFlags: CoachRedFlag[]
   insights: string[]
   tradeQuality?: TradeQualityResult
+  precisionFlow?: PrecisionFlowResult
+  vyronisCoach?: VyronisCoachResponse
 }
 
 export type {
