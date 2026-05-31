@@ -1,28 +1,46 @@
 import fs from "fs"
 import path from "path"
 
-export const MARKETING_SCREENSHOTS = {
-  journal: "journal-plan.png",
-  warRoom: "war-room.png",
-  analytics: "analytics.png",
-  hero: "hero-dashboard.png",
+const MARKETING_DIR = path.join(process.cwd(), "public", "marketing")
+
+export const MARKETING_SCREENSHOT_BASES = {
+  journal: "journal-plan",
+  warRoom: "war-room",
+  analytics: "analytics",
+  hero: "hero-dashboard",
 } as const
 
-export function marketingScreenshotExists(filename: string): boolean {
-  return fs.existsSync(path.join(process.cwd(), "public", "marketing", filename))
+const EXTENSIONS = ["png", "webp", "jpg", "jpeg", "svg"] as const
+
+export function resolveMarketingAsset(baseName: string): string | null {
+  for (const ext of EXTENSIONS) {
+    const filename = `${baseName}.${ext}`
+    if (fs.existsSync(path.join(MARKETING_DIR, filename))) {
+      return filename
+    }
+  }
+  return null
 }
 
 export function marketingScreenshotSrc(filename: string): string {
   return `/marketing/${filename}`
 }
 
+export function getJournalScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.journal)
+}
+
+export function getWarRoomScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.warRoom)
+}
+
+export function getAnalyticsScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.analytics)
+}
+
 /** Hero uses dedicated shot, or falls back to journal. */
 export function getHeroScreenshotFile(): string | null {
-  if (marketingScreenshotExists(MARKETING_SCREENSHOTS.hero)) {
-    return MARKETING_SCREENSHOTS.hero
-  }
-  if (marketingScreenshotExists(MARKETING_SCREENSHOTS.journal)) {
-    return MARKETING_SCREENSHOTS.journal
-  }
-  return null
+  return (
+    resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.hero) ?? getJournalScreenshotFile()
+  )
 }

@@ -19,11 +19,20 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: "Vyronis",
     type: "website",
+    images: [
+      {
+        url: "/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "Vyronis — AI Trading Operating System",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: MARKETING_TITLE,
     description: MARKETING_DESCRIPTION,
+    images: ["/og-image.svg"],
   },
   robots: { index: true, follow: true },
 }

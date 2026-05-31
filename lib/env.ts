@@ -23,6 +23,14 @@ function isVercelPreviewOrDevHost(host: string): boolean {
   return h.startsWith("localhost") || h.includes("127.0.0.1") || h.endsWith(".vercel.app")
 }
 
+function safeUrlHost(url: string): string | null {
+  try {
+    return new URL(url).host
+  } catch {
+    return null
+  }
+}
+
 function baseUrlFromHostHeader(hostHeader: string | null): string | null {
   if (!hostHeader?.trim()) return null
   const host = hostHeader.split(",")[0]?.trim().split(":")[0]?.trim()
@@ -53,7 +61,10 @@ export function getAppBaseUrl(request?: Request): string {
   }
 
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (fromEnv) return stripTrailingSlash(fromEnv)
+  const envHost = fromEnv ? safeUrlHost(fromEnv) : null
+  if (fromEnv && !(isVercelProduction() && envHost && isVercelPreviewOrDevHost(envHost))) {
+    return stripTrailingSlash(fromEnv)
+  }
 
   if (isVercelProduction() || (process.env.NODE_ENV === "production" && process.env.VERCEL)) {
     return getCanonicalProductionBaseUrl()
@@ -71,12 +82,18 @@ export function getAppBaseUrl(request?: Request): string {
 
 /** Client-safe Supabase + app URL — validated at module load in the browser. */
 export function getPublicEnv(): PublicEnv {
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    (process.env.NODE_ENV === "production"
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  const envHost = fromEnv ? safeUrlHost(fromEnv) : null
+  const useEnvUrl =
+    fromEnv &&
+    !(process.env.NODE_ENV === "production" && envHost && isVercelPreviewOrDevHost(envHost))
+
+  const appUrl = useEnvUrl
+    ? stripTrailingSlash(fromEnv)
+    : process.env.NODE_ENV === "production"
       ? getCanonicalProductionBaseUrl()
       : process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.replace(/\/auth\/callback$/, "") ||
-        "http://localhost:3000")
+        "http://localhost:3000"
 
   return {
     supabaseUrl: requireEnv(
@@ -122,6 +139,12 @@ export function assertProductionEnv(): void {
   if (appUrl.startsWith("http://localhost")) {
     throw new Error(
       "NEXT_PUBLIC_APP_URL must be your production URL in production (not localhost).",
+    )
+  }
+
+  if (isVercelPreviewOrDevHost(new URL(appUrl).host)) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be https://vyronishq.com in production (not a *.vercel.app URL).",
     )
   }
 

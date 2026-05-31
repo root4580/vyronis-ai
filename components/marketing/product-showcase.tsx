@@ -2,9 +2,10 @@ import type { ReactNode } from "react"
 import Image from "next/image"
 import { BarChart3, BookOpen, Swords } from "lucide-react"
 import {
+  getAnalyticsScreenshotFile,
   getHeroScreenshotFile,
-  MARKETING_SCREENSHOTS,
-  marketingScreenshotExists,
+  getJournalScreenshotFile,
+  getWarRoomScreenshotFile,
   marketingScreenshotSrc,
 } from "@/lib/marketing/screenshots"
 
@@ -14,12 +15,12 @@ function ScreenshotFrame({
   fallback,
   priority,
 }: {
-  file: string
+  file: string | null
   alt: string
   fallback: ReactNode
   priority?: boolean
 }) {
-  if (!marketingScreenshotExists(file)) {
+  if (!file) {
     return <>{fallback}</>
   }
 
@@ -135,7 +136,7 @@ function AnalyticsPreviewMock() {
 function JournalPreview() {
   return (
     <ScreenshotFrame
-      file={MARKETING_SCREENSHOTS.journal}
+      file={getJournalScreenshotFile()}
       alt="Vyronis journal Plan mode with A+ setup scoring"
       priority
       fallback={<JournalPreviewMock />}
@@ -146,7 +147,7 @@ function JournalPreview() {
 function WarRoomPreview() {
   return (
     <ScreenshotFrame
-      file={MARKETING_SCREENSHOTS.warRoom}
+      file={getWarRoomScreenshotFile()}
       alt="Vyronis War Room weekly planning dashboard"
       fallback={<WarRoomPreviewMock />}
     />
@@ -156,7 +157,7 @@ function WarRoomPreview() {
 function AnalyticsPreview() {
   return (
     <ScreenshotFrame
-      file={MARKETING_SCREENSHOTS.analytics}
+      file={getAnalyticsScreenshotFile()}
       alt="Vyronis analytics and discipline metrics"
       fallback={<AnalyticsPreviewMock />}
     />
@@ -208,21 +209,21 @@ export function ProductScreenshotsSection() {
     {
       title: "Journal · Plan mode",
       caption: "Score every setup with Vyronis Core Model fields before you click.",
-      file: MARKETING_SCREENSHOTS.journal,
+      file: getJournalScreenshotFile(),
       alt: "Vyronis journal Plan mode",
       mock: <JournalPreviewMock />,
     },
     {
       title: "War Room · Weekly plan",
       caption: "Sunday bias, watchlist, and AOI pair cards in one workflow.",
-      file: MARKETING_SCREENSHOTS.warRoom,
+      file: getWarRoomScreenshotFile(),
       alt: "Vyronis War Room",
       mock: <WarRoomPreviewMock />,
     },
     {
       title: "Analytics · Discipline OS",
       caption: "Win rate, A+ setup rate, and leak detection — not vanity metrics.",
-      file: MARKETING_SCREENSHOTS.analytics,
+      file: getAnalyticsScreenshotFile(),
       alt: "Vyronis analytics dashboard",
       mock: <AnalyticsPreviewMock />,
     },

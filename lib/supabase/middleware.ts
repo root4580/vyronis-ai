@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { APP_HOME_PATH } from "@/lib/branding"
+import { APP_HOME_PATH, APP_PRODUCTION_URL } from "@/lib/branding"
 import {
   isAuthEntryPath,
   isProtectedPath,
@@ -11,6 +11,18 @@ import { assertProductionEnv, getPublicEnv } from "@/lib/env"
 
 export async function updateSession(request: NextRequest) {
   assertProductionEnv()
+
+  const host = request.headers.get("host")?.split(":")[0]?.toLowerCase() ?? ""
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    host.endsWith(".vercel.app")
+  ) {
+    const target = new URL(
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+      APP_PRODUCTION_URL,
+    )
+    return NextResponse.redirect(target, 308)
+  }
 
   let supabaseResponse = NextResponse.next({
     request,
