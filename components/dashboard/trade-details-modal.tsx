@@ -39,6 +39,7 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import { LinkedPlanDisciplineSection } from "@/components/trade-planner/linked-plan-discipline-section"
 
 export type TradeDetails = {
   id: string
@@ -74,6 +75,7 @@ export type TradeDetails = {
   confirmation_type?: string | null
   entry_quality?: string | null
   vyronis_evaluation?: VyronisJournalEvaluationRecord | null
+  plan_id?: string | null
 }
 
 type TradeDetailsModalProps = {
@@ -333,6 +335,8 @@ export function TradeDetailsModal({
                   valueClassName="text-[13px] sm:text-sm"
                 />
               </div>
+
+              {trade.plan_id ? <LinkedPlanDisciplineSection trade={trade} /> : null}
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <DashboardInsetPanel className="glass">

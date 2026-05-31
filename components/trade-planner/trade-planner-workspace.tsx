@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, Brain, Calculator, CheckCircle2, Save, Target } from "lucide-react"
+import { AlertTriangle, Brain, Calculator, CheckCircle2, ChevronDown, Save, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ToastAction } from "@/components/ui/toast"
@@ -46,6 +46,7 @@ type SavedPlanRow = {
   direction: TradePlanDirection
   rr: number | null
   recommendedLots: number | null
+  status: string
   created_at: string
 }
 
@@ -73,6 +74,7 @@ export function TradePlannerWorkspace({
   const [stopLoss, setStopLoss] = useState("")
   const [takeProfit, setTakeProfit] = useState("")
   const [savedPlans, setSavedPlans] = useState<SavedPlanRow[]>([])
+  const [pastPlansOpen, setPastPlansOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveUnavailable, setSaveUnavailable] = useState(false)
 
@@ -167,6 +169,15 @@ export function TradePlannerWorkspace({
     plan.entryPrice > 0 && plan.stopLoss > 0 && plan.takeProfit > 0 && plan.pair.length > 0
 
   const canSave = canCoach && !saveUnavailable
+
+  const activePlans = useMemo(
+    () => savedPlans.filter((row) => row.status === "active"),
+    [savedPlans],
+  )
+  const pastPlans = useMemo(
+    () => savedPlans.filter((row) => row.status !== "active"),
+    [savedPlans],
+  )
 
   return (
     <div className="space-y-4">
@@ -370,16 +381,16 @@ export function TradePlannerWorkspace({
           <DashboardCard interactive className="glass-card">
             <DashboardCardHeader title="Recent plans" icon={Save} />
             <DashboardCardBody>
-              {savedPlans.length === 0 ? (
+              {activePlans.length === 0 ? (
                 <DashboardEmptyState
                   icon={Save}
-                  title="No saved plans yet"
+                  title="No active plans"
                   description="Saved plans stay separate from post-trade journal entries."
                   className="min-h-[120px]"
                 />
               ) : (
                 <div className="space-y-2">
-                  {savedPlans.slice(0, 6).map((saved) => (
+                  {activePlans.slice(0, 6).map((saved) => (
                     <DashboardInsetPanel key={saved.id} className="flex items-center justify-between px-3 py-2">
                       <div>
                         <p className="text-[12px] font-medium text-foreground/90">
@@ -399,6 +410,43 @@ export function TradePlannerWorkspace({
                   ))}
                 </div>
               )}
+
+              {pastPlans.length > 0 ? (
+                <div className="mt-4 border-t border-white/[0.06] pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setPastPlansOpen((open) => !open)}
+                    className="flex w-full items-center justify-between text-left text-[11px] text-muted-foreground/80 hover:text-foreground/90"
+                  >
+                    <span>Past plans ({pastPlans.length})</span>
+                    <ChevronDown
+                      className={cn("size-4 transition-transform", pastPlansOpen ? "rotate-180" : "")}
+                    />
+                  </button>
+                  {pastPlansOpen ? (
+                    <div className="mt-2 space-y-2">
+                      {pastPlans.slice(0, 12).map((saved) => (
+                        <DashboardInsetPanel
+                          key={saved.id}
+                          className="flex items-center justify-between px-3 py-2 opacity-80"
+                        >
+                          <div>
+                            <p className="text-[12px] font-medium text-foreground/85">
+                              {saved.pair} · {saved.direction}
+                            </p>
+                            <p className="text-[10px] capitalize text-muted-foreground/65">
+                              {saved.status} · {new Date(saved.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <p className="text-[11px] tabular-nums text-muted-foreground/70">
+                            {formatRiskReward(saved.rr)}
+                          </p>
+                        </DashboardInsetPanel>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </DashboardCardBody>
           </DashboardCard>
         </div>

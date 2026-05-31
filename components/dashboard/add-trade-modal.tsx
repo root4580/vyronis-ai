@@ -62,6 +62,11 @@ import {
   suggestPnLFromResult,
 } from "@/lib/trade-form-utils"
 import { cn } from "@/lib/utils"
+import { PlanMatchPrompt } from "@/components/trade-planner/plan-match-prompt"
+import {
+  filterActivePlansForTrade,
+  type MatchableTradePlan,
+} from "@/lib/trade-planner/plan-match"
 
 const PLAN_MODE_HINT_KEY = "seenPlanModeHint"
 
@@ -94,6 +99,8 @@ type AddTradeModalProps = {
   journalMode?: TradeJournalMode
   onJournalModeChange?: (mode: TradeJournalMode) => void
   existingStrategyNames?: string[]
+  linkedPlan?: MatchableTradePlan | null
+  onLinkedPlanChange?: (plan: MatchableTradePlan | null) => void
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -183,9 +190,14 @@ export function AddTradeModal({
   journalMode = "log",
   onJournalModeChange,
   existingStrategyNames = [],
+  linkedPlan = null,
+  onLinkedPlanChange,
 }: AddTradeModalProps) {
   const [logSetupOpen, setLogSetupOpen] = useState(false)
   const [showPlanHint, setShowPlanHint] = useState(false)
+  const [savedPlans, setSavedPlans] = useState<MatchableTradePlan[]>([])
+  const [matchDismissed, setMatchDismissed] = useState(false)
+  const [manualLinkOpen, setManualLinkOpen] = useState(false)
 
   const isPlan = journalMode === "plan"
   const isLog = journalMode === "log"
@@ -216,6 +228,48 @@ export function AddTradeModal({
     if (window.localStorage.getItem(PLAN_MODE_HINT_KEY) === "1") return
     setShowPlanHint(true)
   }, [open, isEditing])
+
+  useEffect(() => {
+    if (!open || !isLog || isEditing) {
+      setSavedPlans([])
+      setMatchDismissed(false)
+      setManualLinkOpen(false)
+      if (!open) onLinkedPlanChange?.(null)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadPlans() {
+      try {
+        const response = await fetch("/api/trade-plans")
+        if (!response.ok || cancelled) return
+        const payload = (await response.json()) as { plans?: MatchableTradePlan[] }
+        if (!cancelled) setSavedPlans(payload.plans ?? [])
+      } catch {
+        if (!cancelled) setSavedPlans([])
+      }
+    }
+
+    void loadPlans()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, isLog, isEditing])
+
+  useEffect(() => {
+    setMatchDismissed(false)
+  }, [form.pair, form.trade_date])
+
+  const matchedPlans = useMemo(
+    () =>
+      filterActivePlansForTrade(savedPlans, {
+        pair: form.pair,
+        tradeDate: form.trade_date || new Date().toISOString().split("T")[0],
+      }),
+    [savedPlans, form.pair, form.trade_date],
+  )
 
   function dismissPlanHint() {
     if (typeof window !== "undefined") {
@@ -341,6 +395,25 @@ export function AddTradeModal({
                   </div>
                 </div>
               </div>
+
+              {isLog && !isEditing && form.pair ? (
+                <PlanMatchPrompt
+                  pair={form.pair}
+                  matchedPlans={matchedPlans}
+                  selectedPlanId={linkedPlan?.id ?? null}
+                  dismissed={matchDismissed}
+                  manualOpen={manualLinkOpen}
+                  onManualOpenChange={setManualLinkOpen}
+                  onConfirm={(plan) => onLinkedPlanChange?.(plan)}
+                  onDismiss={() => setMatchDismissed(true)}
+                  onSkip={() => {
+                    setMatchDismissed(true)
+                    onLinkedPlanChange?.(null)
+                  }}
+                  onSelectPlan={(plan) => onLinkedPlanChange?.(plan)}
+                  onClearSelection={() => onLinkedPlanChange?.(null)}
+                />
+              ) : null}
 
               {isLog ? (
                 <div className="space-y-2">

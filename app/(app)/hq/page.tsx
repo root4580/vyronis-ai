@@ -124,6 +124,13 @@ import {
   clearTradePlannerCoachPrefill,
   readTradePlannerCoachPrefill,
 } from "@/lib/trade-planner/coach-prefill"
+import {
+  buildTradeActualForDeviation,
+  computePlanDiscipline,
+  type PlanDisciplineResult,
+} from "@/lib/trade-planner/deviation-engine"
+import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
+import { PlanDisciplineResultModal } from "@/components/trade-planner/plan-discipline-result-modal"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
@@ -191,6 +198,7 @@ type Trade = {
   entry_quality?: string | null
   vyronis_evaluation?: VyronisJournalEvaluationRecord | null
   import_source?: string | null
+  plan_id?: string | null
   created_at: string
 }
 
@@ -272,6 +280,11 @@ function Home() {
   const [vyronisResultOpen, setVyronisResultOpen] = useState(false)
   const [lastVyronisEvaluation, setLastVyronisEvaluation] = useState<VyronisJournalEvaluationRecord | null>(null)
   const [lastVyronisPairLabel, setLastVyronisPairLabel] = useState<string>("")
+  const [linkedPlan, setLinkedPlan] = useState<MatchableTradePlan | null>(null)
+  const [planDisciplineOpen, setPlanDisciplineOpen] = useState(false)
+  const [planDisciplineResult, setPlanDisciplineResult] = useState<PlanDisciplineResult | null>(null)
+  const [planDisciplinePairLabel, setPlanDisciplinePairLabel] = useState("")
+  const [planDisciplineTradeId, setPlanDisciplineTradeId] = useState<string | null>(null)
   const [tradeJournalMode, setTradeJournalMode] = useState<TradeJournalMode>("log")
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
@@ -1599,6 +1612,48 @@ function Home() {
       })
     } else {
       const savedTradeId = editingTrade?.id ?? result.data?.id
+      const planToLink = linkedPlan
+      const savedPairLabel = `${form.pair} ${form.direction}`
+      const savedFormSnapshot = {
+        pair: form.pair,
+        direction: form.direction,
+        entry_price: form.entry_price,
+        stop_loss: form.stop_loss,
+        take_profit: form.take_profit,
+        risk_percent: form.risk_percent,
+      }
+      let linkedPlanDiscipline: PlanDisciplineResult | null = null
+
+      if (savedTradeId && planToLink && !isPlanSave && !editingTrade) {
+        try {
+          const linkResponse = await fetch(`/api/trade-plans/${planToLink.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "execute", tradeId: savedTradeId }),
+          })
+          if (linkResponse.ok) {
+            linkedPlanDiscipline = computePlanDiscipline(
+              planToLink,
+              buildTradeActualForDeviation({
+                pair: savedFormSnapshot.pair,
+                direction: savedFormSnapshot.direction,
+                entryPrice: parseOptionalNumber(savedFormSnapshot.entry_price),
+                stopLoss: parseOptionalNumber(savedFormSnapshot.stop_loss),
+                takeProfit: parseOptionalNumber(savedFormSnapshot.take_profit),
+                riskPercent: savedFormSnapshot.risk_percent
+                  ? parseFloat(savedFormSnapshot.risk_percent)
+                  : 1,
+                riskReward: computedRiskReward,
+                accountSizeForRisk: planToLink.accountSize,
+                startingBalance,
+              }),
+            )
+          }
+        } catch (linkError) {
+          console.error("Plan link error:", linkError)
+        }
+      }
+
       toast({
         title: editingTrade ? "Trade updated" : isPlanSave ? "Setup saved" : "Trade saved",
         description: usedFallbackSave
@@ -1611,10 +1666,18 @@ function Home() {
       setForm(createInitialTradeForm())
       setEditingTrade(null)
       setTradeJournalMode("log")
+      setLinkedPlan(null)
       setIsModalOpen(false)
       setLastVyronisEvaluation(vyronisEvaluation)
-      setLastVyronisPairLabel(`${form.pair} ${form.direction}`)
-      setVyronisResultOpen(true)
+      setLastVyronisPairLabel(savedPairLabel)
+      if (linkedPlanDiscipline && savedTradeId) {
+        setPlanDisciplineResult(linkedPlanDiscipline)
+        setPlanDisciplinePairLabel(savedPairLabel)
+        setPlanDisciplineTradeId(savedTradeId)
+        setPlanDisciplineOpen(true)
+      } else {
+        setVyronisResultOpen(true)
+      }
       fetchTrades(activeUserId)
       if (savedTradeId) {
         void syncTradeLearningMemory(savedTradeId).catch(() => undefined)
@@ -1801,6 +1864,7 @@ function Home() {
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("log")
+    setLinkedPlan(null)
     setRiskGuardOpen(false)
     setRiskGuardResult(null)
     setForm(createInitialTradeForm())
@@ -2314,6 +2378,8 @@ function Home() {
             description: "Update result, P&L, and psychology before saving.",
           })
         }}
+        linkedPlan={linkedPlan}
+        onLinkedPlanChange={setLinkedPlan}
       />
 
       <FirstRunSetupModal
@@ -2464,6 +2530,20 @@ function Home() {
         evaluation={lastVyronisEvaluation}
         pairLabel={lastVyronisPairLabel}
         onClose={() => setVyronisResultOpen(false)}
+      />
+
+      <PlanDisciplineResultModal
+        open={planDisciplineOpen}
+        pairLabel={planDisciplinePairLabel}
+        result={planDisciplineResult}
+        tradeDetailHref={
+          planDisciplineTradeId ? `/journal/trade/${planDisciplineTradeId}` : undefined
+        }
+        onClose={() => {
+          setPlanDisciplineOpen(false)
+          setPlanDisciplineResult(null)
+          setPlanDisciplineTradeId(null)
+        }}
       />
 
       <VyronisCommandCenter />

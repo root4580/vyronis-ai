@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { buildTradePlanCalculation } from "@/lib/trade-planner/trade-plan-engine"
+import { planIdsToExpire } from "@/lib/trade-planner/plan-match"
 import type { TradePlanDirection } from "@/lib/trade-planner/types"
 import { createClient } from "@/lib/supabase/server"
 
@@ -23,8 +24,34 @@ function mapRow(row: Record<string, unknown>) {
     warnings: Array.isArray(row.warnings) ? row.warnings : [],
     suggestedAction: String(row.suggested_action),
     status: String(row.status),
+    executed_trade_id: row.executed_trade_id != null ? String(row.executed_trade_id) : null,
     created_at: String(row.created_at),
   }
+}
+
+async function expireStaleActivePlans(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  rows: { id: string; status: string; created_at: string }[],
+) {
+  const ids = planIdsToExpire(
+    rows.map((row) => ({
+      id: row.id,
+      status: row.status as "active" | "executed" | "skipped" | "expired",
+      created_at: row.created_at,
+    })),
+  )
+
+  if (ids.length === 0) return rows
+
+  await supabase
+    .from("trade_plans")
+    .update({ status: "expired", updated_at: new Date().toISOString() })
+    .in("id", ids)
+    .eq("user_id", userId)
+    .eq("status", "active")
+
+  return rows.map((row) => (ids.includes(row.id) ? { ...row, status: "expired" } : row))
 }
 
 export async function GET() {
@@ -44,7 +71,7 @@ export async function GET() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(40)
 
     if (error) {
       if (error.code === "42P01" || error.code === "PGRST205") {
@@ -59,7 +86,9 @@ export async function GET() {
       throw error
     }
 
-    return NextResponse.json({ plans: (data || []).map(mapRow) })
+    const rows = await expireStaleActivePlans(supabase, user.id, data || [])
+
+    return NextResponse.json({ plans: rows.map(mapRow) })
   } catch (error) {
     console.error("Trade plans GET error:", error)
     return NextResponse.json(

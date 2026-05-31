@@ -43,5 +43,6 @@ export type SavedTradePlan = TradePlanCalculation & {
   id: string
   user_id: string
   status: TradePlanStatus
+  executed_trade_id?: string | null
   created_at: string
 }
