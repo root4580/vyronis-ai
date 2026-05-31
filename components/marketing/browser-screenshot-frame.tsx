@@ -1,5 +1,4 @@
 import type { ReactNode } from "react"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 type BrowserScreenshotFrameProps = {
@@ -33,14 +32,16 @@ export function BrowserScreenshotFrame({
             Live UI
           </span>
         </div>
-        <Image
+        {/* Native img — Next.js Image optimizer rejects SVG (400 on Vercel). */}
+        <img
           src={src}
           alt={alt}
           width={1440}
           height={900}
-          priority={priority}
+          decoding="async"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           className="h-auto w-full"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 640px"
         />
       </div>
       <figcaption className="mt-2 text-center text-[10px] text-muted-foreground/60">

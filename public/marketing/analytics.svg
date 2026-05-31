@@ -1,42 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Vyronis analytics dashboard">
   <rect width="1440" height="900" fill="#0a0f14"/>
   <rect x="40" y="40" width="1360" height="56" rx="12" fill="#111820" stroke="#ffffff14"/>
   <text x="72" y="76" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Analytics</text>
-  <text x="180" y="76" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Last 30 trades · Vyronis OS</text>
-
+  <text x="180" y="76" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Last 30 trades | Vyronis OS</text>
   <rect x="40" y="120" width="320" height="130" rx="16" fill="#0b1118" stroke="#ffffff12"/>
   <text x="72" y="158" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">WIN RATE</text>
   <text x="72" y="210" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="44" font-weight="800">58%</text>
-
   <rect x="390" y="120" width="320" height="130" rx="16" fill="#0b1118" stroke="#22d3ee33"/>
   <text x="422" y="158" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">A+ SETUP RATE</text>
   <text x="422" y="210" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="44" font-weight="800">71%</text>
-
   <rect x="740" y="120" width="320" height="130" rx="16" fill="#0b1118" stroke="#34d39933"/>
   <text x="772" y="158" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">AVG R:R</text>
   <text x="772" y="210" fill="#34d399" font-family="system-ui,sans-serif" font-size="44" font-weight="800">1:2.4</text>
-
   <rect x="1090" y="120" width="310" height="130" rx="16" fill="#0b1118" stroke="#ffffff12"/>
   <text x="1122" y="158" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">LEAK DETECTED</text>
   <text x="1122" y="210" fill="#fbbf24" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Revenge trades</text>
-
   <rect x="40" y="280" width="880" height="580" rx="16" fill="#0b1118" stroke="#ffffff12"/>
   <text x="72" y="320" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="2">EQUITY CURVE</text>
   <polyline points="90,780 170,740 250,760 330,690 410,710 490,620 570,650 650,560 730,590 810,500 890,520" fill="none" stroke="#22d3ee" stroke-width="4"/>
   <polyline points="90,780 170,760 250,770 330,730 410,740 490,700 570,710 650,660 730,680 810,630 890,650" fill="none" stroke="#34d399" stroke-width="2" opacity="0.5"/>
-
   <rect x="960" y="280" width="440" height="280" rx="16" fill="#0b1118" stroke="#ffffff12"/>
   <text x="992" y="320" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">WEEKLY AI REVIEW</text>
   <text x="992" y="360" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="16">Best session: London</text>
   <text x="992" y="390" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Improve: reduce early entries before retest</text>
   <text x="992" y="430" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Strength: HTF alignment on winners</text>
-
   <rect x="960" y="580" width="440" height="280" rx="16" fill="#0b1118" stroke="#ffffff12"/>
   <text x="992" y="620" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">EMOTION BREAKDOWN</text>
   <rect x="992" y="650" width="280" height="18" rx="9" fill="#ffffff10"/>
   <rect x="992" y="650" width="210" height="18" rx="9" fill="#34d399"/>
-  <text x="992" y="700" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Calm · 75%</text>
+  <text x="992" y="700" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Calm | 75%</text>
   <rect x="992" y="720" width="280" height="18" rx="9" fill="#ffffff10"/>
   <rect x="992" y="720" width="56" height="18" rx="9" fill="#f87171"/>
-  <text x="992" y="770" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Revenge · 8%</text>
+  <text x="992" y="770" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Revenge | 8%</text>
 </svg>
