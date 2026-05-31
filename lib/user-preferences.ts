@@ -2,6 +2,7 @@ import type { DashboardTab } from "@/components/dashboard/trading-components"
 
 export type DashboardPreferences = {
   activeTab: DashboardTab
+  onboardingCompleted?: boolean
 }
 
 export const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
@@ -15,10 +16,21 @@ export function parseDashboardPreferences(value: unknown): DashboardPreferences 
     return DEFAULT_DASHBOARD_PREFERENCES
   }
 
-  const activeTab = (value as DashboardPreferences).activeTab
+  const record = value as DashboardPreferences
+  const activeTab = record.activeTab
+  const onboardingCompleted =
+    typeof record.onboardingCompleted === "boolean" ? record.onboardingCompleted : undefined
+
   if (VALID_TABS.has(activeTab)) {
-    return { activeTab }
+    return { activeTab, onboardingCompleted }
   }
 
-  return DEFAULT_DASHBOARD_PREFERENCES
+  return { ...DEFAULT_DASHBOARD_PREFERENCES, onboardingCompleted }
+}
+
+export function mergeDashboardPreferences(
+  current: unknown,
+  patch: Partial<DashboardPreferences>,
+): DashboardPreferences {
+  return { ...parseDashboardPreferences(current), ...patch }
 }

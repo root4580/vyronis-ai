@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import {
   AlertTriangle,
   BarChart3,
@@ -9,6 +10,8 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { AnalyticsEmotionChart } from "@/components/analytics/analytics-emotion-chart"
 import { AnalyticsEquityChart } from "@/components/analytics/analytics-equity-chart"
 import { AnalyticsMetricCard } from "@/components/analytics/analytics-metric-card"
@@ -17,7 +20,7 @@ import { AnalyticsWeeklyTrend } from "@/components/analytics/analytics-weekly-tr
 import { DashboardEmptyState } from "@/components/dashboard/dashboard-primitives"
 import type { DashboardAnalyticsSnapshot } from "@/lib/analytics/types"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
-import { formatRiskReward } from "@/lib/trade-form-utils"
+import { formatAverageRiskReward } from "@/lib/trade-form-utils"
 
 type AnalyticsDashboardProps = {
   analytics: DashboardAnalyticsSnapshot
@@ -32,7 +35,11 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
         title="No trades to analyze yet"
         description="Log your first trade in the journal to unlock Vyronis performance analytics, equity curves, and coaching insights."
         className="min-h-[420px] rounded-2xl border border-white/[0.06] bg-black/20"
-      />
+      >
+        <Button asChild size="sm" className="mt-4 bg-cyan-glow/90 text-black hover:bg-cyan-glow">
+          <Link href={`${APP_HOME_PATH}?action=new-trade`}>Log your first trade</Link>
+        </Button>
+      </DashboardEmptyState>
     )
   }
 
@@ -60,8 +67,12 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
         />
         <AnalyticsMetricCard
           label="Average R:R"
-          value={formatRiskReward(analytics.averageRR > 0 ? analytics.averageRR : null)}
-          subtext="Mean planned risk-reward on logged trades"
+          value={formatAverageRiskReward(analytics.averageRR)}
+          subtext={
+            analytics.averageRR > 0
+              ? "Mean planned risk-reward on logged trades"
+              : "Add entry, stop, and target to calculate R:R"
+          }
           icon={Target}
           tone="cyan"
           delayMs={120}
@@ -71,8 +82,8 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
           value={analytics.bestSession?.name ?? "—"}
           subtext={
             analytics.bestSession
-              ? `${formatPnL(analytics.bestSession.pnl, analytics.bestSession.pnl >= 0 ? "WIN" : "LOSS")} · ${analytics.bestSession.winRate}% WR`
-              : "Log session tags on trades"
+              ? `${formatPnL(analytics.bestSession.pnl, "WIN")} · ${analytics.bestSession.winRate}% WR`
+              : "No profitable session yet — keep logging"
           }
           icon={Clock}
           tone={analytics.bestSession && analytics.bestSession.pnl >= 0 ? "profit" : "default"}

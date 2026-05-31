@@ -43,6 +43,7 @@ import {
   printWeeklyDebriefReport,
 } from "@/lib/ai/weekly-debrief-export"
 import type { WeeklyDebriefResult } from "@/lib/ai/weekly-debrief-types"
+import { getBestTradeHighlightLabel } from "@/lib/analytics/insight-thresholds"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
@@ -410,7 +411,9 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
             <div className="grid gap-2 md:grid-cols-2">
               {journalLinks.bestTrade && (
                 <DashboardInsetPanel className="border-profit/20 bg-profit/[0.04] px-3 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-profit/80">Best Trade</p>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-profit/80">
+                    {getBestTradeHighlightLabel(journalLinks.bestTrade.result, journalLinks.bestTrade.pnl)}
+                  </p>
                   <p className="mt-1 text-sm font-semibold">{journalLinks.bestTrade.pair}</p>
                   <p className={cn("text-[12px] tabular-nums", getPnLTextClass(journalLinks.bestTrade.pnl, journalLinks.bestTrade.result))}>
                     {formatPnL(journalLinks.bestTrade.pnl, journalLinks.bestTrade.result)} · {journalLinks.bestTrade.result}

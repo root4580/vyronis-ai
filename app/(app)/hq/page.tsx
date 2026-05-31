@@ -59,7 +59,9 @@ import {
   type UserSettingsForm,
   type UserSettingsRecord,
 } from "@/lib/user-settings"
-import { DEFAULT_DASHBOARD_PREFERENCES } from "@/lib/user-preferences"
+import { DEFAULT_DASHBOARD_PREFERENCES, mergeDashboardPreferences, parseDashboardPreferences } from "@/lib/user-preferences"
+import { FirstRunBanner } from "@/components/dashboard/first-run-banner"
+import { FirstRunSetupModal } from "@/components/dashboard/first-run-setup-modal"
 import { APP_HOME_PATH } from "@/lib/branding"
 import {
   buildDashboardHomePath,
@@ -841,7 +843,9 @@ function Home() {
     void supabase
       .from("user_settings")
       .update({
-        dashboard_preferences: { activeTab: tab },
+        dashboard_preferences: mergeDashboardPreferences(userSettings?.dashboard_preferences, {
+          activeTab: tab,
+        }),
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", user.id)
@@ -1250,6 +1254,58 @@ function Home() {
     }
   }
 
+  async function completeFirstRunSetup(updates: Partial<UserSettingsForm>) {
+    if (!user) return
+
+    setIsSavingSettings(true)
+    const nextForm = { ...settingsForm, ...updates }
+
+    const settingsData = {
+      user_id: user.id,
+      starting_balance: nextForm.starting_balance,
+      daily_drawdown_limit: nextForm.daily_drawdown_limit,
+      max_risk_per_trade: nextForm.max_risk_per_trade,
+      max_trades_per_day: nextForm.max_trades_per_day,
+      prop_firm_size: nextForm.prop_firm_size,
+      profit_target: nextForm.profit_target,
+      preferred_session: nextForm.preferred_session,
+      dashboard_preferences: mergeDashboardPreferences(userSettings?.dashboard_preferences, {
+        activeTab,
+        onboardingCompleted: true,
+      }),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabase
+      .from("user_settings")
+      .upsert(settingsData, { onConflict: "user_id" })
+      .select("*")
+      .single()
+
+    setIsSavingSettings(false)
+
+    if (error) {
+      toast({
+        title: "Could not save setup",
+        description: error.message,
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (data) {
+      setUserSettings(data)
+      setSettingsForm(normalizeUserSettings(data))
+    } else {
+      setSettingsForm(nextForm)
+    }
+
+    toast({
+      title: "Setup complete",
+      description: "Open War Room to plan your first trade, then log it in the journal.",
+    })
+  }
+
   async function saveUserSettings(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -1265,7 +1321,7 @@ function Home() {
       prop_firm_size: settingsForm.prop_firm_size,
       profit_target: settingsForm.profit_target,
       preferred_session: settingsForm.preferred_session,
-      dashboard_preferences: { activeTab },
+      dashboard_preferences: mergeDashboardPreferences(userSettings?.dashboard_preferences, { activeTab }),
       updated_at: new Date().toISOString(),
     }
 
@@ -1657,6 +1713,9 @@ function Home() {
   const maxRiskPerTrade = userSettings?.max_risk_per_trade ?? settingsForm.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade
   const showTradesSkeleton =
     isLoadingTrades && trades.length === 0 && !dashboardLoadTimedOut
+  const dashboardPreferences = parseDashboardPreferences(userSettings?.dashboard_preferences)
+  const showFirstRunSetup =
+    Boolean(user) && !showTradesSkeleton && trades.length === 0 && !dashboardPreferences.onboardingCompleted
   const showProfileSkeleton =
     isLoadingProfile && !userProfile && !dashboardLoadTimedOut
   const showLoadFallbackBanner = !!tradesLoadError
@@ -1832,6 +1891,13 @@ function Home() {
               <DashboardOverviewSkeleton />
             ) : (
               <div className="space-y-4 md:space-y-6">
+                {trades.length === 0 ? (
+                  <FirstRunBanner
+                    onLogTrade={() => openManualTrade()}
+                    onOpenWarRoom={() => router.push("/war-room")}
+                  />
+                ) : null}
+
                 <StatsCards
                   accountBalance={accountBalance}
                   totalPnL={totalPnL}
@@ -2138,6 +2204,14 @@ function Home() {
             description: "Update result, P&L, and psychology before saving.",
           })
         }}
+      />
+
+      <FirstRunSetupModal
+        open={showFirstRunSetup}
+        form={settingsForm}
+        isSaving={isSavingSettings}
+        onComplete={completeFirstRunSetup}
+        onOpenWarRoom={() => router.push("/war-room")}
       />
 
       <AccountSettingsModal

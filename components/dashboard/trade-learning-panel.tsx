@@ -119,6 +119,11 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
   const { dashboard } = snapshot
   const heatmapData = dashboard.mistakeHeatmap.slice(0, 6)
   const pairData = dashboard.winRateByPair.slice(0, 6)
+  const winningPatterns = dashboard.winningPatterns.filter((pattern) => (pattern.winRate ?? 0) > 0)
+  const bestSetupType =
+    dashboard.bestSetupType && (dashboard.bestSetupType.winRate ?? 0) > 0
+      ? dashboard.bestSetupType
+      : null
 
   return (
     <div className="space-y-3">
@@ -167,13 +172,13 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
         <DashboardCard className="border-white/[0.06] bg-black/20">
           <DashboardCardHeader title="Best Setup Type" icon={Sparkles} className="px-3 py-2" />
           <DashboardCardBody className="space-y-2 px-3 pb-3">
-            {dashboard.bestSetupType ? (
+            {bestSetupType ? (
               <>
-                <p className="text-lg font-semibold text-foreground/90">{dashboard.bestSetupType.value}</p>
-                <p className="text-[11px] text-muted-foreground/75">{dashboard.bestSetupType.message}</p>
+                <p className="text-lg font-semibold text-foreground/90">{bestSetupType.value}</p>
+                <p className="text-[11px] text-muted-foreground/75">{bestSetupType.message}</p>
                 <div className="flex items-center gap-2 text-[10px] text-cyan-glow/80">
                   <TrendingUp className="size-3.5" />
-                  {dashboard.bestSetupType.winRate}% win rate · {dashboard.bestSetupType.tradeCount} trades
+                  {bestSetupType.winRate}% win rate · {bestSetupType.tradeCount} trades
                 </div>
               </>
             ) : (
@@ -239,13 +244,13 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
         </DashboardCardBody>
       </DashboardCard>
 
-      {dashboard.winningPatterns.length > 0 && (
+      {winningPatterns.length > 0 && (
         <DashboardInsetPanel className="border-profit/15 bg-profit/[0.03] px-3 py-3">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-profit/90">
             Winning Conditions
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {dashboard.winningPatterns.slice(0, 4).map((pattern) => (
+            {winningPatterns.slice(0, 4).map((pattern) => (
               <div key={pattern.key} className="rounded-md border border-white/[0.06] bg-black/20 px-2 py-2">
                 <p className="text-[10px] font-medium text-foreground/85">{pattern.label}</p>
                 <p className="text-[10px] text-muted-foreground/75">{pattern.message}</p>

@@ -66,6 +66,12 @@ export function formatRiskReward(value: number | null | undefined): string {
   return `1:${reward}`
 }
 
+/** Dashboard aggregate R:R — explicit when journal lacks planned levels. */
+export function formatAverageRiskReward(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value <= 0) return "N/A"
+  return formatRiskReward(value)
+}
+
 export function calculateTradeRiskReward(trade: {
   direction: string
   entry_price?: number | null

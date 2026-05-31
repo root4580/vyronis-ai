@@ -39,6 +39,7 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
 
   const weekDays = ["S", "M", "T", "W", "T", "F", "S"]
   const hasTrades = (trades?.length ?? 0) > 0
+  const isSparseMonth = hasTrades && heatmap.tradedDays > 0 && heatmap.tradedDays < 5
 
   return (
     <DashboardCard interactive glow className="overflow-hidden">
@@ -65,6 +66,15 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
           />
         ) : (
           <>
+            {isSparseMonth ? (
+              <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.04] px-3 py-2.5">
+                <p className="text-[11px] text-muted-foreground/80">
+                  {heatmap.tradedDays} trading day{heatmap.tradedDays === 1 ? "" : "s"} logged this month.
+                  Most cells stay empty until you journal more consistently.
+                </p>
+              </DashboardInsetPanel>
+            ) : null}
+
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <DashboardInsetPanel className="px-2.5 py-2">
                 <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">

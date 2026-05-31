@@ -1,3 +1,4 @@
+import { getBestTradeHighlightLabel } from "@/lib/analytics/insight-thresholds"
 import type { WeeklyDebriefResult } from "@/lib/ai/weekly-debrief-types"
 import { formatPnL } from "@/lib/trade-utils"
 
@@ -58,9 +59,13 @@ export function formatWeeklyDebriefReport(debrief: WeeklyDebriefResult): string 
   recommendations.forEach((item) => lines.push(`- ${item}`))
 
   if (debrief.journalLinks.bestTrade) {
+    const label = getBestTradeHighlightLabel(
+      debrief.journalLinks.bestTrade.result,
+      debrief.journalLinks.bestTrade.pnl,
+    )
     lines.push(
       "",
-      `Best trade: ${debrief.journalLinks.bestTrade.pair} (${debrief.journalLinks.bestTrade.result})`,
+      `${label}: ${debrief.journalLinks.bestTrade.pair} (${debrief.journalLinks.bestTrade.result})`,
     )
   }
   if (debrief.journalLinks.worstTrade) {

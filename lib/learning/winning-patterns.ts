@@ -1,3 +1,9 @@
+import {
+  hasPositiveWinRate,
+  MIN_EMOTION_INSIGHT_TRADES,
+  MIN_GROUP_INSIGHT_TRADES,
+  MIN_JOURNAL_INSIGHT_TRADES,
+} from "@/lib/analytics/insight-thresholds"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { scoreHtfAlignment } from "@/lib/learning/trade-memory-engine"
 import type { LearningTradeRow, SetupStatisticsRecord, WinningPatternInsight } from "@/lib/learning/types"
@@ -38,11 +44,14 @@ export function buildSetupStatistics(trades: LearningTradeRow[]): SetupStatistic
     const emotionStats = groupBy(rows, (t) => t.emotion || "Unassigned")
 
     const bestSession = [...sessionStats.entries()]
-      .filter(([, items]) => items.length >= 2)
+      .filter(([, items]) => items.length >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(winRate(items)))
       .sort((a, b) => winRate(b[1]) - winRate(a[1]))[0]?.[0]
 
     const bestEmotion = [...emotionStats.entries()]
-      .filter(([, items]) => items.length >= 2)
+      .filter(
+        ([, items]) =>
+          items.length >= MIN_EMOTION_INSIGHT_TRADES && hasPositiveWinRate(winRate(items)),
+      )
       .sort((a, b) => winRate(b[1]) - winRate(a[1]))[0]?.[0]
 
     return {
@@ -62,11 +71,14 @@ export function buildSetupStatistics(trades: LearningTradeRow[]): SetupStatistic
 }
 
 export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatternInsight[] {
-  if (trades.length < 3) return []
+  if (trades.length < MIN_JOURNAL_INSIGHT_TRADES) return []
   const insights: WinningPatternInsight[] = []
 
   const setupStats = buildSetupStatistics(trades)
-    .filter((item) => item.trade_count >= 2)
+    .filter(
+      (item) =>
+        item.trade_count >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(item.win_rate),
+    )
     .sort((a, b) => b.win_rate - a.win_rate || b.total_pnl - a.total_pnl)
   if (setupStats[0]) {
     insights.push({
@@ -81,7 +93,10 @@ export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatt
 
   const sessionGroups = groupBy(trades, (t) => t.session || "Unassigned")
   const bestSession = [...sessionGroups.entries()]
-    .filter(([, rows]) => rows.length >= 2)
+    .filter(
+      ([, rows]) =>
+        rows.length >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(winRate(rows)),
+    )
     .sort((a, b) => winRate(b[1]) - winRate(a[1]))[0]
   if (bestSession) {
     insights.push({
@@ -96,7 +111,10 @@ export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatt
 
   const pairGroups = groupBy(trades, (t) => t.pair)
   const bestPair = [...pairGroups.entries()]
-    .filter(([, rows]) => rows.length >= 2)
+    .filter(
+      ([, rows]) =>
+        rows.length >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(winRate(rows)),
+    )
     .sort((a, b) => winRate(b[1]) - winRate(a[1]))[0]
   if (bestPair) {
     insights.push({
@@ -111,7 +129,10 @@ export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatt
 
   const emotionGroups = groupBy(trades, (t) => t.emotion || "Unassigned")
   const bestEmotion = [...emotionGroups.entries()]
-    .filter(([, rows]) => rows.length >= 2)
+    .filter(
+      ([, rows]) =>
+        rows.length >= MIN_EMOTION_INSIGHT_TRADES && hasPositiveWinRate(winRate(rows)),
+    )
     .sort((a, b) => winRate(b[1]) - winRate(a[1]))[0]
   if (bestEmotion) {
     insights.push({
@@ -125,7 +146,7 @@ export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatt
   }
 
   const rrBuckets = trades.filter((t) => t.risk_reward != null && t.risk_reward >= 2)
-  if (rrBuckets.length >= 2) {
+  if (rrBuckets.length >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(winRate(rrBuckets))) {
     insights.push({
       key: "best_rr_profile",
       label: "Best RR profile",
@@ -137,7 +158,7 @@ export function identifyWinningPatterns(trades: LearningTradeRow[]): WinningPatt
   }
 
   const aligned = trades.filter((t) => scoreHtfAlignment(t) >= 75)
-  if (aligned.length >= 2) {
+  if (aligned.length >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(winRate(aligned))) {
     insights.push({
       key: "htf_alignment",
       label: "HTF-aligned setups",

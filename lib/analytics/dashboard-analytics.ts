@@ -187,7 +187,7 @@ function buildBestSession(trades: AnalyticsTradeRow[]) {
     if (!best || candidate.pnl > best.pnl) best = candidate
   }
 
-  return best
+  return best && best.pnl > 0 ? best : null
 }
 
 function buildBestPair(trades: AnalyticsTradeRow[]) {
@@ -213,7 +213,7 @@ function buildBestPair(trades: AnalyticsTradeRow[]) {
     if (!best || candidate.pnl > best.pnl) best = candidate
   }
 
-  return best
+  return best && best.pnl > 0 ? best : null
 }
 
 function calculateAverageRR(trades: AnalyticsTradeRow[]): number {

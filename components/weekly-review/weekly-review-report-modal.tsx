@@ -21,6 +21,7 @@ import {
   buildBehavioralExportSummary,
   printBehavioralWeeklyReview,
 } from "@/lib/weekly-review/behavioral-export"
+import { getBestTradeHighlightLabel } from "@/lib/analytics/insight-thresholds"
 import { formatInsightSourceLabel } from "@/lib/client-session"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
@@ -321,7 +322,11 @@ export function WeeklyReviewReportModal({
                   className="border-white/[0.08]"
                   onClick={() => onViewTrade(report.debrief.journalLinks.bestTrade!.id)}
                 >
-                  Review best trade
+                  Review{" "}
+                  {getBestTradeHighlightLabel(
+                    report.debrief.journalLinks.bestTrade.result,
+                    report.debrief.journalLinks.bestTrade.pnl,
+                  ).toLowerCase()}
                 </Button>
               )}
             </div>

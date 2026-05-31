@@ -56,7 +56,7 @@ export function VyronisCommandCenter() {
       <button
         type="button"
         aria-label="Close AI Command Center"
-        className="command-center-backdrop fixed inset-0 z-[55] bg-black/45 backdrop-blur-[2px]"
+        className="command-center-backdrop fixed inset-0 z-[55] bg-black/25"
         onClick={close}
       />
 

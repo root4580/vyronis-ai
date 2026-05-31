@@ -87,9 +87,16 @@ import { AnimatedMetric } from "@/components/dashboard/animated-metric"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getTradeDisplayMistakeTags } from "@/lib/mistake-tags"
 import { MistakeTagList } from "@/components/dashboard/mistake-tag-badge"
+import {
+  MIN_EMOTION_INSIGHT_TRADES,
+  MIN_GROUP_INSIGHT_TRADES,
+  MIN_JOURNAL_INSIGHT_TRADES,
+  hasPositiveWinRate,
+} from "@/lib/analytics/insight-thresholds"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { getDashboardHomeHref, getDashboardTabHref, parseTabSearchParam } from "@/lib/dashboard-nav"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
@@ -205,12 +212,12 @@ function detectTradingSession(): SessionInfo {
   // Weekend check (Saturday or Sunday)
   if (day === 0 || day === 6) {
     return {
-      name: "Market Closed",
-      color: "loss",
+      name: "Weekend",
+      color: "muted",
       glowClass: "",
-      borderClass: "border-loss/30",
-      bgClass: "bg-loss/10",
-      textClass: "text-loss",
+      borderClass: "border-white/[0.08]",
+      bgClass: "bg-white/[0.03]",
+      textClass: "text-muted-foreground",
       isActive: false,
     }
   }
@@ -277,14 +284,14 @@ function detectTradingSession(): SessionInfo {
     }
   }
   
-  // Market Closed (outside all session hours)
+  // Off-hours between sessions
   return {
-    name: "Market Closed",
-    color: "loss",
+    name: "Off Hours",
+    color: "muted",
     glowClass: "",
-    borderClass: "border-loss/30",
-    bgClass: "bg-loss/10",
-    textClass: "text-loss",
+    borderClass: "border-white/[0.08]",
+    bgClass: "bg-white/[0.03]",
+    textClass: "text-muted-foreground",
     isActive: false,
   }
 }
@@ -343,9 +350,11 @@ export function DashboardHeader({
     },
     {
       group: "Prepare",
-      items: [
-        { id: "strategies", label: "Strategies", icon: Target },
-      ],
+      items: [{ id: "strategies", label: "Strategies", icon: Target }],
+    },
+    {
+      group: "Trade",
+      items: [],
     },
     {
       group: "Review",
@@ -413,7 +422,7 @@ export function DashboardHeader({
                     <span>{item.label}</span>
                   </Link>
                 ))}
-                {group.group === "Prepare" ? (
+                {group.group === "Trade" ? (
                   <Link
                     href="/war-room"
                     className={`dashboard-nav-pill ${
@@ -452,9 +461,9 @@ export function DashboardHeader({
                 {session.isActive ? (
                   <div className={`size-1.5 rounded-full live-pulse live-dot ${session.textClass.replace("text-", "bg-")}`} />
                 ) : (
-                  <div className="size-1.5 rounded-full bg-loss/80" />
+                  <div className="size-1.5 rounded-full bg-muted-foreground/40" />
                 )}
-                <span className={session.isActive ? "live-text-glow text-cyan-glow/90" : ""}>
+                <span className={session.isActive ? "live-text-glow text-cyan-glow/90" : "text-muted-foreground/70"}>
                   {session.isActive ? "LIVE" : "Closed"}
                 </span>
               </div>
@@ -659,7 +668,11 @@ export function EquityCurveChart({ trades, startingBalance }: { trades?: Dashboa
             icon={Activity}
             title="No trades to display"
             description="Add trades to see your equity curve"
-          />
+          >
+            <Button asChild size="sm" variant="outline" className="mt-3 border-cyan-glow/25 text-cyan-glow">
+              <Link href={`${APP_HOME_PATH}?action=new-trade`}>Log your first trade</Link>
+            </Button>
+          </DashboardEmptyState>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart key={chartKey} data={equityData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -920,7 +933,16 @@ export function RecentTradesTable({
         )}
 
         {!hasTrades ? (
-          <DashboardEmptyState icon={BookOpen} title="No trades logged yet." description="Use New Trade to start your journal" className="min-h-[160px]" />
+          <DashboardEmptyState
+            icon={BookOpen}
+            title="No trades logged yet."
+            description="Log your first trade to start building analytics and coach feedback."
+            className="min-h-[160px]"
+          >
+            <Button asChild size="sm" className="mt-3 bg-cyan-glow/90 text-black hover:bg-cyan-glow">
+              <Link href={`${APP_HOME_PATH}?action=new-trade`}>Log your first trade</Link>
+            </Button>
+          </DashboardEmptyState>
         ) : filteredTrades.length === 0 ? (
           <DashboardEmptyState icon={Search} title="No trades match your filters." description="Try adjusting search or filter criteria" className="min-h-[160px]" />
         ) : (
@@ -1853,48 +1875,46 @@ export function StreakTrackerPlaceholder({ trades }: { trades?: DashboardTradeRo
 
 export function QuantumAnalyticsPlaceholder({ trades }: { trades?: DashboardTradeRow[] }) {
   const safeTradesArray = trades || []
-  
-  // Calculate pattern recognition data
+  const hasEnoughData = safeTradesArray.length >= MIN_JOURNAL_INSIGHT_TRADES
+
   const patterns = {
-    bestSetup: 'A+ Setup',
-    bestSession: 'London',
-    winningEmotion: 'Calm',
-    topStrategy: 'ICT/SMC',
+    bestSetup: hasEnoughData ? "—" : "Need more trades",
+    bestSession: hasEnoughData ? "—" : "Need more trades",
+    winningEmotion: hasEnoughData ? "—" : "Need more trades",
+    topStrategy: hasEnoughData ? "—" : "Need more trades",
   }
-  
-  if (safeTradesArray.length > 0) {
-    // Find best performing setup
+
+  if (hasEnoughData) {
     const setupStats = new Map<string, { wins: number; total: number }>()
-    safeTradesArray.forEach(t => {
-      const setup = t.setup || 'Unknown'
+    safeTradesArray.forEach((t) => {
+      const setup = t.setup || "Unknown"
       const current = setupStats.get(setup) || { wins: 0, total: 0 }
       current.total++
-      if (t.result === 'WIN') current.wins++
+      if (t.result === "WIN") current.wins++
       setupStats.set(setup, current)
     })
-    
+
     let bestSetupRate = 0
     setupStats.forEach((stats, setup) => {
       const rate = stats.total > 0 ? stats.wins / stats.total : 0
-      if (rate > bestSetupRate && stats.total >= 2) {
+      if (rate > bestSetupRate && stats.total >= MIN_GROUP_INSIGHT_TRADES && hasPositiveWinRate(Math.round(rate * 100))) {
         bestSetupRate = rate
         patterns.bestSetup = setup
       }
     })
-    
-    // Find best session
+
     const sessionStats = new Map<string, { pnl: number; count: number }>()
-    safeTradesArray.forEach(t => {
-      const session = t.session || 'Unknown'
+    safeTradesArray.forEach((t) => {
+      const session = t.session || "Unknown"
       const current = sessionStats.get(session) || { pnl: 0, count: 0 }
       current.pnl += getSignedPnL(t.pnl, t.result)
       current.count++
       sessionStats.set(session, current)
     })
-    
+
     let bestSessionPnl = -Infinity
     sessionStats.forEach((stats, session) => {
-      if (stats.pnl > bestSessionPnl && stats.count >= 2) {
+      if (stats.pnl > bestSessionPnl && stats.count >= MIN_GROUP_INSIGHT_TRADES && stats.pnl > 0) {
         bestSessionPnl = stats.pnl
         patterns.bestSession = session
       }
@@ -1908,7 +1928,7 @@ export function QuantumAnalyticsPlaceholder({ trades }: { trades?: DashboardTrad
     })
     let topEmotionCount = 0
     emotionStats.forEach((count, emotion) => {
-      if (count > topEmotionCount) {
+      if (count >= MIN_EMOTION_INSIGHT_TRADES && count > topEmotionCount) {
         topEmotionCount = count
         patterns.winningEmotion = emotion
       }
@@ -1925,7 +1945,11 @@ export function QuantumAnalyticsPlaceholder({ trades }: { trades?: DashboardTrad
     let topStrategyRate = 0
     strategyStats.forEach((stats, strategy) => {
       const rate = stats.total > 0 ? stats.wins / stats.total : 0
-      if (rate > topStrategyRate && stats.total >= 2) {
+      if (
+        rate > topStrategyRate &&
+        stats.total >= MIN_GROUP_INSIGHT_TRADES &&
+        hasPositiveWinRate(Math.round(rate * 100))
+      ) {
         topStrategyRate = rate
         patterns.topStrategy = strategy
       }

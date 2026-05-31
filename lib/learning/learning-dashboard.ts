@@ -64,7 +64,7 @@ export function buildLearningDashboard(input: {
 
   const bestSetup =
     winningPatterns.find((item) => item.key === "best_setup") ||
-    (setupStats[0]
+    (setupStats[0] && setupStats[0].win_rate > 0
       ? {
           key: "best_setup",
           label: "Best setup type",

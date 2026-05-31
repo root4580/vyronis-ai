@@ -21,6 +21,7 @@ import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
 
 export default function AnalyticsPage() {
@@ -100,7 +101,7 @@ export default function AnalyticsPage() {
         isLoggingOut={chrome.isLoggingOut}
         showSignalBell={Boolean(chrome.user)}
         showFab
-        onFabClick={() => router.push("/?action=new-trade")}
+        onFabClick={() => router.push(`${APP_HOME_PATH}?action=new-trade`)}
       >
         <section className="dashboard-section">
           <p className="dashboard-section-title">Analytics</p>
