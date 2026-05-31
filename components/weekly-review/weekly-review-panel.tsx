@@ -177,11 +177,11 @@ export function WeeklyReviewPanel({
                 {report?.hasData && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="flex-1 border-white/[0.08] bg-black/20"
+                    variant="ghost"
+                    className="flex-1 text-muted-foreground hover:text-foreground"
                     onClick={() => setModalOpen(true)}
                   >
-                    View Report
+                    View report
                   </Button>
                 )}
               </div>

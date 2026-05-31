@@ -58,7 +58,7 @@ function MetricCard({
     <DashboardCard className="border-white/[0.06] bg-black/20">
       <DashboardCardBody className="space-y-2 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+          <p className="text-[11px] font-medium text-muted-foreground/75">
             {title}
           </p>
           <Icon className={cn("size-3.5", toneClass)} />
@@ -132,8 +132,8 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
           <div className="flex items-center gap-2">
             <Brain className="size-4 text-cyan-glow" />
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/90">
-                Trade Memory + Learning
+              <p className="text-[11px] font-medium text-cyan-glow/90">
+                Trade memory + learning
               </p>
               <p className="text-[10px] text-muted-foreground/70">
                 {dashboard.tradeMemoryCount} trades remembered · patterns update after each journal entry
@@ -262,8 +262,8 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
 
       {dashboard.recurringPatterns.length > 0 && (
         <DashboardInsetPanel className="border-loss/15 bg-loss/[0.03] px-3 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-loss/90">
-            Recurring Behaviors
+          <p className="mb-2 text-[11px] font-medium text-loss/90">
+            Recurring behaviors
           </p>
           <ul className="space-y-1 text-[10px] text-muted-foreground/80">
             {dashboard.recurringPatterns.slice(0, 5).map((pattern) => (

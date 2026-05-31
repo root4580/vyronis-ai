@@ -73,7 +73,7 @@ export function SessionHistoryMenu() {
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="mb-2 flex items-center justify-between px-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          <p className="text-[11px] font-medium text-muted-foreground/70">
             Past sessions
           </p>
           {!viewingArchivedSession ? (

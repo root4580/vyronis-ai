@@ -64,8 +64,8 @@ export function WeeklyReviewSummaryCard({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Sparkles className="size-4 text-cyan-glow" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/90">
-              Weekly AI Summary
+            <p className="text-[11px] font-medium text-cyan-glow/90">
+              Weekly AI summary
             </p>
             <Badge variant="outline" className="h-5 border-white/10 text-[10px]">
               {report.weekLabel}
@@ -102,10 +102,11 @@ export function WeeklyReviewSummaryCard({
             <Button
               type="button"
               size="sm"
+              variant="ghost"
               onClick={onOpenReport}
-              className="btn-primary"
+              className="text-muted-foreground hover:text-foreground"
             >
-              Open Full Report
+              View report
               <ChevronRight className="ml-1 size-4" />
             </Button>
           )}

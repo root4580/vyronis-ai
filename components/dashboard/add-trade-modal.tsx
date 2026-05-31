@@ -147,7 +147,7 @@ function PostLogDisciplineInline({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/80">{children}</p>
+    <p className="text-[11px] font-medium text-text-muted">{children}</p>
   )
 }
 
@@ -159,7 +159,7 @@ function FieldLabel({
   required?: boolean
 }) {
   return (
-    <Label className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground/80">
+    <Label className="text-[11px] font-medium text-muted-foreground/80">
       {children}
       {required && <span className="ml-1 text-loss">*</span>}
     </Label>
@@ -193,8 +193,11 @@ function EmotionPicker({
                   : "border-white/[0.06] bg-white/[0.02] hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.04]",
               )}
             >
-              <span className="block text-base leading-none">{option.emoji}</span>
-              <span className="mt-1 block truncate text-[9px] text-muted-foreground/80">{option.label}</span>
+              <span
+                className={cn("mx-auto mb-1 block size-2 rounded-full", option.dotClass)}
+                aria-hidden="true"
+              />
+              <span className="block truncate text-[10px] text-muted-foreground/80">{option.label}</span>
             </button>
           )
         })}

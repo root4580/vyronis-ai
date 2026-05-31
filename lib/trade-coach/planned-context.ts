@@ -102,6 +102,9 @@ export function buildPlannedCoachSessionItem(
           ? "SKIP"
           : "CAUTION"
       : null,
+    trade_plan_id: context.trade_plan_id ?? null,
+    tradingview_signal_id: context.tradingview_signal_id ?? null,
+    trade_date: context.trade_date ?? null,
     created_at: session.created_at,
     updated_at: session.updated_at,
   }

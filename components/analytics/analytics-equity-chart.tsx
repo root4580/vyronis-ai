@@ -34,8 +34,7 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
   const roiPercent = startingBalance > 0 ? ((totalPnL / startingBalance) * 100).toFixed(1) : "0"
 
   return (
-    <DashboardCard className="glass-card floating-glow analytics-fade-in opacity-0 col-span-1 lg:col-span-2" style={{ animationDelay: "320ms", animationFillMode: "forwards" }} inset interactive glow>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-cyan-glow/[0.08] to-transparent" />
+    <DashboardCard className="hq-surface-card analytics-fade-in opacity-0 col-span-1 lg:col-span-2" style={{ animationDelay: "320ms", animationFillMode: "forwards" }} inset interactive>
       <DashboardCardHeader
         title="Equity Curve"
         icon={Activity}
@@ -67,21 +66,9 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
             <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="analyticsEquityGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.72 0.14 195)" stopOpacity={0.5} />
-                  <stop offset="55%" stopColor="oklch(0.68 0.16 165)" stopOpacity={0.1} />
-                  <stop offset="100%" stopColor="oklch(0.72 0.14 195)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.12} />
+                  <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="analyticsEquityStroke" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="oklch(0.65 0.12 195)" />
-                  <stop offset="100%" stopColor="oklch(0.75 0.16 195)" />
-                </linearGradient>
-                <filter id="analyticsEquityGlow">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
               </defs>
               <CartesianGrid {...CHART_GRID} />
               <XAxis dataKey="date" {...CHART_AXIS} tick={{ fill: "rgba(255,255,255,0.35)" }} />
@@ -100,18 +87,17 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
               <Area
                 type="monotone"
                 dataKey="equity"
-                stroke="url(#analyticsEquityStroke)"
-                strokeWidth={2.5}
+                stroke="var(--color-accent)"
+                strokeWidth={2}
                 fill="url(#analyticsEquityGradient)"
-                filter="url(#analyticsEquityGlow)"
                 isAnimationActive
                 animationDuration={1400}
                 animationEasing="ease-out"
                 dot={false}
                 activeDot={{
-                  r: 6,
-                  fill: "oklch(0.72 0.14 195)",
-                  stroke: "rgba(255,255,255,0.95)",
+                  r: 5,
+                  fill: "var(--color-accent)",
+                  stroke: "rgba(255,255,255,0.9)",
                   strokeWidth: 2,
                 }}
               />

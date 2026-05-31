@@ -9,9 +9,9 @@ type DashboardFabProps = {
 
 export function DashboardFab({ onClick, label = "New Trade" }: DashboardFabProps) {
   return (
-    <button type="button" onClick={onClick} className="dashboard-fab group hidden md:flex">
-      <Plus className="size-5 transition-transform duration-300 group-hover:rotate-90" />
-      <span className="hidden text-[14px] md:inline">{label}</span>
+    <button type="button" onClick={onClick} className="dashboard-fab group" aria-label={label}>
+      <Plus className="size-5 shrink-0 transition-transform duration-300 group-hover:rotate-90" />
+      <span>{label}</span>
     </button>
   )
 }

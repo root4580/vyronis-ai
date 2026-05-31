@@ -48,24 +48,21 @@ function RuleRow({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+      <Checkbox
+        checked={rule.enabled}
+        onCheckedChange={(checked) => onChange({ ...rule, enabled: checked === true })}
+        className="mt-0.5"
+        aria-label={`Include ${rule.label}`}
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-medium text-foreground/90">{rule.label}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground/75">
-        <label className="flex items-center gap-1.5">
-          <Checkbox
-            checked={rule.enabled}
-            onCheckedChange={(checked) => onChange({ ...rule, enabled: checked === true })}
-          />
-          On
-        </label>
-        <label className="flex items-center gap-1.5">
-          <Checkbox
-            checked={rule.required}
-            onCheckedChange={(checked) => onChange({ ...rule, required: checked === true })}
-          />
-          Required
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[12px] font-medium text-foreground/90">{rule.label}</p>
+          {rule.required ? (
+            <Badge variant="outline" className="h-5 border-white/10 text-[9px] font-normal text-muted-foreground/75">
+              Required
+            </Badge>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -84,7 +81,7 @@ function StringListEditor({
 }) {
   return (
     <DashboardInsetPanel className="space-y-2 px-3 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+      <p className="text-[11px] font-medium text-muted-foreground/75">
         {title}
       </p>
       {items.map((item, index) => (

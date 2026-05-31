@@ -106,12 +106,12 @@ export const TRADE_STRATEGIES = [
 ]
 
 export const EMOTION_OPTIONS = [
-  { value: "Calm", emoji: "😌", label: "Calm" },
-  { value: "Confident", emoji: "💪", label: "Confident" },
-  { value: "Fearful", emoji: "😨", label: "Fearful" },
-  { value: "Revenge", emoji: "😤", label: "Revenge" },
-  { value: "Impulsive", emoji: "⚡", label: "Impulsive" },
-  { value: "Overconfident", emoji: "🔥", label: "Overconfident" },
+  { value: "Calm", label: "Calm", emoji: "😌", dotClass: "bg-emerald-400" },
+  { value: "Confident", label: "Confident", emoji: "💪", dotClass: "bg-cyan-glow" },
+  { value: "Fearful", label: "Fearful", emoji: "😨", dotClass: "bg-violet-400" },
+  { value: "Revenge", label: "Revenge", emoji: "😤", dotClass: "bg-orange-400" },
+  { value: "Impulsive", label: "Impulsive", emoji: "⚡", dotClass: "bg-yellow-400" },
+  { value: "Overconfident", label: "Overconfident", emoji: "🔥", dotClass: "bg-rose-400" },
 ]
 
 export const MISTAKE_TAGS = [

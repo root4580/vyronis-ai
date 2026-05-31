@@ -353,7 +353,7 @@
 }
 
 .dashboard-section-title {
-  @apply text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70;
+  @apply text-[13px] font-medium tracking-normal text-muted-foreground/80;
 }
 
 /* ── Premium cards (Stripe/Raycast depth) ── */
@@ -434,7 +434,7 @@
 }
 
 .dashboard-metric-label {
-  @apply text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground/75;
+  @apply text-[11px] font-medium tracking-normal text-muted-foreground/75;
 }
 
 .dashboard-metric-value {
@@ -585,10 +585,30 @@
 }
 
 .dashboard-fab {
-  @apply fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full px-5 py-3 font-medium text-background;
+  @apply fixed bottom-6 right-6 z-50 items-center gap-2 rounded-full px-5 py-3 text-[14px] font-medium;
+  display: none;
+  color: var(--surface-page);
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-profit) 100%);
-  box-shadow: 0 4px 14px rgb(from var(--color-accent) r g b / 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 20px rgb(from var(--color-accent) r g b / 0.35),
+    0 0 0 1px rgb(from var(--color-accent) r g b / 0.4);
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-fab {
+    display: inline-flex;
+  }
+}
+
+.dashboard-shell-has-dock .dashboard-fab {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-shell-has-dock .dashboard-fab {
+    display: inline-flex;
+  }
 }
 
 .dashboard-fab:hover {
@@ -1849,12 +1869,30 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 }
 
 .command-center-launcher {
-  @apply fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full px-4 py-3 font-medium text-foreground;
-  background: linear-gradient(135deg, rgb(from var(--color-accent) r g b / 0.14) 0%, rgb(from var(--color-profit) r g b / 0.1) 100%);
-  border: 1px solid rgb(from var(--color-accent) r g b / 0.28);
-  box-shadow: 0 4px 18px rgb(from var(--color-accent) r g b / 0.18), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  @apply fixed bottom-6 left-6 z-50 items-center gap-2 rounded-full px-4 py-3 text-[13px] font-medium;
+  display: none;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, rgb(from var(--color-accent) r g b / 0.22) 0%, rgb(from var(--color-profit) r g b / 0.14) 100%);
+  border: 1px solid var(--color-accent-border);
+  box-shadow: 0 4px 18px rgb(from var(--color-accent) r g b / 0.22), 0 0 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+
+@media (min-width: 1024px) {
+  .command-center-launcher {
+    display: inline-flex;
+  }
+}
+
+.dashboard-shell-has-dock .command-center-launcher {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-shell-has-dock .command-center-launcher {
+    display: inline-flex;
+  }
 }
 
 .command-center-launcher:hover {

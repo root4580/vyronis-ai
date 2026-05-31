@@ -28,13 +28,10 @@ export function CommandCenterLauncher({ className }: CommandCenterLauncherProps)
       onMouseEnter={warmCommandCenter}
       onFocus={warmCommandCenter}
       onClick={() => open()}
-      className={cn(
-        "command-center-launcher group relative hidden md:flex",
-        className,
-      )}
+      className={cn("command-center-launcher group relative", className)}
     >
       <Brain className="size-5 transition-transform duration-300 group-hover:scale-110" />
-      <span className="hidden text-[13px] font-medium md:inline">Vyronis HQ</span>
+      <span className="text-[13px] font-medium">Vyronis HQ</span>
       {criticalCount > 0 ? (
         <span className="command-center-launcher-badge">{criticalCount}</span>
       ) : null}

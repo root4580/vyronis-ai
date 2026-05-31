@@ -59,6 +59,7 @@ import type {
   TradeCoachSessionWithMessages,
 } from "@/lib/trade-coach/types"
 import { buildPlannedCoachSessionItem } from "@/lib/trade-coach/planned-context"
+import { dedupePlannedCoachSessions } from "@/lib/trade-coach/planned-session-dedupe"
 import {
   buildTradeQualityInput,
   fetchQualityContext,
@@ -1244,16 +1245,18 @@ export async function listPlannedCoachSessions(
     responsesBySession.set(message.session_id, existing)
   }
 
-  return sessions.map((session) =>
-    buildPlannedCoachSessionItem(
-      {
-        id: session.id,
-        status: session.status,
-        planned_context: (session.planned_context || {}) as PreTradePlannedContext,
-        created_at: session.created_at,
-        updated_at: session.updated_at,
-      },
-      responsesBySession.get(session.id) || {},
+  return dedupePlannedCoachSessions(
+    sessions.map((session) =>
+      buildPlannedCoachSessionItem(
+        {
+          id: session.id,
+          status: session.status,
+          planned_context: (session.planned_context || {}) as PreTradePlannedContext,
+          created_at: session.created_at,
+          updated_at: session.updated_at,
+        },
+        responsesBySession.get(session.id) || {},
+      ),
     ),
   )
 }

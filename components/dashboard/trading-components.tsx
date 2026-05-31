@@ -108,6 +108,7 @@ import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
+import { detectTradingSession, type TradingSessionInfo } from "@/lib/trading/session-timing"
 import {
   buildDailyRules,
   buildRiskSnapshot,
@@ -187,119 +188,6 @@ export type DashboardTradeRow = {
   created_at: string
 }
 
-// Session detection types and helpers
-type SessionInfo = {
-  name: string
-  color: string
-  glowClass: string
-  borderClass: string
-  bgClass: string
-  textClass: string
-  isActive: boolean
-}
-
-function getESTTime(): Date {
-  const now = new Date()
-  // Convert to EST (UTC-5) or EDT (UTC-4) depending on daylight saving
-  const estOffset = -5
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000)
-  return new Date(utc + (3600000 * estOffset))
-}
-
-function detectTradingSession(): SessionInfo {
-  const estTime = getESTTime()
-  const hour = estTime.getHours()
-  const minutes = estTime.getMinutes()
-  const day = estTime.getDay() // 0 = Sunday, 6 = Saturday
-  const totalMinutes = hour * 60 + minutes
-  
-  // Weekend check (Saturday or Sunday)
-  if (day === 0 || day === 6) {
-    return {
-      name: "Weekend",
-      color: "muted",
-      glowClass: "",
-      borderClass: "border-white/[0.08]",
-      bgClass: "bg-white/[0.03]",
-      textClass: "text-muted-foreground",
-      isActive: false,
-    }
-  }
-  
-  // Session times in minutes from midnight EST
-  const asiaStart = 19 * 60 // 7 PM EST
-  const asiaEnd = 4 * 60 // 4 AM EST (next day)
-  const londonStart = 3 * 60 // 3 AM EST
-  const londonEnd = 12 * 60 // 12 PM EST
-  const nyStart = 8 * 60 // 8 AM EST
-  const nyEnd = 17 * 60 // 5 PM EST
-  const overlapStart = 8 * 60 // 8 AM EST
-  const overlapEnd = 12 * 60 // 12 PM EST
-  
-  // Check London + New York Overlap first (most specific)
-  if (totalMinutes >= overlapStart && totalMinutes < overlapEnd) {
-    return {
-      name: "London + NY Overlap",
-      color: "profit",
-      glowClass: "glow-profit",
-      borderClass: "border-profit/30",
-      bgClass: "bg-profit/10",
-      textClass: "text-profit",
-      isActive: true,
-    }
-  }
-  
-  // New York Session (8 AM - 5 PM EST)
-  if (totalMinutes >= nyStart && totalMinutes < nyEnd) {
-    return {
-      name: "New York Session",
-      color: "cyan-glow",
-      glowClass: "glow-cyan",
-      borderClass: "border-cyan-glow/30",
-      bgClass: "bg-cyan-glow/10",
-      textClass: "text-cyan-glow",
-      isActive: true,
-    }
-  }
-  
-  // London Session (3 AM - 12 PM EST, excluding overlap which is handled above)
-  if (totalMinutes >= londonStart && totalMinutes < londonEnd) {
-    return {
-      name: "London Session",
-      color: "amber",
-      glowClass: "",
-      borderClass: "border-warning/30",
-      bgClass: "bg-warning/10",
-      textClass: "text-warning",
-      isActive: true,
-    }
-  }
-  
-  // Asia Session (7 PM - 4 AM EST, spans midnight)
-  if (totalMinutes >= asiaStart || totalMinutes < asiaEnd) {
-    return {
-      name: "Asia Session",
-      color: "purple",
-      glowClass: "",
-      borderClass: "border-purple-500/30",
-      bgClass: "bg-purple-500/10",
-      textClass: "text-purple-500",
-      isActive: true,
-    }
-  }
-  
-  // Off-hours between sessions
-  return {
-    name: "Off Hours",
-    color: "muted",
-    glowClass: "",
-    borderClass: "border-white/[0.08]",
-    bgClass: "bg-white/[0.03]",
-    textClass: "text-muted-foreground",
-    isActive: false,
-  }
-}
-
 export type DashboardTab = "dashboard" | "strategies" | "analytics" | "journal"
 
 // Daily rules are built dynamically from account settings + today's trades
@@ -331,7 +219,7 @@ export function DashboardHeader({
   const pathname = usePathname() ?? "/"
   const router = useRouter()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
-  const [session, setSession] = useState<SessionInfo>(detectTradingSession())
+  const [session, setSession] = useState<TradingSessionInfo>(() => detectTradingSession())
   const [localTime, setLocalTime] = useState<string>("")
 
   useEffect(() => {

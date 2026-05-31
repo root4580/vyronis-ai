@@ -21,7 +21,7 @@ export function PlannedTradesMemoryFeed({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-2 px-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/75">
+        <p className="text-[11px] font-medium text-muted-foreground/75">
           Planned trades memory
         </p>
         <span className="text-[10px] tabular-nums text-cyan-glow/80">{sessions.length}</span>

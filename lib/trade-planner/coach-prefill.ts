@@ -78,6 +78,7 @@ export function buildPlannedContextFromTradePlannerPrefill(
     entry_timeframe: chartUrl ? "M15" : undefined,
     confirmation_signal: pointerSummary,
     max_risk_per_trade: maxRiskPerTrade,
+    trade_plan_id: prefill.tradePlanId,
   }
 }
 

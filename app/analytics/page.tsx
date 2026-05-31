@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
+import { AnalyticsStickyNav } from "@/components/analytics/analytics-sticky-nav"
 import { AnalyticsPageSkeleton } from "@/components/analytics/analytics-skeleton"
 import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
@@ -114,8 +115,10 @@ export default function AnalyticsPage() {
           <AnalyticsPageSkeleton />
         ) : (
           <div className="space-y-8">
-            <section className="dashboard-section">
-              <p className="dashboard-section-title">Weekly AI Review</p>
+            <AnalyticsStickyNav />
+
+            <section id="analytics-weekly-review" className="dashboard-section scroll-mt-24">
+              <p className="dashboard-section-title">Weekly AI review</p>
               <WeeklyReviewPanel
                 refreshKey={analytics.tradeCount}
                 trades={rawTrades}
@@ -126,7 +129,7 @@ export default function AnalyticsPage() {
               />
             </section>
 
-            <section className="dashboard-section">
+            <section className="dashboard-section scroll-mt-24">
               <p className="dashboard-section-title">Trader evolution (Vyronis OS)</p>
               <p className="mb-3 max-w-2xl text-sm text-muted-foreground/75">
                 Discipline trends, strategy intelligence, replay simulator, and intelligence timeline.
@@ -139,12 +142,12 @@ export default function AnalyticsPage() {
               </a>
             </section>
 
-            <section className="dashboard-section">
-              <p className="dashboard-section-title">Trade Memory + Learning</p>
+            <section id="analytics-learning" className="dashboard-section scroll-mt-24">
+              <p className="dashboard-section-title">Trade memory + learning</p>
               <TradeLearningPanel refreshKey={analytics.tradeCount} />
             </section>
 
-            <section className="dashboard-section">
+            <section className="dashboard-section scroll-mt-24">
               <p className="dashboard-section-title">Performance</p>
               <AnalyticsDashboard analytics={analytics} startingBalance={startingBalance} />
             </section>

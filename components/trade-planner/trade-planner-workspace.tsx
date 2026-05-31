@@ -18,7 +18,7 @@ import {
   DashboardInsetPanel,
 } from "@/components/dashboard/dashboard-primitives"
 import { TradePlanVisual } from "@/components/trade-planner/trade-plan-visual"
-import type { TradePlanCalculation } from "@/lib/trade-planner/types"
+import type { TradePlanCalculation, TradePlanWarning } from "@/lib/trade-planner/types"
 import { PlanChartUploadPanel } from "@/components/trade-planner/plan-chart-upload-panel"
 import { TRADE_PLANNER_PAIRS } from "@/lib/trade-planner/forex-pairs"
 import {
@@ -306,6 +306,7 @@ export function TradePlannerWorkspace({
   const plannerInputClass = "planner-input w-full"
   const selectTriggerClass =
     "h-9 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-input)] text-[13px] font-medium text-text-primary"
+  const consolidatedWarning = getConsolidatedPlanWarning(plan.warnings)
 
   return (
     <div className="space-y-5">
@@ -341,7 +342,7 @@ export function TradePlannerWorkspace({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="planner-surface-card p-4 sm:p-5">
-          <p className="mb-3.5 text-[10px] font-medium uppercase tracking-wide text-text-muted">Trade setup</p>
+          <p className="mb-3.5 text-[11px] font-medium text-text-muted">Trade setup</p>
           <div className="space-y-4">
             <Field label="Pair">
               <Select value={pair} onValueChange={setPair}>
@@ -455,21 +456,15 @@ export function TradePlannerWorkspace({
               disabled={isSaving}
             />
 
-            {plan.warnings.length > 0 ? (
-              <div className="space-y-2">
-                {plan.warnings.map((warning) => (
-                  <div
-                    key={warning.id}
-                    className="flex items-start gap-2 rounded-r-[var(--radius-sm)] border border-[var(--warning-border)] border-l-2 border-l-[var(--warning)] bg-[var(--warning-bg)] py-2 pl-2.5 pr-3"
-                  >
-                    <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
-                    <p className="text-[11px] leading-relaxed text-warning-muted">{warning.message}</p>
-                  </div>
-                ))}
+            {consolidatedWarning ? (
+              <div className="flex items-start gap-2 rounded-r-[var(--radius-sm)] border border-[var(--warning-border)] border-l-2 border-l-[var(--warning)] bg-[var(--warning-bg)] py-2 pl-2.5 pr-3">
+                <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
+                <p className="text-[11px] leading-relaxed text-warning-muted">{consolidatedWarning}</p>
               </div>
             ) : null}
 
-            <div className="sticky bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-10 -mx-4 border-t border-[var(--border-subtle)] bg-[var(--surface-page)] p-4 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 xl:static">
+            <div className="sticky bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-10 -mx-4 space-y-2 border-t border-[var(--border-subtle)] bg-[var(--surface-page)] p-4 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 xl:static">
+              <SuggestedActionStrip plan={plan} />
               <Button
                 type="button"
                 className="btn-primary h-10 w-full rounded-[var(--radius-md)] text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
@@ -489,7 +484,7 @@ export function TradePlannerWorkspace({
           </div>
 
           <div className="planner-surface-card p-4 sm:p-5">
-            <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-text-muted">Plan result</p>
+            <p className="mb-3 text-[11px] font-medium text-text-muted">Plan result</p>
             <div className="grid grid-cols-2 gap-2.5">
               <MetricTile label="Risk $" value={`$${plan.riskAmount.toFixed(2)}`} />
               <MetricTile label="SL pips" value={plan.slPips.toFixed(1)} />
@@ -523,8 +518,6 @@ export function TradePlannerWorkspace({
               />
             </div>
 
-            <SuggestedActionStrip plan={plan} />
-
             <Button
               type="button"
               variant="outline"
@@ -540,7 +533,7 @@ export function TradePlannerWorkspace({
           <div className="planner-surface-card p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <Save className="size-4 text-text-secondary" />
-              <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Recent plans</p>
+              <p className="text-[11px] font-medium text-text-muted">Recent plans</p>
             </div>
             {activePlans.length === 0 ? (
               <DashboardEmptyState
@@ -634,6 +627,20 @@ function Field({
       {hint ? <span className="block text-[10px] leading-relaxed text-text-muted">{hint}</span> : null}
     </label>
   )
+}
+
+function getConsolidatedPlanWarning(warnings: TradePlanWarning[]): string | null {
+  if (warnings.length === 0) return null
+
+  const ids = new Set(warnings.map((warning) => warning.id))
+  const priceFieldIds = ["invalid_entry", "invalid_stop", "invalid_target", "sl_pips_zero", "tp_pips_zero"]
+  const missingPriceCount = priceFieldIds.filter((id) => ids.has(id)).length
+
+  if (missingPriceCount >= 2) {
+    return "Fill entry, stop loss, and take profit to calculate."
+  }
+
+  return warnings[0]?.message ?? null
 }
 
 function SuggestedActionStrip({ plan }: { plan: TradePlanCalculation }) {

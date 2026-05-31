@@ -90,7 +90,14 @@ export function PlannedTradesSection({
               TradingView alerts land here automatically. Open Coach when ready — no orders are
               placed.
             </p>
-            {sessions.map((session) => {
+            {[...sessions]
+              .sort((a, b) => {
+                if (a.status === b.status) {
+                  return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                }
+                return a.status === "completed" ? -1 : 1
+              })
+              .map((session) => {
               const isTradingView = session.signal_source === "tradingview"
               return (
                 <div

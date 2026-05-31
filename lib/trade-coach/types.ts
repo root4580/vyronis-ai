@@ -50,6 +50,8 @@ export type PreTradePlannedContext = {
   tradingview_verdict_summary?: string
   tradingview_chart_vision?: import("@/lib/tradingview/types").TradingViewChartVisionSnapshot
   tradingview_why_engine?: import("@/lib/tradingview/types").TradingViewWhyEngine
+  /** Saved trade_plans.id when Coach opened from Trade Planner */
+  trade_plan_id?: string
   /** Command Center multi-image timeframe bundle session id */
   timeframe_bundle_id?: string
   timeframe_bundle?: {
@@ -278,6 +280,9 @@ export type PlannedCoachSessionItem = {
   strategy_name?: string | null
   timeframe?: string | null
   ai_recommendation?: string | null
+  trade_plan_id?: string | null
+  tradingview_signal_id?: string | null
+  trade_date?: string | null
   created_at: string
   updated_at: string
 }

@@ -57,7 +57,7 @@ function StrategyHighlightCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
+          <p className="text-[11px] font-medium text-muted-foreground/70">{label}</p>
           <p className="mt-1 truncate text-sm font-semibold text-foreground">
             {strategy?.name ?? "—"}
           </p>
@@ -242,7 +242,7 @@ export function StrategyPerformance({
             variant="outline"
             className="h-5 border-cyan-glow/25 bg-cyan-glow/[0.08] text-[9px] font-semibold tracking-wider text-cyan-glow"
           >
-            {summary.strategies.length} STRATEGIES
+            {summary.strategies.length} strategies
           </Badge>
         }
       />
@@ -320,18 +320,29 @@ export function StrategyPerformance({
         ) : null}
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <StrategyHighlightCard
-            label="Best Strategy"
-            strategy={summary.bestStrategy}
-            tone="best"
-            icon={Crown}
-          />
-          <StrategyHighlightCard
-            label="Worst Strategy"
-            strategy={summary.worstStrategy}
-            tone="worst"
-            icon={TrendingDown}
-          />
+          {!summary.hasStrategyData ? (
+            <DashboardInsetPanel className="sm:col-span-2 border-white/[0.08] px-4 py-4">
+              <p className="text-[12px] font-medium text-foreground/90">No strategy data yet</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/75">
+                Assign strategies when logging trades to unlock best/worst strategy insights.
+              </p>
+            </DashboardInsetPanel>
+          ) : (
+            <>
+              <StrategyHighlightCard
+                label="Best strategy"
+                strategy={summary.bestStrategy}
+                tone="best"
+                icon={Crown}
+              />
+              <StrategyHighlightCard
+                label="Worst strategy"
+                strategy={summary.worstStrategy}
+                tone="worst"
+                icon={TrendingDown}
+              />
+            </>
+          )}
         </div>
 
         <div className="hidden lg:grid lg:grid-cols-[minmax(140px,1.4fr)_repeat(4,minmax(0,1fr))] lg:gap-4 lg:px-3 lg:text-[10px] lg:font-medium lg:uppercase lg:tracking-[0.12em] lg:text-muted-foreground/60">

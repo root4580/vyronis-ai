@@ -48,7 +48,7 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div id="analytics-overview" className="scroll-mt-24 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AnalyticsMetricCard
           label="Win Rate"
           value={`${analytics.winRate}%`}
@@ -137,7 +137,7 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+      <div id="analytics-charts" className="scroll-mt-24 grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
         <AnalyticsEquityChart data={analytics.equityCurve} startingBalance={startingBalance} />
         <AnalyticsWeeklyTrend data={analytics.weeklyTrend} />
       </div>

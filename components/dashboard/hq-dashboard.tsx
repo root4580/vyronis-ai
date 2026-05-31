@@ -17,7 +17,12 @@ import {
   computePlanStreak,
   disciplineGradeBoxClass,
 } from "@/lib/trade-planner/plan-streak"
-import { detectTradingSession } from "@/lib/trading/session-timing"
+import {
+  getSessionClock,
+  getSessionClockAccentTheme,
+  getSessionClockTheme,
+  type SessionClockInfo,
+} from "@/lib/trading/session-timing"
 import {
   computeAvgRiskReward,
   computeWeekPnL,
@@ -146,7 +151,14 @@ export function HqDashboard({
     }
   }, [trades.length])
 
-  const session = useMemo(() => detectTradingSession(), [])
+  const [sessionClock, setSessionClock] = useState<SessionClockInfo>(() => getSessionClock())
+
+  useEffect(() => {
+    const refresh = () => setSessionClock(getSessionClock())
+    refresh()
+    const id = window.setInterval(refresh, 60_000)
+    return () => window.clearInterval(id)
+  }, [])
   const weekPnL = useMemo(() => computeWeekPnL(trades), [trades])
   const { average: avgRr, plannedAverage } = useMemo(() => computeAvgRiskReward(trades), [trades])
   const totalPnL = useMemo(
@@ -190,14 +202,46 @@ export function HqDashboard({
   const disciplineScore = discipline?.weekAverageScore
   const disciplineGrade = discipline?.weekGrade
 
+  const sessionTheme = getSessionClockTheme(sessionClock)
+  const sessionAccentTheme = getSessionClockAccentTheme(sessionClock)
+
   return (
     <div className={cn("space-y-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-base font-medium text-text-primary">{getTimeOfDayGreeting()}</h1>
-          <p className="mt-0.5 text-[11px] text-text-muted">
-            {formatHeaderDate()} · {session.name}
-            {session.isActive ? " · session open" : " · markets closed"}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[11px] text-text-muted">
+            <span>{formatHeaderDate()}</span>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-1.5 shrink-0 rounded-full"
+                style={{
+                  background: sessionClock.isActive ? sessionAccentTheme.accent : sessionTheme.accent,
+                  boxShadow: sessionClock.isActive
+                    ? `0 0 0 2px ${sessionAccentTheme.background}`
+                    : undefined,
+                }}
+                aria-hidden="true"
+              />
+              <span style={{ color: sessionTheme.accent }}>{sessionClock.name}</span>
+            </span>
+            {sessionClock.isActive ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span style={{ color: sessionAccentTheme.muted }}>session open</span>
+              </>
+            ) : sessionClock.nextSessionLabel ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span style={{ color: sessionAccentTheme.muted }}>{sessionClock.nextSessionLabel}</span>
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>markets closed</span>
+              </>
+            )}
           </p>
         </div>
         <div className="hq-surface-card flex items-center gap-3 px-3 py-2">
@@ -299,17 +343,52 @@ export function HqDashboard({
           <div
             className="mx-3 mt-3 rounded-[var(--radius-sm)] border px-3 py-2.5"
             style={{
-              background: "rgb(from var(--color-accent) r g b / 0.05)",
-              borderColor: "var(--color-accent-border)",
+              background: sessionTheme.background,
+              borderColor: sessionTheme.border,
             }}
           >
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-medium text-text-accent">{session.name}</p>
-                <p className="text-[10px]" style={{ color: "rgb(from var(--color-accent) r g b / 0.6)" }}>
-                  {session.isActive ? "Session active now" : "Next session — check War Room"}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{
+                      background: sessionClock.isActive ? sessionAccentTheme.accent : sessionTheme.accent,
+                      boxShadow: sessionClock.isActive
+                        ? `0 0 0 2px ${sessionAccentTheme.background}`
+                        : undefined,
+                    }}
+                    aria-hidden="true"
+                  />
+                  <p className="text-xs font-medium" style={{ color: sessionTheme.accent }}>
+                    {sessionClock.name}
+                  </p>
+                </div>
+                <p className="mt-0.5 text-[10px]" style={{ color: sessionAccentTheme.muted }}>
+                  {sessionClock.isActive
+                    ? "Session active now"
+                    : sessionClock.nextSessionLabel ?? "Next session — check War Room"}
                 </p>
               </div>
+              {!sessionClock.isActive && sessionClock.hoursUntilNextSession != null ? (
+                <p
+                  className="shrink-0 text-right text-lg font-medium tabular-nums"
+                  style={{ color: sessionAccentTheme.accent }}
+                >
+                  {sessionClock.hoursUntilNextSession < 1
+                    ? `${Math.max(1, Math.round(sessionClock.hoursUntilNextSession * 60))}m`
+                    : sessionClock.hoursUntilNextSession < 24
+                      ? `${Math.floor(sessionClock.hoursUntilNextSession)}h`
+                      : `${Math.floor(sessionClock.hoursUntilNextSession / 24)}d`}
+                </p>
+              ) : sessionClock.isActive ? (
+                <p
+                  className="shrink-0 text-right text-[10px] font-medium uppercase tracking-wide"
+                  style={{ color: sessionAccentTheme.accent }}
+                >
+                  Live
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="divide-y divide-[var(--border-subtle)] px-3 py-1">

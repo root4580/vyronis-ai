@@ -33,15 +33,13 @@ export function AnalyticsMetricCard({
   return (
     <DashboardCard
       className={cn(
-        "glass-card floating-glow analytics-fade-in opacity-0",
+        "hq-surface-card analytics-fade-in opacity-0",
         className,
       )}
       style={{ animationDelay: `${delayMs}ms`, animationFillMode: "forwards" }}
       inset
       interactive
-      glow
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-cyan-glow/[0.05] to-transparent" />
       <DashboardCardBody className="relative space-y-2 pt-4">
         <div className="flex items-center justify-between gap-2">
           <DashboardMetricLabel>{label}</DashboardMetricLabel>
