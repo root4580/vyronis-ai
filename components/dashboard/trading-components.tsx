@@ -12,6 +12,8 @@ import {
   Shield,
   Target,
   Crosshair,
+  Calculator,
+  ChartCandlestick,
   Activity,
   Clock,
   Zap,
@@ -98,6 +100,7 @@ import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { APP_HOME_PATH } from "@/lib/branding"
 import { getDashboardHomeHref, getDashboardTabHref, parseTabSearchParam } from "@/lib/dashboard-nav"
+import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
 import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
@@ -303,250 +306,290 @@ export type DashboardTab = "dashboard" | "strategies" | "analytics" | "journal"
 type DashboardHeaderProps = {
   activeTab: DashboardTab
   onOpenSettings?: () => void
+  onOpenCoach?: () => void
+  dockHighlight?: DockHighlightId
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
   /** When true, bottom tab bar is hidden — mobile dock handles navigation. */
   hideMobileNav?: boolean
 }
 
+function vyronisNavLinkClass(active: boolean): string {
+  return cn("vyronis-nav__link", active && "vyronis-nav__link--active")
+}
+
 export function DashboardHeader({
   activeTab,
   onOpenSettings,
+  onOpenCoach,
+  dockHighlight = null,
   showSignalBell,
   onSignalAlertClick,
   hideMobileNav = false,
 }: DashboardHeaderProps) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? "/"
   const router = useRouter()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
   const [session, setSession] = useState<SessionInfo>(detectTradingSession())
   const [localTime, setLocalTime] = useState<string>("")
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-  
+
   useEffect(() => {
-    // Update session and time every second
     const updateTime = () => {
       setSession(detectTradingSession())
-      setLocalTime(new Date().toLocaleTimeString("en-US", { 
-        hour: "numeric", 
-        minute: "2-digit",
-        hour12: true 
-      }))
+      setLocalTime(
+        new Date().toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }),
+      )
     }
-    
-    updateTime() // Initial call
+
+    updateTime()
     const interval = setInterval(updateTime, 1000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
-  const navGroups: Array<{
-    group: string
-    items: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[]
+  const researchLabActive = pathname.startsWith("/research-lab")
+  const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
+  const warRoomActive = pathname.startsWith("/war-room") || dockHighlight === "war-room"
+  const analyticsActive = pathname.startsWith("/analytics") || dockHighlight === "analytics"
+  const coachActive = dockHighlight === "coach"
+  const journalActive = activeTab === "journal" || pathname.startsWith("/journal/")
+  const strategiesActive = activeTab === "strategies" || dockHighlight === "strategies"
+  const dashboardActive =
+    (activeTab === "dashboard" && !analyticsActive && !plannerActive && !warRoomActive) ||
+    dockHighlight === "dashboard"
+
+  const mobileNavItems: Array<{
+    id: DashboardTab | "research-lab"
+    label: string
+    href: string
+    icon: typeof LayoutDashboard
+    active: boolean
   }> = [
     {
-      group: "Today",
-      items: [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }],
+      id: "dashboard",
+      label: "Dashboard",
+      href: getDashboardTabHref("dashboard"),
+      icon: LayoutDashboard,
+      active: dashboardActive,
     },
     {
-      group: "Prepare",
-      items: [{ id: "strategies", label: "Strategies", icon: Target }],
+      id: "strategies",
+      label: "Strategies",
+      href: getDashboardTabHref("strategies"),
+      icon: ChartCandlestick,
+      active: strategiesActive,
     },
     {
-      group: "Trade",
-      items: [],
+      id: "analytics",
+      label: "Analytics",
+      href: getDashboardTabHref("analytics"),
+      icon: BarChart3,
+      active: analyticsActive,
     },
     {
-      group: "Review",
-      items: [
-        { id: "analytics", label: "Analytics", icon: BarChart3 },
-        { id: "journal", label: "Journal", icon: BookOpen },
-      ],
+      id: "journal",
+      label: "Journal",
+      href: getDashboardTabHref("journal"),
+      icon: BookOpen,
+      active: journalActive,
     },
   ]
 
-  const navItems = navGroups.flatMap((g) => g.items)
+  if (researchLabEnabled) {
+    mobileNavItems.push({
+      id: "research-lab",
+      label: "Lab",
+      href: "/research-lab",
+      icon: FlaskConical,
+      active: researchLabActive,
+    })
+  }
 
-  const researchLabActive = pathname.startsWith("/research-lab")
-  
+  const handleCoachClick = () => {
+    if (onOpenCoach) {
+      onOpenCoach()
+      return
+    }
+    router.push(getDashboardHomeHref())
+  }
+
   return (
     <header className="dashboard-header">
-      <div className="dashboard-container px-4 md:px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <Link
-            href={getDashboardHomeHref()}
-            className="flex items-center gap-3 shrink-0 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40"
-            aria-label="Go to Dashboard"
-            onClick={(event) => {
-              if (pathname !== "/") return
-              event.preventDefault()
-              const tab = parseTabSearchParam(
-                new URLSearchParams(window.location.search).get("tab"),
-              )
-              if (!tab || tab === "dashboard") {
-                window.scrollTo({ top: 0, behavior: "smooth" })
-                return
-              }
-              router.replace(getDashboardHomeHref())
-            }}
-          >
-            <div className="relative flex size-9 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/15 to-profit/10 glow-cyan">
-              <Zap className="size-[18px] text-cyan-glow" />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-[15px] font-semibold leading-none tracking-tight">Vyronis HQ</h1>
-              <p className="mt-1 text-[11px] text-muted-foreground/70">Trading Intelligence</p>
-            </div>
-          </Link>
+      <div className="vyronis-nav dashboard-container px-4 md:px-6">
+        <Link
+          href={getDashboardHomeHref()}
+          className="vyronis-nav__logo"
+          aria-label="Go to Dashboard"
+          onClick={(event) => {
+            if (pathname !== APP_HOME_PATH && pathname !== "/") return
+            event.preventDefault()
+            const tab = parseTabSearchParam(new URLSearchParams(window.location.search).get("tab"))
+            if (!tab || tab === "dashboard") {
+              window.scrollTo({ top: 0, behavior: "smooth" })
+              return
+            }
+            router.replace(getDashboardHomeHref())
+          }}
+        >
+          <div className="vyronis-nav__logo-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M7 1L13 4V10L7 13L1 10V4L7 1Z"
+                stroke="#2dd4bf"
+                strokeWidth="1.5"
+                fill="none"
+              />
+              <path d="M7 4L10 5.5V8.5L7 10L4 8.5V5.5L7 4Z" fill="#2dd4bf" opacity="0.6" />
+            </svg>
+          </div>
+          <div className="vyronis-nav__logo-text">
+            <span className="vyronis-nav__logo-name">Vyronis HQ</span>
+            <span className="vyronis-nav__logo-sub">Trading Intelligence</span>
+          </div>
+        </Link>
 
-          <nav className="hidden lg:flex items-center gap-1 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-1">
-            {navGroups.map((group, groupIndex) => (
-              <div key={group.group} className="flex items-center gap-0.5">
-                {groupIndex > 0 ? (
-                  <span className="mx-1 h-5 w-px bg-white/[0.08]" aria-hidden />
-                ) : null}
-                <span className="px-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/45">
-                  {group.group}
-                </span>
-                {group.items.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={getDashboardTabHref(item.id)}
-                    className={`dashboard-nav-pill ${
-                      activeTab === item.id
-                        ? "dashboard-nav-pill-active text-cyan-glow"
-                        : "dashboard-nav-pill-inactive"
-                    }`}
-                  >
-                    <item.icon className="size-3.5" />
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
-                {group.group === "Trade" ? (
-                  <>
-                    <Link
-                      href="/trade-planner"
-                      className={`dashboard-nav-pill ${
-                        pathname.startsWith("/trade-planner")
-                          ? "dashboard-nav-pill-active text-cyan-glow"
-                          : "dashboard-nav-pill-inactive"
-                      }`}
-                    >
-                      <Target className="size-3.5" />
-                      <span>Planner</span>
-                    </Link>
-                    <Link
-                      href="/war-room"
-                      className={`dashboard-nav-pill ${
-                        pathname.startsWith("/war-room")
-                          ? "dashboard-nav-pill-active text-cyan-glow"
-                          : "dashboard-nav-pill-inactive"
-                      }`}
-                    >
-                      <Crosshair className="size-3.5" />
-                      <span>War Room</span>
-                    </Link>
-                  </>
-                ) : null}
-              </div>
-            ))}
-            {researchLabEnabled ? (
-              <>
-                <span className="mx-1 h-5 w-px bg-white/[0.08]" aria-hidden />
-                <Link
-                  href="/research-lab"
-                  className={`dashboard-nav-pill ${
-                    researchLabActive
-                      ? "dashboard-nav-pill-active text-cyan-glow"
-                      : "dashboard-nav-pill-inactive"
-                  }`}
-                >
-                  <FlaskConical className="size-3.5" />
-                  <span>Research Lab</span>
-                </Link>
-              </>
-            ) : null}
-          </nav>
+        <nav className="vyronis-nav__groups" aria-label="Main navigation">
+          <div className="vyronis-nav__group">
+            <span className="vyronis-nav__group-label" aria-hidden="true">
+              Today
+            </span>
+            <Link
+              href={getDashboardTabHref("dashboard")}
+              className={vyronisNavLinkClass(dashboardActive)}
+            >
+              <LayoutDashboard className="size-3.5" />
+              Dashboard
+            </Link>
+          </div>
 
-          <div className="flex items-center gap-2 md:gap-2.5">
-            <div className="hidden md:flex items-center gap-2.5">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                {session.isActive ? (
-                  <div className={`size-1.5 rounded-full live-pulse live-dot ${session.textClass.replace("text-", "bg-")}`} />
-                ) : (
-                  <div className="size-1.5 rounded-full bg-muted-foreground/40" />
-                )}
-                <span className={session.isActive ? "live-text-glow text-cyan-glow/90" : "text-muted-foreground/70"}>
-                  {session.isActive ? "LIVE" : "Closed"}
-                </span>
-              </div>
-              <Badge variant="outline" className={`h-7 text-[11px] font-medium ${session.borderClass} ${session.textClass} ${session.bgClass} ${session.glowClass}`}>
-                <Clock className="mr-1 size-3 opacity-70" />
-                <span className="hidden xl:inline">{session.name}</span>
-                <span className="xl:hidden">{session.name.split(" ")[0]}</span>
-                {localTime && <span className="ml-1.5 text-muted-foreground/60 hidden xl:inline">· {localTime}</span>}
-              </Badge>
-            </div>
+          <div className="vyronis-nav__group">
+            <span className="vyronis-nav__group-label" aria-hidden="true">
+              Prepare
+            </span>
+            <Link
+              href={getDashboardTabHref("strategies")}
+              className={vyronisNavLinkClass(strategiesActive)}
+            >
+              <ChartCandlestick className="size-3.5" />
+              Strategies
+            </Link>
+            <Link href="/trade-planner" className={vyronisNavLinkClass(plannerActive)}>
+              <Calculator className="size-3.5" />
+              Planner
+            </Link>
+          </div>
 
+          <div className="vyronis-nav__group">
+            <span className="vyronis-nav__group-label" aria-hidden="true">
+              Trade
+            </span>
+            <Link href="/war-room" className={vyronisNavLinkClass(warRoomActive)}>
+              <Crosshair className="size-3.5" />
+              War Room
+            </Link>
             <button
               type="button"
-              onClick={() => onOpenSettings?.()}
-              className="rounded-[10px] border border-transparent p-2 transition-all duration-200 hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.06] group"
-              title="Account Settings"
+              onClick={handleCoachClick}
+              className={vyronisNavLinkClass(coachActive)}
             >
-              <Settings className="size-4 text-muted-foreground transition-colors group-hover:text-cyan-glow" />
+              <Brain className="size-3.5" />
+              Coach
             </button>
-
-            {showSignalBell ? (
-              <SignalAlertsBell
-                enabled
-                onSelectSignal={(signal) => {
-                  if (onSignalAlertClick) {
-                    onSignalAlertClick(signal)
-                    return
-                  }
-                  router.push(getTradingViewSignalHref(signal))
-                }}
-              />
-            ) : null}
-
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.08] px-2.5 py-1">
-              <Sparkles className="size-3 text-amber-400" />
-              <span className="text-[11px] font-medium tracking-wide text-amber-400">PRO</span>
-            </div>
           </div>
+
+          <div className="vyronis-nav__group">
+            <span className="vyronis-nav__group-label" aria-hidden="true">
+              Review
+            </span>
+            <Link href="/analytics" className={vyronisNavLinkClass(analyticsActive)}>
+              <BarChart3 className="size-3.5" />
+              Analytics
+            </Link>
+            <Link
+              href={getDashboardTabHref("journal")}
+              className={vyronisNavLinkClass(journalActive)}
+            >
+              <BookOpen className="size-3.5" />
+              Journal
+            </Link>
+          </div>
+
+          {researchLabEnabled ? (
+            <div className="vyronis-nav__group">
+              <span className="vyronis-nav__group-label" aria-hidden="true">
+                Lab
+              </span>
+              <Link href="/research-lab" className={vyronisNavLinkClass(researchLabActive)}>
+                <FlaskConical className="size-3.5" />
+                Research
+              </Link>
+            </div>
+          ) : null}
+        </nav>
+
+        <div className="vyronis-nav__right">
+          <div className="vyronis-nav__status">
+            <span
+              className={cn(
+                "vyronis-nav__status-dot",
+                session.isActive && "vyronis-nav__status-dot--open",
+              )}
+              aria-hidden="true"
+            />
+            <span>{session.isActive ? "Open" : "Closed"}</span>
+            <span>· {session.name}</span>
+          </div>
+
+          {localTime ? <span className="vyronis-nav__time">{localTime}</span> : null}
+
+          <button
+            type="button"
+            onClick={() => onOpenSettings?.()}
+            className="vyronis-nav__icon-btn"
+            aria-label="Settings"
+            title="Account Settings"
+          >
+            <Settings className="size-4" />
+          </button>
+
+          {showSignalBell ? (
+            <SignalAlertsBell
+              enabled
+              onSelectSignal={(signal) => {
+                if (onSignalAlertClick) {
+                  onSignalAlertClick(signal)
+                  return
+                }
+                router.push(getTradingViewSignalHref(signal))
+              }}
+            />
+          ) : null}
+
+          <span className="vyronis-nav__pro-badge">PRO</span>
         </div>
       </div>
 
       <div className={cn("border-t border-white/[0.04] lg:hidden", hideMobileNav && "hidden")}>
-        <nav className="flex items-center justify-around px-2 py-2">
-          {navItems.map((item) => (
+        <nav className="flex items-center justify-around px-2 py-2" aria-label="Mobile section navigation">
+          {mobileNavItems.map((item) => (
             <Link
               key={item.id}
-              href={getDashboardTabHref(item.id)}
-              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-2 py-1 transition-all duration-200 ${
-                activeTab === item.id
+              href={item.href}
+              className={cn(
+                "dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-2 py-1 transition-all duration-200",
+                item.active
                   ? "dashboard-nav-mobile-active text-cyan-glow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               <item.icon className="size-[18px]" />
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
           ))}
-          {researchLabEnabled ? (
-            <Link
-              href="/research-lab"
-              className={`dashboard-nav-mobile flex flex-col items-center gap-1 rounded-lg px-2 py-1 transition-all duration-200 ${
-                researchLabActive
-                  ? "dashboard-nav-mobile-active text-cyan-glow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <FlaskConical className="size-[18px]" />
-              <span className="text-[10px] font-medium">Lab</span>
-            </Link>
-          ) : null}
         </nav>
       </div>
     </header>

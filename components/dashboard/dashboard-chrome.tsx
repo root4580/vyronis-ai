@@ -68,6 +68,8 @@ export function DashboardChrome({
       showSignalBell={showSignalBell}
       onSignalAlertClick={onSignalAlertClick}
       hideMobileHeaderNav={showMobileDock}
+      onOpenCoach={onDockCoach}
+      dockHighlight={dockHighlight}
       userBar={
         <DashboardUserBar
           profileCard={profileCard}

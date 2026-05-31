@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { DashboardHeader, type DashboardTab } from "@/components/dashboard/trading-components"
+import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { cn } from "@/lib/utils"
 
 type DashboardAppShellProps = {
@@ -17,6 +18,8 @@ type DashboardAppShellProps = {
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
   hideMobileHeaderNav?: boolean
+  onOpenCoach?: () => void
+  dockHighlight?: DockHighlightId
 }
 
 export function DashboardAppShell({
@@ -32,6 +35,8 @@ export function DashboardAppShell({
   showSignalBell,
   onSignalAlertClick,
   hideMobileHeaderNav = false,
+  onOpenCoach,
+  dockHighlight = null,
 }: DashboardAppShellProps) {
   return (
     <div className={cn("dashboard-shell", mobileDock && "dashboard-shell-has-dock")}>
@@ -41,6 +46,8 @@ export function DashboardAppShell({
         showSignalBell={showSignalBell}
         onSignalAlertClick={onSignalAlertClick}
         hideMobileNav={hideMobileHeaderNav}
+        onOpenCoach={onOpenCoach}
+        dockHighlight={dockHighlight}
       />
       {userBar}
       <main className={cn("dashboard-shell-main", mainClassName)}>

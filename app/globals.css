@@ -523,10 +523,94 @@
 }
 
 .dashboard-header {
-  @apply sticky top-0 z-30 border-b border-white/[0.06];
-  background: rgba(8, 10, 14, 0.72);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  @apply sticky top-0 z-50 border-b border-white/[0.08];
+  background: #0f1117;
+}
+
+.vyronis-nav {
+  @apply flex h-[52px] items-center gap-0;
+}
+
+.vyronis-nav__logo {
+  @apply mr-5 flex shrink-0 items-center gap-2 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40;
+}
+
+.vyronis-nav__logo-icon {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-md bg-teal-700;
+}
+
+.vyronis-nav__logo-text {
+  @apply hidden flex-col leading-tight sm:flex;
+}
+
+.vyronis-nav__logo-name {
+  @apply text-[13px] font-medium text-[#e6e6e6];
+}
+
+.vyronis-nav__logo-sub {
+  @apply text-[9px] tracking-[0.02em] text-[#6b7280];
+}
+
+.vyronis-nav__groups {
+  @apply hidden min-w-0 flex-1 items-center overflow-hidden lg:flex;
+}
+
+.vyronis-nav__group {
+  @apply flex h-full shrink-0 items-center gap-0.5 border-r border-white/[0.07] px-3;
+}
+
+.vyronis-nav__group:last-child {
+  @apply border-r-0;
+}
+
+.vyronis-nav__group-label {
+  @apply mr-1 shrink-0 select-none text-[9px] font-medium uppercase tracking-[0.08em] text-[#374151];
+}
+
+.vyronis-nav__link {
+  @apply flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border-0 bg-transparent px-2 py-1.5 text-[12.5px] text-[#6b7280] no-underline transition-colors duration-150;
+  font: inherit;
+}
+
+.vyronis-nav__link:hover {
+  @apply bg-white/[0.05] text-[#d1d5db];
+}
+
+.vyronis-nav__link--active {
+  @apply bg-cyan-glow/[0.12] text-cyan-glow;
+}
+
+.vyronis-nav__link--active:hover {
+  @apply bg-cyan-glow/[0.18] text-cyan-glow;
+}
+
+.vyronis-nav__right {
+  @apply ml-auto flex shrink-0 items-center gap-2 pl-4 md:gap-2.5;
+}
+
+.vyronis-nav__status {
+  @apply hidden items-center gap-1.5 text-[11px] text-[#6b7280] md:flex;
+}
+
+.vyronis-nav__status-dot {
+  @apply size-[5px] shrink-0 rounded-full bg-[#4b5563];
+}
+
+.vyronis-nav__status-dot--open {
+  @apply bg-emerald-500;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.vyronis-nav__time {
+  @apply hidden text-[11px] tabular-nums text-[#4b5563] xl:inline;
+}
+
+.vyronis-nav__icon-btn {
+  @apply flex size-7 items-center justify-center rounded-md border-0 bg-transparent text-[#4b5563] transition-colors duration-150 hover:bg-white/[0.06] hover:text-[#9ca3af];
+}
+
+.vyronis-nav__pro-badge {
+  @apply hidden rounded border border-cyan-glow/25 bg-cyan-glow/[0.12] px-2 py-[3px] text-[10px] font-medium tracking-[0.04em] text-cyan-glow sm:inline;
 }
 
 .dashboard-modal-backdrop {
