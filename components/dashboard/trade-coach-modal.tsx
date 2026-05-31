@@ -195,6 +195,12 @@ export function TradeCoachPanel({
   const previousSessionStatusRef = useRef<string | null>(null)
   const tradePlannerAutoMtfRef = useRef(false)
   const warRoomChartsSyncRef = useRef<string | null>(null)
+  const onSessionChangeRef = useRef(onSessionChange)
+  const onSessionLoadedRef = useRef(onSessionLoaded)
+  const plannedContextRef = useRef(plannedContext)
+  onSessionChangeRef.current = onSessionChange
+  onSessionLoadedRef.current = onSessionLoaded
+  plannedContextRef.current = plannedContext
   const [mtfDetailsOpen, setMtfDetailsOpen] = useState(false)
 
   const mtfAnalysis = useMemo(() => {
@@ -309,6 +315,14 @@ export function TradeCoachPanel({
     }
   }, [workflowPhase, mtfAnalysis])
 
+  useEffect(() => {
+    if (!active) return
+    setSession((current) => {
+      if (!sessionId) return null
+      return current?.id === sessionId ? current : null
+    })
+  }, [active, sessionId])
+
   const uploadFocusMode =
     embedded &&
     workflowPhase === "upload" &&
@@ -325,46 +339,75 @@ export function TradeCoachPanel({
     let cancelled = false
 
     async function bootstrap() {
-      setError(null)
-      setDraft("")
-      setRiskAcknowledged(false)
-
-      if (sessionId && preloadedSession?.id === sessionId) {
-        setSession(preloadedSession)
-        setIsLoading(false)
-        return
-      }
-
-      setIsLoading(true)
-
-      try {
-        if (sessionId) {
-          const existing = await fetchCoachSession(sessionId)
-          if (!cancelled) {
-            setSession(existing)
-            onSessionLoaded?.(existing)
-          }
+      if (sessionId) {
+        if (session?.id === sessionId) {
+          setIsLoading(false)
           return
         }
 
-        const contextWithRisk = {
-          ...plannedContext,
-          max_risk_per_trade: maxRiskPerTrade,
+        if (preloadedSession?.id === sessionId) {
+          setSession(preloadedSession)
+          onSessionLoadedRef.current?.(preloadedSession)
+          setIsLoading(false)
+          return
         }
-        const created = await createCoachSession(contextWithRisk, maxRiskPerTrade)
-        if (cancelled) return
-        setSession(created)
-        onSessionChange?.(created.id)
-      } catch (bootstrapError) {
-        if (!cancelled) {
-          setError(
-            bootstrapError instanceof Error
-              ? bootstrapError.message
-              : "Could not start coach session",
-          )
+
+        setError(null)
+        setDraft("")
+        setRiskAcknowledged(false)
+        setIsLoading(true)
+
+        try {
+          const existing = await fetchCoachSession(sessionId)
+          if (!cancelled) {
+            setSession(existing)
+            onSessionLoadedRef.current?.(existing)
+          }
+        } catch (bootstrapError) {
+          if (!cancelled) {
+            setError(
+              bootstrapError instanceof Error
+                ? bootstrapError.message
+                : "Could not start coach session",
+            )
+          }
+        } finally {
+          if (!cancelled) setIsLoading(false)
         }
-      } finally {
-        if (!cancelled) setIsLoading(false)
+        return
+      }
+
+      if (!sessionId) {
+        if (session?.id) {
+          setIsLoading(false)
+          return
+        }
+
+        setError(null)
+        setDraft("")
+        setRiskAcknowledged(false)
+        setIsLoading(true)
+
+        try {
+          const contextWithRisk = {
+            ...plannedContextRef.current,
+            max_risk_per_trade: maxRiskPerTrade,
+          }
+          const created = await createCoachSession(contextWithRisk, maxRiskPerTrade)
+          if (cancelled) return
+          setSession(created)
+          onSessionChangeRef.current?.(created.id)
+        } catch (bootstrapError) {
+          if (!cancelled) {
+            setError(
+              bootstrapError instanceof Error
+                ? bootstrapError.message
+                : "Could not start coach session",
+            )
+          }
+        } finally {
+          if (!cancelled) setIsLoading(false)
+        }
       }
     }
 
@@ -373,15 +416,7 @@ export function TradeCoachPanel({
     return () => {
       cancelled = true
     }
-  }, [
-    active,
-    sessionId,
-    preloadedSession,
-    maxRiskPerTrade,
-    plannedContext,
-    onSessionChange,
-    onSessionLoaded,
-  ])
+  }, [active, sessionId, preloadedSession?.id, maxRiskPerTrade, session?.id])
 
   useEffect(() => {
     if (!active || !sessionId || !preloadedSession || preloadedSession.id !== sessionId) return
@@ -420,7 +455,6 @@ export function TradeCoachPanel({
         confirmation_timeframe: context.confirmation_timeframe,
       })
       setSession(updated)
-      onSessionChange?.(updated.id)
     } catch (pairError) {
       setError(pairError instanceof Error ? pairError.message : "Could not set pair")
     } finally {
@@ -442,7 +476,6 @@ export function TradeCoachPanel({
       })
       setSession(updated)
       setSelectedPlaybookId(playbook.id)
-      onSessionChange?.(updated.id)
     } catch (playbookError) {
       setError(
         playbookError instanceof Error ? playbookError.message : "Could not update strategy playbook",
@@ -534,7 +567,6 @@ export function TradeCoachPanel({
         confirmation_timeframe: contextPatch.confirmation_timeframe,
       })
       setSession(updated)
-      onSessionChange?.(updated.id)
 
       try {
         const weekPlan = await fetchWeeklyPlan().catch(() => null)
@@ -584,7 +616,6 @@ export function TradeCoachPanel({
     try {
       const updated = await runCoachMtfAnalysis(session.id)
       setSession(updated)
-      onSessionChange?.(updated.id)
 
       const analysis = resolveSessionMtfAnalysis(updated)
       setMtfDetailsOpen(true)
@@ -622,7 +653,6 @@ export function TradeCoachPanel({
         const uploaded = countMtfScreenshots(getMtfScreenshotsFromSession(updated))
         if (uploaded === 0) return
         setSession(updated)
-        onSessionChange?.(updated.id)
         toast({
           title: "War Room charts loaded",
           description: `${uploaded} chart${uploaded === 1 ? "" : "s"} from your weekly plan — tap Run analysis when ready.`,
@@ -631,7 +661,7 @@ export function TradeCoachPanel({
       .catch(() => {
         // War Room sync is optional when no saved charts exist
       })
-  }, [active, session?.id, session?.planned_context?.pair, onSessionChange, toast])
+  }, [active, session?.id, session?.planned_context?.pair, toast])
 
   useEffect(() => {
     tradePlannerAutoMtfRef.current = false
@@ -663,7 +693,6 @@ export function TradeCoachPanel({
       const updated = await submitCoachAnswer(session.id, activeQuestion.key, draft.trim())
       setSession(updated)
       setDraft("")
-      onSessionChange?.(updated.id)
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not save answer")
     } finally {

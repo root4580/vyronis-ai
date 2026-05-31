@@ -131,6 +131,7 @@ export function AIContextProvider({
   const needsFreshSessionRef = useRef(false)
   const preTradeOpenInFlightRef = useRef(false)
   const coachSessionCacheRef = useRef<Map<string, TradeCoachSessionWithMessages>>(new Map())
+  const lastCoachContextFetchIdRef = useRef<string | null>(null)
   const contextRef = useRef<CommandCenterContext | null>(null)
   const loadGenerationRef = useRef(0)
   const [coachPreloadedSession, setCoachPreloadedSession] =
@@ -395,6 +396,15 @@ export function AIContextProvider({
       setError(null)
 
       let sessionId = options.sessionId ?? null
+      if (sessionId) {
+        setCoachPreloadedSession(
+          coachSessionCacheRef.current.get(sessionId) ?? null,
+        )
+      } else {
+        setCoachPreloadedSession(null)
+        lastCoachContextFetchIdRef.current = null
+      }
+
       let plannedContext = {
         ...(options.plannedContext ?? buildEmptyPlannedContext()),
         max_risk_per_trade: maxRiskPerTrade,
@@ -640,7 +650,12 @@ export function AIContextProvider({
       setCoachSessionId(sessionId)
       if (sessionId) {
         setFocusId(sessionId)
-        if (userId && mode === "pre_trade") {
+        if (
+          userId &&
+          mode === "pre_trade" &&
+          lastCoachContextFetchIdRef.current !== sessionId
+        ) {
+          lastCoachContextFetchIdRef.current = sessionId
           void fetchCommandCenterContext("pre_trade", sessionId)
             .then(setContext)
             .catch(() => undefined)

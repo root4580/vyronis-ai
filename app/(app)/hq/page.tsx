@@ -297,6 +297,7 @@ function Home() {
   const dashboardLoadTimedOutRef = useRef(false)
   const globalLoadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tradesFetchSettledRef = useRef(false)
+  const plannedListRefreshSessionRef = useRef<string | null>(null)
   const openCommandCenterRef = useRef<() => void>(() => {})
   const openPreTradeCoachRef = useRef<
     (options?: {
@@ -1260,6 +1261,29 @@ function Home() {
     }
   }
 
+  const handleCoachSessionChangeFromHq = useCallback(
+    (sessionId: string | null) => {
+      setCoachSessionId(sessionId)
+      if (!sessionId || plannedListRefreshSessionRef.current === sessionId) return
+      plannedListRefreshSessionRef.current = sessionId
+      void refreshPlannedSessions(undefined, true)
+    },
+    [user?.id],
+  )
+
+  const handleCoachCompletedFromHq = useCallback(
+    (sessionId: string) => {
+      if (user?.id) markRitualCoachComplete(user.id)
+      void refreshPlannedSessions(undefined, true)
+      toast({
+        title: "Pre-trade complete",
+        description: "Tap Log this trade in the coach or journal to link plan vs outcome.",
+      })
+      setCoachSessionId(sessionId)
+    },
+    [toast, user?.id],
+  )
+
   async function handleContinuePlannedCoach(sessionId: string) {
     await handleOpenCoach(undefined, { sessionId })
   }
@@ -2027,19 +2051,8 @@ function Home() {
       userId={user?.id}
       refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
       maxRiskPerTrade={maxRiskPerTrade}
-      onCoachSessionChange={(sessionId) => {
-        setCoachSessionId(sessionId)
-        if (sessionId) void refreshPlannedSessions(undefined, true)
-      }}
-      onCoachCompleted={(sessionId) => {
-        if (user?.id) markRitualCoachComplete(user.id)
-        void refreshPlannedSessions(undefined, true)
-        toast({
-          title: "Pre-trade complete",
-          description: "Tap Log this trade in the coach or journal to link plan vs outcome.",
-        })
-        setCoachSessionId(sessionId)
-      }}
+      onCoachSessionChange={handleCoachSessionChangeFromHq}
+      onCoachCompleted={handleCoachCompletedFromHq}
       onLogPlannedTrade={(sessionId) => void handleConvertPlannedTrade(sessionId)}
     >
       <CommandCenterBridge
