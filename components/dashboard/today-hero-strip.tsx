@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowRight, CheckCircle2, Circle, Sparkles } from "lucide-react"
+import { ArrowRight, BarChart3, BookOpen, CheckCircle2, Circle, Sparkles } from "lucide-react"
 import { fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 import { formatPnL } from "@/lib/trade-utils"
@@ -29,6 +29,7 @@ type TodayHeroStripProps = {
   onOpenWarRoom?: () => void
   onOpenCoach: () => void
   onOpenLog: () => void
+  onOpenJournal?: () => void
   onOpenWeeklyDebrief?: () => void
   onViewPerformance?: () => void
   onCoachEngaged?: () => void
@@ -43,6 +44,7 @@ export function TodayHeroStrip({
   onOpenWarRoom,
   onOpenCoach,
   onOpenLog,
+  onOpenJournal,
   onOpenWeeklyDebrief,
   onViewPerformance,
   onCoachEngaged,
@@ -121,6 +123,42 @@ export function TodayHeroStrip({
     setShowCheckIn(false)
   }
 
+  function handleStepClick(stepId: RitualStepId) {
+    switch (stepId) {
+      case "war-room":
+        onOpenWarRoom?.()
+        break
+      case "check-in":
+        setShowCheckIn(true)
+        setDebriefOpen(false)
+        break
+      case "coach":
+        onCoachEngaged?.()
+        onOpenCoach()
+        break
+      case "log":
+        onOpenLog()
+        break
+      case "debrief":
+        setShowCheckIn(false)
+        setDebriefOpen(true)
+        break
+      default:
+        break
+    }
+  }
+
+  const shortcutItems = [
+    onOpenJournal
+      ? { id: "journal", label: "Journal", icon: BookOpen, onClick: onOpenJournal }
+      : null,
+    onViewPerformance
+      ? { id: "performance", label: "Performance", icon: BarChart3, onClick: onViewPerformance }
+      : null,
+  ].filter((item): item is { id: string; label: string; icon: typeof BookOpen; onClick: () => void } =>
+    Boolean(item),
+  )
+
   return (
     <section
       aria-label="Today"
@@ -163,27 +201,64 @@ export function TodayHeroStrip({
         <ArrowRight className="ml-2 size-4" />
       </Button>
 
-      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {view.steps.map((step) => (
-          <span
-            key={step.id}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium",
-              step.status === "complete"
-                ? "border-cyan-glow/25 bg-cyan-glow/[0.06] text-cyan-glow/90"
-                : step.status === "current"
-                  ? "border-cyan-glow/35 bg-cyan-glow/[0.1] text-foreground"
-                  : "border-white/[0.06] text-muted-foreground/55",
-            )}
-          >
-            {step.status === "complete" ? (
-              <CheckCircle2 className="size-3" />
-            ) : (
-              <Circle className="size-3" />
-            )}
-            {step.shortLabel}
-          </span>
-        ))}
+      <div className="mt-4 space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
+          Daily workflow
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {view.steps.map((step) => (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => handleStepClick(step.id)}
+              className={cn(
+                "vyronis-surface flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-center transition-colors hover:border-cyan-glow/25 hover:bg-cyan-glow/[0.04]",
+                step.status === "complete"
+                  ? "border-cyan-glow/25 bg-cyan-glow/[0.06]"
+                  : step.status === "current"
+                    ? "border-cyan-glow/35 bg-cyan-glow/[0.1]"
+                    : "border-white/[0.06]",
+              )}
+            >
+              {step.status === "complete" ? (
+                <CheckCircle2 className="size-4 text-cyan-glow" />
+              ) : (
+                <Circle
+                  className={cn(
+                    "size-4",
+                    step.status === "current" ? "text-cyan-glow" : "text-muted-foreground/45",
+                  )}
+                />
+              )}
+              <span
+                className={cn(
+                  "text-[10px] font-semibold leading-tight",
+                  step.status === "complete" || step.status === "current"
+                    ? "text-foreground/90"
+                    : "text-muted-foreground/70",
+                )}
+              >
+                {step.shortLabel}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {shortcutItems.length > 0 ? (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {shortcutItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={item.onClick}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-black/20 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground/80 transition-colors hover:border-cyan-glow/20 hover:text-cyan-glow/90"
+              >
+                <item.icon className="size-3.5" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {showCheckIn && action.stepId === "check-in" && !view.allComplete && (

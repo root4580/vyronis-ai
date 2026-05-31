@@ -79,7 +79,6 @@ import {
   buildUserProfileCardProps,
 } from "@/components/dashboard/user-profile-card"
 import { ConnectedDashboardChrome } from "@/components/dashboard/connected-dashboard-chrome"
-import { DashboardQuickNav } from "@/components/dashboard/dashboard-quick-nav"
 import { DashboardRecentTradesSection } from "@/components/dashboard/dashboard-recent-trades-section"
 import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
@@ -1929,6 +1928,10 @@ function Home() {
                     onOpenWarRoom={() => router.push("/war-room")}
                     onOpenCoach={() => void handleOpenCoach()}
                     onOpenLog={() => openManualTrade()}
+                    onOpenJournal={() => {
+                      setActiveTab("journal")
+                      router.replace(getDashboardTabHref("journal"))
+                    }}
                     onOpenWeeklyDebrief={() => {
                       setActiveTab("journal")
                       router.replace(getDashboardTabHref("journal"))
@@ -1944,20 +1947,6 @@ function Home() {
                     onViewPerformance={openDashboardPerformance}
                   />
                 ) : null}
-
-                <DashboardQuickNav
-                  onCalendar={() => {
-                    setActiveTab("journal")
-                    router.replace(getDashboardTabHref("journal"))
-                  }}
-                  onWarRoom={() => router.push("/war-room")}
-                  onChat={() => {
-                    openCommandCenterRef.current()
-                    if (user?.id) markRitualCoachEngaged(user.id)
-                  }}
-                  onLog={() => openManualTrade()}
-                  onStats={openDashboardPerformance}
-                />
 
                 <DashboardRecentTradesSection
                   trades={trades}

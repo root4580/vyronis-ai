@@ -7,7 +7,10 @@ Drop PNG or WebP files here. The landing page uses them automatically when prese
 | `journal-plan.png` | `/hq?tab=journal` → Add Trade → **Plan** tab (with Vyronis score visible) |
 | `war-room.png` | `/war-room` — weekly bias + watchlist |
 | `analytics.png` | `/analytics` — charts / weekly review |
-| `hero-dashboard.png` | Optional hero image (defaults to `journal-plan.png`) |
+| `ai-coach.png` | `/hq` with AI Coach open — SKIP verdict + chart analysis visible |
+| `weekly-debrief.png` | `/hq?tab=journal` — Weekly AI Debrief scorecard |
+| `behavioral-leak.png` | `/hq` — Primary Behavioral Leak card |
+| `hero-dashboard.png` | Optional hero image (defaults to `ai-coach.png`) |
 
 ## How to capture (Mac)
 
