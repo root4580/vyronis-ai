@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { clearClientSessionData } from "@/lib/client-session"
+import { clearLastActiveAt, touchLastActiveAt } from "@/lib/idle-return-policy"
 import {
   buildUserProfileCardProps,
   type UserProfileCardProps,
@@ -16,6 +17,7 @@ import {
   readCachedUserProfile,
 } from "@/lib/user-profile"
 import { useToast } from "@/hooks/use-toast"
+import { useIdleReturnPolicy } from "@/hooks/use-idle-return-policy"
 
 type UseDashboardChromeOptions = {
   loginNextPath?: string
@@ -81,6 +83,7 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
 
       setIsLoadingProfile(false)
       setIsAuthReady(true)
+      touchLastActiveAt()
     }
 
     void bootstrap()
@@ -114,6 +117,7 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
     })
 
     clearClientSessionData(user?.id)
+    clearLastActiveAt()
     setUser(null)
 
     await clearLocalAuthSession(supabase)
@@ -122,6 +126,10 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
     redirectToLogin()
     window.setTimeout(() => redirectToLogin(), 1500)
   }, [isLoggingOut, supabase, toast, user?.id])
+
+  useIdleReturnPolicy({
+    enabled: isAuthReady && Boolean(user) && !isLoggingOut,
+  })
 
   return {
     user,

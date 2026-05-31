@@ -17,12 +17,8 @@ import {
   computePlanStreak,
   disciplineGradeBoxClass,
 } from "@/lib/trade-planner/plan-streak"
-import {
-  getSessionClock,
-  getSessionClockAccentTheme,
-  getSessionClockTheme,
-  type SessionClockInfo,
-} from "@/lib/trading/session-timing"
+import { getForexSessionHeaderState } from "@/lib/trading/forex-sessions"
+import { formatTimeUntilSessionOpen } from "@/lib/trading/session-timing"
 import {
   computeAvgRiskReward,
   computeWeekPnL,
@@ -33,6 +29,7 @@ import {
 import { formatPnL, getPnLTextClass, getSignedPnL } from "@/lib/trade-utils"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
+import { ForexSessionsWidget } from "@/components/dashboard/forex-sessions-widget"
 
 type HqDashboardProps = {
   trades: DashboardTradeRow[]
@@ -151,14 +148,16 @@ export function HqDashboard({
     }
   }, [trades.length])
 
-  const [sessionClock, setSessionClock] = useState<SessionClockInfo>(() => getSessionClock())
+  const [marketNow, setMarketNow] = useState(() => new Date())
 
   useEffect(() => {
-    const refresh = () => setSessionClock(getSessionClock())
+    const refresh = () => setMarketNow(new Date())
     refresh()
-    const id = window.setInterval(refresh, 60_000)
+    const id = window.setInterval(refresh, 1000)
     return () => window.clearInterval(id)
   }, [])
+
+  const forexHeader = useMemo(() => getForexSessionHeaderState(marketNow), [marketNow])
   const weekPnL = useMemo(() => computeWeekPnL(trades), [trades])
   const { average: avgRr, plannedAverage } = useMemo(() => computeAvgRiskReward(trades), [trades])
   const totalPnL = useMemo(
@@ -202,8 +201,10 @@ export function HqDashboard({
   const disciplineScore = discipline?.weekAverageScore
   const disciplineGrade = discipline?.weekGrade
 
-  const sessionTheme = getSessionClockTheme(sessionClock)
-  const sessionAccentTheme = getSessionClockAccentTheme(sessionClock)
+  const headerAccent = forexHeader.accent
+  const headerBackground = `rgb(from ${headerAccent} r g b / 0.08)`
+  const headerBorder = `rgb(from ${headerAccent} r g b / 0.28)`
+  const headerMuted = `rgb(from ${headerAccent} r g b / 0.62)`
 
   return (
     <div className={cn("space-y-5", className)}>
@@ -217,31 +218,15 @@ export function HqDashboard({
               <span
                 className="size-1.5 shrink-0 rounded-full"
                 style={{
-                  background: sessionClock.isActive ? sessionAccentTheme.accent : sessionTheme.accent,
-                  boxShadow: sessionClock.isActive
-                    ? `0 0 0 2px ${sessionAccentTheme.background}`
-                    : undefined,
+                  background: headerAccent,
+                  boxShadow: forexHeader.isLive ? `0 0 0 2px ${headerBackground}` : undefined,
                 }}
                 aria-hidden="true"
               />
-              <span style={{ color: sessionTheme.accent }}>{sessionClock.name}</span>
+              <span style={{ color: headerAccent }}>{forexHeader.primaryLabel}</span>
             </span>
-            {sessionClock.isActive ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span style={{ color: sessionAccentTheme.muted }}>session open</span>
-              </>
-            ) : sessionClock.nextSessionLabel ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span style={{ color: sessionAccentTheme.muted }}>{sessionClock.nextSessionLabel}</span>
-              </>
-            ) : (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>markets closed</span>
-              </>
-            )}
+            <span aria-hidden="true">·</span>
+            <span style={{ color: headerMuted }}>{forexHeader.secondaryLabel}</span>
           </p>
         </div>
         <div className="hq-surface-card flex items-center gap-3 px-3 py-2">
@@ -343,8 +328,8 @@ export function HqDashboard({
           <div
             className="mx-3 mt-3 rounded-[var(--radius-sm)] border px-3 py-2.5"
             style={{
-              background: sessionTheme.background,
-              borderColor: sessionTheme.border,
+              background: headerBackground,
+              borderColor: headerBorder,
             }}
           >
             <div className="flex items-center justify-between gap-2">
@@ -353,43 +338,35 @@ export function HqDashboard({
                   <span
                     className="size-1.5 shrink-0 rounded-full"
                     style={{
-                      background: sessionClock.isActive ? sessionAccentTheme.accent : sessionTheme.accent,
-                      boxShadow: sessionClock.isActive
-                        ? `0 0 0 2px ${sessionAccentTheme.background}`
-                        : undefined,
+                      background: headerAccent,
+                      boxShadow: forexHeader.isLive ? `0 0 0 2px ${headerBackground}` : undefined,
                     }}
                     aria-hidden="true"
                   />
-                  <p className="text-xs font-medium" style={{ color: sessionTheme.accent }}>
-                    {sessionClock.name}
+                  <p className="text-xs font-medium" style={{ color: headerAccent }}>
+                    {forexHeader.primaryLabel}
                   </p>
                 </div>
-                <p className="mt-0.5 text-[10px]" style={{ color: sessionAccentTheme.muted }}>
-                  {sessionClock.isActive
-                    ? "Session active now"
-                    : sessionClock.nextSessionLabel ?? "Next session — check War Room"}
+                <p className="mt-0.5 text-[10px]" style={{ color: headerMuted }}>
+                  {forexHeader.secondaryLabel}
                 </p>
               </div>
-              {!sessionClock.isActive && sessionClock.hoursUntilNextSession != null ? (
+              {forexHeader.msUntilOpen != null ? (
                 <p
                   className="shrink-0 text-right text-lg font-medium tabular-nums"
-                  style={{ color: sessionAccentTheme.accent }}
+                  style={{ color: headerAccent }}
                 >
-                  {sessionClock.hoursUntilNextSession < 1
-                    ? `${Math.max(1, Math.round(sessionClock.hoursUntilNextSession * 60))}m`
-                    : sessionClock.hoursUntilNextSession < 24
-                      ? `${Math.floor(sessionClock.hoursUntilNextSession)}h`
-                      : `${Math.floor(sessionClock.hoursUntilNextSession / 24)}d`}
+                  {formatTimeUntilSessionOpen(forexHeader.msUntilOpen)}
                 </p>
-              ) : sessionClock.isActive ? (
-                <p
-                  className="section-label shrink-0 text-right"
-                  style={{ color: sessionAccentTheme.accent }}
-                >
+              ) : forexHeader.isLive ? (
+                <p className="section-label shrink-0 text-right" style={{ color: headerAccent }}>
                   Live
                 </p>
               ) : null}
             </div>
+          </div>
+          <div className="mx-3 mb-3">
+            <ForexSessionsWidget />
           </div>
           <div className="divide-y divide-[var(--border-subtle)] px-3 py-1">
             {(weekPlan?.pairs ?? []).length === 0 ? (

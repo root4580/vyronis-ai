@@ -73,6 +73,7 @@ import {
   parseTabSearchParam,
 } from "@/lib/dashboard-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useIdleReturnPolicy } from "@/hooks/use-idle-return-policy"
 import { useTradingAlerts } from "@/hooks/use-trading-alerts"
 import {
   DEFAULT_USER_PROFILE,
@@ -89,6 +90,7 @@ import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { clearClientSessionData } from "@/lib/client-session"
+import { clearLastActiveAt, touchLastActiveAt } from "@/lib/idle-return-policy"
 import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import {
   readCachedTrades,
@@ -260,6 +262,11 @@ function Home() {
   const isMobile = useIsMobile()
   const signingOutRef = useRef(false)
   const profileWarningShownRef = useRef(false)
+
+  useIdleReturnPolicy({
+    enabled: Boolean(user) && !isLoggingOut,
+  })
+
   const loadedDashboardUserRef = useRef<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isMt5Autofilling, setIsMt5Autofilling] = useState(false)
@@ -617,6 +624,7 @@ function Home() {
 
       loadedDashboardUserRef.current = sessionUser.id
       setUser({ id: sessionUser.id, email: sessionUser.email })
+      touchLastActiveAt()
 
       try {
         const cachedTrades = readCachedTrades<Trade>(sessionUser.id)
@@ -1926,6 +1934,7 @@ function Home() {
     const previousUserId = loadedDashboardUserRef.current ?? user?.id
     loadedDashboardUserRef.current = null
     clearClientSessionData(previousUserId)
+    clearLastActiveAt()
     setUser(null)
     setTrades([])
     setUserSettings(null)

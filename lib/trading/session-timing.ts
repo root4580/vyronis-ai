@@ -6,7 +6,8 @@ export type TradingSessionInfo = {
 export type SessionClockInfo = TradingSessionInfo & {
   nextSessionName: string | null
   hoursUntilNextSession: number | null
-  /** e.g. "Asia Session · opens in 12h 30m" */
+  msUntilNextSession: number | null
+  /** e.g. "Asia Session · opens in 12h 30m 45s" */
   nextSessionLabel: string | null
 }
 
@@ -125,26 +126,49 @@ export function detectTradingSessionFromEstClock(est: EstClock): TradingSessionI
   return { name: "Market Closed", isActive: false }
 }
 
+export function formatTimeUntilSessionOpen(msRemaining: number): string {
+  const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000))
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`
+  }
+  return `${seconds}s`
+}
+
 export function formatHoursUntilSessionOpen(hours: number): string {
-  if (hours < 1) {
-    const minutes = Math.max(1, Math.round(hours * 60))
-    return `${minutes}m`
+  return formatTimeUntilSessionOpen(hours * 60 * 60 * 1000)
+}
+
+function refineSessionOpenTime(approxOpen: Date): Date {
+  const endMs = approxOpen.getTime()
+  const startMs = endMs - 60_000
+
+  for (let t = startMs; t <= endMs; t += 1000) {
+    const prev = detectTradingSession(new Date(t))
+    const next = detectTradingSession(new Date(t + 1000))
+    if (!prev.isActive && next.isActive) {
+      return new Date(t + 1000)
+    }
   }
-  if (hours < 24) {
-    const wholeHours = Math.floor(hours)
-    const minutes = Math.round((hours - wholeHours) * 60)
-    return minutes > 0 ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`
-  }
-  const days = Math.floor(hours / 24)
-  const remainderHours = Math.round(hours % 24)
-  return remainderHours > 0 ? `${days}d ${remainderHours}h` : `${days}d`
+
+  return approxOpen
 }
 
 /** Next time a session becomes active (walks forward in EST calendar). */
 export function findNextSessionOpen(now = new Date()): {
   name: string
   opensAt: Date
-  hoursRemaining: number
+  msRemaining: number
 } | null {
   const startMs = now.getTime()
 
@@ -153,8 +177,9 @@ export function findNextSessionOpen(now = new Date()): {
     const session = detectTradingSession(probe)
     if (!session.isActive) continue
 
-    const hoursRemaining = offsetMs / (1000 * 60 * 60)
-    return { name: session.name, opensAt: probe, hoursRemaining }
+    const opensAt = refineSessionOpenTime(probe)
+    const msRemaining = Math.max(0, opensAt.getTime() - startMs)
+    return { name: session.name, opensAt, msRemaining }
   }
 
   return null
@@ -168,6 +193,7 @@ export function getSessionClock(now = new Date()): SessionClockInfo {
       ...current,
       nextSessionName: null,
       hoursUntilNextSession: null,
+      msUntilNextSession: null,
       nextSessionLabel: null,
     }
   }
@@ -178,15 +204,17 @@ export function getSessionClock(now = new Date()): SessionClockInfo {
       ...current,
       nextSessionName: null,
       hoursUntilNextSession: null,
+      msUntilNextSession: null,
       nextSessionLabel: null,
     }
   }
 
-  const eta = formatHoursUntilSessionOpen(next.hoursRemaining)
+  const eta = formatTimeUntilSessionOpen(next.msRemaining)
   return {
     ...current,
     nextSessionName: next.name,
-    hoursUntilNextSession: next.hoursRemaining,
+    hoursUntilNextSession: next.msRemaining / (1000 * 60 * 60),
+    msUntilNextSession: next.msRemaining,
     nextSessionLabel: `${next.name} · opens in ${eta}`,
   }
 }
