@@ -186,7 +186,7 @@ function ReplayCandle({
       </div>
       <span
         className={cn(
-          "max-w-[52px] truncate text-[7px] uppercase tracking-[0.06em] transition-colors",
+          "max-w-[52px] truncate text-[7px] font-medium text-text-muted transition-colors",
           active ? "text-cyan-glow/90" : "text-muted-foreground/40 group-hover:text-muted-foreground/65",
         )}
       >
@@ -226,14 +226,14 @@ function SessionRecapScore({
               <p className={cn("text-2xl font-bold", scoreColor(sessionRecap.overallScore))}>
                 <AnimatedScore value={sessionRecap.overallScore} ready={scoresReady} />
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+              <p className="text-[10px] font-medium text-text-muted">
                 Grade {sessionRecap.grade}
               </p>
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-glow/75">
-              Session Recap
+            <p className="text-[10px] font-medium text-cyan-glow/75">
+              Session recap
             </p>
             <p className="mt-1 max-w-sm text-[13px] font-medium leading-snug text-foreground/92">
               {sessionRecap.headline}
@@ -287,8 +287,8 @@ function CommentaryBubble({ event, stepKey }: { event: ExecutionReplayEvent; ste
             <Brain className="size-3 text-cyan-glow/85" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/75">
-              Coach Commentary
+            <p className="text-[9px] font-medium text-text-muted">
+              Coach commentary
             </p>
             <p className="truncate text-[10px] text-muted-foreground/60">{event.subtitle}</p>
           </div>
@@ -328,7 +328,7 @@ function TimelineHoverPreview({
       className="pointer-events-none absolute bottom-full z-10 mb-2 -translate-x-1/2 rounded-md border border-white/10 bg-surface-modal/95 px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
       style={{ left: `${left}%` }}
     >
-      <p className="whitespace-nowrap text-[9px] font-medium uppercase tracking-[0.1em] text-cyan-glow/80">
+      <p className="whitespace-nowrap text-[9px] font-medium text-cyan-glow/80">
         {event.title}
       </p>
       <p className="whitespace-nowrap text-[10px] text-foreground/85">{candle?.label ?? event.subtitle}</p>
@@ -345,8 +345,8 @@ function SessionFinaleCard({ replay }: { replay: ExecutionReplayResult }) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-glow/40 to-transparent" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/65">
-            Session Complete
+          <p className="text-[10px] font-medium text-text-muted">
+            Session complete
           </p>
           <p className="mt-1 text-lg font-semibold tracking-tight text-foreground/95">
             Execution review finished
@@ -357,13 +357,13 @@ function SessionFinaleCard({ replay }: { replay: ExecutionReplayResult }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <div className="rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-center">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/60">Process Score</p>
+            <p className="text-[9px] font-medium text-text-muted">Process score</p>
             <p className={cn("text-xl font-bold", scoreColor(sessionRecap.overallScore))}>
               {sessionRecap.overallScore}
             </p>
           </div>
           <div className="rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-center">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/60">Grade</p>
+            <p className="text-[9px] font-medium text-text-muted">Grade</p>
             <p className="text-xl font-bold text-foreground/90">{sessionRecap.grade}</p>
           </div>
           {criticalCount > 0 && (
@@ -373,7 +373,7 @@ function SessionFinaleCard({ replay }: { replay: ExecutionReplayResult }) {
                 driftGlow("critical"),
               )}
             >
-              <p className="text-[9px] uppercase tracking-[0.12em] text-loss/80">Critical Drifts</p>
+              <p className="text-[9px] font-medium text-loss/80">Critical drifts</p>
               <p className="text-xl font-bold text-loss">{criticalCount}</p>
             </div>
           )}
@@ -393,8 +393,8 @@ function EntryComparisonPanel({ replay }: { replay: ExecutionReplayResult }) {
     <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
       <div className="mb-3 flex items-center gap-2">
         <ArrowLeftRight className="size-3.5 text-cyan-glow" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/85">
-          Entry vs Planned
+        <p className="text-[10px] font-medium text-foreground/85">
+          Entry vs planned
         </p>
       </div>
       <p className="mb-3 text-[11px] text-muted-foreground/75">{entry.summary}</p>
@@ -473,8 +473,8 @@ function WhatChangedSection({ replay }: { replay: ExecutionReplayResult }) {
   if (changes.length === 0) {
     return (
       <div className="rounded-xl border border-profit/20 bg-profit/[0.04] px-3 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-profit/90">
-          What Changed?
+        <p className="text-[10px] font-medium text-profit/90">
+          What changed?
         </p>
         <p className="mt-1 text-[11px] text-foreground/85">
           Nothing material — execution tracked the pre-trade plan.
@@ -487,8 +487,8 @@ function WhatChangedSection({ replay }: { replay: ExecutionReplayResult }) {
     <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
       <div className="mb-2 flex items-center gap-2">
         <Target className="size-3.5 text-warning-foreground" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/85">
-          What Changed?
+        <p className="text-[10px] font-medium text-foreground/85">
+          What changed?
         </p>
       </div>
       <div className="space-y-2">
@@ -766,7 +766,7 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
       <div className="replay-terminal flex min-h-[220px] items-center justify-center rounded-xl border border-cyan-glow/15 bg-surface-page">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-6 animate-spin text-cyan-glow" />
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">
+          <p className="text-[10px] font-medium text-text-muted">
             Loading execution replay…
           </p>
         </div>
@@ -797,8 +797,8 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
               <Play className="size-4 text-cyan-glow" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                Execution Replay
+              <p className="text-[11px] font-medium text-foreground/90">
+                Execution replay
               </p>
               <p className="text-[10px] text-muted-foreground/65">
                 {replay.hasCoachSession ? "Coach-linked execution timeline" : "Journal-based replay"}
@@ -875,8 +875,8 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
               )}
             />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-                R:R Collapse Warning
+              <p className="text-[10px] font-medium text-foreground/85">
+                R:R collapse warning
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-foreground/85">
                 {replay.rrCollapse.message}
@@ -892,8 +892,8 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
 
         <div className="rounded-xl border border-white/[0.06] bg-black/25 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-              Candle Progression
+            <p className="text-[10px] font-medium text-text-muted">
+              Candle progression
             </p>
             <p className="text-[10px] tabular-nums text-cyan-glow/80">
               {activeCandle?.label || activeEvent.title}
@@ -939,7 +939,7 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
                     >
                       <Icon className="size-3" />
                     </span>
-                    <span className="mt-0.5 block text-center text-[7px] uppercase tracking-[0.08em] text-muted-foreground/55">
+                    <span className="mt-0.5 block text-center text-[7px] font-medium text-text-muted">
                       {marker.shortLabel}
                     </span>
                   </button>
@@ -956,7 +956,7 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
                   type="button"
                   onClick={() => stepTo(anchor.step)}
                   className={cn(
-                    "shrink-0 rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-[0.08em] transition-colors",
+                    "shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-medium transition-colors",
                     activeEvent.id === anchor.phase
                       ? "border-cyan-glow/40 bg-cyan-glow/15 text-cyan-glow"
                       : "border-white/[0.08] bg-white/[0.03] text-muted-foreground/65 hover:border-white/[0.14]",

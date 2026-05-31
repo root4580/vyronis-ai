@@ -63,7 +63,7 @@ export function VyronisCommandCenter() {
         role="dialog"
         aria-label="Vyronis HQ Command Center"
       >
-        <header className="command-center-header sticky top-0 z-20 flex h-[50px] shrink-0 items-center gap-2 px-4">
+        <header className="command-center-header sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 px-4">
           {mode !== "companion" ? (
             <button
               type="button"

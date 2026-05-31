@@ -781,6 +781,41 @@
   @apply flex h-[52px] items-center gap-0;
 }
 
+@media (max-width: 1023px) {
+  .dashboard-header--compact .vyronis-nav {
+    height: 48px;
+  }
+
+  .dashboard-header--compact .vyronis-nav__logo-text {
+    display: flex;
+  }
+
+  .dashboard-header--compact .vyronis-nav__logo-sub {
+    display: none;
+  }
+
+  .dashboard-header--compact .vyronis-nav__status,
+  .dashboard-header--compact .vyronis-nav__time,
+  .dashboard-header--compact .vyronis-nav__icon-btn,
+  .dashboard-header--compact .vyronis-nav__pro-badge {
+    display: none;
+  }
+
+  .vyronis-nav__coach-btn {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-md border-0 bg-transparent px-2.5 py-1.5 text-[12.5px] font-medium text-[var(--text-secondary)] transition-colors duration-150;
+    font: inherit;
+  }
+
+  .vyronis-nav__coach-btn:hover {
+    @apply bg-white/[0.05] text-[var(--text-primary)];
+  }
+
+  .vyronis-nav__coach-btn--active {
+    background: rgb(from var(--color-accent) r g b / 0.1);
+    color: var(--color-accent);
+  }
+}
+
 .vyronis-nav__logo {
   @apply mr-5 flex shrink-0 items-center gap-2 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40;
 }
@@ -887,12 +922,27 @@
 }
 
 .add-trade-modal {
+  background: var(--surface-modal);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border: 1px solid rgb(from var(--color-accent) r g b / 0.14);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.04),
     0 0 40px rgb(from var(--color-accent) r g b / 0.08);
   animation: addTradeModalIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (min-width: 640px) {
+  .add-trade-modal {
+    border-radius: var(--radius-lg);
+  }
+}
+
+.add-trade-section {
+  background: var(--surface-card);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
 }
 
 .add-trade-modal-win {
@@ -2071,7 +2121,8 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 }
 
 .command-center-header {
-  min-height: 50px;
+  min-height: 48px;
+  height: 48px;
   background: var(--surface-modal);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -2100,7 +2151,14 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 
 .command-center-body {
   min-height: 0;
-  max-height: calc(100dvh - 50px);
+  max-height: calc(100dvh - 48px);
+}
+
+.command-center-bubble-label {
+  margin-bottom: 0.375rem;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .command-center-thread-scroll,
@@ -2229,7 +2287,7 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 
   .command-center-body {
     max-height: calc(
-      var(--vyronis-vv-height, 100dvh) - 3.5rem - var(--vyronis-vv-top, 0px)
+      var(--vyronis-vv-height, 100dvh) - 3rem - var(--vyronis-vv-top, 0px)
     );
     padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
     padding-right: max(0.5rem, env(safe-area-inset-right, 0px));

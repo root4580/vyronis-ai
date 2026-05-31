@@ -139,16 +139,18 @@ type TradeDecisionPayload = {
 function DecisionBadge({ decision }: { decision: TradeDecisionPayload }) {
   if (!decision.recommendation) return null
   const rec = decision.recommendation
+  const label =
+    rec === "TAKE" ? "Take" : rec === "CAUTION" ? "Caution" : rec === "SKIP" ? "Skip" : rec
   return (
     <div
       className={cn(
-        "mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]",
+        "mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] font-medium",
         rec === "TAKE" && "border-profit/30 bg-profit/10 text-profit",
         rec === "CAUTION" && "border-warning/30 bg-warning/10 text-warning-muted",
         rec === "SKIP" && "border-loss/30 bg-loss/10 text-loss",
       )}
     >
-      {rec}
+      {label}
       {typeof decision.confidence === "number" ? (
         <span className="font-normal tabular-nums text-muted-foreground/80">
           {decision.confidence}%
@@ -166,7 +168,7 @@ function VisionChecklist({ items }: { items: VisionChecklistItem[] }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/65 hover:text-foreground/80"
+        className="flex w-full items-center justify-between px-2.5 py-2 text-left text-[10px] font-medium text-muted-foreground/65 hover:text-foreground/80"
       >
         Deep analysis
         {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -339,11 +341,11 @@ function AssistantBubble({
       )}
     >
       {message.message_type === "analysis" ? (
-        <p className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-cyan-glow/80">
+        <p className="command-center-bubble-label text-cyan-glow/80">
           {isBundle ? "Timeframe bundle analysis" : "Chart analysis"}
         </p>
       ) : state && !isCritical ? (
-        <p className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-muted-foreground/60">
+        <p className="command-center-bubble-label">
           {COMPANION_STATE_LABELS[state]}
         </p>
       ) : null}

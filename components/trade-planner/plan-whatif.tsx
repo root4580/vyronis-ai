@@ -47,7 +47,7 @@ function Metric({
 }) {
   return (
     <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
-      <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">{label}</p>
+      <p className="text-[9px] font-medium text-text-muted">{label}</p>
       <p className={cn("mt-1 text-sm font-semibold tabular-nums", valueClassName)}>{value}</p>
     </div>
   )

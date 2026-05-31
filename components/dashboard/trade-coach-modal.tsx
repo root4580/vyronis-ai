@@ -674,7 +674,7 @@ export function TradeCoachPanel({
                   {visionEngineLabel && analysisHasRun && (
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",
+                        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-medium",
                         visionProvider === "openai"
                           ? "border-cyan-glow/30 bg-cyan-glow/[0.1] text-cyan-glow"
                           : "border-white/[0.1] bg-white/[0.04] text-muted-foreground/75",
@@ -722,7 +722,7 @@ export function TradeCoachPanel({
                 <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                      <p className="text-[10px] font-medium text-text-muted">
                         Analysis complete
                       </p>
                       <p className="mt-0.5 truncate text-[12px] font-medium text-foreground/90">
@@ -933,8 +933,8 @@ export function TradeCoachPanel({
               />
               {playbooks.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-                    Strategy Playbook
+                  <p className="text-[10px] font-medium text-text-muted">
+                    Strategy playbook
                   </p>
                   <Select
                     value={selectedPlaybookId || undefined}

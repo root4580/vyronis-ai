@@ -308,7 +308,7 @@ export function DashboardHeader({
   }
 
   return (
-    <header className="dashboard-header">
+    <header className={cn("dashboard-header", hideMobileNav && "dashboard-header--compact")}>
       <div className="vyronis-nav dashboard-container px-4 md:px-6">
         <Link
           href={getDashboardHomeHref()}
@@ -422,6 +422,20 @@ export function DashboardHeader({
         </nav>
 
         <div className="vyronis-nav__right">
+          {hideMobileNav && onOpenCoach ? (
+            <button
+              type="button"
+              onClick={handleCoachClick}
+              className={cn(
+                "vyronis-nav__coach-btn lg:hidden",
+                coachActive && "vyronis-nav__coach-btn--active",
+              )}
+            >
+              <Brain className="size-3.5" />
+              Coach
+            </button>
+          ) : null}
+
           <div className="vyronis-nav__status">
             <span
               className={cn(

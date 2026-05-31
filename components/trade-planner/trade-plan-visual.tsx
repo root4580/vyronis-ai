@@ -50,7 +50,7 @@ export function TradePlanVisual({ plan, className }: TradePlanVisualProps) {
   return (
     <div className={cn("relative min-h-[280px] overflow-hidden", className)}>
       <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-[var(--border-subtle)] px-1 pb-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Plan box</span>
+        <span className="text-[10px] font-medium text-text-muted">Plan box</span>
         <span
           className={cn(
             "rounded-[var(--radius-sm)] border px-2 py-0.5 text-[12px] font-medium tabular-nums",

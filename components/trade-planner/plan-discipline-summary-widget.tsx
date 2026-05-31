@@ -104,7 +104,7 @@ export function PlanDisciplineSummaryWidget({ className }: PlanDisciplineSummary
 
             <div className="grid grid-cols-2 gap-2">
               <DashboardInsetPanel className="px-3 py-2">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">This week</p>
+                <p className="text-[9px] font-medium text-text-muted">This week</p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground/90">
                   {aggregate.weekAverageScore != null ? `${aggregate.weekAverageScore}/100` : "—"}
                 </p>
@@ -115,7 +115,7 @@ export function PlanDisciplineSummaryWidget({ className }: PlanDisciplineSummary
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="px-3 py-2">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">30-day avg</p>
+                <p className="text-[9px] font-medium text-text-muted">30-day avg</p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground/90">
                   {aggregate.monthAverageScore != null ? `${aggregate.monthAverageScore}/100` : "—"}
                 </p>

@@ -57,8 +57,8 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-cyan-glow" />
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/85">
-              A+ Setup Score
+            <p className="text-[10px] font-medium text-foreground/85">
+              A+ setup score
             </p>
             <p className="text-[10px] text-muted-foreground/70">
               {getSetupClassificationLabel(result.classification)}
@@ -80,7 +80,7 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
               key={key}
               className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2"
             >
-              <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground/60">{label}</p>
+              <p className="text-[9px] font-medium text-text-muted">{label}</p>
               <p className={cn("mt-0.5 text-sm font-bold tabular-nums", dimensionColor(result.breakdown[key]))}>
                 {result.breakdown[key]}
               </p>
@@ -91,8 +91,8 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
 
       {result.insights.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/80">
-            AI Coaching
+          <p className="text-[9px] font-medium text-cyan-glow/80">
+            AI coaching
           </p>
           {result.insights.slice(0, compact ? 2 : 4).map((insight) => (
             <div
@@ -110,7 +110,7 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
 
       {!compact && result.warnings.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">Warnings</p>
+          <p className="text-[9px] font-medium text-warning-foreground/80">Warnings</p>
           {result.warnings.slice(0, 3).map((warning) => (
             <div key={warning} className="flex items-start gap-1.5 text-[10px] text-warning-muted/85">
               <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
@@ -122,7 +122,7 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
 
       {!compact && result.strengths.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-profit/80">Strengths</p>
+          <p className="text-[9px] font-medium text-profit/80">Strengths</p>
           {result.strengths.slice(0, 3).map((strength) => (
             <div key={strength} className="flex items-start gap-1.5 text-[10px] text-profit/90">
               <CheckCircle2 className="mt-0.5 size-3 shrink-0" />

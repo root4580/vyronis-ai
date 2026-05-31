@@ -112,7 +112,7 @@ export function PlanChartUploadPanel({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+        <p className="text-[10px] font-medium text-text-muted">
           Chart screenshot
         </p>
         <p className="text-[10px] text-muted-foreground/55">MT5 · TradingView · mobile</p>

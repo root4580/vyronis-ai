@@ -163,7 +163,7 @@ export function CompanionContextStrip({ context, className }: CompanionContextSt
       >
         <Sparkles className="mt-0.5 size-3.5 shrink-0 opacity-70" />
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-[9px] font-medium uppercase tracking-[0.12em] opacity-60">
+          <p className="text-[9px] font-medium text-text-muted opacity-80">
             {strip.label}
           </p>
           <p className="text-[11px] leading-snug">{headline}</p>

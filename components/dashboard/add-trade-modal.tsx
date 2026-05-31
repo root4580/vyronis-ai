@@ -398,8 +398,8 @@ export function AddTradeModal({
 
         <form onSubmit={onSubmit} className="relative flex min-h-0 flex-1 flex-col">
           <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:space-y-5">
-            <section className="space-y-3">
-              <SectionLabel>{isLog ? "Trade" : "Market Setup"}</SectionLabel>
+            <section className="add-trade-section space-y-3">
+              <SectionLabel>{isLog ? "Trade" : "Market setup"}</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <FieldLabel required>Pair</FieldLabel>
@@ -546,13 +546,13 @@ export function AddTradeModal({
             </section>
 
             {showPlanFlow && (
-            <section className="space-y-3">
-              <SectionLabel>Execution & Risk</SectionLabel>
+            <section className="add-trade-section space-y-3">
+              <SectionLabel>Execution & risk</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                  { key: "entry_price" as const, label: "Entry Price" },
-                  { key: "stop_loss" as const, label: "Stop Loss" },
-                  { key: "take_profit" as const, label: "Take Profit" },
+                  { key: "entry_price" as const, label: "Entry price" },
+                  { key: "stop_loss" as const, label: "Stop loss" },
+                  { key: "take_profit" as const, label: "Take profit" },
                 ].map(({ key, label }) => (
                   <div key={key} className="space-y-2">
                     <FieldLabel>{label}</FieldLabel>
@@ -585,7 +585,7 @@ export function AddTradeModal({
                   <div className="flex items-start gap-2">
                     <Calculator className="mt-0.5 size-3.5 shrink-0 text-cyan-glow" />
                     <div className="min-w-0 space-y-1">
-                      <p className="text-[11px] font-medium text-muted-foreground/80">Position Size Helper</p>
+                      <p className="text-[11px] font-medium text-muted-foreground/80">Position size helper</p>
                       {positionSize ? (
                         <>
                           <p className="text-[12px] font-semibold tabular-nums text-foreground">
@@ -626,7 +626,7 @@ export function AddTradeModal({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <FieldLabel>Trade Date</FieldLabel>
+                  <FieldLabel>Trade date</FieldLabel>
                   <Input
                     type="date"
                     value={form.trade_date}
@@ -700,8 +700,8 @@ export function AddTradeModal({
             )}
 
             {isPlan && (
-            <section className="space-y-3">
-              <SectionLabel>Before Entry</SectionLabel>
+            <section className="add-trade-section space-y-3">
+              <SectionLabel>Before entry</SectionLabel>
               <EmotionPicker
                 label="Emotion before trade"
                 value={form.emotion}
@@ -726,7 +726,7 @@ export function AddTradeModal({
             )}
 
             {showLogFlow && (
-            <section className="space-y-3">
+            <section className="add-trade-section space-y-3">
               <SectionLabel>Outcome</SectionLabel>
               <div className="grid grid-cols-3 gap-2">
                 {TRADE_RESULTS.map((result) => {
@@ -804,7 +804,7 @@ export function AddTradeModal({
               </div>
 
               <div className="space-y-2">
-                <FieldLabel>Trade Date</FieldLabel>
+                <FieldLabel>Trade date</FieldLabel>
                 <Input
                   type="date"
                   value={form.trade_date}
@@ -816,8 +816,8 @@ export function AddTradeModal({
             )}
 
             {showLogFlow && (
-            <section className="space-y-3">
-              <SectionLabel>After Trade</SectionLabel>
+            <section className="add-trade-section space-y-3">
+              <SectionLabel>After trade</SectionLabel>
               <EmotionPicker
                 label="Emotion before trade"
                 value={form.emotion}
@@ -830,7 +830,7 @@ export function AddTradeModal({
               />
 
               <div className="space-y-2">
-                <FieldLabel>Mistake Tags</FieldLabel>
+                <FieldLabel>Mistake tags</FieldLabel>
                 <div className="flex flex-wrap gap-1.5">
                   {MISTAKE_TAGS.map((tag) => {
                     const active = form.mistake_tags.includes(tag)
@@ -872,7 +872,7 @@ export function AddTradeModal({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <FieldLabel>Trade Notes</FieldLabel>
+                  <FieldLabel>Trade notes</FieldLabel>
                   <span className="text-[10px] tabular-nums text-muted-foreground/60">
                     {form.trade_notes.length}/{NOTES_MAX_LENGTH}
                   </span>
@@ -889,9 +889,9 @@ export function AddTradeModal({
             </section>
             )}
 
-            <section className="space-y-2">
+            <section className="add-trade-section space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <FieldLabel>Chart / MT5 Screenshot</FieldLabel>
+                <FieldLabel>Chart / MT5 screenshot</FieldLabel>
                 {form.screenshot_url && onMt5Autofill ? (
                   <Button
                     type="button"
@@ -1012,7 +1012,7 @@ export function AddTradeModal({
                     type="button"
                     variant="outline"
                     onClick={onRepeatLast}
-                    className="mb-3 h-10 w-full border-white/[0.1] bg-white/[0.03] text-[12px] text-foreground/85 hover:bg-white/[0.06]"
+                    className="btn-ghost mb-3 h-10 w-full text-[12px]"
                   >
                     Repeat last setup
                     {repeatSourceLabel ? (
@@ -1025,7 +1025,7 @@ export function AddTradeModal({
                     type="button"
                     variant="outline"
                     onClick={onOpenCoach}
-                    className="mb-3 h-11 w-full border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
+                    className="btn-ghost mb-3 h-11 w-full border-cyan-glow/20 text-cyan-glow hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.06]"
                   >
                     <Sparkles className="mr-2 size-4" />
                     {hasCoachSession ? "Continue Pre-Trade Coach" : "Start Pre-Trade Coach"}

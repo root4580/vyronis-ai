@@ -26,7 +26,7 @@ export function JournalSidebar({
         <DashboardCardHeader title="Monthly stats" icon={CalendarDays} />
         <DashboardCardBody className="grid grid-cols-2 gap-2 pt-1">
           <DashboardInsetPanel className="px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
+            <p className="text-[10px] font-medium text-text-muted">
               Month P&L
             </p>
             <p
@@ -40,7 +40,7 @@ export function JournalSidebar({
             </p>
           </DashboardInsetPanel>
           <DashboardInsetPanel className="px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
+            <p className="text-[10px] font-medium text-text-muted">
               Green days
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-profit">
@@ -48,7 +48,7 @@ export function JournalSidebar({
             </p>
           </DashboardInsetPanel>
           <DashboardInsetPanel className="px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
+            <p className="text-[10px] font-medium text-text-muted">
               Consistency
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-cyan-glow">
@@ -56,7 +56,7 @@ export function JournalSidebar({
             </p>
           </DashboardInsetPanel>
           <DashboardInsetPanel className="px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
+            <p className="text-[10px] font-medium text-text-muted">
               Best day
             </p>
             <p

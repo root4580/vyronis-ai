@@ -52,7 +52,7 @@ export function PlanDeviationFull({ pairLabel, result, className }: PlanDeviatio
         </div>
 
         <div className="overflow-hidden rounded-xl border border-white/[0.06]">
-          <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr_0.8fr] gap-2 border-b border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr_0.8fr] gap-2 border-b border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[9px] font-medium text-text-muted">
             <span>Field</span>
             <span>Planned</span>
             <span>Actual</span>
