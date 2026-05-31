@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { PlanContextCard } from "@/components/command-center/plan-context-card"
 import { SessionRulesStrip } from "@/components/command-center/session-rules-strip"
 import { TradeCoachPanel } from "@/components/dashboard/trade-coach-modal"
 import { useAIContext } from "@/providers/ai-context-provider"
@@ -58,6 +59,7 @@ export function PreTradeMode() {
   return (
     <div className="command-center-pre-trade flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
       {showSessionRules ? <SessionRulesStrip summary={sessionRulesSummary} /> : null}
+      <PlanContextCard context={coachPlannedContext} />
       <TradeCoachPanel
         active={active}
         embedded

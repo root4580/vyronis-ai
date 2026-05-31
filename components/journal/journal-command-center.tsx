@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { ArrowLeft, BarChart3, Plus } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -26,6 +26,7 @@ import {
   formatJournalDayPnl,
 } from "@/lib/journal/calendar-analytics"
 import type { JournalViewMode } from "@/lib/journal/journal-workflow"
+import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
 import { cn } from "@/lib/utils"
 
 type PlannedSession = Parameters<typeof PlannedTradesSection>[0]["sessions"][0]
@@ -75,6 +76,43 @@ export function JournalCommandCenter({
   const [viewMonth, setViewMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [journalMode, setJournalMode] = useState<JournalViewMode>("trades")
+  const [plansById, setPlansById] = useState<Map<string, MatchableTradePlan>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadPlans() {
+      try {
+        const res = await fetch("/api/trade-plans")
+        const payload = await res.json().catch(() => ({}))
+        if (cancelled) return
+        const map = new Map<string, MatchableTradePlan>()
+        for (const row of payload.plans ?? []) {
+          map.set(String(row.id), {
+            id: String(row.id),
+            pair: String(row.pair),
+            direction: row.direction,
+            status: row.status,
+            created_at: String(row.created_at),
+            accountSize: Number(row.accountSize),
+            entryPrice: Number(row.entryPrice),
+            stopLoss: Number(row.stopLoss),
+            takeProfit: Number(row.takeProfit),
+            recommendedLots: row.recommendedLots != null ? Number(row.recommendedLots) : null,
+            riskAmount: Number(row.riskAmount),
+            rr: row.rr != null ? Number(row.rr) : null,
+            riskPercent: Number(row.riskPercent),
+          })
+        }
+        setPlansById(map)
+      } catch {
+        if (!cancelled) setPlansById(new Map())
+      }
+    }
+    void loadPlans()
+    return () => {
+      cancelled = true
+    }
+  }, [trades.length])
 
   const referenceDate = useMemo(
     () => new Date(viewYear, viewMonth, 1),
@@ -180,11 +218,10 @@ export function JournalCommandCenter({
 
         <JournalTradeCards
           trades={dayTrades as DashboardTradeRow[]}
-          variant="default"
+          plansById={plansById}
           onEdit={onEditTrade}
           onDelete={onDeleteTrade}
           onViewTrade={onViewTrade}
-          onScreenshotClick={onScreenshotClick}
         />
       </section>
     )
@@ -200,14 +237,35 @@ export function JournalCommandCenter({
       <JournalModeTabs mode={journalMode} onChange={setJournalMode} />
 
       {journalMode === "trades" ? (
-        <JournalTradesList
-          trades={trades}
-          onViewTrade={onViewTrade}
-          onEdit={onEditTrade}
-          onDelete={onDeleteTrade}
-          onScreenshotClick={onScreenshotClick}
-          onLogTrade={onLogTrade ? () => onLogTrade() : undefined}
-        />
+        <div className="space-y-3">
+          {plannedSessions.length > 0 ? (
+            <CollapsibleDashboardSection
+              title="Planned setups"
+              subtitle={hasPlannedInProgress ? "Coach in progress" : undefined}
+              defaultOpen={hasPlannedInProgress}
+              collapseOnMobile
+            >
+              <PlannedTradesSection
+                variant="journal"
+                sessions={plannedSessions}
+                isLoading={isLoadingPlanned}
+                deletingSessionId={deletingSessionId}
+                onContinueCoach={onContinueCoach}
+                onConvertToTrade={onConvertToTrade}
+                onDeletePlanned={onDeletePlanned}
+                onNewCoach={onNewCoach}
+              />
+            </CollapsibleDashboardSection>
+          ) : null}
+          <JournalTradesList
+            trades={trades}
+            onViewTrade={onViewTrade}
+            onEdit={onEditTrade}
+            onDelete={onDeleteTrade}
+            onScreenshotClick={onScreenshotClick}
+            onLogTrade={onLogTrade ? () => onLogTrade() : undefined}
+          />
+        </div>
       ) : null}
 
       {journalMode === "calendar" ? (
@@ -247,6 +305,7 @@ export function JournalCommandCenter({
               collapseOnMobile
             >
               <PlannedTradesSection
+                variant="journal"
                 sessions={plannedSessions}
                 isLoading={isLoadingPlanned}
                 deletingSessionId={deletingSessionId}

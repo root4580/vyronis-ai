@@ -2235,12 +2235,21 @@ function Home() {
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
+                        onClick={() => setIsJournalImportOpen(true)}
+                        className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
+                      >
+                        <FileUp className="mr-2 size-4" />
+                        Import CSV
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
                         onClick={() => openPlanTrade()}
-                        className="h-9 w-full border-cyan-glow/25 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08] sm:w-auto"
+                        className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
                       >
                         <ClipboardCheck className="mr-2 size-4" />
-                        Plan Setup
+                        Setup scoring
                       </Button>
                       <Button
                         type="button"
@@ -2248,16 +2257,7 @@ function Home() {
                         className="h-9 w-full btn-primary sm:w-auto"
                       >
                         <Plus className="mr-2 size-4" />
-                        New Trade
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsJournalImportOpen(true)}
-                        className="h-9 w-full border-white/[0.08] bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06] sm:w-auto"
-                      >
-                        <FileUp className="mr-2 size-4" />
-                        Import CSV
+                        New trade
                       </Button>
                     </div>
                   }

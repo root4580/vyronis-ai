@@ -14,8 +14,8 @@ import {
   getJournalFilterOptions,
   type JournalFilters,
 } from "@/lib/journal-utils"
-import { APP_HOME_PATH } from "@/lib/branding"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
+import { APP_HOME_PATH } from "@/lib/branding"
 
 type JournalTradesListProps = {
   trades: DashboardTradeRow[]
@@ -39,34 +39,39 @@ export function JournalTradesList({
 
   useEffect(() => {
     let cancelled = false
-
     async function loadPlans() {
-      const linkedIds = trades.filter((t) => t.plan_id).map((t) => t.plan_id as string)
-      if (linkedIds.length === 0) {
-        setPlansById(new Map())
-        return
-      }
-
       try {
-        const response = await fetch("/api/trade-plans")
-        if (!response.ok) return
-        const payload = (await response.json()) as { plans?: MatchableTradePlan[] }
+        const res = await fetch("/api/trade-plans")
+        const payload = await res.json().catch(() => ({}))
         if (cancelled) return
         const map = new Map<string, MatchableTradePlan>()
-        for (const plan of payload.plans ?? []) {
-          map.set(plan.id, plan)
+        for (const row of payload.plans ?? []) {
+          map.set(String(row.id), {
+            id: String(row.id),
+            pair: String(row.pair),
+            direction: row.direction,
+            status: row.status,
+            created_at: String(row.created_at),
+            accountSize: Number(row.accountSize),
+            entryPrice: Number(row.entryPrice),
+            stopLoss: Number(row.stopLoss),
+            takeProfit: Number(row.takeProfit),
+            recommendedLots: row.recommendedLots != null ? Number(row.recommendedLots) : null,
+            riskAmount: Number(row.riskAmount),
+            rr: row.rr != null ? Number(row.rr) : null,
+            riskPercent: Number(row.riskPercent),
+          })
         }
         setPlansById(map)
       } catch {
         if (!cancelled) setPlansById(new Map())
       }
     }
-
     void loadPlans()
     return () => {
       cancelled = true
     }
-  }, [trades])
+  }, [trades.length])
 
   const filterOptions = useMemo(() => getJournalFilterOptions(trades), [trades])
   const filteredTrades = useMemo(
@@ -116,7 +121,6 @@ export function JournalTradesList({
         <JournalTradeCards
           trades={filteredTrades}
           plansById={plansById}
-          variant="compact"
           onViewTrade={onViewTrade}
           onEdit={onEdit}
           onDelete={onDelete}
@@ -125,10 +129,14 @@ export function JournalTradesList({
       )}
 
       {onLogTrade ? (
-        <Button type="button" variant="outline" className="h-9 w-full border-[var(--border-subtle)] sm:w-auto" onClick={onLogTrade}>
-          <Plus className="mr-2 size-4" />
+        <button
+          type="button"
+          onClick={onLogTrade}
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-[13px] font-medium text-text-accent transition-colors hover:opacity-90"
+        >
+          <Plus className="size-4" />
           Log trade
-        </Button>
+        </button>
       ) : null}
     </div>
   )

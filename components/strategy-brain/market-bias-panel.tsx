@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Compass } from "lucide-react"
 import { saveMarketBias } from "@/lib/strategy-brain/api-client"
-import type { BiasDirection, MarketBiasRecord } from "@/lib/strategy-brain/types"
+import type { BiasDirection, MarketBiasInput, MarketBiasRecord } from "@/lib/strategy-brain/types"
 import { evaluateMarketBias } from "@/lib/strategy-brain/market-bias-engine"
 import { BiasToggle, WarRoomSurfaceCard } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
@@ -12,15 +12,36 @@ import { cn } from "@/lib/utils"
 
 type Props = {
   initial: MarketBiasRecord | null
+  onDraftChange?: (bias: MarketBiasInput) => void
   onSaved?: (bias: MarketBiasRecord) => void
+  showSaveButton?: boolean
 }
 
-export function MarketBiasPanel({ initial, onSaved }: Props) {
+export function MarketBiasPanel({
+  initial,
+  onDraftChange,
+  onSaved,
+  showSaveButton = false,
+}: Props) {
   const { toast } = useToast()
   const [weekly, setWeekly] = useState<BiasDirection>(initial?.weekly_bias ?? "Neutral")
   const [daily, setDaily] = useState<BiasDirection>(initial?.daily_bias ?? "Neutral")
   const [h4, setH4] = useState<BiasDirection>(initial?.h4_bias ?? "Neutral")
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setWeekly(initial?.weekly_bias ?? "Neutral")
+    setDaily(initial?.daily_bias ?? "Neutral")
+    setH4(initial?.h4_bias ?? "Neutral")
+  }, [initial?.weekly_bias, initial?.daily_bias, initial?.h4_bias])
+
+  useEffect(() => {
+    onDraftChange?.({
+      weekly_bias: weekly,
+      daily_bias: daily,
+      h4_bias: h4,
+    })
+  }, [weekly, daily, h4, onDraftChange])
 
   const preview = evaluateMarketBias({
     weekly_bias: weekly,
@@ -78,13 +99,19 @@ export function MarketBiasPanel({ initial, onSaved }: Props) {
         {preview.alignment_summary}
       </div>
 
-      <Button
-        className="btn-primary mt-4 h-11 w-full rounded-[var(--radius-md)]"
-        onClick={() => void handleSave()}
-        disabled={saving}
-      >
-        {saving ? "Saving…" : "Save HTF bias"}
-      </Button>
+      {showSaveButton ? (
+        <Button
+          className="btn-primary mt-4 h-11 w-full rounded-[var(--radius-md)]"
+          onClick={() => void handleSave()}
+          disabled={saving}
+        >
+          {saving ? "Saving…" : "Save HTF bias"}
+        </Button>
+      ) : (
+        <p className="mt-3 text-[10px] text-text-muted">
+          HTF bias saves with your session plan below.
+        </p>
+      )}
     </WarRoomSurfaceCard>
   )
 }

@@ -20,8 +20,8 @@ export function stripPlannedSetupMarker(notes: string): string {
 }
 
 export function journalModeLabel(mode: TradeJournalMode): string {
-  if (mode === "plan") return "Plan setup"
-  if (mode === "log") return "Log trade"
+  if (mode === "plan") return "Setup scoring"
+  if (mode === "log") return "Log result"
   return "Edit trade"
 }
 
@@ -37,8 +37,8 @@ export function journalModeDescription(mode: TradeJournalMode): string {
 
 export function submitLabel(mode: TradeJournalMode, isEditing: boolean): string {
   if (isEditing) return "Update trade"
-  if (mode === "plan") return "Save plan setup"
-  return "Log trade"
+  if (mode === "plan") return "Save setup score"
+  return "Log result"
 }
 
 export function validateTradeFormForMode(

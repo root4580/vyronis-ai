@@ -81,7 +81,7 @@ function HqStatCard({
 }) {
   return (
     <div className="hq-surface-card px-[14px] py-3">
-      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-text-muted">{label}</p>
+      <p className="section-label mb-1.5">{label}</p>
       <p className={cn("text-[22px] font-medium tabular-nums text-text-primary", valueClassName)}>{value}</p>
       {sub ? <p className="mt-1 text-[11px] text-text-muted">{sub}</p> : null}
     </div>
@@ -209,7 +209,7 @@ export function HqDashboard({
     <div className={cn("space-y-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-base font-medium text-text-primary">{getTimeOfDayGreeting()}</h1>
+          <h1 className="text-[17px] font-medium text-text-primary">{getTimeOfDayGreeting()}</h1>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[11px] text-text-muted">
             <span>{formatHeaderDate()}</span>
             <span aria-hidden="true">·</span>
@@ -246,7 +246,7 @@ export function HqDashboard({
         </div>
         <div className="hq-surface-card flex items-center gap-3 px-3 py-2">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-text-muted">Week</p>
+            <p className="section-label">Week</p>
             <p className={cn("text-sm font-medium tabular-nums", getPnLTextClass(weekPnL, weekPnL >= 0 ? "WIN" : "LOSS"))}>
               {formatPnL(weekPnL, weekPnL >= 0 ? "WIN" : "LOSS")}
             </p>
@@ -335,7 +335,7 @@ export function HqDashboard({
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="hq-surface-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-3.5 py-3">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Watchlist</p>
+            <p className="section-label">Watchlist</p>
             <Link href="/war-room" className="text-[11px] text-text-accent hover:underline">
               War Room →
             </Link>
@@ -383,7 +383,7 @@ export function HqDashboard({
                 </p>
               ) : sessionClock.isActive ? (
                 <p
-                  className="shrink-0 text-right text-[10px] font-medium uppercase tracking-wide"
+                  className="section-label shrink-0 text-right"
                   style={{ color: sessionAccentTheme.accent }}
                 >
                   Live
@@ -424,7 +424,7 @@ export function HqDashboard({
         <div className="space-y-4">
           <div className="hq-surface-card p-3.5">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Discipline</p>
+              <p className="section-label">Discipline</p>
               <span className="text-[11px] text-text-muted">This week</span>
             </div>
             <div className="flex items-center gap-3">
@@ -462,7 +462,7 @@ export function HqDashboard({
           </div>
 
           <div className="hq-surface-card p-3.5">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-text-muted">Plan streak</p>
+            <p className="section-label mb-2">Plan streak</p>
             <p className="text-[28px] font-medium tabular-nums text-text-accent">{streak.streakCount}</p>
             <p className="text-[11px] text-text-muted">consecutive trades following plan</p>
             <div className="mt-3 flex flex-wrap gap-1">
@@ -488,7 +488,7 @@ export function HqDashboard({
 
       <div className="hq-surface-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-3.5 py-3">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Recent trades</p>
+          <p className="section-label">Recent trades</p>
           <button
             type="button"
             onClick={onOpenJournal}

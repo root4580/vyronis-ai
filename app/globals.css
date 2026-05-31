@@ -260,6 +260,55 @@
     pointer-events: none;
   }
 
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+  }
+
+  .btn-danger {
+    background: rgb(from var(--color-loss) r g b / 0.12);
+    border: 1px solid rgb(from var(--color-loss) r g b / 0.28);
+    color: var(--color-loss);
+    font-weight: 500;
+  }
+
+  .btn-danger:hover {
+    background: rgb(from var(--color-loss) r g b / 0.18);
+  }
+
+  .vyronis-card {
+    background: var(--surface-card);
+    border: 0.5px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    text-transform: none;
+  }
+
+  .coach-awareness-row {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+    background: transparent;
+    border: none;
+  }
+
   .hq-content {
     max-width: 1100px;
     margin-left: auto;
@@ -424,7 +473,7 @@
 }
 
 .dashboard-section-title {
-  @apply text-[13px] font-medium tracking-normal text-muted-foreground/80;
+  @apply text-[13px] font-medium tracking-normal text-muted-foreground/80 normal-case;
 }
 
 /* ── Premium cards (Stripe/Raycast depth) ── */
@@ -490,6 +539,11 @@
 
 .dashboard-card-body {
   @apply relative px-4 pb-4 pt-3 md:px-5 md:pb-5;
+}
+
+.dashboard-card-title,
+[data-slot="card-title"] {
+  text-transform: none;
 }
 
 .dashboard-card-title {

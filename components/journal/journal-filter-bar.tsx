@@ -18,7 +18,7 @@ function FilterChip({ label, active, onClick }: FilterChipProps) {
         "rounded-[var(--radius-sm)] border px-2.5 py-1 text-[11px] font-medium transition-colors",
         active
           ? "border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-text-accent"
-          : "border-[var(--border-subtle)] bg-white/[0.03] text-text-muted hover:text-text-secondary",
+          : "border-[var(--border-subtle)] bg-[var(--surface-input)] text-text-muted hover:text-text-secondary",
       )}
     >
       {label}
@@ -58,7 +58,7 @@ export function JournalFilterBar({
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3.5 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 border-r border-[var(--border-subtle)] pr-2 text-[11px] text-text-muted">
+        <span className="shrink-0 border-r border-[var(--border-subtle)] pr-2 text-[11px] text-text-muted">
           {filteredCount} of {tradeCount}
         </span>
 

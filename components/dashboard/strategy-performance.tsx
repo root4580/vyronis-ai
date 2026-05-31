@@ -127,7 +127,7 @@ function StrategyRow({ strategy, index }: { strategy: StrategyStats; index: numb
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">Total P&L</p>
+          <p className="section-label text-muted-foreground/60">Total P&L</p>
           <p
             className={`mt-1 text-sm font-semibold tabular-nums ${
               pnlPositive ? "text-profit" : "text-loss"
@@ -138,14 +138,14 @@ function StrategyRow({ strategy, index }: { strategy: StrategyStats; index: numb
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">Avg RR</p>
+          <p className="section-label text-muted-foreground/60">Avg RR</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-cyan-glow">
             {formatAvgRR(strategy.avgRR)}
           </p>
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">Record</p>
+          <p className="section-label text-muted-foreground/60">Record</p>
           <p className="mt-1 text-sm font-medium tabular-nums">
             <span className="text-profit">{strategy.wins}W</span>
             <span className="text-muted-foreground/40"> / </span>
@@ -345,7 +345,7 @@ export function StrategyPerformance({
           )}
         </div>
 
-        <div className="hidden lg:grid lg:grid-cols-[minmax(140px,1.4fr)_repeat(4,minmax(0,1fr))] lg:gap-4 lg:px-3 lg:text-[10px] lg:font-medium lg:uppercase lg:tracking-[0.12em] lg:text-muted-foreground/60">
+        <div className="hidden lg:grid lg:grid-cols-[minmax(140px,1.4fr)_repeat(4,minmax(0,1fr))] lg:gap-4 lg:px-3 lg:text-[10px] lg:font-medium lg:text-muted-foreground/60 [&_p]:section-label">
           <span>Strategy</span>
           <span>Win Rate</span>
           <span>Total P&L</span>
@@ -372,7 +372,7 @@ export function StrategyPerformance({
 
         {mistakeAnalysis.strategyInsight && (
           <DashboardInsetPanel className="border-warning/15 bg-warning/[0.05] px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-warning-foreground/80">Mistake Link</p>
+            <p className="section-label text-warning-foreground/80">Mistake link</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/85">{mistakeAnalysis.strategyInsight}</p>
           </DashboardInsetPanel>
         )}

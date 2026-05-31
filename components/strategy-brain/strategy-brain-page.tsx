@@ -116,6 +116,7 @@ export function StrategyBrainPageClient() {
 
       <MarketBiasPanel
         initial={marketBias}
+        showSaveButton
         onSaved={(b) => {
           setMarketBias(b)
           void refresh()

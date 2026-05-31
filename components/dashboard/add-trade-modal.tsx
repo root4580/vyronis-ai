@@ -144,9 +144,16 @@ function PostLogDisciplineInline({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">{children}</p>
-  )
+  return <p className="section-label">{children}</p>
+}
+
+const EMOTION_ACTIVE_STYLES: Record<string, string> = {
+  Calm: "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200",
+  Confident: "border-cyan-glow/40 bg-cyan-glow/[0.12] text-cyan-glow",
+  Fearful: "border-violet-400/40 bg-violet-400/[0.12] text-violet-200",
+  Revenge: "border-orange-400/40 bg-orange-400/[0.12] text-orange-200",
+  Impulsive: "border-yellow-400/40 bg-yellow-400/[0.12] text-yellow-200",
+  Overconfident: "border-rose-400/40 bg-rose-400/[0.12] text-rose-200",
 }
 
 function FieldLabel({
@@ -187,8 +194,12 @@ function EmotionPicker({
               className={cn(
                 "rounded-lg border px-1.5 py-2 text-center transition-all duration-200",
                 active
-                  ? "border-cyan-glow/40 bg-cyan-glow/[0.12] shadow-[0_0_16px_rgb(from var(--color-accent) r g b / 0.12)]"
-                  : "border-white/[0.06] bg-white/[0.02] hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.04]",
+                  ? cn(
+                      "shadow-[0_0_16px_rgb(from_var(--color-accent)_r_g_b_/_0.12)]",
+                      EMOTION_ACTIVE_STYLES[option.value] ??
+                        "border-cyan-glow/40 bg-cyan-glow/[0.12]",
+                    )
+                  : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1] hover:bg-white/[0.04]",
               )}
             >
               <span
@@ -371,7 +382,7 @@ export function AddTradeModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="add-trade-title" className="text-[15px] font-medium text-text-primary">
-                {isEditing ? "Edit trade" : isPlan ? "Plan setup" : isLog ? "Log trade" : "Add trade"}
+                {isEditing ? "Edit trade" : isPlan ? "Setup scoring" : isLog ? "Log result" : "Add trade"}
               </h2>
               <p className="mt-0.5 text-[11px] text-text-muted">{headerSub}</p>
             </div>

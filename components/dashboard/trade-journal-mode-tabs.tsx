@@ -40,7 +40,7 @@ export function TradeJournalModeTabs({
           className="absolute -top-11 left-4 z-10 max-w-[min(100%,240px)] rounded-[var(--radius-md)] border border-[var(--color-accent-border)] bg-[var(--surface-modal)] px-3 py-2 text-left shadow-lg shadow-black/30"
         >
           <p className="text-[11px] font-medium leading-snug text-text-accent">
-            Score your setup before you enter — use Plan setup
+            Score your setup before you enter — use Setup scoring
           </p>
           <p className="mt-0.5 text-[10px] text-text-muted">Tap to dismiss</p>
           <span className="absolute -bottom-1.5 left-6 size-3 rotate-45 border-b border-r border-[var(--color-accent-border)] bg-[var(--surface-modal)]" />

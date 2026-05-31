@@ -80,9 +80,7 @@ function CommentaryList({
 
   return (
     <DashboardInsetPanel className={cn("space-y-2 px-3 py-3", toneClass)}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
-        {title}
-      </p>
+      <p className="section-label text-muted-foreground/75">{title}</p>
       {items.map((item) => (
         <p key={item} className="text-[11px] leading-relaxed text-foreground/85">
           {item}
@@ -103,9 +101,7 @@ function TrendChart({
 }) {
   return (
     <DashboardInsetPanel className="glass h-[180px] px-2 py-2">
-      <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-        {title}
-      </p>
+      <p className="section-label mb-2 px-1 text-muted-foreground/70">{title}</p>
       <ResponsiveContainer width="100%" height="85%">
         <LineChart data={data}>
           <CartesianGrid {...CHART_GRID} />
@@ -256,25 +252,25 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
           <>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-5">
               <DashboardInsetPanel className="glass px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">Total P&L</p>
+                <p className="section-label text-muted-foreground/65">Total P&L</p>
                 <p className={cn("mt-1 text-lg font-bold tabular-nums", getPnLTextClass(summary.totalPnL, summary.totalPnL >= 0 ? "WIN" : "LOSS"))}>
                   {formatPnL(summary.totalPnL, summary.totalPnL >= 0 ? "WIN" : "LOSS")}
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">Win Rate</p>
+                <p className="section-label text-muted-foreground/65">Win rate</p>
                 <p className="mt-1 text-lg font-bold tabular-nums text-cyan-glow">{summary.winRate}%</p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">Best Setup</p>
+                <p className="section-label text-muted-foreground/65">Best setup</p>
                 <p className="mt-1 truncate text-sm font-semibold text-profit">{summary.bestSetup || "—"}</p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">Worst Setup</p>
+                <p className="section-label text-muted-foreground/65">Worst setup</p>
                 <p className="mt-1 truncate text-sm font-semibold text-loss">{summary.worstSetup || "—"}</p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5">
-                <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">Discipline Trend</p>
+                <p className="section-label text-muted-foreground/65">Discipline trend</p>
                 <p className="mt-1 flex items-center gap-1 text-sm font-semibold capitalize">
                   {summary.disciplineTrend === "up" ? (
                     <TrendingUp className="size-4 text-profit" />
@@ -320,7 +316,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
                 ] as const
               ).map(([label, grade, score]) => (
                 <DashboardInsetPanel key={label} className="glass px-3 py-2.5 text-center">
-                  <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/65">{label}</p>
+                  <p className="section-label text-muted-foreground/65">{label}</p>
                   <p className={cn("mt-1 text-xl font-bold", gradeColor(grade))}>{grade}</p>
                   <Progress value={score} className="mt-2 h-1 bg-white/[0.06]" />
                   <p className="mt-1 text-[10px] tabular-nums text-muted-foreground/70">{score}/100</p>
@@ -331,7 +327,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
             <DashboardInsetPanel className="space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-cyan-glow" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">AI Weekly Commentary</p>
+                <p className="text-[11px] font-semibold">AI weekly commentary</p>
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <CommentaryList title="What Improved" items={commentary.improved} tone="positive" />
@@ -356,9 +352,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
                 color="oklch(0.75 0.16 300)"
               />
               <DashboardInsetPanel className="glass h-[180px] px-2 py-2 lg:col-span-1 xl:col-span-1">
-                <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Mistake Frequency
-                </p>
+                <p className="section-label mb-2 px-1 text-muted-foreground/70">Mistake frequency</p>
                 <ResponsiveContainer width="100%" height="85%">
                   <BarChart data={visualizations.mistakeFrequency}>
                     <CartesianGrid {...CHART_GRID} />
@@ -370,9 +364,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
                 </ResponsiveContainer>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-3 lg:col-span-2 xl:col-span-2">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Streak Timeline
-                </p>
+                <p className="section-label mb-2 text-muted-foreground/70">Streak timeline</p>
                 <div className="flex flex-wrap gap-2">
                   {visualizations.streakTimeline.map((point) => (
                     <button
@@ -397,9 +389,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
             </div>
 
             <DashboardInsetPanel className="space-y-2 border-purple-400/15 bg-purple-400/[0.03] px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-                AI Recommendations
-              </p>
+              <p className="section-label text-foreground/85">AI recommendations</p>
               {recommendations.map((item) => (
                 <p key={item} className="flex items-start gap-2 text-[11px] leading-relaxed text-foreground/85">
                   <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-cyan-glow" />
@@ -411,7 +401,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
             <div className="grid gap-2 md:grid-cols-2">
               {journalLinks.bestTrade && (
                 <DashboardInsetPanel className="border-profit/20 bg-profit/[0.04] px-3 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-profit/80">
+                  <p className="section-label text-profit/80">
                     {getBestTradeHighlightLabel(journalLinks.bestTrade.result, journalLinks.bestTrade.pnl)}
                   </p>
                   <p className="mt-1 text-sm font-semibold">{journalLinks.bestTrade.pair}</p>
@@ -431,7 +421,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
               )}
               {journalLinks.worstTrade && (
                 <DashboardInsetPanel className="border-loss/20 bg-loss/[0.04] px-3 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-loss/80">Worst Trade</p>
+                  <p className="section-label text-loss/80">Worst trade</p>
                   <p className="mt-1 text-sm font-semibold">{journalLinks.worstTrade.pair}</p>
                   <p className={cn("text-[12px] tabular-nums", getPnLTextClass(journalLinks.worstTrade.pnl, journalLinks.worstTrade.result))}>
                     {formatPnL(journalLinks.worstTrade.pnl, journalLinks.worstTrade.result)} · {journalLinks.worstTrade.result}
@@ -451,9 +441,9 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
 
             {(journalLinks.replayTradeIds.length > 0 || journalLinks.screenshotTradeIds.length > 0) && (
               <DashboardInsetPanel className="glass px-3 py-3">
-                <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+                <p className="section-label mb-2 flex items-center gap-1.5 text-muted-foreground/75">
                   <AlertTriangle className="size-3.5" />
-                  Journal Links
+                  Journal links
                 </p>
                 <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground/75">
                   <span>{journalLinks.replayTradeIds.length} replay-ready trade(s)</span>

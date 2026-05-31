@@ -34,6 +34,11 @@ export function WeeklyWarRoom() {
   const { toast } = useToast()
   const weekStart = getWeekStartSunday()
   const [marketBias, setMarketBias] = useState<MarketBiasRecord | null>(null)
+  const [biasDraft, setBiasDraft] = useState<MarketBiasInput>({
+    weekly_bias: "Neutral",
+    daily_bias: "Neutral",
+    h4_bias: "Neutral",
+  })
   const [weekPlan, setWeekPlan] = useState<WeeklyPlanWithPairs | null>(null)
   const [sessionFocus, setSessionFocus] = useState("")
   const [expectedScenarios, setExpectedScenarios] = useState("")
@@ -51,6 +56,11 @@ export function WeeklyWarRoom() {
       try {
         bias = await fetchMarketBias()
         setMarketBias(bias)
+        setBiasDraft({
+          weekly_bias: bias?.weekly_bias ?? "Neutral",
+          daily_bias: bias?.daily_bias ?? "Neutral",
+          h4_bias: bias?.h4_bias ?? "Neutral",
+        })
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to load bias"
         if (isStrategyBrainSetupError(msg)) {
@@ -133,8 +143,10 @@ export function WeeklyWarRoom() {
           screenshot_urls: p.screenshot_urls ?? [],
         })),
       })
+      const bias = await saveMarketBias(biasDraft)
+      setMarketBias(bias)
       setWeekPlan(updated)
-      toast({ title: "Session plan saved" })
+      toast({ title: "Session plan & bias saved" })
     } catch (e) {
       toast({
         title: "Save failed",
@@ -221,7 +233,7 @@ export function WeeklyWarRoom() {
             </div>
           ) : null}
 
-          <MarketBiasPanel initial={marketBias} onSaved={(b) => setMarketBias(b)} />
+          <MarketBiasPanel initial={marketBias} onDraftChange={setBiasDraft} />
 
           <WarRoomSurfaceCard className="p-4">
             <p className="text-[11px] font-medium text-text-muted">Session expectations</p>
@@ -246,7 +258,7 @@ export function WeeklyWarRoom() {
               disabled={savingMeta || !weekPlan}
               onClick={() => void saveWarRoomMeta()}
             >
-              {savingMeta ? "Saving…" : "Save session plan"}
+              {savingMeta ? "Saving…" : "Save session plan & bias"}
             </Button>
           </WarRoomSurfaceCard>
 

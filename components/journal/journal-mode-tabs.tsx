@@ -24,31 +24,33 @@ export function JournalModeTabs({
 }) {
   return (
     <div
-      className="vyronis-segmented flex gap-0.5 rounded-xl border border-white/[0.08] bg-black/40 p-1"
+      className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-[3px]"
       role="tablist"
       aria-label="Journal view"
     >
-      {MODES.map(({ id, label, icon: Icon }) => {
-        const active = mode === id
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(id)}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-[11px] font-semibold transition-all sm:flex-none sm:px-4",
-              active
-                ? "bg-cyan-glow/15 text-cyan-glow shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]"
-                : "text-muted-foreground/70 hover:text-foreground/90",
-            )}
-          >
-            <Icon className="size-3.5 shrink-0" />
-            {label}
-          </button>
-        )
-      })}
+      <div className="grid grid-cols-4 gap-[3px]">
+        {MODES.map(({ id, label, icon: Icon }) => {
+          const active = mode === id
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(id)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-2 text-[12px] transition-colors",
+                active
+                  ? "bg-[var(--surface-page)] font-medium text-text-primary"
+                  : "bg-transparent text-text-muted hover:text-text-secondary",
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span className="truncate">{label}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

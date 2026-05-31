@@ -95,9 +95,7 @@ export function PrimaryLeakCard({
               <Target className={cn("size-4", styles.accent)} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">
-                Primary behavioral leak
-              </p>
+              <p className="section-label">Primary behavioral leak</p>
               <p className="mt-1 text-[15px] font-semibold leading-snug tracking-tight text-foreground sm:text-[16px]">
                 {insight.status === "insufficient_data"
                   ? "Pattern forming"
@@ -107,7 +105,7 @@ export function PrimaryLeakCard({
           </div>
           <span
             className={cn(
-              "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide",
+              "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-medium",
               styles.pill,
             )}
           >
@@ -128,9 +126,7 @@ export function PrimaryLeakCard({
         ) : null}
 
         <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3.5 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/75">
-            Corrective focus
-          </p>
+          <p className="section-label text-cyan-glow/75">Corrective focus</p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground/88 sm:text-[13px]">
             {insight.correctiveAction}
           </p>
