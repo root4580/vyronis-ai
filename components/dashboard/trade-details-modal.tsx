@@ -39,7 +39,7 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { LinkedPlanDisciplineSection } from "@/components/trade-planner/linked-plan-discipline-section"
+import { LinkedPlanAnalysisSection } from "@/components/trade-planner/linked-plan-analysis-section"
 
 export type TradeDetails = {
   id: string
@@ -336,7 +336,23 @@ export function TradeDetailsModal({
                 />
               </div>
 
-              {trade.plan_id ? <LinkedPlanDisciplineSection trade={trade} /> : null}
+              {trade.plan_id ? (
+                <LinkedPlanAnalysisSection
+                  trade={{
+                    id: trade.id,
+                    pair: trade.pair,
+                    direction: trade.direction,
+                    result: trade.result,
+                    pnl: trade.pnl,
+                    plan_id: trade.plan_id,
+                    entry_price: trade.entry_price,
+                    stop_loss: trade.stop_loss,
+                    take_profit: trade.take_profit,
+                    risk_percent: trade.risk_percent,
+                    risk_reward: trade.risk_reward,
+                  }}
+                />
+              ) : null}
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <DashboardInsetPanel className="glass">

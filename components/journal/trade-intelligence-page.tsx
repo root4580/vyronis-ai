@@ -24,7 +24,7 @@ import type { FingerprintTradeInput } from "@/lib/journal/setup-fingerprint"
 import type { MarketBiasRecord, PairPlanRecord } from "@/lib/strategy-brain/types"
 import { getDashboardTabHref, getTradeReplayHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
-import { LinkedPlanDisciplineSection } from "@/components/trade-planner/linked-plan-discipline-section"
+import { LinkedPlanAnalysisSection } from "@/components/trade-planner/linked-plan-analysis-section"
 
 type TradeIntelligencePageProps = {
   tradeId: string
@@ -230,7 +230,23 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
         </div>
       )}
 
-      {trade.plan_id ? <LinkedPlanDisciplineSection trade={trade} /> : null}
+      {trade.plan_id ? (
+        <LinkedPlanAnalysisSection
+          trade={{
+            id: trade.id,
+            pair: trade.pair,
+            direction: trade.direction,
+            result: trade.result,
+            pnl: trade.pnl,
+            plan_id: trade.plan_id,
+            entry_price: trade.entry_price,
+            stop_loss: trade.stop_loss,
+            take_profit: trade.take_profit,
+            risk_percent: trade.risk_percent,
+            risk_reward: trade.risk_reward,
+          }}
+        />
+      ) : null}
 
       <TradeCaseStudyView
         study={study}

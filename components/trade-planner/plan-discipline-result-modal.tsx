@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
+import { Brain, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PlanDeviationSummary } from "@/components/trade-planner/plan-deviation-summary"
 import type { PlanDisciplineResult } from "@/lib/trade-planner/deviation-engine"
@@ -10,6 +10,8 @@ type PlanDisciplineResultModalProps = {
   pairLabel?: string
   result: PlanDisciplineResult | null
   tradeDetailHref?: string
+  showCoachCta?: boolean
+  onOpenCoach?: () => void
   onClose: () => void
 }
 
@@ -18,6 +20,8 @@ export function PlanDisciplineResultModal({
   pairLabel,
   result,
   tradeDetailHref,
+  showCoachCta = false,
+  onOpenCoach,
   onClose,
 }: PlanDisciplineResultModalProps) {
   if (!open || !result) return null
@@ -56,10 +60,25 @@ export function PlanDisciplineResultModal({
             result={result}
             tradeDetailHref={tradeDetailHref}
           />
+          {showCoachCta && result.score < 70 ? (
+            <p className="mt-3 text-[11px] leading-relaxed text-amber-200/90">
+              Plan drift detected — Coach can help you review what changed before your next entry.
+            </p>
+          ) : null}
         </div>
 
-        <div className="border-t border-white/[0.06] px-4 py-3 sm:px-5">
-          <Button type="button" className="w-full" onClick={onClose}>
+        <div className="space-y-2 border-t border-white/[0.06] px-4 py-3 sm:px-5">
+          {showCoachCta && onOpenCoach ? (
+            <Button
+              type="button"
+              className="w-full bg-cyan-glow text-black hover:bg-cyan-glow/90"
+              onClick={onOpenCoach}
+            >
+              <Brain className="mr-2 size-4" />
+              Review deviations with Coach
+            </Button>
+          ) : null}
+          <Button type="button" variant={showCoachCta && onOpenCoach ? "outline" : "default"} className="w-full" onClick={onClose}>
             Done
           </Button>
         </div>

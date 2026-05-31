@@ -131,6 +131,8 @@ import {
 } from "@/lib/trade-planner/deviation-engine"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
 import { PlanDisciplineResultModal } from "@/components/trade-planner/plan-discipline-result-modal"
+import { PlanDisciplineSummaryWidget } from "@/components/trade-planner/plan-discipline-summary-widget"
+import { buildCoachContextFromPlanDeviation } from "@/lib/trade-planner/coach-post-trade-context"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
@@ -285,6 +287,19 @@ function Home() {
   const [planDisciplineResult, setPlanDisciplineResult] = useState<PlanDisciplineResult | null>(null)
   const [planDisciplinePairLabel, setPlanDisciplinePairLabel] = useState("")
   const [planDisciplineTradeId, setPlanDisciplineTradeId] = useState<string | null>(null)
+  const [planDisciplineReviewPlan, setPlanDisciplineReviewPlan] = useState<MatchableTradePlan | null>(null)
+  const [planDisciplineReviewTrade, setPlanDisciplineReviewTrade] = useState<{
+    pair: string
+    direction: string
+    result: string
+    pnl: number
+    entryPrice?: number | null
+    stopLoss?: number | null
+    takeProfit?: number | null
+    riskPercent?: number | null
+    emotion?: string | null
+    tradeDate?: string | null
+  } | null>(null)
   const [tradeJournalMode, setTradeJournalMode] = useState<TradeJournalMode>("log")
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
@@ -1674,6 +1689,23 @@ function Home() {
         setPlanDisciplineResult(linkedPlanDiscipline)
         setPlanDisciplinePairLabel(savedPairLabel)
         setPlanDisciplineTradeId(savedTradeId)
+        if (planToLink) {
+          setPlanDisciplineReviewPlan(planToLink)
+          setPlanDisciplineReviewTrade({
+            pair: savedFormSnapshot.pair,
+            direction: savedFormSnapshot.direction,
+            result: form.result,
+            pnl: normalizePnL(parseFloat(form.pnl), form.result),
+            entryPrice: parseOptionalNumber(savedFormSnapshot.entry_price),
+            stopLoss: parseOptionalNumber(savedFormSnapshot.stop_loss),
+            takeProfit: parseOptionalNumber(savedFormSnapshot.take_profit),
+            riskPercent: savedFormSnapshot.risk_percent
+              ? parseFloat(savedFormSnapshot.risk_percent)
+              : null,
+            emotion: form.emotion || null,
+            tradeDate: form.trade_date || null,
+          })
+        }
         setPlanDisciplineOpen(true)
       } else {
         setVyronisResultOpen(true)
@@ -2120,6 +2152,8 @@ function Home() {
                   />
                 ) : null}
 
+                <PlanDisciplineSummaryWidget className="mb-1" />
+
                 <DashboardRecentTradesSection
                   trades={trades}
                   limit={3}
@@ -2539,10 +2573,33 @@ function Home() {
         tradeDetailHref={
           planDisciplineTradeId ? `/journal/trade/${planDisciplineTradeId}` : undefined
         }
+        showCoachCta={
+          planDisciplineResult != null &&
+          planDisciplineResult.score < 70 &&
+          planDisciplineReviewPlan != null &&
+          planDisciplineReviewTrade != null
+        }
+        onOpenCoach={() => {
+          if (!planDisciplineReviewPlan || !planDisciplineResult || !planDisciplineReviewTrade) return
+          const context = buildCoachContextFromPlanDeviation({
+            plan: planDisciplineReviewPlan,
+            trade: planDisciplineReviewTrade,
+            discipline: planDisciplineResult,
+            maxRiskPerTrade,
+          })
+          setPlanDisciplineOpen(false)
+          setPlanDisciplineResult(null)
+          setPlanDisciplineTradeId(null)
+          setPlanDisciplineReviewPlan(null)
+          setPlanDisciplineReviewTrade(null)
+          void handleOpenCoach(context)
+        }}
         onClose={() => {
           setPlanDisciplineOpen(false)
           setPlanDisciplineResult(null)
           setPlanDisciplineTradeId(null)
+          setPlanDisciplineReviewPlan(null)
+          setPlanDisciplineReviewTrade(null)
         }}
       />
 

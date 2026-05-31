@@ -1,0 +1,102 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { PlanDeviationFull } from "@/components/trade-planner/plan-deviation-full"
+import { PlanWhatIfPanel } from "@/components/trade-planner/plan-whatif"
+import {
+  buildTradeActualForDeviation,
+  computePlanDiscipline,
+} from "@/lib/trade-planner/deviation-engine"
+import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
+import { getTradeRiskReward } from "@/lib/trade-form-utils"
+
+type LinkedPlanTrade = {
+  id: string
+  pair: string
+  direction: string
+  result: string
+  pnl: number
+  plan_id?: string | null
+  entry_price?: number | null
+  stop_loss?: number | null
+  take_profit?: number | null
+  risk_percent?: number | null
+  risk_reward?: number | null
+}
+
+type LinkedPlanAnalysisSectionProps = {
+  trade: LinkedPlanTrade
+  className?: string
+}
+
+export function LinkedPlanAnalysisSection({ trade, className }: LinkedPlanAnalysisSectionProps) {
+  const [linkedPlan, setLinkedPlan] = useState<MatchableTradePlan | null>(null)
+
+  useEffect(() => {
+    if (!trade.plan_id) {
+      setLinkedPlan(null)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadLinkedPlan() {
+      try {
+        const response = await fetch(`/api/trade-plans/${trade.plan_id}`)
+        if (!response.ok || cancelled) return
+        const payload = (await response.json()) as { plan?: MatchableTradePlan }
+        if (!cancelled) setLinkedPlan(payload.plan ?? null)
+      } catch {
+        if (!cancelled) setLinkedPlan(null)
+      }
+    }
+
+    void loadLinkedPlan()
+
+    return () => {
+      cancelled = true
+    }
+  }, [trade.plan_id])
+
+  const planDiscipline = useMemo(() => {
+    if (!linkedPlan) return null
+    const riskReward = getTradeRiskReward(trade)
+    return computePlanDiscipline(
+      linkedPlan,
+      buildTradeActualForDeviation({
+        pair: trade.pair,
+        direction: trade.direction,
+        entryPrice: trade.entry_price ?? null,
+        stopLoss: trade.stop_loss ?? null,
+        takeProfit: trade.take_profit ?? null,
+        riskPercent: trade.risk_percent ?? null,
+        riskReward: trade.risk_reward ?? riskReward,
+        accountSizeForRisk: linkedPlan.accountSize,
+      }),
+    )
+  }, [trade, linkedPlan])
+
+  if (!trade.plan_id || !linkedPlan || !planDiscipline) return null
+
+  return (
+    <div className={className}>
+      <PlanWhatIfPanel
+        plan={linkedPlan}
+        trade={{
+          result: trade.result,
+          pnl: trade.pnl,
+          direction: trade.direction,
+          entryPrice: trade.entry_price ?? null,
+          stopLoss: trade.stop_loss ?? null,
+          takeProfit: trade.take_profit ?? null,
+        }}
+        discipline={planDiscipline}
+        className="mb-4"
+      />
+      <PlanDeviationFull
+        pairLabel={`${trade.pair} ${trade.direction}`}
+        result={planDiscipline}
+      />
+    </div>
+  )
+}
