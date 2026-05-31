@@ -1,68 +1,103 @@
 "use client"
 
 import Link from "next/link"
-import { CheckCircle2, Circle } from "lucide-react"
 import type { WarRoomReadiness } from "@/lib/journal/war-room-status"
-import { JOURNAL_WORKFLOW_STEPS } from "@/lib/journal/journal-workflow"
 import { cn } from "@/lib/utils"
 
+const WORKFLOW_TABS = [
+  { id: "plan", label: "Plan", href: "#war-room-planning" },
+  { id: "aoi", label: "AOI", href: "#war-room-pairs" },
+  { id: "setup", label: "Setup", href: "/strategy-brain" },
+  { id: "emotion", label: "Emotion", href: "/strategy-brain" },
+  { id: "decide", label: "Decide", href: "/hq" },
+] as const
+
 export function WarRoomWorkflowStatus({ readiness }: { readiness: WarRoomReadiness }) {
+  const displaySteps = readiness.steps.slice(0, 4)
+  const complete = readiness.percent >= 100
+
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-black/35 px-3 py-3 sm:px-4">
+    <div className="war-room-surface-card p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-warning-muted/80">
-            Mission control
-          </p>
-          <p className="mt-0.5 text-[13px] font-medium text-foreground/92">{readiness.headline}</p>
-        </div>
+        <p className="text-[11px] font-medium text-text-muted">Mission control</p>
         <div className="flex items-center gap-2">
-          <div className="h-2 flex-1 min-w-[120px] overflow-hidden rounded-full bg-white/[0.06] sm:max-w-[140px]">
+          <div className="h-1 w-[120px] overflow-hidden rounded-full bg-white/[0.07]">
             <div
-              className="h-full rounded-full bg-warning/70 transition-[width]"
+              className={cn(
+                "h-full rounded-full transition-[width]",
+                complete ? "bg-profit" : "bg-[var(--warning)]",
+              )}
               style={{ width: `${readiness.percent}%` }}
             />
           </div>
-          <span className="text-[11px] tabular-nums text-muted-foreground/80">
+          <span
+            className={cn(
+              "text-[11px] font-medium tabular-nums",
+              complete ? "text-profit" : "text-[var(--warning)]",
+            )}
+          >
             {readiness.percent}%
           </span>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-7">
-        {readiness.steps.map((step) => (
+      <p className="mt-1 text-[12px] font-medium text-text-primary">{readiness.headline}</p>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {displaySteps.map((step) => (
           <div
             key={step.id}
             className={cn(
-              "rounded-lg border px-2 py-1.5",
+              "rounded-[var(--radius-sm)] border px-3 py-2.5",
               step.complete
-                ? "border-profit/20 bg-profit/[0.05]"
-                : "border-white/[0.06] bg-white/[0.02]",
+                ? "border-[var(--color-accent-border)] bg-[rgb(from_var(--color-accent)_r_g_b_/_0.05)]"
+                : "border-[var(--border-subtle)] bg-white/[0.03]",
             )}
           >
-            <div className="flex items-center gap-1">
-              {step.complete ? (
-                <CheckCircle2 className="size-3 shrink-0 text-profit" />
-              ) : (
-                <Circle className="size-3 shrink-0 text-muted-foreground/40" />
-              )}
-              <span className="text-[10px] font-medium">{step.label}</span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full",
+                  step.complete ? "bg-[var(--color-accent)]" : "bg-white/15",
+                )}
+                aria-hidden="true"
+              />
+              <span
+                className={cn(
+                  "text-[12px] font-medium",
+                  step.complete ? "text-text-accent" : "text-text-secondary",
+                )}
+              >
+                {step.label}
+              </span>
             </div>
-            <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-muted-foreground/65">
+            <p
+              className={cn(
+                "mt-0.5 line-clamp-2 text-[11px]",
+                step.complete
+                  ? "text-[rgb(from_var(--color-accent)_r_g_b_/_0.6)]"
+                  : "text-text-muted",
+              )}
+            >
               {step.hint}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5">
-        {JOURNAL_WORKFLOW_STEPS.slice(0, 5).map((step) => (
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {WORKFLOW_TABS.map((tab, index) => (
           <Link
-            key={step.id}
-            href={step.href}
-            className="shrink-0 rounded-md border border-white/[0.06] px-2 py-1 text-[9px] text-muted-foreground hover:border-cyan-glow/25 hover:text-cyan-glow"
+            key={tab.id}
+            href={tab.href}
+            className={cn(
+              "rounded-[var(--radius-sm)] border px-2.5 py-1 text-[11px] transition-colors",
+              index === 0
+                ? "border-[var(--border-default)] bg-white/[0.06] text-text-primary"
+                : "border-[var(--border-subtle)] bg-transparent text-text-muted hover:border-[var(--border-default)] hover:text-text-secondary",
+            )}
           >
-            {step.shortLabel}
+            {tab.label}
           </Link>
         ))}
       </div>

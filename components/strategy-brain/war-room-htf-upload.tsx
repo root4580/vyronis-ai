@@ -151,12 +151,27 @@ export function WarRoomHtfUpload({
 
   return (
     <div className={className}>
-      <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-        Timeframe charts{pairLabel ? ` — ${pairLabel}` : ""}
-        <span className="ml-1 font-normal normal-case text-muted-foreground/50">
-          (upload W, D, H4, H1, M15 — then analyze)
-        </span>
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-text-muted">
+          Charts{pairLabel ? ` · ${pairLabel}` : ""} ({urls.length}/{WAR_ROOM_MAX_CHARTS})
+        </p>
+        {onAutofill ? (
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 border-[var(--color-accent-border)] bg-[rgb(from_var(--color-accent)_r_g_b_/_0.08)] text-[11px] text-text-accent hover:bg-[rgb(from_var(--color-accent)_r_g_b_/_0.12)]"
+            disabled={disabled || analyzing || urls.length === 0}
+            onClick={() => void runAnalyze()}
+          >
+            {analyzing ? (
+              <Loader2 className="mr-1 size-3 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1 size-3" />
+            )}
+            Analyze &amp; autofill
+          </Button>
+        ) : null}
+      </div>
       {urls.length > 0 ? (
         <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
           {urls.map((url, index) => (
@@ -218,7 +233,7 @@ export function WarRoomHtfUpload({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 text-[10px]"
+          className="h-8 border-[var(--border-subtle)] bg-transparent text-[11px] text-text-muted"
           disabled={disabled || uploading || urls.length >= WAR_ROOM_MAX_CHARTS}
           onClick={() => fileRef.current?.click()}
         >
@@ -227,24 +242,8 @@ export function WarRoomHtfUpload({
           ) : (
             <Camera className="mr-1 size-3" />
           )}
-          Add charts ({urls.length}/{WAR_ROOM_MAX_CHARTS}) — multi-select OK
+          Add charts ({urls.length}/{WAR_ROOM_MAX_CHARTS})
         </Button>
-        {onAutofill ? (
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 border-cyan-glow/30 bg-cyan-glow/10 text-[10px] text-cyan-glow hover:bg-cyan-glow/15"
-            disabled={disabled || analyzing || urls.length === 0}
-            onClick={() => void runAnalyze()}
-          >
-            {analyzing ? (
-              <Loader2 className="mr-1 size-3 animate-spin" />
-            ) : (
-              <Sparkles className="mr-1 size-3" />
-            )}
-            Analyze &amp; autofill
-          </Button>
-        ) : null}
       </div>
 
       {preview ? (

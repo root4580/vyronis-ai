@@ -4,6 +4,16 @@ import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import type { AoiStatus, SetupGrade, TradeRecommendation } from "@/lib/strategy-brain/types"
 
+export function WarRoomSurfaceCard({
+  className,
+  children,
+}: {
+  className?: string
+  children: ReactNode
+}) {
+  return <div className={cn("war-room-surface-card", className)}>{children}</div>
+}
+
 export function StrategyBrainGlass({
   className,
   children,
@@ -25,9 +35,7 @@ export function StrategyBrainGlass({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-cyan-glow/75">
-      {children}
-    </p>
+    <p className="text-[11px] font-medium text-text-muted">{children}</p>
   )
 }
 
@@ -106,14 +114,14 @@ export function BiasToggle({
             type="button"
             onClick={() => onChange(opt)}
             className={cn(
-              "flex-1 rounded-lg border px-1 py-1.5 text-[10px] font-medium transition-all duration-200",
+              "flex-1 rounded-[var(--radius-sm)] border px-2 py-1.5 text-[11px] font-medium transition-colors",
               value === opt
                 ? opt === "Bullish"
-                  ? "border-profit/40 bg-profit/15 text-profit"
+                  ? "border-profit/30 bg-profit/[0.12] text-profit"
                   : opt === "Bearish"
-                    ? "border-loss/40 bg-loss/15 text-loss"
-                    : "border-white/20 bg-white/10 text-foreground"
-                : "border-white/[0.06] bg-black/20 text-muted-foreground hover:border-white/12",
+                    ? "border-loss/25 bg-loss/10 text-loss"
+                    : "border-[var(--border-default)] bg-white/[0.06] text-text-secondary"
+                : "border-white/[0.08] bg-transparent text-text-muted hover:border-[var(--border-default)]",
             )}
           >
             {opt}

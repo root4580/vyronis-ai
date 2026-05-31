@@ -11,7 +11,7 @@ import {
 } from "@/lib/strategy-brain/weekly-watchlist"
 import type { BiasDirection, MarketBiasInput, PairPlanInput, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import type { WarRoomVisionAutofill } from "@/lib/strategy-brain/war-room-vision-types"
-import { SectionLabel, StrategyBrainGlass } from "@/components/strategy-brain/strategy-brain-primitives"
+import { WarRoomSurfaceCard } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { WarRoomHtfUpload } from "@/components/strategy-brain/war-room-htf-upload"
+import { cn } from "@/lib/utils"
 
 type DraftPair = PairPlanInput & { _key: string }
 
@@ -58,6 +59,39 @@ function applyAutofillToPair(pair: DraftPair, autofill: WarRoomVisionAutofill): 
     weekly_thesis: autofill.weekly_thesis || pair.weekly_thesis,
     notes: autofill.notes || pair.notes,
   }
+}
+
+function PairBiasButtons({
+  value,
+  onChange,
+}: {
+  value: BiasDirection
+  onChange: (value: BiasDirection) => void
+}) {
+  const options: BiasDirection[] = ["Bullish", "Bearish", "Neutral"]
+  return (
+    <div className="flex gap-1">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={cn(
+            "rounded-[var(--radius-sm)] border px-2 py-1 text-[11px] font-medium transition-colors",
+            value === opt
+              ? opt === "Bullish"
+                ? "border-profit/30 bg-profit/[0.12] text-profit"
+                : opt === "Bearish"
+                  ? "border-loss/25 bg-loss/10 text-loss"
+                  : "border-[var(--border-default)] bg-white/[0.06] text-text-secondary"
+              : "border-white/[0.08] bg-transparent text-text-muted",
+          )}
+        >
+          {opt === "Bullish" ? "Bull" : opt === "Bearish" ? "Bear" : "Neutral"}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest }: Props) {
@@ -146,37 +180,43 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
   }
 
   return (
-    <StrategyBrainGlass>
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <WarRoomSurfaceCard>
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-3.5">
         <div className="flex items-center gap-2">
-          <CalendarDays className="size-4 text-cyan-glow" />
+          <CalendarDays className="size-3.5 text-text-accent" />
           <div>
-            <SectionLabel>Sunday planning</SectionLabel>
-            <p className="text-[11px] text-muted-foreground/70">{formatWeekLabel(weekStart)}</p>
+            <p className="text-[11px] font-medium text-text-accent">Sunday planning</p>
+            <p className="text-[11px] text-text-muted">{formatWeekLabel(weekStart)}</p>
           </div>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={addPair}>
-          <Plus className="size-3.5" />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addPair}
+          disabled={pairs.length >= 5}
+          className="h-8 border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-[11px] text-text-accent hover:bg-[var(--color-accent-bg)] disabled:opacity-40"
+        >
+          <Plus className="mr-1 size-3.5" />
           Pair
         </Button>
       </div>
 
-      <Textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Weekly session notes — macro context, events, focus pairs…"
-        className="mb-3 min-h-[72px] border-white/[0.08] bg-black/30 text-[12px]"
-      />
+      <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Weekly session notes — macro context, events, focus pairs…"
+          className="war-room-textarea min-h-[72px] resize-none placeholder:text-text-muted"
+        />
+      </div>
 
-      <div className="space-y-3">
+      <div className="divide-y divide-[var(--border-subtle)]">
         {pairs.map((p) => (
-          <div
-            key={p._key}
-            className="rounded-lg border border-white/[0.06] bg-black/25 p-2.5 sm:p-3"
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <div key={p._key} className="px-4 py-3.5">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <Select value={p.pair} onValueChange={(v) => updatePair(p._key, { pair: v })}>
-                <SelectTrigger className="h-8 w-[128px] text-xs">
+                <SelectTrigger className="h-9 w-[128px] rounded-[var(--radius-sm)] border-[var(--border-default)] bg-white/[0.04] text-[13px] font-medium text-text-primary">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-[min(280px,50vh)]">
@@ -187,38 +227,28 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={p.directional_bias ?? "Neutral"}
-                onValueChange={(v) =>
-                  updatePair(p._key, { directional_bias: v as BiasDirection })
-                }
-              >
-                <SelectTrigger className="h-8 w-[110px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Bullish">Bullish</SelectItem>
-                  <SelectItem value="Bearish">Bearish</SelectItem>
-                  <SelectItem value="Neutral">Neutral</SelectItem>
-                </SelectContent>
-              </Select>
+              <PairBiasButtons
+                value={(p.directional_bias ?? "Neutral") as BiasDirection}
+                onChange={(directional_bias) => updatePair(p._key, { directional_bias })}
+              />
               <button
                 type="button"
                 onClick={() => removePair(p._key)}
-                className="text-muted-foreground hover:text-loss"
+                className="ml-auto flex size-[26px] items-center justify-center rounded-[var(--radius-sm)] text-text-muted hover:bg-loss/10 hover:text-loss"
                 aria-label="Remove pair"
               >
                 <Trash2 className="size-3.5" />
               </button>
             </div>
+
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <p className="mb-1 text-[9px] text-muted-foreground/55">AOI low (price)</p>
+                <p className="mb-1 text-[10px] text-text-muted">AOI low</p>
                 <Input
-                  placeholder="e.g. 154.20"
+                  placeholder="154.20"
                   type="number"
                   step="any"
-                  className="h-8 text-xs"
+                  className="war-room-input h-9"
                   value={p.aoi_low ?? ""}
                   onChange={(e) =>
                     updatePair(p._key, {
@@ -228,12 +258,12 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
                 />
               </div>
               <div>
-                <p className="mb-1 text-[9px] text-muted-foreground/55">AOI high (price)</p>
+                <p className="mb-1 text-[10px] text-text-muted">AOI high</p>
                 <Input
-                  placeholder="e.g. 156.80"
+                  placeholder="156.80"
                   type="number"
                   step="any"
-                  className="h-8 text-xs"
+                  className="war-room-input h-9"
                   value={p.aoi_high ?? ""}
                   onChange={(e) =>
                     updatePair(p._key, {
@@ -243,12 +273,12 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
                 />
               </div>
               <div>
-                <p className="mb-1 text-[9px] text-muted-foreground/55">Invalidation (price)</p>
+                <p className="mb-1 text-[10px] text-text-muted">Invalidation</p>
                 <Input
-                  placeholder="e.g. 153.90"
+                  placeholder="153.90"
                   type="number"
                   step="any"
-                  className="h-8 text-xs"
+                  className="war-room-input h-9"
                   value={p.invalidation ?? ""}
                   onChange={(e) =>
                     updatePair(p._key, {
@@ -258,18 +288,20 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
                 />
               </div>
             </div>
-            <Input
-              className="mt-2 h-8 text-xs"
+
+            <Textarea
+              className="war-room-textarea mt-2 min-h-[56px] resize-none placeholder:text-text-muted"
               placeholder="Weekly thesis"
               value={p.weekly_thesis ?? ""}
               onChange={(e) => updatePair(p._key, { weekly_thesis: e.target.value })}
             />
-            <Input
-              className="mt-2 h-8 text-xs"
+            <Textarea
+              className="war-room-textarea mt-2 min-h-[48px] resize-none placeholder:text-text-muted"
               placeholder="Notes"
               value={p.notes ?? ""}
               onChange={(e) => updatePair(p._key, { notes: e.target.value })}
             />
+
             <WarRoomHtfUpload
               className="mt-3"
               pairHint={p.pair}
@@ -284,9 +316,15 @@ export function SundayPlanningPanel({ initial, weekStart, onSaved, onBiasSuggest
         ))}
       </div>
 
-      <Button className="mt-3 w-full" onClick={() => void handleSave()} disabled={saving}>
-        {saving ? "Saving…" : "Save weekly plan"}
-      </Button>
-    </StrategyBrainGlass>
+      <div className="p-4">
+        <Button
+          className="btn-primary h-11 w-full rounded-[var(--radius-md)]"
+          onClick={() => void handleSave()}
+          disabled={saving}
+        >
+          {saving ? "Saving…" : "Save weekly plan"}
+        </Button>
+      </div>
+    </WarRoomSurfaceCard>
   )
 }

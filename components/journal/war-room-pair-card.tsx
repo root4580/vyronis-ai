@@ -6,7 +6,7 @@ import { Target } from "lucide-react"
 import { WarRoomHtfUpload } from "@/components/strategy-brain/war-room-htf-upload"
 import { updatePairAoiStatus, saveWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import type { AoiStatus, BiasDirection, PairPlanRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
-import { AoiStatusPill, SectionLabel } from "@/components/strategy-brain/strategy-brain-primitives"
+import { AoiStatusPill } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
@@ -24,6 +24,23 @@ type Props = {
   onBiasSuggest?: (bias: import("@/lib/strategy-brain/types").MarketBiasInput) => void
 }
 
+function PairBiasReadonly({ bias }: { bias: BiasDirection }) {
+  return (
+    <span
+      className={cn(
+        "rounded-[var(--radius-sm)] border px-2 py-0.5 text-[11px] font-medium",
+        bias === "Bullish"
+          ? "border-profit/30 bg-profit/[0.12] text-profit"
+          : bias === "Bearish"
+            ? "border-loss/25 bg-loss/10 text-loss"
+            : "border-[var(--border-default)] bg-white/[0.06] text-text-secondary",
+      )}
+    >
+      {bias}
+    </span>
+  )
+}
+
 export function WarRoomPairCard({
   plan,
   weekPlan,
@@ -37,11 +54,6 @@ export function WarRoomPairCard({
   const [thesis, setThesis] = useState(plan.weekly_thesis)
   const [notes, setNotes] = useState(plan.notes)
   const [saving, setSaving] = useState(false)
-
-  const zone =
-    plan.aoi_high != null && plan.aoi_low != null
-      ? `${plan.aoi_low} – ${plan.aoi_high}`
-      : "Set AOI range in watchlist editor"
 
   async function persistPair(patch: Partial<PairPlanRecord>) {
     setSaving(true)
@@ -99,79 +111,83 @@ export function WarRoomPairCard({
     })
   }
 
-  const biasTone =
-    plan.directional_bias === "Bullish"
-      ? "text-profit"
-      : plan.directional_bias === "Bearish"
-        ? "text-loss"
-        : "text-muted-foreground"
-
   return (
-    <article className="rounded-xl border border-white/[0.08] bg-black/30 p-3 sm:p-4">
+    <article className="px-4 py-3.5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="text-base font-semibold tracking-tight">{plan.pair}</h3>
-          <p className={cn("text-[11px] font-medium", biasTone)}>
-            Weekly bias: {plan.directional_bias as BiasDirection}
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-[13px] font-medium text-text-primary">{plan.pair}</h3>
+          <PairBiasReadonly bias={plan.directional_bias as BiasDirection} />
+          <AoiStatusPill status={plan.aoi_status} />
         </div>
-        <AoiStatusPill status={plan.aoi_status} />
+        <Link
+          href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
+          className="inline-flex items-center gap-1 text-[11px] text-text-accent hover:underline"
+        >
+          <Target className="size-3.5" />
+          Coach
+        </Link>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground/55">AOI zone</p>
-          <p className="mt-0.5 font-mono text-foreground/90">{zone}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div>
+          <p className="mb-1 text-[10px] text-text-muted">AOI low</p>
+          <p className="war-room-input flex h-9 items-center font-mono text-[12px]">
+            {plan.aoi_low ?? "—"}
+          </p>
         </div>
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground/55">Invalidation</p>
-          <p className="mt-0.5 font-mono text-foreground/90">
-            {plan.invalidation != null ? plan.invalidation : "—"}
+        <div>
+          <p className="mb-1 text-[10px] text-text-muted">AOI high</p>
+          <p className="war-room-input flex h-9 items-center font-mono text-[12px]">
+            {plan.aoi_high ?? "—"}
+          </p>
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] text-text-muted">Invalidation</p>
+          <p className="war-room-input flex h-9 items-center font-mono text-[12px]">
+            {plan.invalidation ?? "—"}
           </p>
         </div>
       </div>
 
       <div className="mt-3">
-        <SectionLabel>Thesis</SectionLabel>
+        <p className="mb-1 text-[10px] text-text-muted">Thesis</p>
         <Textarea
           value={thesis}
           onChange={(e) => setThesis(e.target.value)}
           onBlur={() => {
             if (thesis !== plan.weekly_thesis) void persistPair({ weekly_thesis: thesis })
           }}
-          placeholder="Why this pair matters this week — structure, catalyst, liquidity…"
-          className="mt-1 min-h-[64px] border-white/[0.08] bg-black/40 text-[12px] leading-relaxed"
+          placeholder="Why this pair matters this week…"
+          className="war-room-textarea min-h-[64px] resize-none placeholder:text-text-muted"
         />
       </div>
 
       <div className="mt-2">
-        <SectionLabel>Execution notes</SectionLabel>
+        <p className="mb-1 text-[10px] text-text-muted">Execution notes</p>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={() => {
             if (notes !== plan.notes) void persistPair({ notes })
           }}
-          placeholder="LTF triggers, news, what would invalidate the idea…"
-          className="mt-1 min-h-[48px] border-white/[0.08] bg-black/40 text-[11px]"
+          placeholder="LTF triggers, news, invalidation cues…"
+          className="war-room-textarea min-h-[48px] resize-none placeholder:text-text-muted"
         />
       </div>
 
       <div className="mt-3">
-        <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
-          AOI status (you control)
-        </p>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <p className="mb-1.5 text-[10px] text-text-muted">AOI status</p>
+        <div className="flex flex-wrap gap-1">
           {STATUSES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => void setStatus(s)}
               className={cn(
-                "rounded-md px-2 py-1 text-[10px] uppercase transition-colors",
+                "rounded-[var(--radius-sm)] border px-2 py-1 text-[10px] transition-colors",
                 plan.aoi_status === s
-                  ? "bg-cyan-glow/20 text-cyan-glow"
-                  : "bg-white/5 text-muted-foreground hover:bg-white/10",
+                  ? "border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-text-accent"
+                  : "border-[var(--border-subtle)] bg-transparent text-text-muted hover:border-[var(--border-default)]",
               )}
             >
               {s.replace(/_/g, " ")}
@@ -200,22 +216,6 @@ export function WarRoomPairCard({
           })
         }
       />
-
-      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/[0.06] pt-3">
-        <Link
-          href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
-          className="inline-flex items-center gap-1 rounded-md border border-cyan-glow/25 bg-cyan-glow/10 px-2 py-1 text-[10px] font-medium text-cyan-glow hover:bg-cyan-glow/15"
-        >
-          <Target className="size-3" />
-          Open chart coach
-        </Link>
-        <Link
-          href={`/strategy-brain?pair=${encodeURIComponent(plan.pair)}`}
-          className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/80 hover:text-cyan-glow hover:underline"
-        >
-          Evaluate setup
-        </Link>
-      </div>
     </article>
   )
 }
