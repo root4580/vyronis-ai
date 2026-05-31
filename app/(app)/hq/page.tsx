@@ -1302,6 +1302,7 @@ function Home() {
       if (convertSessionId === sessionId) {
         setConvertSessionId(null)
       }
+      void refreshPlannedSessions(undefined, true)
       toast({
         title: "Plan deleted",
         description: "The unfinished coach session was removed.",
@@ -2026,7 +2027,10 @@ function Home() {
       userId={user?.id}
       refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
       maxRiskPerTrade={maxRiskPerTrade}
-      onCoachSessionChange={(sessionId) => setCoachSessionId(sessionId)}
+      onCoachSessionChange={(sessionId) => {
+        setCoachSessionId(sessionId)
+        if (sessionId) void refreshPlannedSessions(undefined, true)
+      }}
       onCoachCompleted={(sessionId) => {
         if (user?.id) markRitualCoachComplete(user.id)
         void refreshPlannedSessions(undefined, true)

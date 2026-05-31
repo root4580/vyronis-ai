@@ -61,7 +61,6 @@ import type {
   TradeCoachSessionWithMessages,
 } from "@/lib/trade-coach/types"
 import { buildPlannedCoachSessionItem } from "@/lib/trade-coach/planned-context"
-import { dedupePlannedCoachSessions } from "@/lib/trade-coach/planned-session-dedupe"
 import {
   buildTradeQualityInput,
   fetchQualityContext,
@@ -720,16 +719,20 @@ export async function deleteCoachSession(
     throw new Error("Cannot delete a linked coach session.")
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("trade_coach_sessions")
     .delete()
     .eq("id", sessionId)
     .eq("user_id", userId)
     .is("trade_id", null)
     .in("status", ["in_progress", "completed"])
+    .select("id")
 
   throwIfMissing(error)
   if (error) throw new Error(error.message)
+  if (!data?.length) {
+    throw new Error("Could not delete coach session.")
+  }
 }
 
 export async function getCoachSession(
@@ -1281,8 +1284,8 @@ export async function listPlannedCoachSessions(
     responsesBySession.set(message.session_id, existing)
   }
 
-  return dedupePlannedCoachSessions(
-    sessions.map((session) =>
+  return sessions
+    .map((session) =>
       buildPlannedCoachSessionItem(
         {
           id: session.id,
@@ -1293,8 +1296,10 @@ export async function listPlannedCoachSessions(
         },
         responsesBySession.get(session.id) || {},
       ),
-    ),
-  )
+    )
+    .sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+    )
 }
 
 export async function listCoachSessionHistory(

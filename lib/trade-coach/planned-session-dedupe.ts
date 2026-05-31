@@ -1,5 +1,13 @@
-import type { PlannedCoachSessionItem } from "@/lib/trade-coach/types"
-import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
+import type {
+  PlannedCoachSessionItem,
+  PreTradePlannedContext,
+} from "@/lib/trade-coach/types"
+
+export type PlannedSessionDedupeRow = {
+  id: string
+  status: PlannedCoachSessionItem["status"]
+  planned_context: PreTradePlannedContext
+}
 
 export function plannedSessionDedupeKey(context: PreTradePlannedContext): string {
   if (context.trade_plan_id?.trim()) {
@@ -61,4 +69,23 @@ export function dedupePlannedCoachSessions(
   return deduped.sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
   )
+}
+
+/** Resolve all session ids that share a dedupe bucket with the target session. */
+export function collectPlannedSessionIdsForDedupeKey(
+  sessions: PlannedSessionDedupeRow[],
+  targetKey: string,
+  options?: {
+    statuses?: Array<PlannedCoachSessionItem["status"]>
+  },
+): string[] {
+  const allowedStatuses = options?.statuses ? new Set(options.statuses) : null
+
+  return sessions
+    .filter((session) => {
+      if (plannedSessionDedupeKey(session.planned_context) !== targetKey) return false
+      if (allowedStatuses && !allowedStatuses.has(session.status)) return false
+      return true
+    })
+    .map((session) => session.id)
 }
