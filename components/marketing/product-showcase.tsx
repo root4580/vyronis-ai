@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
-import Image from "next/image"
 import { BarChart3, BookOpen, Swords } from "lucide-react"
+import { BrowserScreenshotFrame } from "@/components/marketing/browser-screenshot-frame"
 import {
   getAnalyticsScreenshotFile,
   getHeroScreenshotFile,
@@ -9,33 +9,36 @@ import {
   marketingScreenshotSrc,
 } from "@/lib/marketing/screenshots"
 
+const SCREENSHOT_URLS = {
+  journal: "vyronishq.com/hq?tab=journal",
+  warRoom: "vyronishq.com/war-room",
+  analytics: "vyronishq.com/analytics",
+} as const
+
 function ScreenshotFrame({
   file,
   alt,
   fallback,
   priority,
+  urlPath,
 }: {
   file: string | null
   alt: string
   fallback: ReactNode
   priority?: boolean
+  urlPath?: string
 }) {
   if (!file) {
     return <>{fallback}</>
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.1] bg-[#0a0f14] shadow-2xl shadow-black/40">
-      <Image
-        src={marketingScreenshotSrc(file)}
-        alt={alt}
-        width={1440}
-        height={900}
-        priority={priority}
-        className="h-auto w-full"
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
-      />
-    </div>
+    <BrowserScreenshotFrame
+      src={marketingScreenshotSrc(file)}
+      alt={alt}
+      urlPath={urlPath}
+      priority={priority}
+    />
   )
 }
 
@@ -138,6 +141,7 @@ function JournalPreview() {
     <ScreenshotFrame
       file={getJournalScreenshotFile()}
       alt="Vyronis journal Plan mode with A+ setup scoring"
+      urlPath={SCREENSHOT_URLS.journal}
       priority
       fallback={<JournalPreviewMock />}
     />
@@ -149,6 +153,7 @@ function WarRoomPreview() {
     <ScreenshotFrame
       file={getWarRoomScreenshotFile()}
       alt="Vyronis War Room weekly planning dashboard"
+      urlPath={SCREENSHOT_URLS.warRoom}
       fallback={<WarRoomPreviewMock />}
     />
   )
@@ -159,6 +164,7 @@ function AnalyticsPreview() {
     <ScreenshotFrame
       file={getAnalyticsScreenshotFile()}
       alt="Vyronis analytics and discipline metrics"
+      urlPath={SCREENSHOT_URLS.analytics}
       fallback={<AnalyticsPreviewMock />}
     />
   )
@@ -175,6 +181,7 @@ export function ProductShowcase() {
           <ScreenshotFrame
             file={heroFile}
             alt="Vyronis HQ command center dashboard"
+            urlPath={SCREENSHOT_URLS.journal}
             priority
             fallback={<JournalPreview />}
           />
@@ -236,15 +243,27 @@ export function ProductScreenshotsSection() {
           Product preview
         </p>
         <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-          See the command center before you sign up
+          Real Vyronis HQ — not a mockup
         </h2>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Real Vyronis workflows — journal scoring, weekly War Room planning, and discipline analytics.
+          Journal scoring, War Room planning, and discipline analytics — captured from the live product
+          interface.
         </p>
         <div className="mt-10 grid gap-8 lg:grid-cols-3">
           {previews.map(({ title, caption, file, alt, mock }) => (
             <article key={title} className="space-y-3">
-              <ScreenshotFrame file={file} alt={alt} fallback={mock} />
+              <ScreenshotFrame
+                file={file}
+                alt={alt}
+                fallback={mock}
+                urlPath={
+                  title.includes("Journal")
+                    ? SCREENSHOT_URLS.journal
+                    : title.includes("War Room")
+                      ? SCREENSHOT_URLS.warRoom
+                      : SCREENSHOT_URLS.analytics
+                }
+              />
               <div>
                 <h3 className="font-semibold">{title}</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground">{caption}</p>

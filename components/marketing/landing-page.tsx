@@ -21,6 +21,7 @@ import {
   PRECISION_FLOW_TAGLINE,
 } from "@/lib/branding"
 import { ProductScreenshotsSection, ProductShowcase } from "@/components/marketing/product-showcase"
+import { BlogTeaserSection } from "@/components/marketing/blog-teaser-section"
 import { TestimonialsSection } from "@/components/marketing/testimonials-section"
 import { getCanonicalSiteUrl } from "@/lib/site-url"
 
@@ -96,7 +97,7 @@ function Nav() {
             Pricing
           </a>
           <Link href="/blog" className="hover:text-foreground">
-            Journal
+            Insights
           </Link>
           <a href="#faq" className="hover:text-foreground">
             FAQ
@@ -290,6 +291,8 @@ export function LandingPage() {
         </section>
 
         <TestimonialsSection />
+
+        <BlogTeaserSection />
 
         {/* Pricing */}
         <section id="pricing" className="border-t border-white/[0.06] px-4 py-16 sm:px-6 sm:py-20">

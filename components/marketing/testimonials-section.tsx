@@ -1,4 +1,5 @@
 import { Quote } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const TESTIMONIALS = [
   {
@@ -6,20 +7,46 @@ const TESTIMONIALS = [
       "The Plan vs Log split changed how I trade. I stopped entering on impulse because the A+ gate blocks me before I click.",
     name: "Marcus T.",
     role: "Funded FX trader · beta",
+    initials: "MT",
+    accent: "from-cyan-glow/30 to-cyan-glow/5",
   },
   {
     quote:
       "War Room Sunday planning plus journal scoring is the first system that feels like a desk review, not a diary app.",
     name: "Sarah K.",
     role: "Gold / XAUUSD · beta",
+    initials: "SK",
+    accent: "from-profit/25 to-cyan-glow/5",
   },
   {
     quote:
       "Skip grades on revenge trades alone saved me more than any indicator. Vyronis enforces what I already know I should do.",
     name: "James O.",
     role: "Prop firm challenge · beta",
+    initials: "JO",
+    accent: "from-amber-400/20 to-cyan-glow/5",
   },
 ]
+
+function TestimonialAvatar({
+  initials,
+  accent,
+}: {
+  initials: string
+  accent: string
+}) {
+  return (
+    <div
+      className={cn(
+        "flex size-11 shrink-0 items-center justify-center rounded-full border border-white/[0.1] bg-gradient-to-br text-sm font-bold text-foreground shadow-inner",
+        accent,
+      )}
+      aria-hidden
+    >
+      {initials}
+    </div>
+  )
+}
 
 export function TestimonialsSection() {
   return (
@@ -39,7 +66,7 @@ export function TestimonialsSection() {
           </p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {TESTIMONIALS.map(({ quote, name, role }) => (
+          {TESTIMONIALS.map(({ quote, name, role, initials, accent }) => (
             <figure
               key={name}
               className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5"
@@ -48,9 +75,12 @@ export function TestimonialsSection() {
               <blockquote className="mt-3 text-[13px] leading-relaxed text-foreground/90">
                 &ldquo;{quote}&rdquo;
               </blockquote>
-              <figcaption className="mt-4 border-t border-white/[0.06] pt-3">
-                <p className="text-sm font-semibold">{name}</p>
-                <p className="text-[11px] text-muted-foreground/70">{role}</p>
+              <figcaption className="mt-4 flex items-center gap-3 border-t border-white/[0.06] pt-3">
+                <TestimonialAvatar initials={initials} accent={accent} />
+                <div>
+                  <p className="text-sm font-semibold">{name}</p>
+                  <p className="text-[11px] text-muted-foreground/70">{role}</p>
+                </div>
               </figcaption>
             </figure>
           ))}

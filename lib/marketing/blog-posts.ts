@@ -41,6 +41,21 @@ export const BLOG_POSTS: BlogPost[] = [
       "Use this checklist before every entry. Vyronis automates it in Plan mode so you stop negotiating with yourself at the chart.",
     ],
   },
+  {
+    slug: "prop-firm-trading-discipline-journal",
+    title: "Prop Firm Trading: Why Discipline Beats More Indicators",
+    description:
+      "Funded traders lose accounts on process — not strategy. How Vyronis enforces daily limits, emotion gates, and A+ setup review before every entry.",
+    publishedAt: "2026-05-22",
+    readMinutes: 5,
+    tags: ["prop firm trading", "trading discipline", "funded trader"],
+    body: [
+      "Prop firm challenges fail for one reason: traders know the rules but break them under pressure. More indicators do not fix revenge trades, oversizing, or skipping the weekly plan.",
+      "Vyronis treats discipline as infrastructure. Plan mode scores every setup before entry. Hard skip rules block impulsive and revenge states. War Room forces Sunday context before Monday execution.",
+      "Analytics surfaces leaks — session timing, emotion patterns, setups below 1:2 R:R — so review is data-driven, not emotional.",
+      "If you are on a funded account or challenge, your edge is only as good as your process. Vyronis is built to protect that process when willpower fails.",
+    ],
+  },
 ]
 
 export function getBlogPost(slug: string): BlogPost | undefined {
