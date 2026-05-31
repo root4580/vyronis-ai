@@ -1,5 +1,42 @@
 import type { ReactNode } from "react"
+import Image from "next/image"
 import { BarChart3, BookOpen, Swords } from "lucide-react"
+import {
+  getHeroScreenshotFile,
+  MARKETING_SCREENSHOTS,
+  marketingScreenshotExists,
+  marketingScreenshotSrc,
+} from "@/lib/marketing/screenshots"
+
+function ScreenshotFrame({
+  file,
+  alt,
+  fallback,
+  priority,
+}: {
+  file: string
+  alt: string
+  fallback: ReactNode
+  priority?: boolean
+}) {
+  if (!marketingScreenshotExists(file)) {
+    return <>{fallback}</>
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/[0.1] bg-[#0a0f14] shadow-2xl shadow-black/40">
+      <Image
+        src={marketingScreenshotSrc(file)}
+        alt={alt}
+        width={1440}
+        height={900}
+        priority={priority}
+        className="h-auto w-full"
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+      />
+    </div>
+  )
+}
 
 function PanelChrome({
   title,
@@ -30,7 +67,7 @@ function PanelChrome({
   )
 }
 
-function JournalPreview() {
+function JournalPreviewMock() {
   return (
     <PanelChrome title="Vyronis Journal" subtitle="XAUUSD · Plan setup · London">
       <div className="grid gap-2 p-3 sm:grid-cols-[1fr_auto]">
@@ -49,18 +86,6 @@ function JournalPreview() {
             <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60">AOI</p>
             <p className="mt-0.5 text-[11px]">London liquidity sweep · demand zone</p>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { label: "Entry", value: "Retest" },
-              { label: "Emotion", value: "Calm" },
-              { label: "R:R", value: "1:3.2" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-md bg-black/30 px-2 py-1.5">
-                <p className="text-[8px] uppercase text-muted-foreground/50">{item.label}</p>
-                <p className="text-[10px] font-medium">{item.value}</p>
-              </div>
-            ))}
-          </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-lg border border-cyan-glow/30 bg-cyan-glow/[0.08] px-4 py-3 text-center">
           <p className="text-[9px] uppercase tracking-wider text-cyan-glow/70">Vyronis grade</p>
@@ -72,7 +97,7 @@ function JournalPreview() {
   )
 }
 
-function WarRoomPreview() {
+function WarRoomPreviewMock() {
   return (
     <PanelChrome title="War Room" subtitle="Week of May 25 · Sunday plan">
       <div className="space-y-2 p-3">
@@ -83,25 +108,12 @@ function WarRoomPreview() {
             <p className="text-[9px] text-muted-foreground/70">Watchlist: XAUUSD, EURUSD, GBPUSD</p>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {["XAUUSD", "EURUSD", "GBPUSD"].map((pair, i) => (
-            <div
-              key={pair}
-              className="rounded-md border border-white/[0.06] bg-black/25 px-2 py-2 text-center"
-            >
-              <p className="text-[10px] font-semibold">{pair}</p>
-              <p className="mt-0.5 text-[8px] text-muted-foreground/60">
-                {i === 0 ? "AOI set" : i === 1 ? "Pending" : "AOI set"}
-              </p>
-            </div>
-          ))}
-        </div>
       </div>
     </PanelChrome>
   )
 }
 
-function AnalyticsPreview() {
+function AnalyticsPreviewMock() {
   return (
     <PanelChrome title="Analytics" subtitle="Last 30 trades · Vyronis OS">
       <div className="grid grid-cols-3 gap-2 p-3">
@@ -116,25 +128,58 @@ function AnalyticsPreview() {
           </div>
         ))}
       </div>
-      <div className="mx-3 mb-3 flex h-12 items-end gap-1 rounded-lg border border-white/[0.06] bg-black/20 px-2 pb-2">
-        {[40, 65, 55, 80, 72, 90, 68, 85].map((h, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-sm bg-gradient-to-t from-cyan-glow/20 to-cyan-glow/70"
-            style={{ height: `${h}%` }}
-          />
-        ))}
-      </div>
     </PanelChrome>
   )
 }
 
+function JournalPreview() {
+  return (
+    <ScreenshotFrame
+      file={MARKETING_SCREENSHOTS.journal}
+      alt="Vyronis journal Plan mode with A+ setup scoring"
+      priority
+      fallback={<JournalPreviewMock />}
+    />
+  )
+}
+
+function WarRoomPreview() {
+  return (
+    <ScreenshotFrame
+      file={MARKETING_SCREENSHOTS.warRoom}
+      alt="Vyronis War Room weekly planning dashboard"
+      fallback={<WarRoomPreviewMock />}
+    />
+  )
+}
+
+function AnalyticsPreview() {
+  return (
+    <ScreenshotFrame
+      file={MARKETING_SCREENSHOTS.analytics}
+      alt="Vyronis analytics and discipline metrics"
+      fallback={<AnalyticsPreviewMock />}
+    />
+  )
+}
+
 export function ProductShowcase() {
+  const heroFile = getHeroScreenshotFile()
+
   return (
     <div id="product-preview" className="relative">
       <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.12),transparent_70%)]" />
       <div className="relative space-y-3">
-        <JournalPreview />
+        {heroFile ? (
+          <ScreenshotFrame
+            file={heroFile}
+            alt="Vyronis HQ command center dashboard"
+            priority
+            fallback={<JournalPreview />}
+          />
+        ) : (
+          <JournalPreview />
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <WarRoomPreview />
           <AnalyticsPreview />
@@ -163,17 +208,23 @@ export function ProductScreenshotsSection() {
     {
       title: "Journal · Plan mode",
       caption: "Score every setup with Vyronis Core Model fields before you click.",
-      node: <JournalPreview />,
+      file: MARKETING_SCREENSHOTS.journal,
+      alt: "Vyronis journal Plan mode",
+      mock: <JournalPreviewMock />,
     },
     {
       title: "War Room · Weekly plan",
       caption: "Sunday bias, watchlist, and AOI pair cards in one workflow.",
-      node: <WarRoomPreview />,
+      file: MARKETING_SCREENSHOTS.warRoom,
+      alt: "Vyronis War Room",
+      mock: <WarRoomPreviewMock />,
     },
     {
       title: "Analytics · Discipline OS",
       caption: "Win rate, A+ setup rate, and leak detection — not vanity metrics.",
-      node: <AnalyticsPreview />,
+      file: MARKETING_SCREENSHOTS.analytics,
+      alt: "Vyronis analytics dashboard",
+      mock: <AnalyticsPreviewMock />,
     },
   ]
 
@@ -190,9 +241,9 @@ export function ProductScreenshotsSection() {
           Real Vyronis workflows — journal scoring, weekly War Room planning, and discipline analytics.
         </p>
         <div className="mt-10 grid gap-8 lg:grid-cols-3">
-          {previews.map(({ title, caption, node }) => (
+          {previews.map(({ title, caption, file, alt, mock }) => (
             <article key={title} className="space-y-3">
-              {node}
+              <ScreenshotFrame file={file} alt={alt} fallback={mock} />
               <div>
                 <h3 className="font-semibold">{title}</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground">{caption}</p>
