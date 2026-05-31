@@ -46,6 +46,9 @@ import {
 } from "@/lib/trade-form-config"
 import { VyronisCoreModelFields } from "@/components/dashboard/vyronis-core-model-fields"
 import { Strategy1PreTradeChecklistPanel } from "@/components/dashboard/strategy1-pre-trade-checklist-panel"
+import {
+  StrategyNameSelect,
+} from "@/components/dashboard/strategy-name-select"
 import { TradeJournalModeTabs } from "@/components/dashboard/trade-journal-mode-tabs"
 import {
   journalModeDescription,
@@ -90,6 +93,7 @@ type AddTradeModalProps = {
   isMt5Autofilling?: boolean
   journalMode?: TradeJournalMode
   onJournalModeChange?: (mode: TradeJournalMode) => void
+  existingStrategyNames?: string[]
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -178,6 +182,7 @@ export function AddTradeModal({
   isMt5Autofilling = false,
   journalMode = "log",
   onJournalModeChange,
+  existingStrategyNames = [],
 }: AddTradeModalProps) {
   const [logSetupOpen, setLogSetupOpen] = useState(false)
   const [showPlanHint, setShowPlanHint] = useState(false)
@@ -336,6 +341,17 @@ export function AddTradeModal({
                   </div>
                 </div>
               </div>
+
+              {isLog ? (
+                <div className="space-y-2">
+                  <FieldLabel>Strategy</FieldLabel>
+                  <StrategyNameSelect
+                    value={form.strategy_name}
+                    existingNames={existingStrategyNames}
+                    onChange={(strategy_name) => onFormChange({ strategy_name })}
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <FieldLabel>Session</FieldLabel>

@@ -29,6 +29,7 @@ type TodayHeroStripProps = {
   onOpenWarRoom?: () => void
   onOpenCoach: () => void
   onOpenLog: () => void
+  onOpenPlan?: () => void
   onOpenJournal?: () => void
   onOpenWeeklyDebrief?: () => void
   onViewPerformance?: () => void
@@ -44,6 +45,7 @@ export function TodayHeroStrip({
   onOpenWarRoom,
   onOpenCoach,
   onOpenLog,
+  onOpenPlan,
   onOpenJournal,
   onOpenWeeklyDebrief,
   onViewPerformance,
@@ -191,6 +193,30 @@ export function TodayHeroStrip({
           </span>
         </div>
       </div>
+
+      {onOpenPlan ? (
+        <div className="mt-4 rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.05] p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[13px] font-semibold text-foreground/92">
+                Before you trade — score your setup
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground/75">
+                Use Plan mode to run Vyronis scoring before you click live.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onOpenPlan}
+              className="h-10 shrink-0 border-cyan-glow/30 bg-cyan-glow/[0.08] text-cyan-glow hover:bg-cyan-glow/[0.12]"
+            >
+              Plan Setup
+              <ArrowRight className="ml-1.5 size-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <Button
         type="button"

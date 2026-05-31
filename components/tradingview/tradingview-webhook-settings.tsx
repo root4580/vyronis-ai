@@ -292,8 +292,7 @@ export function TradingViewWebhookSettings() {
                 <li>Pre-trade coach session created — tap alert to open</li>
                 <li>
                   Email for <strong className="text-foreground/80">B+</strong> only when{" "}
-                  <code className="text-cyan-glow/80">RESEND_API_KEY</code> +{" "}
-                  <code className="text-cyan-glow/80">RESEND_FROM_EMAIL</code> are set on the server
+                  <code className="text-cyan-glow/80">RESEND_API_KEY</code> is set (optional — uses test sender until custom domain is verified)
                 </li>
               </ol>
             </div>

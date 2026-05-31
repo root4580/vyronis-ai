@@ -120,7 +120,7 @@ export async function getTradingViewSetupReadiness(
       done: isTradingViewAlertEmailConfigured(),
       hint: isTradingViewAlertEmailConfigured()
         ? "Resend configured — A+ / B alerts will email you."
-        : "Add RESEND_API_KEY + RESEND_FROM_EMAIL to server env.",
+        : "Optional — app works without email. Add RESEND_API_KEY when ready (test sender: onboarding@resend.dev).",
       action: "resend-env",
     },
   ]

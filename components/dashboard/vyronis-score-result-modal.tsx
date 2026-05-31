@@ -1,9 +1,16 @@
 "use client"
 
-import { X } from "lucide-react"
+import { useRef, useState } from "react"
+import { Share2, X } from "lucide-react"
+import { toPng } from "html-to-image"
 import { Button } from "@/components/ui/button"
 import { VyronisScoreResultPanel } from "@/components/dashboard/vyronis-score-result-panel"
 import type { VyronisJournalEvaluationRecord } from "@/lib/strategy/vyronis-journal-bridge"
+import {
+  buildShareCardFilename,
+  formatRiskRewardLabel,
+  getShareKeyInsight,
+} from "@/lib/alerts/share-card"
 import { VYRONIS_JOURNAL_INTELLIGENCE } from "@/types/vyronis-branding"
 
 type VyronisScoreResultModalProps = {
@@ -19,7 +26,35 @@ export function VyronisScoreResultModal({
   pairLabel,
   onClose,
 }: VyronisScoreResultModalProps) {
+  const captureRef = useRef<HTMLDivElement>(null)
+  const [isSharing, setIsSharing] = useState(false)
+
   if (!open || !evaluation) return null
+
+  const activeEvaluation = evaluation
+  const keyInsight = getShareKeyInsight(activeEvaluation)
+  const rrLabel = formatRiskRewardLabel(activeEvaluation.riskReward)
+
+  async function handleShareResult() {
+    if (!captureRef.current || isSharing) return
+
+    setIsSharing(true)
+    try {
+      const dataUrl = await toPng(captureRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+      })
+
+      const link = document.createElement("a")
+      link.download = buildShareCardFilename(pairLabel, activeEvaluation.grade)
+      link.href = dataUrl
+      link.click()
+    } catch (error) {
+      console.error("Share card export failed:", error)
+    } finally {
+      setIsSharing(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4">
@@ -49,7 +84,17 @@ export function VyronisScoreResultModal({
         </div>
 
         <div className="mobile-safe-scroll flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-          <VyronisScoreResultPanel evaluation={evaluation} />
+          <VyronisScoreResultPanel evaluation={activeEvaluation} />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleShareResult()}
+            disabled={isSharing}
+            className="mt-3 h-10 w-full border-cyan-glow/25 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
+          >
+            <Share2 className="mr-2 size-4" />
+            {isSharing ? "Generating PNG…" : "Share result"}
+          </Button>
         </div>
 
         <div className="border-t border-white/[0.06] px-4 py-3 sm:px-5">
@@ -61,6 +106,34 @@ export function VyronisScoreResultModal({
             Done
           </Button>
         </div>
+      </div>
+
+      <div
+        ref={captureRef}
+        aria-hidden
+        className="pointer-events-none fixed left-[-9999px] top-0 w-[420px] overflow-hidden rounded-2xl border border-cyan-500/30 bg-[#0a0f14] p-6 text-white"
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/90">
+          Vyronis · Strategy score
+        </p>
+        <p className="mt-3 text-2xl font-bold tracking-tight">{pairLabel || "Trade"}</p>
+        <div className="mt-4 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Grade</p>
+            <p className="text-3xl font-bold text-cyan-300">{activeEvaluation.grade}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Risk reward</p>
+            <p className="text-xl font-semibold text-slate-100">{rrLabel}</p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200/80">
+            Key insight
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-slate-200">{keyInsight}</p>
+        </div>
+        <p className="mt-4 text-[10px] text-slate-500">vyronis.ai · journal intelligence</p>
       </div>
     </div>
   )

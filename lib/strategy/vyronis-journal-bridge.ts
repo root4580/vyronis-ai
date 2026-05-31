@@ -23,6 +23,7 @@ export type VyronisJournalEvaluationRecord = VyronisEvaluation & {
   passSummary: string
   failSummary: string
   rrBelowMinimum: boolean
+  riskReward: number | null
   scoringSystem: typeof VYRONIS_STRATEGY_SCORING
 }
 
@@ -223,6 +224,7 @@ export function evaluateVyronisJournalTrade(
     passSummary,
     failSummary,
     rrBelowMinimum,
+    riskReward: options.riskReward,
     scoringSystem: VYRONIS_STRATEGY_SCORING,
   }
 }

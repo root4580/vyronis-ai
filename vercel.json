@@ -1,6 +1,12 @@
 {
   "framework": "nextjs",
   "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/alerts/cron",
+      "schedule": "0 18 * * 0"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

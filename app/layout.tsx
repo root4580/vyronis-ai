@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 })
 
 const siteUrl = getCanonicalSiteUrl()
+const ogImageUrl = `${siteUrl}/og-image.png`
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -38,11 +39,20 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     siteName: APP_NAME,
     type: 'website',
+    images: [
+      {
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: 'Vyronis — AI Trading Operating System',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_DESCRIPTION,
+    images: [ogImageUrl],
   },
   icons: {
     icon: [

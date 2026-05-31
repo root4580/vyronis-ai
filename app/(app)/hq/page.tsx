@@ -26,6 +26,7 @@ import { TabTransition } from "@/components/dashboard/tab-transition"
 import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
+import { collectStrategyNamesFromTrades } from "@/components/dashboard/strategy-name-select"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
 import { JournalImportModal } from "@/components/dashboard/journal-import-modal"
@@ -73,6 +74,7 @@ import {
   parseTabSearchParam,
 } from "@/lib/dashboard-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useTradingAlerts } from "@/hooks/use-trading-alerts"
 import {
   DEFAULT_USER_PROFILE,
   loadUserProfile,
@@ -1259,7 +1261,10 @@ function Home() {
     }
   }
 
-  async function completeFirstRunSetup(updates: Partial<UserSettingsForm>) {
+  async function completeFirstRunSetup(
+    updates: Partial<UserSettingsForm>,
+    options?: { openWarRoom?: boolean },
+  ) {
     if (!user) return
 
     setIsSavingSettings(true)
@@ -1307,13 +1312,19 @@ function Home() {
 
     toast({
       title: "Setup complete",
-      description: "Set up your first War Room — your weekly plan unlocks analytics.",
-      action: (
+      description: options?.openWarRoom
+        ? "War Room is ready — plan your first weekly setup."
+        : "Set up your first War Room when you're ready — your weekly plan unlocks analytics.",
+      action: options?.openWarRoom ? undefined : (
         <ToastAction altText="Open War Room" onClick={() => router.push("/war-room")}>
           Open War Room
         </ToastAction>
       ),
     })
+
+    if (options?.openWarRoom) {
+      router.push("/war-room")
+    }
   }
 
   async function saveUserSettings(e: React.FormEvent) {
@@ -1619,6 +1630,38 @@ function Home() {
     openTradeEntrySheet()
   }, [openTradeEntrySheet])
 
+  const handleAssignStrategy = useCallback(
+    async (tradeId: string, strategyName: string) => {
+      if (!user) return
+
+      const { error } = await supabase
+        .from("trades")
+        .update({ strategy_name: strategyName })
+        .eq("id", tradeId)
+        .eq("user_id", user.id)
+
+      if (error) {
+        toast({
+          title: "Could not assign strategy",
+          description: error.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setTrades((prev) =>
+        prev.map((trade) =>
+          trade.id === tradeId ? { ...trade, strategy_name: strategyName } : trade,
+        ),
+      )
+      toast({
+        title: "Strategy assigned",
+        description: `${strategyName} saved to this trade.`,
+      })
+    },
+    [supabase, toast, user],
+  )
+
   function handleEditTrade(trade: Trade) {
     setSelectedTrade(null)
     setEditingTrade(trade)
@@ -1761,6 +1804,13 @@ function Home() {
   const winRate = trades.length > 0 ? Math.round((winCount / trades.length) * 100) : 0
   const avgRisk = trades.length > 0 ? trades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / trades.length : 1
   const todayTrades = getTodayTrades(trades)
+
+  useTradingAlerts({
+    userId: user?.id,
+    trades,
+    settings: settingsForm,
+    startingBalance,
+  })
 
   // Calculate violation stats
   const tradesWithViolations = trades.map(t => ({
@@ -1955,6 +2005,7 @@ function Home() {
                     onOpenWarRoom={() => router.push("/war-room")}
                     onOpenCoach={() => void handleOpenCoach()}
                     onOpenLog={() => openManualTrade()}
+                    onOpenPlan={() => openPlanTrade()}
                     onOpenJournal={() => {
                       setActiveTab("journal")
                       router.replace(getDashboardTabHref("journal"))
@@ -1979,7 +2030,7 @@ function Home() {
                   trades={trades}
                   limit={3}
                   variant="compact"
-                  onViewTrade={(trade) => router.push(`/journal/trade/${trade.id}`)}
+                  onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
                   onEdit={handleEditTrade}
                   onDelete={(trade) => {
                     setTradeToDelete(trade)
@@ -2082,6 +2133,7 @@ function Home() {
                 isLoading={showTradesSkeleton}
                 loadError={tradesLoadError}
                 onPlanTrade={openPlanTrade}
+                onAssignStrategy={handleAssignStrategy}
               />
             </section>
           )}
@@ -2124,7 +2176,7 @@ function Home() {
                   onNewCoach={() => void handleOpenCoach(buildEmptyPlannedContext())}
                   onEditTrade={handleEditTrade}
                   onDeleteTrade={handleDeleteClick}
-                  onViewTrade={(trade) => router.push(`/journal/trade/${trade.id}`)}
+                  onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
                   onScreenshotClick={(trade) =>
                     setScreenshotViewer({
                       url: trade?.screenshot_url ?? null,
@@ -2201,6 +2253,7 @@ function Home() {
         isEditing={!!editingTrade}
         journalMode={editingTrade ? "edit" : tradeJournalMode}
         onJournalModeChange={setTradeJournalMode}
+        existingStrategyNames={collectStrategyNamesFromTrades(trades)}
         startingBalance={startingBalance}
         maxRiskPerTrade={maxRiskPerTrade}
         isUploading={isUploading}

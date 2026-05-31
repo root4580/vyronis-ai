@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CoachWatchlistPairSelect } from "@/components/dashboard/coach-watchlist-pair-select"
+import { CoachVerdictBadge } from "@/components/dashboard/coach-verdict-badge"
 import { CoachMtfUploadGrid } from "@/components/dashboard/coach-mtf-upload-grid"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { CoachChartOverlayStrip } from "@/components/chart-annotations/coach-chart-overlay-strip"
@@ -939,6 +940,13 @@ export function TradeCoachPanel({
                   </p>
                 </div>
               )}
+              {analysisHasRun && (mtfAnalysis || coachAnalysis) ? (
+                <CoachVerdictBadge
+                  recommendation={mtfAnalysis?.recommendation}
+                  shouldTakeTrade={coachAnalysis?.shouldTakeTrade}
+                  className="w-full"
+                />
+              ) : null}
               {analysisHasRun && visionEngineLabel && (
                 <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">

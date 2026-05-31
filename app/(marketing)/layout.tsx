@@ -7,6 +7,7 @@ import {
 import { getCanonicalSiteUrl } from "@/lib/site-url"
 
 const siteUrl = getCanonicalSiteUrl()
+const ogImageUrl = `${siteUrl}/og-image.png`
 
 export const metadata: Metadata = {
   title: MARKETING_TITLE,
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.svg",
+        url: ogImageUrl,
         width: 1200,
         height: 630,
         alt: "Vyronis — AI Trading Operating System",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: MARKETING_TITLE,
     description: MARKETING_DESCRIPTION,
-    images: ["/og-image.svg"],
+    images: [ogImageUrl],
   },
   robots: { index: true, follow: true },
 }

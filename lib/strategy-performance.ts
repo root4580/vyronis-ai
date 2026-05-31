@@ -1,6 +1,8 @@
 import { getSignedPnL } from "@/lib/trade-utils"
 
 export type StrategyTrade = {
+  id?: string
+  pair?: string
   pnl: number
   result: string
   strategy_name: string | null

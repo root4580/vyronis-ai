@@ -118,9 +118,9 @@ function Nav() {
           <a href="#precision-flow" className="hover:text-foreground">
             Precision Flow
           </a>
-          <a href="#pricing" className="hover:text-foreground">
+          <Link href="/pricing" className="hover:text-foreground">
             Pricing
-          </a>
+          </Link>
           <Link href="/blog" className="hover:text-foreground">
             Insights
           </Link>
@@ -369,7 +369,9 @@ export function LandingPage() {
                 <ul className="mt-4 space-y-2 text-[13px] text-muted-foreground">
                   <li>· Everything in beta, plus priority support</li>
                   <li>· MT5 import &amp; TradingView alerts</li>
-                  <li>· Evolution OS &amp; replay simulator</li>
+                  <li className="text-muted-foreground/60">
+                    · Evolution OS &amp; replay simulator — coming soon
+                  </li>
                 </ul>
                 <Button asChild variant="outline" className="mt-6 w-full border-white/[0.12]">
                   <a href="#product-preview">See how it works</a>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import {
   Brain,
   Calendar,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/trade-detail-insights"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
 export type TradeDetails = {
@@ -147,6 +149,7 @@ export function TradeDetailsModal({
   isScreenshotOpen = false,
 }: TradeDetailsModalProps) {
   const open = !!trade
+  const isMobile = useIsMobile()
   const { mounted, visible } = useTradeDetailPresence(open)
 
   const handleClose = useCallback(() => {
@@ -286,6 +289,12 @@ export function TradeDetailsModal({
               <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70">
                 Trade discipline review
               </p>
+              <Link
+                href={`/journal/trade/${trade.id}`}
+                className="mt-2 inline-flex text-[11px] font-medium text-cyan-glow hover:text-cyan-glow/80"
+              >
+                Read full analysis →
+              </Link>
             </div>
 
             <button
@@ -427,7 +436,36 @@ export function TradeDetailsModal({
                 </DashboardInsetPanel>
               )}
 
-              <ExecutionReplayPanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
+              {isMobile ? (
+                <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+                  <p className="text-[12px] font-medium text-foreground/90">
+                    Open on desktop for full cinematic replay
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+                    Mobile shows your grade, P&L, and AI observations. Use a larger screen for the full timeline replay.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <MetricTile
+                      label="P&L"
+                      value={formatPnL(trade.pnl, trade.result)}
+                      valueClassName={getPnLTextClass(trade.pnl, trade.result)}
+                    />
+                    <MetricTile
+                      label="Grade"
+                      value={vyronisEvaluation?.grade ?? setupScore.classification}
+                    />
+                  </div>
+                  {analysis.insights.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {analysis.insights.slice(0, 2).map((insight) => (
+                        <InsightRow key={insight.id} insight={insight} />
+                      ))}
+                    </div>
+                  ) : null}
+                </DashboardInsetPanel>
+              ) : (
+                <ExecutionReplayPanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
+              )}
 
               <DashboardInsetPanel className="glass overflow-hidden p-0">
                 {trade.screenshot_url ? (

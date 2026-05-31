@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type RefCallback } from "react"
-import { ArrowRight, Crosshair, Shield, Sparkles, Target } from "lucide-react"
+import { ArrowRight, Shield, Sparkles, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,7 +31,7 @@ type FirstRunSetupModalProps = {
   open: boolean
   form: UserSettingsForm
   isSaving?: boolean
-  onComplete: (updates: Partial<UserSettingsForm>) => Promise<void>
+  onComplete: (updates: Partial<UserSettingsForm>, options?: { openWarRoom?: boolean }) => Promise<void>
   onOpenWarRoom: () => void
 }
 
@@ -84,18 +84,16 @@ export function FirstRunSetupModal({
 
   const current = steps[step]
 
-  async function handleNext() {
-    if (step < steps.length - 1) {
-      setStep((value) => value + 1)
-      return
-    }
-
-    await onComplete({
-      prop_firm_size: draft.prop_firm_size,
-      starting_balance: draft.starting_balance,
-      max_risk_per_trade: draft.max_risk_per_trade,
-      preferred_session: draft.preferred_session,
-    })
+  async function handleFinish(openWarRoom: boolean) {
+    await onComplete(
+      {
+        prop_firm_size: draft.prop_firm_size,
+        starting_balance: draft.starting_balance,
+        max_risk_per_trade: draft.max_risk_per_trade,
+        preferred_session: draft.preferred_session,
+      },
+      { openWarRoom },
+    )
   }
 
   const selectMenuClassName =
@@ -233,30 +231,40 @@ export function FirstRunSetupModal({
             Back
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-2">
             {step === steps.length - 1 ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+                  disabled={isSaving}
+                  onClick={() => void handleFinish(true)}
+                >
+                  Set up War Room
+                  <ArrowRight className="ml-1.5 size-3.5" />
+                </Button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void handleFinish(false)}
+                  className="text-[11px] text-muted-foreground/70 transition-colors hover:text-foreground/85"
+                >
+                  Skip for now
+                </button>
+              </>
+            ) : (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="border-cyan-glow/25 text-cyan-glow"
+                className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
                 disabled={isSaving}
-                onClick={() => void onOpenWarRoom()}
+                onClick={() => setStep((value) => value + 1)}
               >
-                <Crosshair className="mr-1.5 size-3.5" />
-                Open War Room
+                Continue
+                <ArrowRight className="ml-1.5 size-3.5" />
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
-              disabled={isSaving}
-              onClick={() => void handleNext()}
-            >
-              {step === steps.length - 1 ? "Finish setup" : "Continue"}
-              <ArrowRight className="ml-1.5 size-3.5" />
-            </Button>
+            )}
           </div>
         </div>
       </div>

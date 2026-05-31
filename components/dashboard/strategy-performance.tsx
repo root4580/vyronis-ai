@@ -21,12 +21,17 @@ import {
 } from "@/lib/strategy-performance"
 import { buildMistakeAnalysis, type MistakeTrade } from "@/lib/mistake-analysis"
 import { StrategyPerformanceSkeleton } from "@/components/dashboard/dashboard-skeletons"
+import {
+  collectStrategyNamesFromTrades,
+  StrategyNameSelect,
+} from "@/components/dashboard/strategy-name-select"
 
 type StrategyPerformanceProps = {
   trades?: (StrategyTrade & Partial<MistakeTrade>)[]
   isLoading?: boolean
   loadError?: string | null
   onPlanTrade?: () => void
+  onAssignStrategy?: (tradeId: string, strategyName: string) => Promise<void> | void
 }
 
 function StrategyHighlightCard({
@@ -157,9 +162,18 @@ export function StrategyPerformance({
   isLoading = false,
   loadError = null,
   onPlanTrade,
+  onAssignStrategy,
 }: StrategyPerformanceProps) {
   const safeTrades = trades ?? []
   const summary = useMemo(() => buildStrategyPerformance(safeTrades), [safeTrades])
+  const strategyNameOptions = useMemo(() => collectStrategyNamesFromTrades(safeTrades), [safeTrades])
+  const unassignedTrades = useMemo(
+    () =>
+      safeTrades.filter(
+        (trade) => trade.id && !trade.strategy_name?.trim(),
+      ) as Array<StrategyTrade & { id: string; pair?: string }>,
+    [safeTrades],
+  )
   const unassignedStrategy = summary.strategies.find((strategy) => strategy.name === "Unassigned")
   const unassignedPercent =
     summary.totalTrades > 0 && unassignedStrategy
@@ -267,6 +281,41 @@ export function StrategyPerformance({
                 <ArrowRight className="ml-1.5 size-3.5" />
               </Button>
             ) : null}
+          </DashboardInsetPanel>
+        ) : null}
+
+        {unassignedTrades.length > 0 && onAssignStrategy ? (
+          <DashboardInsetPanel className="space-y-3 border-white/[0.08] px-4 py-3">
+            <div>
+              <p className="text-[12px] font-medium text-foreground/90">Assign strategy to past trades</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/75">
+                Update unassigned journal rows inline — changes save immediately.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {unassignedTrades.slice(0, 12).map((trade) => (
+                <div
+                  key={trade.id}
+                  className="grid gap-2 rounded-lg border border-white/[0.06] bg-black/20 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,240px)] sm:items-center"
+                >
+                  <div>
+                    <p className="text-[12px] font-medium text-foreground/90">{trade.pair ?? "Trade"}</p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {trade.result} · {formatStrategyPnL(trade.pnl)}
+                    </p>
+                  </div>
+                  <StrategyNameSelect
+                    value=""
+                    existingNames={strategyNameOptions}
+                    onChange={(strategyName) => {
+                      if (!strategyName.trim()) return
+                      void onAssignStrategy(trade.id, strategyName.trim())
+                    }}
+                    className="add-trade-input h-9 w-full"
+                  />
+                </div>
+              ))}
+            </div>
           </DashboardInsetPanel>
         ) : null}
 

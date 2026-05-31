@@ -1,5 +1,6 @@
 import { getAppBaseUrl } from "@/lib/env"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
+import { isResendConfigured, sendResendEmail } from "@/lib/alerts/resend-config"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import type { SetupGrade } from "@/lib/strategy-brain/types"
 import type { TradingViewSetupVerdict } from "@/lib/tradingview/types"
@@ -16,28 +17,13 @@ export type TradingViewAlertEmailInput = {
   coachSessionId?: string | null
 }
 
-function getResendConfig(): { apiKey: string; from: string } | null {
-  const apiKey = process.env.RESEND_API_KEY?.trim()
-  const from =
-    process.env.RESEND_FROM_EMAIL?.trim() ||
-    process.env.RESEND_ALERT_FROM?.trim() ||
-    ""
-  if (!apiKey || !from) return null
-  return { apiKey, from }
-}
-
 export function isTradingViewAlertEmailConfigured(): boolean {
-  return getResendConfig() !== null
+  return isResendConfigured()
 }
 
 export async function sendTradingViewAlertEmail(
   input: TradingViewAlertEmailInput,
 ): Promise<{ sent: boolean; skippedReason?: string }> {
-  const config = getResendConfig()
-  if (!config) {
-    return { sent: false, skippedReason: "RESEND_API_KEY or RESEND_FROM_EMAIL not set" }
-  }
-
   const base = getAppBaseUrl()
   const journalUrl = input.coachSessionId
     ? `${base}${getDashboardTabHref("journal")}&coach=${input.coachSessionId}`
@@ -60,25 +46,5 @@ export async function sendTradingViewAlertEmail(
     </div>
   `.trim()
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: config.from,
-      to: [input.to],
-      subject,
-      html,
-    }),
-  })
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "")
-    console.error("Resend TradingView alert email failed:", response.status, body)
-    return { sent: false, skippedReason: `Resend error ${response.status}` }
-  }
-
-  return { sent: true }
+  return sendResendEmail({ to: input.to, subject, html })
 }
