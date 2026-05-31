@@ -9,16 +9,23 @@ type TradePlanVisualProps = {
   className?: string
 }
 
+function rrBadgeClass(rr: number | null): string {
+  if (rr == null) return "border-[var(--border-subtle)] bg-white/[0.05] text-text-muted"
+  if (rr >= 2) return "border-profit/20 bg-profit/10 text-profit"
+  if (rr >= 1) return "border-[var(--warning-border)] bg-[var(--warning-bg)] text-warning-foreground"
+  return "border-loss/20 bg-loss/10 text-loss"
+}
+
 export function TradePlanVisual({ plan, className }: TradePlanVisualProps) {
   if (!plan || plan.entryPrice <= 0) {
     return (
       <div
         className={cn(
-          "flex min-h-[280px] items-center justify-center rounded-xl border border-white/[0.08] bg-black/30",
+          "flex min-h-[280px] items-center justify-center rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-input)]",
           className,
         )}
       >
-        <p className="text-[12px] text-muted-foreground/70">Enter entry, stop, and target to preview the plan box.</p>
+        <p className="text-[12px] text-text-muted">Enter entry, stop, and target to preview the plan box.</p>
       </div>
     )
   }
@@ -41,26 +48,24 @@ export function TradePlanVisual({ plan, className }: TradePlanVisualProps) {
   const zoneBottom = Math.max(tpTop, slTop)
 
   return (
-    <div
-      className={cn(
-        "relative min-h-[280px] overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-b from-black/40 to-black/20",
-        className,
-      )}
-    >
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-white/[0.06] px-3 py-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-          Plan box
-        </span>
-        <span className="rounded-md border border-cyan-glow/20 bg-cyan-glow/[0.08] px-2 py-0.5 text-[10px] font-semibold text-cyan-glow">
+    <div className={cn("relative min-h-[280px] overflow-hidden", className)}>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-[var(--border-subtle)] px-1 pb-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Plan box</span>
+        <span
+          className={cn(
+            "rounded-[var(--radius-sm)] border px-2 py-0.5 text-[12px] font-medium tabular-nums",
+            rrBadgeClass(plan.rr),
+          )}
+        >
           {formatRiskReward(plan.rr)}
         </span>
       </div>
 
-      <div className="relative h-[240px] px-4 pt-10">
+      <div className="relative h-[240px] px-2 pt-10">
         <div
           className={cn(
-            "absolute left-16 right-16 rounded-md border",
-            isBuy ? "border-profit/20 bg-profit/[0.12]" : "border-loss/20 bg-loss/[0.12]",
+            "absolute left-12 right-12 rounded-[var(--radius-sm)] border-t",
+            isBuy ? "border-profit/30 bg-profit/[0.08]" : "border-loss/25 bg-loss/[0.08]",
           )}
           style={{
             top: `${Math.min(zoneTop, entryTop)}%`,
@@ -69,8 +74,8 @@ export function TradePlanVisual({ plan, className }: TradePlanVisualProps) {
         />
         <div
           className={cn(
-            "absolute left-16 right-16 rounded-md border",
-            isBuy ? "border-loss/20 bg-loss/[0.12]" : "border-profit/20 bg-profit/[0.12]",
+            "absolute left-12 right-12 rounded-[var(--radius-sm)] border-b",
+            isBuy ? "border-loss/25 bg-loss/[0.08]" : "border-profit/30 bg-profit/[0.08]",
           )}
           style={{
             top: `${Math.min(zoneBottom, entryTop)}%`,
@@ -118,21 +123,25 @@ function PlanLevelLine({
   tone: "profit" | "loss" | "neutral"
 }) {
   const toneClass =
-    tone === "profit" ? "text-profit" : tone === "loss" ? "text-loss" : "text-cyan-glow"
+    tone === "profit" ? "text-profit" : tone === "loss" ? "text-loss" : "text-text-primary"
 
   return (
     <div className="absolute left-0 right-0" style={{ top: `${top}%` }}>
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            "h-px flex-1",
-            tone === "profit" ? "bg-profit/50" : tone === "loss" ? "bg-loss/50" : "bg-cyan-glow/50",
+            "h-px flex-1 border-t border-dashed",
+            tone === "profit"
+              ? "border-profit/40"
+              : tone === "loss"
+                ? "border-loss/40"
+                : "border-white/40",
           )}
         />
-        <div className="min-w-[132px] rounded-md border border-white/[0.08] bg-black/50 px-2 py-1">
-          <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
-          <p className={cn("text-[11px] font-semibold tabular-nums", toneClass)}>{price}</p>
-          <p className="text-[9px] text-muted-foreground/65">{meta}</p>
+        <div className="min-w-[128px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-page)] px-2 py-1">
+          <p className={cn("text-[11px] font-medium", toneClass)}>{label}</p>
+          <p className={cn("text-[11px] font-medium tabular-nums", toneClass)}>{price}</p>
+          <p className="text-[10px] text-text-muted">{meta}</p>
         </div>
       </div>
     </div>

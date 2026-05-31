@@ -98,12 +98,12 @@ export function TradePlannerRoute() {
           if (chrome.user?.id) markRitualCoachEngaged(chrome.user.id)
         }}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
-        mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
+        mainClassName="dashboard-container pb-28 md:pb-24"
       >
-        <div className="mx-auto max-w-6xl space-y-4">
+        <div className="planner-content space-y-5">
           <div>
-            <p className="dashboard-section-title mb-1">Trade Planner</p>
-            <p className="text-[12px] text-muted-foreground/75">
+            <h1 className="text-base font-medium text-text-primary">Trade Planner</h1>
+            <p className="mt-0.5 text-[12px] text-text-muted">
               Plan entry, stop, target, risk, and lot size before you execute.
             </p>
           </div>

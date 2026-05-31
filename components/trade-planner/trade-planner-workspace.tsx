@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { AlertTriangle, Brain, Calculator, CheckCircle2, ChevronDown, Save, Target } from "lucide-react"
+import { AlertTriangle, Brain, CheckCircle2, ChevronDown, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ToastAction } from "@/components/ui/toast"
@@ -14,13 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  DashboardCard,
-  DashboardCardBody,
-  DashboardCardHeader,
   DashboardEmptyState,
   DashboardInsetPanel,
 } from "@/components/dashboard/dashboard-primitives"
 import { TradePlanVisual } from "@/components/trade-planner/trade-plan-visual"
+import type { TradePlanCalculation } from "@/lib/trade-planner/types"
 import { PlanChartUploadPanel } from "@/components/trade-planner/plan-chart-upload-panel"
 import { TRADE_PLANNER_PAIRS } from "@/lib/trade-planner/forex-pairs"
 import {
@@ -305,72 +303,94 @@ export function TradePlannerWorkspace({
     [savedPlans],
   )
 
+  const plannerInputClass = "planner-input w-full"
+  const selectTriggerClass =
+    "h-9 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-input)] text-[13px] font-medium text-text-primary"
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-cyan-glow/15 bg-cyan-glow/[0.04] px-4 py-3">
-        <p className="text-[11px] leading-relaxed text-muted-foreground/85">
-          Pre-trade sizing only — use{" "}
-          <Link href={`${APP_HOME_PATH}?action=new-trade`} className="text-cyan-glow hover:underline">
-            Log Trade
-          </Link>{" "}
-          to log outcome after close.
-        </p>
+    <div className="space-y-5">
+      <div
+        className={cn(
+          "flex items-start gap-2.5 rounded-[var(--radius-md)] border px-3.5 py-3",
+          saveUnavailable
+            ? "border-[var(--warning-border)] bg-[var(--warning-bg)]"
+            : "border-[var(--warning-border)] bg-[var(--warning-bg)]",
+        )}
+      >
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
+        <div className="min-w-0 text-[12px] leading-relaxed text-warning-muted">
+          {saveUnavailable ? (
+            <>
+              <span className="font-medium text-warning-foreground">Planner saving unavailable — migration pending.</span>{" "}
+              Run <code className="text-[11px] text-warning-muted">supabase/030-trade-plans.sql</code> in Supabase.
+              Planning and calculations still work.
+            </>
+          ) : (
+            <>
+              Pre-trade sizing only — log outcome after close.{" "}
+              <Link
+                href={`${APP_HOME_PATH}?action=new-trade`}
+                className="font-medium text-warning-foreground underline underline-offset-2 hover:no-underline"
+              >
+                Log Trade →
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
-      {saveUnavailable ? (
-        <div className="rounded-xl border border-warning/25 bg-warning/[0.08] px-4 py-3">
-          <p className="text-[11px] font-medium text-amber-100/95">
-            Planner saving unavailable — migration pending
-          </p>
-          <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/75">
-            Run <code className="text-[10px] text-amber-100/80">supabase/030-trade-plans.sql</code> in
-            Supabase to enable saves. Planning and calculations still work.
-          </p>
-        </div>
-      ) : null}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="planner-surface-card p-4 sm:p-5">
+          <p className="mb-3.5 text-[10px] font-medium uppercase tracking-wide text-text-muted">Trade setup</p>
+          <div className="space-y-4">
+            <Field label="Pair">
+              <Select value={pair} onValueChange={setPair}>
+                <SelectTrigger className={selectTriggerClass}>
+                  <SelectValue placeholder="Select pair" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {TRADE_PLANNER_PAIRS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <DashboardCard interactive glow className="glass-card">
-          <DashboardCardHeader title="Plan inputs" icon={Calculator} />
-          <DashboardCardBody className="space-y-4">
+            <Field label="Direction">
+              <div className="flex rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-white/[0.03] p-0.5">
+                {(["BUY", "SELL"] as const).map((value) => {
+                  const active = direction === value
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDirection(value)}
+                      className={cn(
+                        "flex-1 rounded-[calc(var(--radius-sm)-2px)] py-2 text-xs font-medium transition-colors",
+                        active
+                          ? value === "BUY"
+                            ? "border border-profit/30 bg-profit/[0.12] text-profit"
+                            : "border border-loss/25 bg-loss/10 text-loss"
+                          : "text-text-muted",
+                      )}
+                    >
+                      {value === "BUY" ? "Buy" : "Sell"}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Pair">
-                <Select value={pair} onValueChange={setPair}>
-                  <SelectTrigger className="h-10 border-white/[0.08] bg-black/20">
-                    <SelectValue placeholder="Select pair" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {TRADE_PLANNER_PAIRS.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Field label="Direction">
-                <Select
-                  value={direction}
-                  onValueChange={(value) => setDirection(value as TradePlanDirection)}
-                >
-                  <SelectTrigger className="h-10 border-white/[0.08] bg-black/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BUY">Buy</SelectItem>
-                    <SelectItem value="SELL">Sell</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-
               <Field
                 label="Account size ($)"
                 hint={
                   accountSizeReady
                     ? skippedBalanceTrades > 0
-                      ? `Prefilled from starting balance + ${skippedBalanceTrades} skipped trade(s) missing result/P&L. Edit if your live account differs.`
-                      : "Prefilled from current balance (starting + journal P&L). Edit if your live account differs."
+                      ? `Prefilled from starting balance + ${skippedBalanceTrades} skipped trade(s) missing result/P&L.`
+                      : "Prefilled from current balance (starting + journal P&L)."
                     : "Loading current balance…"
                 }
               >
@@ -381,7 +401,7 @@ export function TradePlannerWorkspace({
                     setAccountSizeTouched(true)
                     setAccountSize(event.target.value)
                   }}
-                  className="h-10 border-white/[0.08] bg-black/20"
+                  className={plannerInputClass}
                 />
               </Field>
 
@@ -390,7 +410,7 @@ export function TradePlannerWorkspace({
                   inputMode="decimal"
                   value={riskPercent}
                   onChange={(event) => setRiskPercent(event.target.value)}
-                  className="h-10 border-white/[0.08] bg-black/20"
+                  className={plannerInputClass}
                 />
               </Field>
 
@@ -399,7 +419,7 @@ export function TradePlannerWorkspace({
                   inputMode="decimal"
                   value={entryPrice}
                   onChange={(event) => setEntryPrice(event.target.value)}
-                  className="h-10 border-white/[0.08] bg-black/20"
+                  className={plannerInputClass}
                 />
               </Field>
 
@@ -408,7 +428,7 @@ export function TradePlannerWorkspace({
                   inputMode="decimal"
                   value={stopLoss}
                   onChange={(event) => setStopLoss(event.target.value)}
-                  className="h-10 border-white/[0.08] bg-black/20"
+                  className={plannerInputClass}
                 />
               </Field>
 
@@ -417,7 +437,7 @@ export function TradePlannerWorkspace({
                   inputMode="decimal"
                   value={takeProfit}
                   onChange={(event) => setTakeProfit(event.target.value)}
-                  className="h-10 border-white/[0.08] bg-black/20"
+                  className={plannerInputClass}
                 />
               </Field>
             </div>
@@ -435,159 +455,161 @@ export function TradePlannerWorkspace({
               disabled={isSaving}
             />
 
-            <TradePlanVisual plan={plan} />
-          </DashboardCardBody>
-        </DashboardCard>
+            {plan.warnings.length > 0 ? (
+              <div className="space-y-2">
+                {plan.warnings.map((warning) => (
+                  <div
+                    key={warning.id}
+                    className="flex items-start gap-2 rounded-r-[var(--radius-sm)] border border-[var(--warning-border)] border-l-2 border-l-[var(--warning)] bg-[var(--warning-bg)] py-2 pl-2.5 pr-3"
+                  >
+                    <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
+                    <p className="text-[11px] leading-relaxed text-warning-muted">{warning.message}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="sticky bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-10 -mx-4 border-t border-[var(--border-subtle)] bg-[var(--surface-page)] p-4 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 xl:static">
+              <Button
+                type="button"
+                className="btn-primary h-10 w-full rounded-[var(--radius-md)] text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!canSave || isSaving}
+                onClick={() => void handleSavePlan()}
+              >
+                <Save className="mr-2 size-4" />
+                {isSaving ? "Saving plan..." : "Save pre-trade plan"}
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-4">
-          <DashboardCard interactive glow className="glass-card">
-            <DashboardCardHeader title="Plan result" icon={Target} />
-            <DashboardCardBody className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <MetricTile label="Risk amount" value={`$${plan.riskAmount.toFixed(2)}`} />
-                <MetricTile label="R:R" value={formatRiskReward(plan.rr)} />
-                <MetricTile label="SL pips" value={plan.slPips.toFixed(1)} />
-                <MetricTile label="TP pips" value={plan.tpPips.toFixed(1)} />
-                <MetricTile
-                  label={
-                    <>
-                      <span className="text-warning-foreground">Est.</span> std lots
-                    </>
-                  }
-                  value={formatLotSize(plan.recommendedLots)}
-                  hint="USD account · 100k units"
-                />
-                <MetricTile label="Pip value / lot" value={`$${plan.pipValuePerStandardLot.toFixed(2)}`} />
-              </div>
+          <div className="planner-surface-card overflow-hidden p-4 sm:p-5">
+            <TradePlanVisual plan={plan} />
+          </div>
 
-              <DashboardInsetPanel
-                className={cn(
-                  "px-3 py-2.5",
-                  plan.suggestedAction === "plan_valid"
-                    ? "border-profit/20 bg-profit/[0.06]"
-                    : plan.suggestedAction === "adjust_plan"
-                      ? "border-warning/20 bg-warning/[0.06]"
-                      : "border-loss/20 bg-loss/[0.06]",
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  {plan.suggestedAction === "plan_valid" ? (
-                    <CheckCircle2 className="mt-0.5 size-4 text-profit" />
-                  ) : (
-                    <AlertTriangle className="mt-0.5 size-4 text-warning-foreground" />
-                  )}
-                  <p className="text-[12px] leading-relaxed text-foreground/90">{plan.suggestedActionLabel}</p>
-                </div>
-              </DashboardInsetPanel>
+          <div className="planner-surface-card p-4 sm:p-5">
+            <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-text-muted">Plan result</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <MetricTile label="Risk $" value={`$${plan.riskAmount.toFixed(2)}`} />
+              <MetricTile label="SL pips" value={plan.slPips.toFixed(1)} />
+              <MetricTile label="TP pips" value={plan.tpPips.toFixed(1)} />
+              <MetricTile
+                label="R:R"
+                value={formatRiskReward(plan.rr)}
+                valueClassName={
+                  plan.rr != null && plan.rr >= 2
+                    ? "text-profit"
+                    : plan.rr != null && plan.rr >= 1
+                      ? "text-warning-foreground"
+                      : plan.rr != null
+                        ? "text-loss"
+                        : undefined
+                }
+              />
+              <MetricTile
+                label={
+                  <>
+                    <span className="text-warning-foreground">Est.</span> lots
+                  </>
+                }
+                value={formatLotSize(plan.recommendedLots)}
+                hint="USD acct · 100k units"
+              />
+              <MetricTile
+                label="Pip value/lot"
+                value={`$${plan.pipValuePerStandardLot.toFixed(2)}`}
+                mutedValue
+              />
+            </div>
 
-              {plan.warnings.length > 0 ? (
-                <div className="space-y-1.5">
-                  {plan.warnings.map((warning) => (
-                    <DashboardInsetPanel
-                      key={warning.id}
-                      className="border-warning/20 bg-warning/[0.05] px-3 py-2"
-                    >
-                      <p className="text-[11px] leading-relaxed text-amber-100/90">{warning.message}</p>
-                    </DashboardInsetPanel>
-                  ))}
-                </div>
-              ) : null}
+            <SuggestedActionStrip plan={plan} />
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  type="button"
-                  className="w-full btn-primary"
-                  disabled={!canSave || isSaving}
-                  onClick={() => void handleSavePlan()}
-                >
-                  <Save className="mr-2 size-4" />
-                  {isSaving ? "Saving plan..." : "Save pre-trade plan"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-cyan-glow/25 bg-cyan-glow/[0.06] text-cyan-glow hover:bg-cyan-glow/10"
-                  disabled={!canCoach}
-                  onClick={() => void sendPlanToCoach()}
-                >
-                  <Brain className="mr-2 size-4" />
-                  Run Coach check-in
-                </Button>
-              </div>
-            </DashboardCardBody>
-          </DashboardCard>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 h-9 w-full rounded-[var(--radius-md)] border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-[13px] text-text-accent hover:bg-[var(--color-accent-bg)]"
+              disabled={!canCoach}
+              onClick={() => void sendPlanToCoach()}
+            >
+              <Brain className="mr-2 size-4" />
+              Send to Coach
+            </Button>
+          </div>
 
-          <DashboardCard interactive className="glass-card">
-            <DashboardCardHeader title="Recent plans" icon={Save} />
-            <DashboardCardBody>
-              {activePlans.length === 0 ? (
-                <DashboardEmptyState
-                  icon={Save}
-                  title="No active plans"
-                  description="Saved plans stay separate from post-trade journal entries."
-                  className="min-h-[120px]"
-                />
-              ) : (
-                <div className="space-y-2">
-                  {activePlans.slice(0, 6).map((saved) => (
-                    <DashboardInsetPanel key={saved.id} className="flex items-center justify-between px-3 py-2">
-                      <div>
-                        <p className="text-[12px] font-medium text-foreground/90">
-                          {saved.pair} · {saved.direction}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {new Date(saved.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="text-right text-[11px] tabular-nums">
-                        <p className="text-cyan-glow">{formatRiskReward(saved.rr)}</p>
-                        <p className="text-muted-foreground/70">
-                          <span className="text-warning-foreground/90">Est.</span> {formatLotSize(saved.recommendedLots)} lots
-                        </p>
-                      </div>
-                    </DashboardInsetPanel>
-                  ))}
-                </div>
-              )}
-
-              {pastPlans.length > 0 ? (
-                <div className="mt-4 border-t border-white/[0.06] pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setPastPlansOpen((open) => !open)}
-                    className="flex w-full items-center justify-between text-left text-[11px] text-muted-foreground/80 hover:text-foreground/90"
+          <div className="planner-surface-card p-4 sm:p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Save className="size-4 text-text-secondary" />
+              <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Recent plans</p>
+            </div>
+            {activePlans.length === 0 ? (
+              <DashboardEmptyState
+                icon={Save}
+                title="No active plans"
+                description="Saved plans stay separate from post-trade journal entries."
+                className="min-h-[100px]"
+              />
+            ) : (
+              <div className="space-y-2">
+                {activePlans.slice(0, 6).map((saved) => (
+                  <DashboardInsetPanel
+                    key={saved.id}
+                    className="flex items-center justify-between border-[var(--border-subtle)] bg-[var(--surface-input)] px-3 py-2"
                   >
-                    <span>Past plans ({pastPlans.length})</span>
-                    <ChevronDown
-                      className={cn("size-4 transition-transform", pastPlansOpen ? "rotate-180" : "")}
-                    />
-                  </button>
-                  {pastPlansOpen ? (
-                    <div className="mt-2 space-y-2">
-                      {pastPlans.slice(0, 12).map((saved) => (
-                        <DashboardInsetPanel
-                          key={saved.id}
-                          className="flex items-center justify-between px-3 py-2 opacity-80"
-                        >
-                          <div>
-                            <p className="text-[12px] font-medium text-foreground/85">
-                              {saved.pair} · {saved.direction}
-                            </p>
-                            <p className="text-[10px] capitalize text-muted-foreground/65">
-                              {saved.status} · {new Date(saved.created_at).toLocaleString()}
-                            </p>
-                          </div>
-                          <p className="text-[11px] tabular-nums text-muted-foreground/70">
-                            {formatRiskReward(saved.rr)}
-                          </p>
-                        </DashboardInsetPanel>
-                      ))}
+                    <div>
+                      <p className="text-[12px] font-medium text-text-primary">
+                        {saved.pair} · {saved.direction}
+                      </p>
+                      <p className="text-[10px] text-text-muted">
+                        {new Date(saved.created_at).toLocaleString()}
+                      </p>
                     </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </DashboardCardBody>
-          </DashboardCard>
+                    <div className="text-right text-[11px] tabular-nums">
+                      <p className="text-text-accent">{formatRiskReward(saved.rr)}</p>
+                      <p className="text-text-muted">
+                        <span className="text-warning-foreground">Est.</span> {formatLotSize(saved.recommendedLots)} lots
+                      </p>
+                    </div>
+                  </DashboardInsetPanel>
+                ))}
+              </div>
+            )}
+
+            {pastPlans.length > 0 ? (
+              <div className="mt-4 border-t border-[var(--border-subtle)] pt-3">
+                <button
+                  type="button"
+                  onClick={() => setPastPlansOpen((open) => !open)}
+                  className="flex w-full items-center justify-between text-left text-[11px] text-text-muted hover:text-text-primary"
+                >
+                  <span>Past plans ({pastPlans.length})</span>
+                  <ChevronDown
+                    className={cn("size-4 transition-transform", pastPlansOpen ? "rotate-180" : "")}
+                  />
+                </button>
+                {pastPlansOpen ? (
+                  <div className="mt-2 space-y-2">
+                    {pastPlans.slice(0, 12).map((saved) => (
+                      <DashboardInsetPanel
+                        key={saved.id}
+                        className="flex items-center justify-between border-[var(--border-subtle)] bg-[var(--surface-input)] px-3 py-2 opacity-80"
+                      >
+                        <div>
+                          <p className="text-[12px] font-medium text-text-primary">
+                            {saved.pair} · {saved.direction}
+                          </p>
+                          <p className="text-[10px] capitalize text-text-muted">
+                            {saved.status} · {new Date(saved.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <p className="text-[11px] tabular-nums text-text-muted">{formatRiskReward(saved.rr)}</p>
+                      </DashboardInsetPanel>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -607,12 +629,37 @@ function Field({
 }) {
   return (
     <label className={cn("block space-y-1.5", className)}>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-        {label}
-      </span>
+      <span className="mb-1 block text-[10px] text-text-muted">{label}</span>
       {children}
-      {hint ? <span className="block text-[10px] leading-relaxed text-muted-foreground/60">{hint}</span> : null}
+      {hint ? <span className="block text-[10px] leading-relaxed text-text-muted">{hint}</span> : null}
     </label>
+  )
+}
+
+function SuggestedActionStrip({ plan }: { plan: TradePlanCalculation }) {
+  const message =
+    plan.suggestedAction === "plan_valid"
+      ? "Plan looks good — run Coach before entry"
+      : plan.suggestedActionLabel
+
+  return (
+    <div
+      className={cn(
+        "mt-3 flex items-start gap-2 rounded-[var(--radius-md)] border px-3 py-2.5",
+        plan.suggestedAction === "plan_valid"
+          ? "border-profit/20 bg-profit/[0.06] text-profit"
+          : plan.suggestedAction === "adjust_plan"
+            ? "border-[var(--warning-border)] bg-[var(--warning-bg)] text-warning-foreground"
+            : "border-loss/20 bg-loss/[0.06] text-loss",
+      )}
+    >
+      {plan.suggestedAction === "plan_valid" ? (
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+      ) : (
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+      )}
+      <p className="text-[12px] leading-relaxed">{message}</p>
+    </div>
   )
 }
 
@@ -620,16 +667,28 @@ function MetricTile({
   label,
   value,
   hint,
+  valueClassName,
+  mutedValue = false,
 }: {
   label: ReactNode
   value: string
   hint?: string
+  valueClassName?: string
+  mutedValue?: boolean
 }) {
   return (
-    <DashboardInsetPanel className="px-2.5 py-2 text-center">
-      <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground/90">{value}</p>
-      {hint ? <p className="mt-0.5 text-[8px] text-muted-foreground/55">{hint}</p> : null}
-    </DashboardInsetPanel>
+    <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-input)] px-2.5 py-2">
+      <p className="text-[10px] text-text-muted">{label}</p>
+      <p
+        className={cn(
+          "mt-1 text-base font-medium tabular-nums",
+          mutedValue ? "text-text-muted" : "text-text-primary",
+          valueClassName,
+        )}
+      >
+        {value}
+      </p>
+      {hint ? <p className="mt-0.5 text-[10px] text-text-muted">{hint}</p> : null}
+    </div>
   )
 }

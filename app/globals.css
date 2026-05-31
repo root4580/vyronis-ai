@@ -272,6 +272,35 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
   }
+
+  .planner-content {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px 24px;
+  }
+
+  .planner-surface-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .planner-input {
+    height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-input);
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .planner-input:focus-visible {
+    border-color: var(--border-strong);
+    outline: none;
+  }
 }
 
 /* ── Dashboard shell (Linear-inspired layout surface) ── */
