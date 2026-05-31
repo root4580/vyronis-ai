@@ -23,6 +23,7 @@ type ConnectedDashboardChromeProps = {
   onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
+  onDockPlanner?: () => void
   onDockWarRoom?: () => void
   onDockAnalytics?: () => void
   aiLauncher?: ReactNode

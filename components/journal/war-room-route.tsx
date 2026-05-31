@@ -8,6 +8,7 @@ import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import { useRouter } from "next/navigation"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
 
 export function WarRoomRoute() {
@@ -33,8 +34,9 @@ export function WarRoomRoute() {
         onDockHome={() => router.replace(getDashboardHomeHref())}
         onDockJournal={() => router.replace(getDashboardTabHref("journal"))}
         onDockWarRoom={() => router.replace("/war-room")}
+        onDockPlanner={() => router.replace("/trade-planner")}
         onDockCoach={() => router.replace(getDashboardHomeHref())}
-        onDockLog={() => router.replace("/?action=new-trade")}
+        onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
         onDockAnalytics={() => router.replace("/analytics")}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Planner — Response for Claude Cloud</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1117;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { color: #9ca3af; margin: 0 0 16px; }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      padding: 12px 0;
+      background: #0f1117;
+      border-bottom: 1px solid #2d3348;
+    }
+    button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    button.copied { background: #16a34a; }
+    button.secondary {
+      background: #1f2937;
+      border: 1px solid #374151;
+    }
+    button.secondary:hover { background: #374151; }
+    .status { font-size: 14px; color: #86efac; min-height: 20px; flex: 1; }
+    textarea {
+      width: 100%;
+      min-height: 65vh;
+      background: #1a1d27;
+      color: #d1d5db;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      resize: vertical;
+    }
+    textarea:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Trade Planner — response for Claude Cloud</h1>
+    <p>Click <strong>Copy all for Claude</strong> once, then paste into Claude Cloud.</p>
+    <div class="toolbar">
+      <button type="button" id="copyBtn">Copy all for Claude</button>
+      <button type="button" id="selectBtn" class="secondary">Select all</button>
+      <span class="status" id="status"></span>
+    </div>
+    <textarea id="content" readonly spellcheck="false"></textarea>
+  </div>
+  <script>
+    const text = `Vyronis Trade Planner — your review + our response
+
+We built Trade Planner Mode (/trade-planner) as a pre-entry sizing cockpit: pair, direction, entry, SL, TP → pips, R:R, risk $, estimated standard lots. Saves to trade_plans — not trades. No broker, no MT5.
+
+YOUR CORE IDEA (WE AGREE)
+-----------------------
+- Hard separation: Trade Planner (sizing math) ≠ Journal Plan setup (Vyronis A+ scoring) ≠ Log Trade (post-close outcome)
+- Separate trade_plans table — not draft rows in trades
+- v1: numeric inputs + visual box — no drag SL/TP, no live FX API
+- Label lots as estimated (approximate pip values, USD account, standard lots only)
+- Copy tone: plan valid / adjust / skip — not "take trade"
+- Approximate pip values OK for v1 with clear labeling
+
+YOUR UX FIXES (IMPLEMENTED)
+---------------------------
+1. One banner — "Pre-trade sizing only — use Log Trade to log outcome after close." (removed second banner)
+2. TP geometry — sell with TP above entry now explicitly warns: "take profit is above entry — target must be below entry"
+3. 503 / migration — persistent banner "Planner saving unavailable — migration pending"; save disabled; planning still works (no raw error toast)
+4. Account size — prefilled from current balance (starting balance + journal P&L), not starting balance alone; hint to edit if live account differs
+
+MANUAL STEP
+-----------
+Run supabase/030-trade-plans.sql in Supabase to enable saves.
+
+WHERE WE SLIGHTLY DIFFER ON PRIORITY (OPTIONAL)
+-----------------------------------------------
+- Mobile dock entry for Planner — header nav only for v1 is fine
+- Next feature after ship: plan → Log Trade link before plan → Coach prefill (closes plan → execute → log loop)
+
+STATUS
+------
+Built locally; migration + above fixes applied; not committed/pushed yet unless we do that next.
+
+QUESTIONS BACK TO YOU
+---------------------
+1. Anything else blocking v1 ship after migration runs?
+2. Still agree trade_plans is the right model?
+3. Confirm plan → journal link as phase 2 priority?`;
+
+    const textarea = document.getElementById("content");
+    const btn = document.getElementById("copyBtn");
+    const selectBtn = document.getElementById("selectBtn");
+    const status = document.getElementById("status");
+
+    textarea.value = text;
+
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        status.textContent = "Paste into Claude Cloud now.";
+        setTimeout(() => {
+          btn.textContent = "Copy all for Claude";
+          btn.classList.remove("copied");
+          status.textContent = "";
+        }, 3000);
+      } catch {
+        textarea.focus();
+        textarea.select();
+        status.textContent = "Clipboard blocked — text selected. Press Cmd+C or Ctrl+C.";
+      }
+    });
+
+    selectBtn.addEventListener("click", () => {
+      textarea.focus();
+      textarea.select();
+      status.textContent = "Selected — press Cmd+C or Ctrl+C to copy.";
+    });
+    textarea.addEventListener("click", () => textarea.select());
+  </script>
+</body>
+</html>

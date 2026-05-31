@@ -423,17 +423,30 @@ export function DashboardHeader({
                   </Link>
                 ))}
                 {group.group === "Trade" ? (
-                  <Link
-                    href="/war-room"
-                    className={`dashboard-nav-pill ${
-                      pathname.startsWith("/war-room")
-                        ? "dashboard-nav-pill-active text-cyan-glow"
-                        : "dashboard-nav-pill-inactive"
-                    }`}
-                  >
-                    <Crosshair className="size-3.5" />
-                    <span>War Room</span>
-                  </Link>
+                  <>
+                    <Link
+                      href="/trade-planner"
+                      className={`dashboard-nav-pill ${
+                        pathname.startsWith("/trade-planner")
+                          ? "dashboard-nav-pill-active text-cyan-glow"
+                          : "dashboard-nav-pill-inactive"
+                      }`}
+                    >
+                      <Target className="size-3.5" />
+                      <span>Planner</span>
+                    </Link>
+                    <Link
+                      href="/war-room"
+                      className={`dashboard-nav-pill ${
+                        pathname.startsWith("/war-room")
+                          ? "dashboard-nav-pill-active text-cyan-glow"
+                          : "dashboard-nav-pill-inactive"
+                      }`}
+                    >
+                      <Crosshair className="size-3.5" />
+                      <span>War Room</span>
+                    </Link>
+                  </>
                 ) : null}
               </div>
             ))}

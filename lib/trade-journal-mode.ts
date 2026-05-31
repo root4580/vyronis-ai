@@ -20,7 +20,7 @@ export function stripPlannedSetupMarker(notes: string): string {
 }
 
 export function journalModeLabel(mode: TradeJournalMode): string {
-  if (mode === "plan") return "Plan setup"
+  if (mode === "plan") return "Setup Scoring"
   if (mode === "log") return "Log result"
   return "Edit trade"
 }

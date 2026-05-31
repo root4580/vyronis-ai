@@ -119,6 +119,11 @@ import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
 import { buildPlannedContextFromSignalItem } from "@/lib/tradingview/planned-context-from-list-item"
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
+import {
+  buildPlannedContextFromTradePlannerPrefill,
+  clearTradePlannerCoachPrefill,
+  readTradePlannerCoachPrefill,
+} from "@/lib/trade-planner/coach-prefill"
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
@@ -949,6 +954,30 @@ function Home() {
     const next = params.toString() ? `${APP_HOME_PATH}?${params.toString()}` : getDashboardHomeHref()
     router.replace(next)
   }, [searchParams, user?.id, router])
+
+  useEffect(() => {
+    if (searchParams.get("coachPlan") !== "1" || !user?.id) return
+
+    void (async () => {
+      const prefill = readTradePlannerCoachPrefill()
+      clearTradePlannerCoachPrefill()
+
+      if (!prefill) {
+        toast({
+          title: "Plan data missing",
+          description: "Run Coach check-in from Trade Planner again.",
+          variant: "destructive",
+        })
+        router.replace(getDashboardHomeHref())
+        return
+      }
+
+      const plannedContext = buildPlannedContextFromTradePlannerPrefill(prefill)
+      await openPreTradeCoachRef.current({ plannedContext })
+      markRitualCoachEngaged(user.id)
+      router.replace(getDashboardHomeHref())
+    })()
+  }, [searchParams, user?.id, toast, router])
 
   useEffect(() => {
     if (activeTab !== "analytics") return
@@ -1951,6 +1980,7 @@ function Home() {
         if (user?.id) markRitualCoachEngaged(user.id)
       }}
       onDockLog={handleDockLog}
+      onDockPlanner={() => router.push("/trade-planner")}
       onDockWarRoom={() => router.push("/war-room")}
       onDockAnalytics={() => router.replace("/analytics")}
       banner={

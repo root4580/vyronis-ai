@@ -24,6 +24,7 @@ type DashboardChromeProps = {
   onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
+  onDockPlanner?: () => void
   onDockWarRoom?: () => void
   onDockAnalytics?: () => void
   aiLauncher?: ReactNode
@@ -49,6 +50,7 @@ export function DashboardChrome({
   onDockJournal,
   onDockCoach,
   onDockLog,
+  onDockPlanner,
   onDockWarRoom,
   onDockAnalytics,
   aiLauncher,
@@ -86,6 +88,7 @@ export function DashboardChrome({
             onJournal={onDockJournal}
             onCoach={onDockCoach}
             onLog={onDockLog}
+            onPlanner={onDockPlanner}
             onWarRoom={onDockWarRoom}
             onAnalytics={onDockAnalytics}
           />

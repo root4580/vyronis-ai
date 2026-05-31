@@ -11,6 +11,7 @@ export const PROTECTED_PATHS = [
   "/profile",
   "/research-lab",
   "/war-room",
+  "/trade-planner",
   "/strategy-brain",
   "/evolution",
   "/journal",

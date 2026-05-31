@@ -1,0 +1,114 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { Toaster } from "@/components/ui/toaster"
+import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
+import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
+import { TradePlannerWorkspace } from "@/components/trade-planner/trade-planner-workspace"
+import { SigningOutScreen } from "@/components/auth/signing-out-screen"
+import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
+import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
+import { useRouter } from "next/navigation"
+import { APP_HOME_PATH } from "@/lib/branding"
+import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
+import {
+  fetchUserStartingBalance,
+  fetchUserTradesForAnalytics,
+} from "@/lib/analytics/fetch-trades"
+import { computeCurrentAccountBalance } from "@/lib/trade-planner/account-balance"
+
+export function TradePlannerRoute() {
+  const router = useRouter()
+  const chrome = useDashboardChrome({ loginNextPath: "/trade-planner" })
+  const settings = useAccountSettingsModal(chrome.supabase, chrome.user?.id)
+  const [startingBalance, setStartingBalance] = useState(settings.form.starting_balance)
+  const [totalPnL, setTotalPnL] = useState(0)
+  const [skippedBalanceTrades, setSkippedBalanceTrades] = useState(0)
+  const [balanceLoaded, setBalanceLoaded] = useState(false)
+
+  const currentAccountBalance = useMemo(
+    () => startingBalance + totalPnL,
+    [startingBalance, totalPnL],
+  )
+
+  useEffect(() => {
+    if (!chrome.user?.id) return
+
+    let cancelled = false
+
+    async function loadBalance() {
+      const userId = chrome.user!.id
+      const [tradesResult, balance] = await Promise.all([
+        fetchUserTradesForAnalytics(chrome.supabase, userId),
+        fetchUserStartingBalance(chrome.supabase, userId),
+      ])
+
+      if (cancelled) return
+
+      setStartingBalance(balance)
+      const computed = computeCurrentAccountBalance(balance, tradesResult.trades)
+      setTotalPnL(computed.totalPnL)
+      setSkippedBalanceTrades(computed.skippedTrades)
+      setBalanceLoaded(true)
+    }
+
+    void loadBalance()
+
+    return () => {
+      cancelled = true
+    }
+  }, [chrome.supabase, chrome.user?.id])
+
+  if (chrome.isLoggingOut) return <SigningOutScreen />
+  if (!chrome.isAuthReady) return null
+
+  return (
+    <>
+      <DashboardChrome
+        activeTab="dashboard"
+        profileCard={chrome.profileCard}
+        showProfileEmptyHint={chrome.showProfileEmptyHint}
+        onOpenSettings={settings.openSettings}
+        onLogout={() => void chrome.handleLogout()}
+        isLoggingOut={chrome.isLoggingOut}
+        showSignalBell={Boolean(chrome.user)}
+        showMobileDock={Boolean(chrome.user)}
+        dockHighlight="planner"
+        onDockHome={() => router.replace(getDashboardHomeHref())}
+        onDockJournal={() => router.replace(getDashboardTabHref("journal"))}
+        onDockWarRoom={() => router.replace("/war-room")}
+        onDockPlanner={() => router.replace("/trade-planner")}
+        onDockCoach={() => router.replace(getDashboardHomeHref())}
+        onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
+        onDockAnalytics={() => router.replace("/analytics")}
+        mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
+      >
+        <div className="mx-auto max-w-6xl space-y-4">
+          <div>
+            <p className="dashboard-section-title mb-1">Trade Planner</p>
+            <p className="text-[12px] text-muted-foreground/75">
+              Plan entry, stop, target, risk, and lot size before you execute.
+            </p>
+          </div>
+          <TradePlannerWorkspace
+            defaultAccountSize={balanceLoaded ? currentAccountBalance : settings.form.starting_balance}
+            defaultRiskPercent={settings.form.max_risk_per_trade}
+            accountSizeReady={balanceLoaded}
+            skippedBalanceTrades={skippedBalanceTrades}
+          />
+        </div>
+      </DashboardChrome>
+      <AccountSettingsModal
+        open={settings.isOpen}
+        onClose={settings.closeSettings}
+        form={settings.form}
+        onFormChange={(updates) => settings.setForm((prev) => ({ ...prev, ...updates }))}
+        onSubmit={(event) => void settings.saveSettings(event)}
+        isSaving={settings.isSaving}
+        accountBalance={currentAccountBalance}
+        totalPnL={totalPnL}
+      />
+      <Toaster />
+    </>
+  )
+}

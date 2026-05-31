@@ -18,7 +18,7 @@ const MODES: Array<{
   short: string
   icon: typeof Zap
 }> = [
-  { id: "plan", label: "Plan setup", short: "Plan", icon: ClipboardCheck },
+  { id: "plan", label: "Setup Scoring", short: "Score", icon: ClipboardCheck },
   { id: "log", label: "Log result", short: "Log", icon: Zap },
 ]
 
@@ -47,7 +47,7 @@ export function TradeJournalModeTabs({
           className="absolute -top-11 left-0 z-10 max-w-[min(100%,240px)] rounded-lg border border-cyan-glow/25 bg-[#0d1118] px-3 py-2 text-left shadow-lg shadow-black/30"
         >
           <p className="text-[11px] font-medium leading-snug text-cyan-glow">
-            Score your setup BEFORE you enter — use Plan mode
+            Score your setup BEFORE you enter — use Setup Scoring
           </p>
           <p className="mt-0.5 text-[10px] text-muted-foreground/70">Tap to dismiss</p>
           <span className="absolute -bottom-1.5 left-6 size-3 rotate-45 border-b border-r border-cyan-glow/25 bg-[#0d1118]" />

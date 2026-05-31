@@ -202,7 +202,7 @@ export function TodayHeroStrip({
                 Before you trade — score your setup
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground/75">
-                Use Plan mode to run Vyronis scoring before you click live.
+                Use Setup Scoring to run Vyronis scoring before you click live.
               </p>
             </div>
             <Button

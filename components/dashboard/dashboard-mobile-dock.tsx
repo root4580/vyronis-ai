@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, BookOpen, Brain, ClipboardList, Crosshair, LayoutDashboard } from "lucide-react"
+import { BarChart3, BookOpen, Brain, ClipboardList, Crosshair, LayoutDashboard, Target } from "lucide-react"
 import type { DashboardTab } from "@/components/dashboard/trading-components"
 import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { cn } from "@/lib/utils"
@@ -12,6 +12,7 @@ type DashboardMobileDockProps = {
   onJournal: () => void
   onCoach: () => void
   onLog: () => void
+  onPlanner?: () => void
   onWarRoom?: () => void
   onAnalytics?: () => void
   className?: string
@@ -24,12 +25,16 @@ export function DashboardMobileDock({
   onJournal,
   onCoach,
   onLog,
+  onPlanner,
   onWarRoom,
   onAnalytics,
   className,
 }: DashboardMobileDockProps) {
   const items = [
     { id: "dashboard" as const, label: "Home", icon: LayoutDashboard, onClick: onHome },
+    ...(onPlanner
+      ? [{ id: "planner" as const, label: "Plan", icon: Target, onClick: onPlanner }]
+      : []),
     { id: "journal" as const, label: "Journal", icon: BookOpen, onClick: onJournal },
     { id: "coach" as const, label: "Chat", icon: Brain, onClick: onCoach, accent: true },
     { id: "log" as const, label: "Log", icon: ClipboardList, onClick: onLog },

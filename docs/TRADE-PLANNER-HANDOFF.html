@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Planner — Copy for Claude</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1117;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { color: #9ca3af; margin: 0 0 16px; }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      padding: 12px 0;
+      background: #0f1117;
+      border-bottom: 1px solid #2d3348;
+    }
+    button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    button.copied { background: #16a34a; }
+    button.secondary {
+      background: #1f2937;
+      border: 1px solid #374151;
+    }
+    button.secondary:hover { background: #374151; }
+    .status { font-size: 14px; color: #86efac; min-height: 20px; flex: 1; }
+    textarea {
+      width: 100%;
+      min-height: 65vh;
+      background: #1a1d27;
+      color: #d1d5db;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      resize: vertical;
+    }
+    textarea:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Trade Planner Mode — handoff for Claude</h1>
+    <p>Click <strong>Copy all for Claude</strong> once. Paste into Claude Cloud in one message.</p>
+    <div class="toolbar">
+      <button type="button" id="copyBtn">Copy all for Claude</button>
+      <button type="button" id="selectBtn" class="secondary">Select all</button>
+      <span class="status" id="status"></span>
+    </div>
+    <textarea id="content" readonly spellcheck="false"></textarea>
+  </div>
+  <script>
+    const text = `Vyronis Trade Planner Mode — review handoff (paste this entire message)
+
+Product: Vyronis AI Dashboard (Next.js + Supabase)
+Feature: Trade Planner — pre-entry risk / lot planning cockpit
+Status: Built locally, NOT committed to git yet
+Route: /trade-planner (auth required)
+Nav: "Planner" link in HQ header Trade group (next to War Room)
+
+WHAT THIS IS
+------------
+A TradingView-style pre-trade planning screen. User enters pair, direction, account size, risk %, entry, stop loss, take profit. App calculates SL pips, TP pips, R:R, risk in USD, and estimated standard lot size. Visual plan box shows entry / TP / SL zones. Warnings + suggested action before save.
+
+Pre-trade only. No broker orders. No MT5. Does NOT affect win rate, heatmap, or coach state score.
+
+CRITICAL: THREE SEPARATE FLOWS (do not merge)
+-------------------------------------------
+Vyronis already has journal "Plan setup" in the Add Trade modal — that is NOT this feature.
+
+1) Trade Planner (/trade-planner)
+   - Purpose: pip math, R:R, risk $, estimated standard lots, visual plan box
+   - Storage: trade_plans table (new)
+   - When: before entry, sizing the trade
+
+2) Journal "Plan setup" tab (Add Trade modal, trade-journal-mode.ts)
+   - Purpose: Vyronis Strategy 1 scoring (HTF, AOI, A+ gate) before entry
+   - Storage: trades table with [vyronis-planned-setup] marker
+   - When: before entry, scoring setup quality — NOT lot math cockpit
+
+3) Journal "Log result" tab (Add Trade modal)
+   - Purpose: post-trade outcome — result, P&L, emotion, mistakes, notes
+   - Storage: trades table
+   - When: after trade closes
+
+Intended user flow:
+  Trade Planner (size the trade) → optional Coach check-in → execute on broker → Log Trade (journal outcome)
+Future: link trade_plans.id to trades.plan_id for planned vs actual comparison.
+
+HARD RULE
+---------
+Do NOT save Trade Planner output to trades. Do NOT mix post-trade fields (result, P&L, emotion) into Trade Planner.
+
+INPUTS
+------
+- Pair (30 forex/metal pairs, dropdown)
+- Direction: BUY / SELL
+- Account size ($) — defaults from user_settings.starting_balance
+- Risk % — defaults from user_settings.max_risk_per_trade (e.g. 0.5%)
+- Entry price, stop loss, take profit
+Live recalc on every change.
+
+CALCULATION ENGINE (lib/trade-planner/)
+---------------------------------------
+Functions:
+- calculatePips(pair, fromPrice, toPrice)
+- calculateRR(slPips, tpPips)
+- calculateRiskAmount(accountSize, riskPercent)
+- calculateLotSize({ pair, entryPrice, slPips, riskAmount })
+- validateTradePlan(input)
+- buildTradePlanCalculation(input)
+
+Formulas:
+  riskAmount = accountSize × (riskPercent / 100)
+  rr = tpPips / slPips
+  lotSize = riskAmount / (slPips × pipValuePerStandardLot)
+
+Pip size rules:
+  JPY pairs: 0.01 | XAU: 0.01 | XAG: 0.001 | standard forex: 0.0001
+
+Pip value (USD per standard lot = 100k units):
+  XXX/USD majors ~$10/pip | USD/JPY + JPY crosses dynamic from entry | USDCAD ~$7.3 | other crosses approximated | XAU ~$1 | XAG ~$5
+
+v1 assumptions (must be labeled in UI):
+  - USD-denominated account for pip value
+  - Standard lots only (not mini 0.1 or micro 0.01)
+  - Approximate pip values — no live FX API in v1
+  UI label: "Est. std lots (USD account · 100k units)"
+
+SUPPORTED PAIRS (30)
+--------------------
+EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, EURGBP, EURJPY, EURCHF, EURCAD, EURAUD, EURNZD, GBPJPY, GBPCHF, GBPCAD, GBPAUD, GBPNZD, AUDJPY, AUDCHF, AUDCAD, AUDNZD, NZDJPY, NZDCHF, NZDCAD, CADJPY, CADCHF, CHFJPY, XAUUSD, XAGUSD
+
+UI
+--
+- Dark Vyronis cockpit, mobile responsive
+- Two banners: (1) pre-trade only, link to Log Trade at /hq?action=new-trade (2) not the same as journal Plan setup
+- Visual plan box: entry line, green TP zone, red SL zone, price + pip labels, R:R badge
+- No TradingView embed, no candles
+- No draggable SL/TP in v1 — numbers drive the visual (drag = phase 2)
+- Result card: risk $, SL/TP pips, R:R, est. std lots, pip value/lot
+- Suggested action (validation only, not a signal):
+  plan_valid — "Plan valid — run coach before entry, then log after close."
+  adjust_plan — warnings present (e.g. R:R below 2)
+  skip_plan — invalid buy/sell geometry
+
+WARNINGS
+--------
+- SL or TP pips <= 0
+- R:R < 2 (Vyronis minimum)
+- Risk > 1% of account
+- Buy: SL must be below entry, TP above entry
+- Sell: SL above entry, TP below entry
+- Missing or unsupported pair
+
+SAVE
+----
+- Button: "Save pre-trade plan" (NOT "save to journal")
+- API: GET/POST /api/trade-plans
+- Table: trade_plans with RLS (user owns rows)
+- Returns 503 if migration not run
+
+Manual step: run supabase/030-trade-plans.sql in Supabase SQL editor.
+
+FILES ADDED
+-----------
+lib/trade-planner/forex-pairs.ts
+lib/trade-planner/trade-plan-engine.ts
+lib/trade-planner/types.ts
+lib/trade-planner/index.ts
+supabase/030-trade-plans.sql
+app/api/trade-plans/route.ts
+app/trade-planner/page.tsx
+components/trade-planner/trade-planner-route.tsx
+components/trade-planner/trade-planner-workspace.tsx
+components/trade-planner/trade-plan-visual.tsx
+
+FILES MODIFIED
+--------------
+components/dashboard/trading-components.tsx — Planner nav link
+lib/dashboard-dock.ts — route awareness
+lib/auth-routes.ts — /trade-planner added to PROTECTED_PATHS
+
+NOT IN V1
+---------
+- Draggable SL/TP on visual
+- Live FX pip value API
+- Mini/micro lot modes
+- "Send plan to Coach" prefill
+- plan_id link on journal trades
+- Broker / MT5 / order execution
+- Planner entry in mobile dock (header nav only for now)
+
+QUESTIONS FOR CLAUDE REVIEW
+---------------------------
+1. Is trade_plans the right model vs journal Plan setup rows in trades?
+2. Is the three-flow separation (Planner vs Plan setup vs Log) clear enough in product UX?
+3. Are approximate USD pip values acceptable for v1 with explicit labeling?
+4. Priority next: plan → Coach prefill, or plan → journal link on Log Trade?
+5. Should Trade Planner appear in mobile dock or stay header-only?
+
+End of handoff.`;
+
+    const textarea = document.getElementById("content");
+    const btn = document.getElementById("copyBtn");
+    const selectBtn = document.getElementById("selectBtn");
+    const status = document.getElementById("status");
+
+    textarea.value = text;
+
+    async function copyAll() {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        status.textContent = "Paste into Claude Cloud now.";
+        setTimeout(() => {
+          btn.textContent = "Copy all for Claude";
+          btn.classList.remove("copied");
+          status.textContent = "";
+        }, 3000);
+        return true;
+      } catch {
+        textarea.focus();
+        textarea.select();
+        status.textContent = "Clipboard blocked — text selected. Press Cmd+C (Mac) or Ctrl+C (Windows).";
+        return false;
+      }
+    }
+
+    btn.addEventListener("click", copyAll);
+    selectBtn.addEventListener("click", () => {
+      textarea.focus();
+      textarea.select();
+      status.textContent = "Selected — press Cmd+C or Ctrl+C to copy.";
+    });
+    textarea.addEventListener("click", () => textarea.select());
+  </script>
+</body>
+</html>
