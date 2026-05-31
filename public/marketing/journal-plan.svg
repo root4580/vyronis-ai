@@ -1,48 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Vyronis journal Plan mode with A+ scoring">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Vyronis journal Plan mode with A plus scoring">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a0f14"/>
-      <stop offset="100%" stop-color="#0d1520"/>
+      <stop offset="0%" stop-color="#0b1219"/>
+      <stop offset="100%" stop-color="#070b10"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#22d3ee"/>
       <stop offset="100%" stop-color="#34d399"/>
     </linearGradient>
+    <radialGradient id="scoreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
   </defs>
   <rect width="1440" height="900" fill="url(#bg)"/>
-  <rect x="40" y="40" width="1360" height="56" rx="12" fill="#111820" stroke="#ffffff14"/>
-  <text x="72" y="76" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Vyronis HQ</text>
-  <text x="200" y="76" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Journal | Plan setup</text>
-  <rect x="1180" y="56" width="180" height="32" rx="16" fill="#22d3ee22" stroke="#22d3ee55"/>
-  <text x="1270" y="77" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="13" font-weight="700" text-anchor="middle">A+ | 94</text>
-  <rect x="40" y="120" width="880" height="740" rx="16" fill="#0b1118" stroke="#ffffff12"/>
-  <text x="72" y="160" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="2">PRECISION FLOW</text>
-  <rect x="72" y="180" width="130" height="28" rx="8" fill="#34d39918" stroke="#34d39944"/>
-  <text x="88" y="199" fill="#34d399" font-family="system-ui,sans-serif" font-size="12">Weekly bullish</text>
-  <rect x="212" y="180" width="110" height="28" rx="8" fill="#34d39918" stroke="#34d39944"/>
-  <text x="228" y="199" fill="#34d399" font-family="system-ui,sans-serif" font-size="12">Daily BOS</text>
-  <rect x="332" y="180" width="100" height="28" rx="8" fill="#34d39918" stroke="#34d39944"/>
-  <text x="348" y="199" fill="#34d399" font-family="system-ui,sans-serif" font-size="12">H4 retest</text>
-  <rect x="72" y="230" width="816" height="120" rx="12" fill="#060a10" stroke="#ffffff0d"/>
-  <text x="92" y="258" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="1">AREA OF INTEREST</text>
-  <text x="92" y="290" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="18">London liquidity sweep | demand zone</text>
-  <text x="92" y="320" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Confirmation: CHoCH | Entry: Retest | Emotion: Calm</text>
-  <rect x="72" y="380" width="250" height="90" rx="12" fill="#060a10" stroke="#ffffff0d"/>
-  <text x="92" y="410" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">RISK / REWARD</text>
-  <text x="92" y="445" fill="#34d399" font-family="system-ui,sans-serif" font-size="28" font-weight="700">1 : 3.2</text>
-  <rect x="342" y="380" width="250" height="90" rx="12" fill="#060a10" stroke="#ffffff0d"/>
-  <text x="362" y="410" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">A+ SETUP GATE</text>
-  <text x="362" y="445" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="22" font-weight="700">8 / 8 passed</text>
-  <rect x="960" y="120" width="440" height="740" rx="16" fill="#0b1118" stroke="#22d3ee33"/>
-  <text x="992" y="160" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="2">VYRONIS SCORE</text>
-  <text x="1180" y="290" fill="url(#accent)" font-family="system-ui,sans-serif" font-size="120" font-weight="800" text-anchor="middle">A+</text>
-  <text x="1180" y="340" fill="#34d399" font-family="system-ui,sans-serif" font-size="24" font-weight="700" text-anchor="middle">Execute | 94/100</text>
-  <rect x="992" y="390" width="376" height="56" rx="10" fill="#34d39914" stroke="#34d39933"/>
-  <text x="1012" y="424" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14">HTF aligned | AOI valid | R:R above 1:2</text>
-  <rect x="992" y="470" width="376" height="56" rx="10" fill="#fbbf2414" stroke="#fbbf2433"/>
-  <text x="1012" y="504" fill="#fde68a" font-family="system-ui,sans-serif" font-size="14">Warning: outside London kill zone</text>
-  <rect x="992" y="560" width="376" height="120" rx="12" fill="#22d3ee10" stroke="#22d3ee22"/>
-  <text x="1012" y="592" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">ONE IMPROVEMENT</text>
-  <text x="1012" y="624" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="15">Wait for retest entry - mark Perfect, not Early.</text>
+
+  <rect x="56" y="48" width="1328" height="52" rx="14" fill="#111820" stroke="#ffffff10"/>
+  <text x="88" y="80" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Vyronis HQ</text>
+  <text x="230" y="80" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Journal | Plan setup</text>
+  <rect x="1188" y="62" width="168" height="28" rx="14" fill="#22d3ee14" stroke="#22d3ee44"/>
+  <text x="1272" y="81" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="12" font-weight="700" text-anchor="middle">A+ | 94</text>
+
+  <rect x="56" y="130" width="860" height="722" rx="20" fill="#0b1118" stroke="#ffffff10"/>
+  <text x="88" y="172" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="2">PRECISION FLOW</text>
+  <rect x="88" y="190" width="132" height="30" rx="9" fill="#34d39914" stroke="#34d39933"/>
+  <text x="104" y="210" fill="#34d399" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Weekly bullish</text>
+  <rect x="232" y="190" width="108" height="30" rx="9" fill="#34d39914" stroke="#34d39933"/>
+  <text x="248" y="210" fill="#34d399" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Daily BOS</text>
+  <rect x="352" y="190" width="96" height="30" rx="9" fill="#34d39914" stroke="#34d39933"/>
+  <text x="368" y="210" fill="#34d399" font-family="system-ui,sans-serif" font-size="12" font-weight="600">H4 retest</text>
+
+  <rect x="88" y="242" width="796" height="118" rx="14" fill="#060a10" stroke="#ffffff0a"/>
+  <text x="112" y="272" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">AREA OF INTEREST</text>
+  <text x="112" y="304" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="20" font-weight="600">London liquidity sweep | demand zone</text>
+  <text x="112" y="334" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Confirmation: CHoCH | Entry: Retest | Emotion: Calm</text>
+
+  <rect x="88" y="384" width="248" height="92" rx="14" fill="#060a10" stroke="#ffffff0a"/>
+  <text x="112" y="414" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1">RISK / REWARD</text>
+  <text x="112" y="452" fill="#34d399" font-family="system-ui,sans-serif" font-size="30" font-weight="800">1 : 3.2</text>
+  <rect x="356" y="384" width="248" height="92" rx="14" fill="#060a10" stroke="#ffffff0a"/>
+  <text x="380" y="414" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1">A+ SETUP GATE</text>
+  <text x="380" y="452" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="24" font-weight="800">8 / 8 passed</text>
+
+  <rect x="88" y="500" width="796" height="320" rx="16" fill="#05080d" stroke="#ffffff08"/>
+  <polyline points="112,780 180,720 240,740 300,680 360,700 420,640 480,660 540,590 600,610 660,560 720,580 780,520 840,540" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="112,790 840,550" fill="none" stroke="#34d399" stroke-width="1.5" stroke-opacity="0.45"/>
+
+  <rect x="948" y="130" width="436" height="722" rx="20" fill="#0b1118" stroke="#22d3ee33"/>
+  <rect x="948" y="130" width="436" height="722" rx="20" fill="url(#scoreGlow)"/>
+  <text x="980" y="172" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="2">VYRONIS SCORE</text>
+  <text x="1166" y="320" fill="url(#accent)" font-family="system-ui,sans-serif" font-size="118" font-weight="800" text-anchor="middle">A+</text>
+  <text x="1166" y="362" fill="#34d399" font-family="system-ui,sans-serif" font-size="22" font-weight="700" text-anchor="middle">Execute | 94/100</text>
+
+  <rect x="980" y="404" width="372" height="54" rx="12" fill="#34d39910" stroke="#34d39928"/>
+  <text x="1000" y="437" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14">HTF aligned | AOI valid | R:R above 1:2</text>
+  <rect x="980" y="474" width="372" height="54" rx="12" fill="#fbbf2410" stroke="#fbbf2428"/>
+  <text x="1000" y="507" fill="#fde68a" font-family="system-ui,sans-serif" font-size="14">Warning: outside London kill zone</text>
+  <rect x="980" y="560" width="372" height="118" rx="14" fill="#22d3ee0a" stroke="#22d3ee22"/>
+  <text x="1000" y="592" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">ONE IMPROVEMENT</text>
+  <text x="1000" y="624" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="16">Wait for retest entry - mark Perfect, not Early.</text>
 </svg>

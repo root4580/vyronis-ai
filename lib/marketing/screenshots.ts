@@ -13,7 +13,8 @@ export const MARKETING_SCREENSHOT_BASES = {
   behavioralLeak: "behavioral-leak",
 } as const
 
-const EXTENSIONS = ["png", "webp", "jpg", "jpeg", "svg"] as const
+/** Polished SVG previews first; drop raw PNGs only when intentionally overriding. */
+const EXTENSIONS = ["svg", "png", "webp", "jpg", "jpeg"] as const
 
 export function resolveMarketingAsset(baseName: string): string | null {
   for (const ext of EXTENSIONS) {

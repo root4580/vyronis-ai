@@ -1,6 +1,6 @@
 # Marketing screenshots
 
-Drop PNG or WebP files here. The landing page uses them automatically when present.
+Drop polished PNG or WebP files here only when you intentionally want to override the designed SVG previews.
 
 | File | What to capture |
 |------|-----------------|

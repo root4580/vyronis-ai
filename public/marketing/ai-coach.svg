@@ -1,44 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Vyronis AI Trade Coach giving a SKIP verdict with deep chart analysis">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Vyronis AI Trade Coach SKIP verdict with chart analysis">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a0f14"/>
-      <stop offset="100%" stop-color="#0d1520"/>
+      <stop offset="0%" stop-color="#0b1219"/>
+      <stop offset="55%" stop-color="#0a0f14"/>
+      <stop offset="100%" stop-color="#070b10"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+    <radialGradient id="glow" cx="78%" cy="28%" r="45%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowLoss" cx="82%" cy="42%" r="35%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cyanBar" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#22d3ee"/>
       <stop offset="100%" stop-color="#34d399"/>
     </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="panelGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#22d3ee" flood-opacity="0.12"/>
+    </filter>
   </defs>
+
   <rect width="1440" height="900" fill="url(#bg)"/>
-  <rect x="40" y="40" width="1360" height="56" rx="12" fill="#111820" stroke="#ffffff14"/>
-  <text x="72" y="76" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Vyronis HQ</text>
-  <text x="220" y="76" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">AI Trade Coach</text>
-  <rect x="40" y="120" width="520" height="740" rx="16" fill="#0b1118" stroke="#ffffff12"/>
-  <text x="72" y="160" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="2">CHART UPLOAD</text>
-  <rect x="72" y="180" width="456" height="280" rx="12" fill="#060a10" stroke="#ffffff0d"/>
-  <rect x="92" y="200" width="416" height="18" rx="4" fill="#ffffff08"/>
-  <rect x="92" y="230" width="320" height="8" rx="4" fill="#34d39933"/>
-  <rect x="92" y="250" width="280" height="8" rx="4" fill="#ef444433"/>
-  <rect x="92" y="270" width="360" height="8" rx="4" fill="#ffffff10"/>
-  <text x="92" y="310" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">XAUUSD M15 | London session</text>
-  <rect x="72" y="490" width="456" height="48" rx="10" fill="#111820" stroke="#ffffff10"/>
-  <text x="92" y="520" fill="#64748b" font-family="system-ui,sans-serif" font-size="13">Ask about this setup...</text>
-  <rect x="600" y="120" width="800" height="740" rx="16" fill="#0b1118" stroke="#ef444433"/>
-  <text x="632" y="160" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="2">VYRONIS AI COACH</text>
-  <rect x="632" y="180" width="120" height="32" rx="8" fill="#ef444418" stroke="#ef444455"/>
-  <text x="692" y="201" fill="#f87171" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="middle">SKIP</text>
-  <text x="768" y="201" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">82% confidence</text>
-  <text x="632" y="250" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="20" font-weight="600">Counter-trend entry into H4 supply</text>
-  <text x="632" y="290" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="15">Weekly bullish but M15 showing lower high. No CHoCH at AOI.</text>
-  <rect x="632" y="320" width="736" height="200" rx="12" fill="#060a10" stroke="#ffffff0d"/>
-  <text x="652" y="350" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" letter-spacing="1">DEEP ANALYSIS</text>
-  <text x="652" y="382" fill="#34d399" font-family="system-ui,sans-serif" font-size="14">HTF alignment .......... Weekly/Daily aligned</text>
-  <text x="652" y="408" fill="#fbbf24" font-family="system-ui,sans-serif" font-size="14">Confirmation quality ... No BOS close at AOI</text>
-  <text x="652" y="434" fill="#f87171" font-family="system-ui,sans-serif" font-size="14">Risk / reward ........... 1:1.2 below 1:2 gate</text>
-  <text x="652" y="460" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="14">Journal pattern ......... 3/4 revenge entries lost</text>
-  <rect x="632" y="550" width="736" height="120" rx="12" fill="#22d3ee0a" stroke="#22d3ee33"/>
-  <text x="652" y="580" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="11" letter-spacing="1">CORRECTIVE ACTION</text>
-  <text x="652" y="610" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="15">Wait for M15 CHoCH + retest. Your journal shows impulsive entries after two losses.</text>
-  <text x="652" y="640" fill="#64748b" font-family="system-ui,sans-serif" font-size="13">Cross-referenced with 12 journal trades | Last 14 days</text>
+  <rect width="1440" height="900" fill="url(#glow)"/>
+  <rect width="1440" height="900" fill="url(#glowLoss)"/>
+
+  <!-- Faded dashboard backdrop -->
+  <g opacity="0.42">
+    <rect x="48" y="48" width="1344" height="52" rx="14" fill="#111820" stroke="#ffffff10"/>
+    <text x="80" y="80" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Vyronis HQ</text>
+    <rect x="80" y="130" width="280" height="88" rx="14" fill="#0b1118" stroke="#ffffff0d"/>
+    <text x="104" y="162" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">ACCOUNT</text>
+    <text x="104" y="194" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="24" font-weight="700">$10,000</text>
+    <rect x="384" y="130" width="280" height="88" rx="14" fill="#0b1118" stroke="#ffffff0d"/>
+    <text x="408" y="162" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">TOTAL P&amp;L</text>
+    <text x="408" y="194" fill="#f87171" font-family="system-ui,sans-serif" font-size="24" font-weight="700">-$308</text>
+    <rect x="688" y="130" width="280" height="88" rx="14" fill="#0b1118" stroke="#ffffff0d"/>
+    <text x="712" y="162" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">WIN RATE</text>
+    <text x="712" y="194" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="24" font-weight="700">Building</text>
+    <rect x="80" y="240" width="1180" height="560" rx="18" fill="#0b1118" stroke="#ffffff0a"/>
+  </g>
+
+  <!-- Coach panel -->
+  <g filter="url(#shadow)">
+    <rect x="760" y="72" width="620" height="756" rx="22" fill="#0a1017" stroke="#ffffff14"/>
+    <rect x="760" y="72" width="620" height="756" rx="22" fill="none" stroke="#22d3ee" stroke-opacity="0.18" filter="url(#panelGlow)"/>
+
+    <rect x="784" y="96" width="572" height="52" rx="14" fill="#060a10" stroke="#ffffff0a"/>
+    <circle cx="812" cy="122" r="10" fill="#22d3ee" fill-opacity="0.18" stroke="#22d3ee" stroke-opacity="0.45"/>
+    <text x="834" y="118" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Vyronis AI Coach</text>
+    <rect x="970" y="108" width="72" height="28" rx="14" fill="#34d39918" stroke="#34d39944"/>
+    <text x="1006" y="127" fill="#34d399" font-family="system-ui,sans-serif" font-size="11" font-weight="600" text-anchor="middle">Calm</text>
+
+    <!-- User chart upload -->
+    <rect x="784" y="168" width="572" height="148" rx="16" fill="#060a10" stroke="#ffffff0d"/>
+    <text x="808" y="196" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.4">CHART UPLOADED</text>
+    <rect x="808" y="210" width="132" height="84" rx="10" fill="#05080d" stroke="#ffffff0a"/>
+    <polyline points="820,276 836,252 852,258 868,232 884,240 900,218 916,226 932,204" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="820,282 932,210" fill="none" stroke="#34d399" stroke-width="1.5" stroke-opacity="0.55"/>
+    <text x="958" y="236" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="15" font-weight="600">XAUUSD M15</text>
+    <text x="958" y="260" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">London session | Supply retest attempt</text>
+    <text x="958" y="284" fill="#64748b" font-family="system-ui,sans-serif" font-size="12">Read chart notes</text>
+
+    <!-- Verdict card -->
+    <rect x="784" y="336" width="572" height="456" rx="18" fill="#0b1118" stroke="#ef444444"/>
+    <text x="808" y="368" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.4">CHART ANALYSIS</text>
+    <text x="808" y="396" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">Final action</text>
+    <text x="808" y="452" fill="#f87171" font-family="system-ui,sans-serif" font-size="54" font-weight="800">SKIP</text>
+    <text x="808" y="486" fill="#fca5a5" font-family="system-ui,sans-serif" font-size="15">Stand down - protect capital and process.</text>
+    <text x="808" y="518" fill="#cbd5e1" font-family="system-ui,sans-serif" font-size="14">This setup resembles repeated Anxious losses, but HTF alignment is cleaner than those impulsive reads.</text>
+    <rect x="808" y="538" width="78" height="26" rx="13" fill="#34d39914" stroke="#34d39933"/>
+    <text x="847" y="556" fill="#34d399" font-family="system-ui,sans-serif" font-size="11" font-weight="600" text-anchor="middle">Setup B</text>
+
+    <!-- Metric pills -->
+    <rect x="808" y="582" width="124" height="54" rx="12" fill="#060a10" stroke="#ffffff0a"/>
+    <text x="824" y="604" fill="#64748b" font-family="system-ui,sans-serif" font-size="9" letter-spacing="1">SETUP</text>
+    <text x="824" y="626" fill="#22d3ee" font-family="system-ui,sans-serif" font-size="20" font-weight="700">73</text>
+    <rect x="944" y="582" width="124" height="54" rx="12" fill="#060a10" stroke="#ffffff0a"/>
+    <text x="960" y="604" fill="#64748b" font-family="system-ui,sans-serif" font-size="9" letter-spacing="1">STATE</text>
+    <text x="960" y="626" fill="#fbbf24" font-family="system-ui,sans-serif" font-size="20" font-weight="700">58</text>
+    <rect x="1080" y="582" width="124" height="54" rx="12" fill="#060a10" stroke="#ffffff0a"/>
+    <text x="1096" y="604" fill="#64748b" font-family="system-ui,sans-serif" font-size="9" letter-spacing="1">RISK</text>
+    <text x="1096" y="626" fill="#f87171" font-family="system-ui,sans-serif" font-size="16" font-weight="700">HIGH</text>
+    <rect x="1216" y="582" width="116" height="54" rx="12" fill="#ef444414" stroke="#ef444433"/>
+    <text x="1232" y="604" fill="#64748b" font-family="system-ui,sans-serif" font-size="9" letter-spacing="1">VERDICT</text>
+    <text x="1232" y="626" fill="#f87171" font-family="system-ui,sans-serif" font-size="16" font-weight="700">SKIP</text>
+
+    <!-- Deep analysis -->
+    <rect x="808" y="654" width="524" height="118" rx="14" fill="#060a10" stroke="#ffffff0a"/>
+    <text x="828" y="682" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" letter-spacing="1.2">DEEP ANALYSIS</text>
+    <text x="828" y="708" fill="#34d399" font-family="system-ui,sans-serif" font-size="13">Trend direction ........ Bullish breakout</text>
+    <text x="828" y="732" fill="#34d399" font-family="system-ui,sans-serif" font-size="13">HTF alignment ........ 90% aligned</text>
+    <text x="828" y="756" fill="#fbbf24" font-family="system-ui,sans-serif" font-size="13">Confirmation quality . No BOS close at AOI</text>
+
+    <!-- Input -->
+    <rect x="784" y="808" width="572" height="52" rx="14" fill="#060a10" stroke="#ffffff12"/>
+    <text x="808" y="840" fill="#64748b" font-family="system-ui,sans-serif" font-size="14">Message Vyronis...</text>
+    <rect x="1296" y="820" width="44" height="28" rx="14" fill="url(#cyanBar)"/>
+    <path d="M1314 834 L1326 834 L1320 828 Z" fill="#041014"/>
+  </g>
 </svg>
