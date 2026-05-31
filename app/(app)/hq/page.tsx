@@ -941,7 +941,7 @@ function Home() {
 
   useEffect(() => {
     const coachPair = searchParams.get("coachPair")?.trim()
-    if (!coachPair || !user?.id) return
+    if (!coachPair || !user?.id || !preTradeCoachReady) return
 
     void (async () => {
       const gate = await checkCoachReadiness(coachPair)
@@ -960,17 +960,43 @@ function Home() {
       const plannedContext = gate.pairPlan
         ? buildPlannedContextFromPairPlan(gate.pairPlan)
         : { ...buildEmptyPlannedContext(), pair: coachPair }
-      await openPreTradeCoachRef.current({ plannedContext })
+      await openPreTradeCoachRef.current?.({ plannedContext })
       markRitualCoachEngaged(user.id)
       router.replace(buildDashboardHomePath(searchParams))
     })()
-  }, [searchParams, user?.id, toast, router])
+  }, [searchParams, user?.id, toast, router, preTradeCoachReady])
+
+  useEffect(() => {
+    if (searchParams.get("openCoach") !== "1" || !user?.id || !preTradeCoachReady) return
+
+    void (async () => {
+      const gate = await checkCoachReadiness()
+      if (!gate.allowed) {
+        toast({
+          title: gate.headline,
+          description: gate.message,
+          variant: "destructive",
+        })
+        router.replace("/war-room")
+        return
+      }
+      if (gate.severity === "warning") {
+        toast({ title: gate.headline, description: gate.message })
+      }
+      const plannedContext = gate.pairPlan
+        ? buildPlannedContextFromPairPlan(gate.pairPlan)
+        : buildEmptyPlannedContext()
+      await openPreTradeCoachRef.current?.({ plannedContext })
+      markRitualCoachEngaged(user.id)
+      router.replace(buildDashboardHomePath(searchParams))
+    })()
+  }, [searchParams, user?.id, toast, router, preTradeCoachReady])
 
   useEffect(() => {
     const coachSession = searchParams.get("coach")?.trim()
-    if (!coachSession || !user?.id) return
+    if (!coachSession || !user?.id || !preTradeCoachReady) return
 
-    void openPreTradeCoachRef.current({ sessionId: coachSession })
+    void openPreTradeCoachRef.current?.({ sessionId: coachSession })
     markRitualCoachEngaged(user.id)
     setActiveTab("dashboard")
     const params = new URLSearchParams(searchParams.toString())
@@ -978,7 +1004,7 @@ function Home() {
     params.delete("tab")
     const next = params.toString() ? `${APP_HOME_PATH}?${params.toString()}` : getDashboardHomeHref()
     router.replace(next)
-  }, [searchParams, user?.id, router])
+  }, [searchParams, user?.id, router, preTradeCoachReady])
 
   useEffect(() => {
     if (searchParams.get("coachPlan") !== "1" || !user?.id || !preTradeCoachReady) return

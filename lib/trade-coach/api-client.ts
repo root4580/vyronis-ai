@@ -75,6 +75,18 @@ export async function runCoachMtfAnalysis(
   return parseJson(response)
 }
 
+export async function syncCoachWarRoomCharts(
+  sessionId: string,
+): Promise<TradeCoachSessionWithMessages> {
+  const response = await fetch(`/api/coach/sessions/${sessionId}/mtf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ action: "syncWarRoom" }),
+  })
+  return parseJson(response)
+}
+
 export async function linkCoachSessionToTrade(
   sessionId: string,
   tradeId: string,

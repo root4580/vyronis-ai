@@ -2,11 +2,24 @@
 
 import { useCallback, useState } from "react"
 import type { CoachMtfTimeframe } from "@/lib/coach/mtf-constants"
+import type { TradeCoachSessionWithMessages } from "@/lib/trade-coach/types"
 
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_DIMENSION = 1920
 const JPEG_QUALITY = 0.85
+
+export type CoachMtfUploadResult = {
+  url: string
+  session: TradeCoachSessionWithMessages
+}
+
+function isAllowedChartFile(file: File): boolean {
+  if (ALLOWED_FILE_TYPES.includes(file.type)) return true
+  const lower = file.name.toLowerCase()
+  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext))
+}
 
 async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/") || file.size < 400_000) return file
@@ -28,7 +41,7 @@ async function compressImage(file: File): Promise<File> {
   context.drawImage(bitmap, 0, 0, width, height)
   bitmap.close()
 
-  const outputType = file.type === "image/png" ? "image/webp" : file.type
+  const outputType = file.type === "image/png" ? "image/webp" : file.type || "image/jpeg"
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, outputType, JPEG_QUALITY)
   })
@@ -44,9 +57,9 @@ export function useCoachMtfUpload(sessionId: string) {
   const [error, setError] = useState<string | null>(null)
 
   const uploadMtfChart = useCallback(
-    async (timeframe: CoachMtfTimeframe, file: File): Promise<string> => {
-      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-        throw new Error("Invalid file type. Allowed: jpg, jpeg, png, webp")
+    async (timeframe: CoachMtfTimeframe, file: File): Promise<CoachMtfUploadResult> => {
+      if (!isAllowedChartFile(file)) {
+        throw new Error("Use JPG, PNG, or WebP chart screenshots (HEIC/iPhone photos: export as JPG first).")
       }
       if (file.size > MAX_FILE_SIZE) {
         throw new Error("File too large. Maximum size is 10MB")
@@ -72,14 +85,18 @@ export function useCoachMtfUpload(sessionId: string) {
           credentials: "same-origin",
         })
 
-        if (!response.ok) {
-          const payload = await response.json()
+        const payload = (await response.json()) as {
+          url?: string
+          session?: TradeCoachSessionWithMessages
+          error?: string
+        }
+
+        if (!response.ok || !payload.url || !payload.session) {
           throw new Error(payload.error || "Upload failed")
         }
 
-        const { url } = (await response.json()) as { url: string }
         setUploadProgress(100)
-        return url
+        return { url: payload.url, session: payload.session }
       } catch (uploadError) {
         const message = uploadError instanceof Error ? uploadError.message : "Upload failed"
         setError(message)

@@ -30,6 +30,7 @@ import {
   recordQualityOverride,
   runCoachMtfAnalysis,
   submitCoachAnswer,
+  syncCoachWarRoomCharts,
 } from "@/lib/trade-coach/api-client"
 import {
   fetchStrategyPlaybooks,
@@ -49,6 +50,10 @@ import {
   mergeAutofillIntoWeeklyPlan,
   plannedContextPatchFromVision,
 } from "@/lib/trade-coach/coach-plan-autofill"
+import {
+  buildPlannedContextFromPairPlan,
+  getWatchlistPairs,
+} from "@/lib/strategy-brain/weekly-watchlist"
 import { useToast } from "@/hooks/use-toast"
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
 import type { ChartVisionProviderId } from "@/lib/coach/types"
@@ -189,6 +194,7 @@ export function TradeCoachPanel({
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const previousSessionStatusRef = useRef<string | null>(null)
   const tradePlannerAutoMtfRef = useRef(false)
+  const warRoomChartsSyncRef = useRef<string | null>(null)
   const [mtfDetailsOpen, setMtfDetailsOpen] = useState(false)
 
   const mtfAnalysis = useMemo(() => {
@@ -445,6 +451,25 @@ export function TradeCoachPanel({
   }
 
   useEffect(() => {
+    if (!active || !session || session.planned_context?.pair || isUpdatingPlaybook) return
+
+    void fetchWeeklyPlan()
+      .then((plan) => {
+        const rows = getWatchlistPairs(plan)
+        if (rows.length !== 1) return
+        void handleWatchlistPair(
+          buildPlannedContextFromPairPlan(
+            rows[0],
+            session.planned_context.strategy_name ?? undefined,
+          ),
+        )
+      })
+      .catch(() => {
+        // optional auto-pair
+      })
+  }, [active, session?.id, session?.planned_context?.pair, isUpdatingPlaybook])
+
+  useEffect(() => {
     if (!scrollRef.current) return
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [session?.messages.length, mtfAnalysis, active])
@@ -532,18 +557,71 @@ export function TradeCoachPanel({
 
   async function handleRunMtfAnalysis() {
     if (!session) return
+
+    const screenshots = getMtfScreenshotsFromSession(session)
+    if (countMtfScreenshots(screenshots) === 0) {
+      const message = "Upload at least one chart screenshot first."
+      setError(message)
+      toast({
+        title: "Charts required",
+        description: "Pair and playbook alone won't run analysis — add Weekly through M15 screenshots first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsAnalyzing(true)
     setError(null)
     try {
       const updated = await runCoachMtfAnalysis(session.id)
       setSession(updated)
       onSessionChange?.(updated.id)
+
+      const analysis = resolveSessionMtfAnalysis(updated)
+      toast({
+        title: "Analysis complete",
+        description: analysis
+          ? `${analysis.overallScore}/100 · ${analysis.recommendation} — scroll for check-in questions.`
+          : "Review the verdict below, then answer the quick check-in.",
+      })
+
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: "smooth",
+        })
+      })
     } catch (analysisError) {
-      setError(analysisError instanceof Error ? analysisError.message : "Could not analyze charts")
+      const message =
+        analysisError instanceof Error ? analysisError.message : "Could not analyze charts"
+      setError(message)
+      toast({ title: "Analysis failed", description: message, variant: "destructive" })
     } finally {
       setIsAnalyzing(false)
     }
   }
+
+  useEffect(() => {
+    if (!active || !session?.id || !session.planned_context?.pair) return
+    if (countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0) return
+    if (warRoomChartsSyncRef.current === session.id) return
+
+    warRoomChartsSyncRef.current = session.id
+    void syncCoachWarRoomCharts(session.id)
+      .then((updated) => {
+        const uploaded = countMtfScreenshots(getMtfScreenshotsFromSession(updated))
+        if (uploaded === 0) return
+        setSession(updated)
+        onSessionChange?.(updated.id)
+        toast({
+          title: "War Room charts loaded",
+          description: `${uploaded} chart${uploaded === 1 ? "" : "s"} from your weekly plan — tap Run analysis when ready.`,
+        })
+      })
+      .catch(() => {
+        // War Room sync is optional when no saved charts exist
+      })
+  }, [active, session?.id, session?.planned_context?.pair, onSessionChange, toast])
 
   useEffect(() => {
     tradePlannerAutoMtfRef.current = false
@@ -909,10 +987,9 @@ export function TradeCoachPanel({
                   Upload charts — {session.planned_context.pair || "select pair below"}
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/75">
-                  Weekly, Daily, H4, H1, M15 in order. Use{" "}
-                  <span className="text-foreground/85">Add 5 at once</span> or multi-select, then{" "}
-                  <span className="text-foreground/85">Autofill</span> or{" "}
-                  <span className="text-foreground/85">Run analysis</span>.
+                  {countMtfScreenshots(getMtfScreenshotsFromSession(session)) > 0
+                    ? "Charts loaded from War Room or your uploads. Run analysis below — replace any slot if the market moved."
+                    : "Weekly, Daily, H4, H1, M15 in order. Charts saved in War Room load here automatically."}
                 </p>
               </DashboardInsetPanel>
 

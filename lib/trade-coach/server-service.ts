@@ -22,6 +22,7 @@ import {
 } from "@/lib/coach/visual-mtf-engine"
 import {
   canRunMtfAnalysis,
+  countMtfScreenshots,
   getMtfScreenshotsFromSession,
   getMtfUrlField,
   hasMtfAnalysis,
@@ -29,6 +30,7 @@ import {
   mergeMtfIntoContext,
   resolveSessionMtfAnalysis,
 } from "@/lib/trade-coach/mtf-session"
+import { hydrateCoachSessionFromWarRoom } from "@/lib/trade-coach/war-room-chart-seed"
 import {
   buildPreTradeCompletionMessages,
   generatePreTradeAnalysis,
@@ -158,8 +160,19 @@ export async function createPreTradeSession(
     messages: (messages || []) as TradeCoachMessageRecord[],
   }
 
+  if (contextWithRisk.pair?.trim()) {
+    hydrated = await hydrateCoachSessionFromWarRoom(
+      supabase,
+      userId,
+      hydrated,
+      contextWithRisk.pair,
+      submitCoachMtfScreenshot,
+    )
+  }
+
   const chartUrl = contextWithRisk.chart_url?.trim() || contextWithRisk.screenshot_url?.trim()
-  if (isTradePlannerCoachHandoff(contextWithRisk) && chartUrl) {
+  const hasMtfCharts = countMtfScreenshots(getMtfScreenshotsFromSession(hydrated)) > 0
+  if (!hasMtfCharts && isTradePlannerCoachHandoff(contextWithRisk) && chartUrl) {
     hydrated = await submitCoachMtfScreenshot(supabase, userId, hydrated.id, "m15", chartUrl)
     hydrated = await submitCoachMtfScreenshot(supabase, userId, hydrated.id, "h1", chartUrl)
   }
@@ -410,6 +423,29 @@ export async function submitCoachMtfScreenshot(
   const refreshed = await getCoachSession(supabase, userId, sessionId)
   if (!refreshed) throw new Error("Could not reload coach session")
   return refreshed
+}
+
+export async function syncWarRoomChartsToCoachSession(
+  supabase: SupabaseClient,
+  userId: string,
+  sessionId: string,
+): Promise<TradeCoachSessionWithMessages> {
+  const session = await getCoachSession(supabase, userId, sessionId)
+  if (!session) throw new Error("Coach session not found")
+  if (session.status !== "in_progress") throw new Error("Coach session is already completed")
+
+  const pair = (session.planned_context as PreTradePlannedContext).pair?.trim()
+  if (!pair) {
+    throw new Error("Set this week's pair before syncing War Room charts.")
+  }
+
+  return hydrateCoachSessionFromWarRoom(
+    supabase,
+    userId,
+    session,
+    pair,
+    submitCoachMtfScreenshot,
+  )
 }
 
 export async function removeCoachMtfScreenshot(

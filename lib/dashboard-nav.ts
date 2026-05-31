@@ -30,6 +30,15 @@ export function getDashboardHomeHref(): string {
   return APP_HOME_PATH
 }
 
+/** Deep-link from War Room into pre-trade Coach with watchlist context. */
+export function getWarRoomCoachHref(pairs: string[]): string {
+  const normalized = pairs.map((pair) => pair.trim()).filter(Boolean)
+  if (normalized.length === 1) {
+    return `${APP_HOME_PATH}?coachPair=${encodeURIComponent(normalized[0])}`
+  }
+  return `${APP_HOME_PATH}?openCoach=1`
+}
+
 /** Home path after refresh — strips `tab`, keeps safe deep-link params only. */
 export function buildDashboardHomePath(searchParams: URLSearchParams | null): string {
   const preserve = new URLSearchParams()

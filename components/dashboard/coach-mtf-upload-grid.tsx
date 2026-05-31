@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 import { MTF_SLOTS, type CoachMtfTimeframe } from "@/lib/coach/mtf-constants"
 import { countMtfScreenshots, getMtfScreenshotsFromSession } from "@/lib/trade-coach/mtf-session"
+import { fetchCoachSession } from "@/lib/trade-coach/api-client"
 import type { TradeCoachSessionWithMessages } from "@/lib/trade-coach/types"
 import { useCoachMtfUpload } from "@/hooks/use-coach-mtf-upload"
 import { cn } from "@/lib/utils"
@@ -277,17 +278,22 @@ export function CoachMtfUploadGrid({
     async (timeframe: CoachMtfTimeframe, file: File) => {
       setError(null)
       try {
-        await uploadMtfChart(timeframe, file)
-        const refreshed = await fetch(`/api/coach/sessions/${session.id}`, {
-          credentials: "same-origin",
-        }).then((response) => response.json())
+        const { session: refreshed } = await uploadMtfChart(timeframe, file)
         onSessionUpdate(refreshed)
-      } catch {
-        // error handled in hook
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : "Upload failed")
       }
     },
-    [onSessionUpdate, session.id, setError, uploadMtfChart],
+    [onSessionUpdate, setError, uploadMtfChart],
   )
+
+  const reloadSession = useCallback(async (): Promise<TradeCoachSessionWithMessages | null> => {
+    try {
+      return await fetchCoachSession(session.id)
+    } catch {
+      return null
+    }
+  }, [session.id])
 
   const handleRemove = useCallback(
     async (timeframe: CoachMtfTimeframe) => {
@@ -335,23 +341,16 @@ export function CoachMtfUploadGrid({
 
     setIsBulkUploading(true)
     try {
+      let latestSession = session
       for (let i = 0; i < batch.length; i++) {
-        await uploadMtfChart(emptySlots[i], batch[i])
+        const result = await uploadMtfChart(emptySlots[i], batch[i])
+        latestSession = result.session
       }
-      const refreshed = await fetch(`/api/coach/sessions/${session.id}`, {
-        credentials: "same-origin",
-      }).then((response) => response.json())
-      onSessionUpdate(refreshed)
+      onSessionUpdate(latestSession)
     } catch (bulkError) {
       setError(bulkError instanceof Error ? bulkError.message : "Bulk upload failed")
-      try {
-        const refreshed = await fetch(`/api/coach/sessions/${session.id}`, {
-          credentials: "same-origin",
-        }).then((response) => response.json())
-        onSessionUpdate(refreshed)
-      } catch {
-        // ignore refresh failure
-      }
+      const refreshed = await reloadSession()
+      if (refreshed) onSessionUpdate(refreshed)
     } finally {
       setIsBulkUploading(false)
     }
@@ -497,6 +496,17 @@ export function CoachMtfUploadGrid({
           {error}
         </p>
       )}
+
+      {uploadedCount === 0 ? (
+        <div className="rounded-[var(--radius-sm)] border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+          <p className="text-[11px] font-medium text-foreground/85">3 steps to get your verdict</p>
+          <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-[10px] leading-relaxed text-muted-foreground/75">
+            <li>Upload at least one chart (Weekly → M15).</li>
+            <li>Pick this week&apos;s pair and strategy playbook below.</li>
+            <li>Tap Run Multi-Timeframe Analysis — results appear here.</li>
+          </ol>
+        </div>
+      ) : null}
 
       {onAutofillFromCharts ? (
         <Button

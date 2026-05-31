@@ -55,18 +55,19 @@ export function CoachWatchlistPairSelect({
     }
   }, [])
 
-  if (loading || plannedContext.pair || !complete || pairs.length === 0) {
-    if (!loading && !complete && !plannedContext.pair) {
-      return (
-        <p className="text-[10px] text-muted-foreground/70">
-          <Link href="/war-room" className="text-cyan-glow hover:underline">
-            War Room
-          </Link>{" "}
-          — set your weekly pair in War Room before chart coach.
-        </p>
-      )
-    }
+  if (loading) {
     return null
+  }
+
+  if (!complete || pairs.length === 0) {
+    return (
+      <p className="text-[10px] text-muted-foreground/70">
+        <Link href="/war-room" className="text-cyan-glow hover:underline">
+          War Room
+        </Link>{" "}
+        — set your weekly pair in War Room before chart coach.
+      </p>
+    )
   }
 
   return (
@@ -76,6 +77,7 @@ export function CoachWatchlistPairSelect({
       </p>
       <Select
         disabled={disabled}
+        value={plannedContext.pair || undefined}
         onValueChange={(value) => {
           void fetchWeeklyPlan().then((plan) => {
             const row = getWatchlistPairs(plan).find((p) => p.pair === value)

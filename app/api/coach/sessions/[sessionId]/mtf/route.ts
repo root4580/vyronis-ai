@@ -4,6 +4,7 @@ import {
   removeCoachMtfScreenshot,
   runCoachMtfAnalysis,
   submitCoachMtfScreenshot,
+  syncWarRoomChartsToCoachSession,
   TradeCoachTableMissingError,
 } from "@/lib/trade-coach/server-service"
 import type { CoachMtfTimeframe } from "@/lib/coach/mtf-constants"
@@ -33,13 +34,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const body = (await request.json()) as {
-      action?: "analyze"
+      action?: "analyze" | "syncWarRoom"
       timeframe?: string
       chartUrl?: string
     }
 
     if (body.action === "analyze") {
       const session = await runCoachMtfAnalysis(supabase, user.id, sessionId)
+      return NextResponse.json(session)
+    }
+
+    if (body.action === "syncWarRoom") {
+      const session = await syncWarRoomChartsToCoachSession(supabase, user.id, sessionId)
       return NextResponse.json(session)
     }
 

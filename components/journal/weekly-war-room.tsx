@@ -7,7 +7,8 @@ import { MarketBiasPanel } from "@/components/strategy-brain/market-bias-panel"
 import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning-panel"
 import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
 import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
-import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardTabHref, getWarRoomCoachHref } from "@/lib/dashboard-nav"
+import { useRouter } from "next/navigation"
 import { WarRoomSurfaceCard } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,6 +33,7 @@ import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 
 export function WeeklyWarRoom() {
   const { toast } = useToast()
+  const router = useRouter()
   const weekStart = getWeekStartSunday()
   const [marketBias, setMarketBias] = useState<MarketBiasRecord | null>(null)
   const [biasDraft, setBiasDraft] = useState<MarketBiasInput>({
@@ -160,6 +162,20 @@ export function WeeklyWarRoom() {
 
   const pairs = weekPlan?.pairs ?? []
 
+  function handleAskCoach() {
+    if (pairs.length === 0) {
+      toast({
+        title: "Add a pair to your watchlist first",
+        description: "Coach needs at least one weekly pair from War Room before chart check-in.",
+        variant: "destructive",
+      })
+      document.getElementById("war-room-planning")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
+
+    router.push(getWarRoomCoachHref(pairs.map((pair) => pair.pair)))
+  }
+
   return (
     <div className="war-room-content space-y-4 pb-12">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -181,11 +197,9 @@ export function WeeklyWarRoom() {
               Past weeks
             </Link>
           </Button>
-          <Button type="button" className="h-9 btn-primary" asChild>
-            <Link href={getDashboardHomeHref()}>
-              <Bot className="mr-2 size-4" />
-              Ask Coach
-            </Link>
+          <Button type="button" className="h-9 btn-primary" onClick={handleAskCoach}>
+            <Bot className="mr-2 size-4" />
+            Ask Coach
           </Button>
         </div>
       </header>
