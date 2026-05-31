@@ -45,10 +45,10 @@ function calculateDisciplineScore(trades: TradeRiskGuardHistoryTrade[]): number 
   if (trades.length === 0) return 0
 
   const rulesScore =
-    (trades.filter((trade) => trade.rule_followed !== false).length / trades.length) * 70
+    (trades.filter((trade) => trade.rule_followed !== false).length / trades.length) * 45
   const tagged = trades.filter((trade) => parseMistakeTags(trade.mistake_tags).length > 0).length
   const cleanRate = 1 - tagged / trades.length
-  const tagScore = cleanRate * 30
+  const tagScore = cleanRate * 55
 
   return Math.round(Math.min(100, rulesScore + tagScore))
 }
@@ -88,7 +88,15 @@ export function calculateStateScore(input: {
   if (lossStreakWorsening(input.trades, consecutiveLosses)) score -= 5
 
   const lastThree = sample.slice(0, 3)
-  if (lastThree.length === 3 && lastThree.every((t) => t.rule_followed !== false)) score += 10
+  if (
+    lastThree.length === 3 &&
+    lastThree.every(
+      (trade) =>
+        trade.rule_followed !== false && parseMistakeTags(trade.mistake_tags).length === 0,
+    )
+  ) {
+    score += 10
+  }
 
   const lastTradeEmotion = normalizeEmotion(sample[0]?.emotion)
   if (lastTradeEmotion === "calm" || lastTradeEmotion === "confident") score += 10

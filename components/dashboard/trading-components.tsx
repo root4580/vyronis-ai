@@ -1567,13 +1567,18 @@ export function CalendarHeatmapPlaceholder({ trades }: { trades?: DashboardTrade
 export function AITradeCoachPlaceholder({
   trades,
   patternMemoryRefreshKey = 0,
+  maxRiskPerTrade = 1,
   onOpenCompanion,
 }: {
   trades?: DashboardTradeRow[]
   patternMemoryRefreshKey?: number
+  maxRiskPerTrade?: number
   onOpenCompanion?: () => void
 }) {
-  const analysis = useMemo(() => generateCoachAnalysis(trades ?? []), [trades])
+  const analysis = useMemo(
+    () => generateCoachAnalysis(trades ?? [], { maxRiskPerTrade }),
+    [trades, maxRiskPerTrade],
+  )
   const mistakeAnalysis = useMemo(() => buildMistakeAnalysis(trades ?? []), [trades])
   const rotationPool = analysis.allInsights.length > 0 ? analysis.allInsights : analysis.insights
   const [activeInsightIndex, setActiveInsightIndex] = useState(0)
@@ -1653,7 +1658,7 @@ export function AITradeCoachPlaceholder({
       <DashboardCardBody className="relative space-y-3">
         <div className="grid grid-cols-3 gap-2">
           <DashboardInsetPanel className="glass border-cyan-glow/10 bg-cyan-glow/[0.03] px-2.5 py-2 text-center">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">Confidence</p>
+            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">State</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-cyan-glow">
               {analysis.confidenceScore}%
             </p>

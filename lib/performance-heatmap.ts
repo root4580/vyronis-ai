@@ -188,11 +188,12 @@ export function buildPerformanceHeatmap(
       ? Math.round((profitableDays.length / tradedDays.length) * 100)
       : 0
 
+  const profitableTradedDays = tradedDays.filter((day) => day.pnl > 0)
   const bestDay =
-    tradedDays.length > 0
-      ? tradedDays.reduce(
+    profitableTradedDays.length > 0
+      ? profitableTradedDays.reduce(
           (best, day) => (day.pnl > best.pnl ? day : best),
-          tradedDays[0],
+          profitableTradedDays[0],
         )
       : null
 
@@ -212,6 +213,11 @@ export function buildPerformanceHeatmap(
     currentStreak,
     longestProfitStreak,
   }
+}
+
+export function formatBestDayPnl(bestDay: { date: string; pnl: number } | null): string {
+  if (!bestDay || bestDay.pnl <= 0) return "—"
+  return `+$${bestDay.pnl.toFixed(0)}`
 }
 
 export function getHeatmapIntensityClass(day: HeatmapDay, maxAbsPnl: number): string {

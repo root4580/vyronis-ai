@@ -1,3 +1,7 @@
+import { calculateStateScore } from "@/lib/coach/state-score-engine"
+import { parseMistakeTags } from "@/lib/trade-form-config"
+import { getRecentLossStreak } from "@/lib/trade-risk-guard"
+
 export type CoachInsightType = "warning" | "success" | "insight" | "info" | "tip"
 
 export type CoachInsightCategory =
@@ -42,6 +46,8 @@ export type CoachTrade = {
   confirmation_signal: string | null
   created_at: string
   trade_date: string | null
+  risk_percent?: number | null
+  mistake_tags?: string | null
 }
 
 const BEARISH_SIGNALS = new Set([
@@ -68,7 +74,58 @@ const BULLISH_SIGNALS = new Set([
   "Support Rejection",
 ])
 
-const EMOTIONAL_STATES = new Set(["FOMO", "Revenge", "Fearful", "Anxious", "Euphoric", "Greed"])
+const EMOTIONAL_STATES = new Set(["FOMO", "Revenge", "Fearful", "Anxious", "Euphoric", "Greed", "Impulsive"])
+
+function directCoachLine(text: string): string {
+  return text
+    .replace(/\bconsider\b/gi, "")
+    .replace(/\bit seems like\b/gi, "your journal shows")
+    .replace(/\bit looks like\b/gi, "your journal shows")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s—\s*$/g, "")
+    .trim()
+}
+
+function toHistoryTrades(trades: CoachTrade[]) {
+  return trades.map((trade) => ({
+    risk_percent: trade.risk_percent ?? null,
+    rule_followed: trade.rule_followed,
+    emotion: trade.emotion,
+    created_at: trade.created_at,
+    trade_date: trade.trade_date,
+    result: trade.result,
+    pnl: trade.pnl,
+    mistake_tags: trade.mistake_tags ?? null,
+  }))
+}
+
+function countNegativeEmotionShare(trades: CoachTrade[]): number {
+  if (trades.length === 0) return 0
+  const negative = trades.filter(
+    (trade) =>
+      EMOTIONAL_STATES.has(trade.emotion) ||
+      trade.emotion.toLowerCase() === "impulsive",
+  ).length
+  return negative / trades.length
+}
+
+function countOversizedShare(trades: CoachTrade[], maxRiskPerTrade: number): number {
+  if (trades.length === 0) return 0
+  const oversized = trades.filter((trade) => (trade.risk_percent ?? 0) > maxRiskPerTrade).length
+  return oversized / trades.length
+}
+
+function countRecentLossStreak(trades: CoachTrade[]): number {
+  return getRecentLossStreak(toHistoryTrades(trades))
+}
+
+function processIsDegraded(trades: CoachTrade[], maxRiskPerTrade: number): boolean {
+  return (
+    countRecentLossStreak(trades) >= 3 ||
+    countNegativeEmotionShare(trades) >= 0.6 ||
+    countOversizedShare(trades, maxRiskPerTrade) >= 0.5
+  )
+}
 
 function getTradeTimestamp(trade: CoachTrade): number {
   const date = trade.trade_date || trade.created_at
@@ -265,7 +322,9 @@ function analyzeStreaks(trades: CoachTrade[]): CoachInsight | null {
       id: "loss-streak",
       type: "warning",
       category: "streak",
-      message: `${currentStreak} consecutive losses detected — consider stepping away to reset.`,
+      message: directCoachLine(
+        `${currentStreak} consecutive losses detected — step away, journal one sentence on what you are trying to prove, then reassess.`,
+      ),
       priority: 92,
     }
   }
@@ -332,26 +391,37 @@ function analyzeFomoPattern(trades: CoachTrade[]): CoachInsight | null {
   }
 }
 
-function analyzeDiscipline(trades: CoachTrade[]): CoachInsight | null {
+function analyzeDiscipline(trades: CoachTrade[], maxRiskPerTrade: number): CoachInsight | null {
   const brokenRules = trades.filter((t) => t.rule_followed === false)
-  if (brokenRules.length < 2) return null
+  const taggedTrades = trades.filter((t) => parseMistakeTags(t.mistake_tags).length > 0).length
+  const degraded = processIsDegraded(trades, maxRiskPerTrade)
 
-  const brokenLosses = brokenRules.filter(isLoss).length
-  const brokenLossShare = Math.round((brokenLosses / Math.max(1, trades.filter(isLoss).length)) * 100)
+  if (brokenRules.length >= 2) {
+    const brokenLosses = brokenRules.filter(isLoss).length
+    const brokenLossShare = Math.round((brokenLosses / Math.max(1, trades.filter(isLoss).length)) * 100)
 
-  if (brokenLossShare >= 40) {
-    return {
-      id: "discipline-losses",
-      type: "warning",
-      category: "discipline",
-      message: `Rule breaks account for ${brokenLossShare}% of your losses — tighten execution.`,
-      priority: 86,
+    if (brokenLossShare >= 40) {
+      return {
+        id: "discipline-losses",
+        type: "warning",
+        category: "discipline",
+        message: directCoachLine(
+          `Rule breaks account for ${brokenLossShare}% of your losses — tighten execution.`,
+        ),
+        priority: 86,
+      }
     }
   }
 
   const disciplineRate = Math.round((trades.filter((t) => t.rule_followed !== false).length / trades.length) * 100)
+  const mistakeRate = Math.round((taggedTrades / trades.length) * 100)
 
-  if (disciplineRate >= 85) {
+  if (
+    !degraded &&
+    disciplineRate >= 85 &&
+    mistakeRate <= 20 &&
+    brokenRules.length === 0
+  ) {
     return {
       id: "discipline-strong",
       type: "success",
@@ -361,13 +431,19 @@ function analyzeDiscipline(trades: CoachTrade[]): CoachInsight | null {
     }
   }
 
-  return {
-    id: "discipline-review",
-    type: "insight",
-    category: "discipline",
-    message: `${brokenRules.length} trades broke your rules — review before the next session.`,
-    priority: 74,
+  if (brokenRules.length >= 2 || mistakeRate >= 40) {
+    return {
+      id: "discipline-review",
+      type: "insight",
+      category: "discipline",
+      message: directCoachLine(
+        `${Math.max(brokenRules.length, taggedTrades)} trades show process leaks — review before the next session.`,
+      ),
+      priority: 74,
+    }
   }
+
+  return null
 }
 
 function analyzeWinRateTrend(trades: CoachTrade[]): CoachInsight | null {
@@ -469,20 +545,28 @@ function analyzeRevengeTrading(trades: CoachTrade[]): CoachInsight | null {
   }
 }
 
-function computeConfidenceScore(trades: CoachTrade[], insights: CoachInsight[]): number {
+function computeStateScore(trades: CoachTrade[], maxRiskPerTrade: number): number {
   if (trades.length === 0) return 0
 
-  const disciplineRate = trades.filter((t) => t.rule_followed !== false).length / trades.length
-  const calmRate =
-    trades.filter((t) => ["Calm", "Confident", "Disciplined"].includes(t.emotion)).length / trades.length
-  const warningPenalty = Math.min(35, insights.filter((i) => i.type === "warning").length * 8)
-  const winRateScore = winRate(trades) * 0.35
-  const processScore = (disciplineRate * 25 + calmRate * 25)
+  const history = toHistoryTrades(trades)
+  const consecutiveLosses = getRecentLossStreak(history)
+  const sorted = [...history].sort(
+    (a, b) => new Date(b.trade_date || b.created_at).getTime() - new Date(a.trade_date || a.created_at).getTime(),
+  )
 
-  return Math.round(Math.max(0, Math.min(100, winRateScore + processScore - warningPenalty)))
+  return calculateStateScore({
+    trades: history,
+    consecutiveLosses,
+    dailyLossRatio: 0,
+    currentEmotion: sorted[0]?.emotion ?? "",
+    maxRiskPerTrade,
+  })
 }
 
 function deriveTopWeakness(trades: CoachTrade[], insights: CoachInsight[]): string | null {
+  const streak = countRecentLossStreak(trades)
+  if (streak >= 3) return `${streak} consecutive losses detected`
+
   const warning = insights.find((i) => i.type === "warning")
   if (warning) return warning.message.split(" — ")[0].split(".")[0]
 
@@ -495,14 +579,24 @@ function deriveTopWeakness(trades: CoachTrade[], insights: CoachInsight[]): stri
   return null
 }
 
-function deriveTopStrength(trades: CoachTrade[], insights: CoachInsight[]): string | null {
-  const success = insights.find((i) => i.type === "success")
+function deriveTopStrength(trades: CoachTrade[], insights: CoachInsight[], maxRiskPerTrade: number): string | null {
+  if (processIsDegraded(trades, maxRiskPerTrade)) return null
+
+  const success = insights.find(
+    (insight) => insight.type === "success" && insight.category !== "discipline",
+  )
   if (success) return success.message.split(".")[0]
 
   const disciplineRate = Math.round(
     (trades.filter((t) => t.rule_followed !== false).length / Math.max(1, trades.length)) * 100,
   )
-  if (disciplineRate >= 80) return `Strong discipline at ${disciplineRate}% rule adherence`
+  const mistakeRate = Math.round(
+    (trades.filter((t) => parseMistakeTags(t.mistake_tags).length > 0).length / trades.length) * 100,
+  )
+
+  if (disciplineRate >= 80 && mistakeRate <= 20) {
+    return `Strong discipline at ${disciplineRate}% rule adherence`
+  }
 
   const bestEmotion = analyzeBestEmotion(trades)
   if (bestEmotion) return bestEmotion.message.split(".")[0]
@@ -512,7 +606,11 @@ function deriveTopStrength(trades: CoachTrade[], insights: CoachInsight[]): stri
   return null
 }
 
-export function generateCoachAnalysis(trades: CoachTrade[]): CoachAnalysis {
+export function generateCoachAnalysis(
+  trades: CoachTrade[],
+  options?: { maxRiskPerTrade?: number },
+): CoachAnalysis {
+  const maxRiskPerTrade = options?.maxRiskPerTrade ?? 1
   const tradeCount = trades.length
   const overallWinRate = winRate(trades)
 
@@ -582,7 +680,7 @@ export function generateCoachAnalysis(trades: CoachTrade[]): CoachAnalysis {
     analyzeRevengeTrading(trades),
     analyzeFomoAfterWins(trades),
     analyzeSessionLosses(trades),
-    analyzeDiscipline(trades),
+    analyzeDiscipline(trades, maxRiskPerTrade),
     analyzeFomoPattern(trades),
     analyzeCounterTrend(trades),
     analyzeSetupQuality(trades),
@@ -612,9 +710,9 @@ export function generateCoachAnalysis(trades: CoachTrade[]): CoachAnalysis {
     hasData: true,
     tradeCount,
     overallWinRate,
-    confidenceScore: computeConfidenceScore(trades, allInsights),
+    confidenceScore: computeStateScore(trades, maxRiskPerTrade),
     topWeakness: deriveTopWeakness(trades, allInsights),
-    topStrength: deriveTopStrength(trades, allInsights),
+    topStrength: deriveTopStrength(trades, allInsights, maxRiskPerTrade),
     summary: `Analyzing ${tradeCount} trades · ${overallWinRate}% win rate · ${insights.length} insight${insights.length === 1 ? "" : "s"} active`,
     insights,
     allInsights,

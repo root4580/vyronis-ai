@@ -7,7 +7,7 @@ import {
   DashboardCardHeader,
   DashboardInsetPanel,
 } from "@/components/dashboard/dashboard-primitives"
-import type { HeatmapMonthStats } from "@/lib/performance-heatmap"
+import { formatBestDayPnl, type HeatmapMonthStats } from "@/lib/performance-heatmap"
 import type { JournalWeekSummary } from "@/lib/journal/calendar-analytics"
 import { cn } from "@/lib/utils"
 
@@ -59,8 +59,13 @@ export function JournalSidebar({
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
               Best day
             </p>
-            <p className="mt-1 text-sm font-semibold tabular-nums text-profit">
-              {monthStats.bestDay ? `+$${monthStats.bestDay.pnl.toFixed(0)}` : "—"}
+            <p
+              className={cn(
+                "mt-1 text-sm font-semibold tabular-nums",
+                monthStats.bestDay ? "text-profit" : "text-muted-foreground/60",
+              )}
+            >
+              {formatBestDayPnl(monthStats.bestDay)}
             </p>
           </DashboardInsetPanel>
         </DashboardCardBody>

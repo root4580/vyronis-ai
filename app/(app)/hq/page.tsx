@@ -2095,6 +2095,7 @@ function Home() {
                     <CalendarHeatmapPlaceholder trades={trades} />
                     <AITradeCoachPlaceholder
                       trades={trades}
+                      maxRiskPerTrade={settingsForm.max_risk_per_trade}
                       patternMemoryRefreshKey={coachFeedbackRefreshKey}
                       onOpenCompanion={() => openCommandCenterRef.current()}
                     />

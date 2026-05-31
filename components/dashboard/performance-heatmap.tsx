@@ -12,6 +12,7 @@ import {
 } from "@/components/dashboard/dashboard-primitives"
 import {
   buildPerformanceHeatmap,
+  formatBestDayPnl,
   formatHeatmapTooltip,
   getHeatmapIntensityClass,
   type HeatmapDay,
@@ -101,8 +102,12 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
                 <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
                   Best Day
                 </p>
-                <p className="mt-1 truncate text-sm font-semibold tabular-nums text-profit">
-                  {heatmap.bestDay ? `+$${heatmap.bestDay.pnl.toFixed(0)}` : "—"}
+                <p
+                  className={`mt-1 truncate text-sm font-semibold tabular-nums ${
+                    heatmap.bestDay ? "text-profit" : "text-muted-foreground/60"
+                  }`}
+                >
+                  {formatBestDayPnl(heatmap.bestDay)}
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="px-2.5 py-2">
