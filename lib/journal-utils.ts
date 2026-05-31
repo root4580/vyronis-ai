@@ -41,6 +41,7 @@ export type JournalTrade = {
   confirmation_type?: string | null
   entry_quality?: string | null
   vyronis_evaluation?: import("@/lib/strategy/vyronis-journal-bridge").VyronisJournalEvaluationRecord | null
+  plan_id?: string | null
 }
 
 export type JournalSortKey = "date" | "pair" | "pnl" | "result"
@@ -50,14 +51,18 @@ export type JournalFilters = {
   search: string
   pair: string
   session: string
+  direction: string
   result: string
+  hasPlan: "all" | "linked" | "unlinked"
 }
 
 export const DEFAULT_JOURNAL_FILTERS: JournalFilters = {
   search: "",
   pair: "all",
   session: "all",
+  direction: "all",
   result: "all",
+  hasPlan: "all",
 }
 
 function getTradeDate(trade: JournalTrade): number {
@@ -75,7 +80,10 @@ export function filterAndSortTrades<T extends JournalTrade>(
   let filtered = trades.filter((trade) => {
     if (filters.pair !== "all" && trade.pair !== filters.pair) return false
     if (filters.session !== "all" && (trade.session || "Unknown") !== filters.session) return false
+    if (filters.direction !== "all" && trade.direction !== filters.direction) return false
     if (filters.result !== "all" && trade.result !== filters.result) return false
+    if (filters.hasPlan === "linked" && !trade.plan_id) return false
+    if (filters.hasPlan === "unlinked" && trade.plan_id) return false
 
     if (!query) return true
 
@@ -123,5 +131,6 @@ export function getJournalFilterOptions(trades: JournalTrade[]) {
   const pairs = [...new Set(trades.map((t) => t.pair))].sort()
   const sessions = [...new Set(trades.map((t) => t.session || "Unknown"))].sort()
   const results = [...new Set(trades.map((t) => t.result))].sort()
-  return { pairs, sessions, results }
+  const directions = [...new Set(trades.map((t) => t.direction))].sort()
+  return { pairs, sessions, results, directions }
 }

@@ -15,6 +15,7 @@ import { JournalCalendarView } from "@/components/journal/journal-calendar-view"
 import { JournalIntelligenceMode } from "@/components/journal/journal-intelligence-mode"
 import { JournalModeTabs } from "@/components/journal/journal-mode-tabs"
 import { JournalMonthStrip } from "@/components/journal/journal-month-strip"
+import { JournalTradesList } from "@/components/journal/journal-trades-list"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
 import {
   buildDrawdownStats,
@@ -73,7 +74,7 @@ export function JournalCommandCenter({
   const [viewYear, setViewYear] = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [journalMode, setJournalMode] = useState<JournalViewMode>("calendar")
+  const [journalMode, setJournalMode] = useState<JournalViewMode>("trades")
 
   const referenceDate = useMemo(
     () => new Date(viewYear, viewMonth, 1),
@@ -179,6 +180,7 @@ export function JournalCommandCenter({
 
         <JournalTradeCards
           trades={dayTrades as DashboardTradeRow[]}
+          variant="default"
           onEdit={onEditTrade}
           onDelete={onDeleteTrade}
           onViewTrade={onViewTrade}
@@ -196,6 +198,17 @@ export function JournalCommandCenter({
       </div>
 
       <JournalModeTabs mode={journalMode} onChange={setJournalMode} />
+
+      {journalMode === "trades" ? (
+        <JournalTradesList
+          trades={trades}
+          onViewTrade={onViewTrade}
+          onEdit={onEditTrade}
+          onDelete={onDeleteTrade}
+          onScreenshotClick={onScreenshotClick}
+          onLogTrade={onLogTrade ? () => onLogTrade() : undefined}
+        />
+      ) : null}
 
       {journalMode === "calendar" ? (
         <div className="space-y-3">

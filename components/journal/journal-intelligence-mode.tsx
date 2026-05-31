@@ -114,7 +114,7 @@ export function JournalIntelligenceMode({
 
       {patterns.patterns.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/60">
+          <p className="text-[11px] font-medium text-muted-foreground/60">
             Active patterns
           </p>
           {patterns.patterns.slice(0, 5).map((p) => (
@@ -136,7 +136,7 @@ export function JournalIntelligenceMode({
       )}
 
       <div className="space-y-2">
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/60">
+        <p className="text-[11px] font-medium text-muted-foreground/60">
           Trade memory (recent)
         </p>
         {recentWithMemory.map(({ trade, memory, fingerprint }) => (

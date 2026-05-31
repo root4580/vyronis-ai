@@ -36,7 +36,7 @@ function MiniStat({
 }) {
   return (
     <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
+      <p className="text-[11px] font-medium text-muted-foreground/65">
         {label}
       </p>
       <p className={cn("mt-1 text-sm font-semibold tabular-nums", valueClass)}>{value}</p>
@@ -69,7 +69,7 @@ export function JournalAnalyticsStrip({
 
   return (
     <div className={cn("grid grid-cols-1 gap-3 lg:grid-cols-3", className)}>
-      <DashboardCard interactive className="glass-card">
+      <DashboardCard interactive className="hq-surface-card">
         <DashboardCardHeader title="Drawdown" icon={TrendingDown} />
         <DashboardCardBody className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-2">
@@ -93,7 +93,7 @@ export function JournalAnalyticsStrip({
         </DashboardCardBody>
       </DashboardCard>
 
-      <DashboardCard interactive className="glass-card">
+      <DashboardCard interactive className="hq-surface-card">
         <DashboardCardHeader title="Session performance" icon={Clock} />
         <DashboardCardBody className="h-[140px] pt-1">
           {sessionChart.length === 0 ? (
@@ -115,7 +115,7 @@ export function JournalAnalyticsStrip({
         </DashboardCardBody>
       </DashboardCard>
 
-      <DashboardCard interactive className="glass-card">
+      <DashboardCard interactive className="hq-surface-card">
         <DashboardCardHeader title="Day-of-week edge" icon={Activity} />
         <DashboardCardBody className="h-[140px] pt-1">
           {weekdayChart.length === 0 ? (

@@ -79,13 +79,14 @@ export const JOURNAL_WORKFLOW_STEPS: JournalWorkflowStep[] = [
   },
 ]
 
-export type JournalViewMode = "calendar" | "analytics" | "intelligence"
+export type JournalViewMode = "trades" | "calendar" | "analytics" | "intelligence"
 
 export const JOURNAL_VIEW_MODES: Array<{
   id: JournalViewMode
   label: string
 }> = [
+  { id: "trades", label: "Trades" },
   { id: "calendar", label: "Calendar" },
-  { id: "analytics", label: "Analytics" },
-  { id: "intelligence", label: "Intelligence" },
+  { id: "analytics", label: "Stats" },
+  { id: "intelligence", label: "Memory" },
 ]

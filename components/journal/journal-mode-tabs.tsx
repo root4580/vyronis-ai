@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Brain, CalendarDays } from "lucide-react"
+import { BarChart3, Brain, CalendarDays, List } from "lucide-react"
 import type { JournalViewMode } from "@/lib/journal/journal-workflow"
 import { cn } from "@/lib/utils"
 
@@ -9,6 +9,7 @@ const MODES: Array<{
   label: string
   icon: typeof CalendarDays
 }> = [
+  { id: "trades", label: "Trades", icon: List },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "analytics", label: "Stats", icon: BarChart3 },
   { id: "intelligence", label: "Memory", icon: Brain },
