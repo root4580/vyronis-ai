@@ -159,13 +159,13 @@ export function TradingViewWhyPanel({ why, compact = false, className }: Trading
         ) : null}
         {why.warnings.length > 0 ? (
           <div>
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-300/80">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-warning-foreground/80">
               <AlertTriangle className="size-3" />
               Warnings
             </p>
             <ul className="mt-1.5 space-y-1">
               {why.warnings.slice(0, compact ? 2 : 3).map((line) => (
-                <li key={line} className="text-[11px] leading-relaxed text-amber-200/75">
+                <li key={line} className="text-[11px] leading-relaxed text-warning-muted/75">
                   {line}
                 </li>
               ))}

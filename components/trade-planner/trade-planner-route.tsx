@@ -13,7 +13,7 @@ import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import { useRouter } from "next/navigation"
 import { APP_HOME_PATH } from "@/lib/branding"
-import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import {
   fetchUserStartingBalance,
   fetchUserTradesForAnalytics,
@@ -92,15 +92,12 @@ export function TradePlannerRoute() {
         aiLauncher={chrome.user ? <CommandCenterLauncher /> : null}
         dockHighlight="planner"
         onDockHome={() => router.replace(getDashboardHomeHref())}
-        onDockJournal={() => router.replace(getDashboardTabHref("journal"))}
-        onDockWarRoom={() => router.replace("/war-room")}
         onDockPlanner={() => router.replace("/trade-planner")}
         onDockCoach={() => {
           openCommandCenterRef.current()
           if (chrome.user?.id) markRitualCoachEngaged(chrome.user.id)
         }}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
-        onDockAnalytics={() => router.replace("/analytics")}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <div className="mx-auto max-w-6xl space-y-4">

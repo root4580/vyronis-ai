@@ -229,14 +229,14 @@ export function getHeatmapIntensityClass(day: HeatmapDay, maxAbsPnl: number): st
   const ratio = Math.min(Math.abs(day.pnl) / Math.max(maxAbsPnl, 1), 1)
 
   if (day.pnl > 0) {
-    if (ratio >= 0.75) return "bg-profit/85 border-profit/40 shadow-[0_0_14px_rgba(34,197,94,0.22)]"
-    if (ratio >= 0.5) return "bg-profit/60 border-profit/30 shadow-[0_0_10px_rgba(34,197,94,0.14)]"
+    if (ratio >= 0.75) return "bg-profit/85 border-profit/40 shadow-[0_0_14px_rgb(from var(--color-profit) r g b / 0.22)]"
+    if (ratio >= 0.5) return "bg-profit/60 border-profit/30 shadow-[0_0_10px_rgb(from var(--color-profit) r g b / 0.14)]"
     if (ratio >= 0.25) return "bg-profit/35 border-profit/20"
     return "bg-profit/20 border-profit/15"
   }
 
-  if (ratio >= 0.75) return "bg-loss/85 border-loss/40 shadow-[0_0_14px_rgba(239,68,68,0.22)]"
-  if (ratio >= 0.5) return "bg-loss/60 border-loss/30 shadow-[0_0_10px_rgba(239,68,68,0.14)]"
+  if (ratio >= 0.75) return "bg-loss/85 border-loss/40 shadow-[0_0_14px_rgb(from var(--color-loss) r g b / 0.22)]"
+  if (ratio >= 0.5) return "bg-loss/60 border-loss/30 shadow-[0_0_10px_rgb(from var(--color-loss) r g b / 0.14)]"
   if (ratio >= 0.25) return "bg-loss/35 border-loss/20"
   return "bg-loss/20 border-loss/15"
 }

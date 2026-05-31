@@ -63,7 +63,7 @@ export function TradeQualityAnalyticsPanel({ refreshKey = 0 }: TradeQualityAnaly
         </div>
         <div className="rounded-lg border border-white/[0.06] bg-black/15 px-2.5 py-2">
           <p className="text-muted-foreground/65">Low Quality WR</p>
-          <p className="mt-0.5 font-semibold tabular-nums text-amber-400">
+          <p className="mt-0.5 font-semibold tabular-nums text-warning-foreground">
             {analytics.lowQualityPerformance.winRate}%
           </p>
         </div>

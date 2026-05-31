@@ -20,11 +20,11 @@ export function journalDayCellClass(
     tone === "neutral" &&
       "border-white/[0.1] bg-zinc-800/90 text-foreground/80",
     tone === "win" &&
-      "border-emerald-500/30 bg-emerald-950/75 text-emerald-50 hover:border-emerald-400/45",
+      "border-profit/30 bg-emerald-950/75 text-emerald-50 hover:border-emerald-400/45",
     tone === "loss" &&
       "border-rose-500/30 bg-rose-950/75 text-rose-50 hover:border-rose-400/45",
     day.isToday && !selected && "ring-1 ring-cyan-glow/50 ring-offset-1 ring-offset-background",
-    selected && "ring-2 ring-cyan-glow ring-offset-2 ring-offset-background shadow-[0_0_24px_rgba(34,211,238,0.2)]",
+    selected && "ring-2 ring-cyan-glow ring-offset-2 ring-offset-background shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.2)]",
   )
 }
 

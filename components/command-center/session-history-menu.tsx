@@ -69,7 +69,7 @@ export function SessionHistoryMenu() {
         align="end"
         side="bottom"
         sideOffset={8}
-        className="z-[80] w-[min(280px,calc(100vw-2rem))] border-white/[0.1] bg-[#0d1118] p-2 shadow-xl"
+        className="z-[80] w-[min(280px,calc(100vw-2rem))] border-white/[0.1] bg-surface-modal p-2 shadow-xl"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="mb-2 flex items-center justify-between px-1">

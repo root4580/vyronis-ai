@@ -9,7 +9,7 @@ import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import { useRouter } from "next/navigation"
 import { APP_HOME_PATH } from "@/lib/branding"
-import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 
 export function WarRoomRoute() {
   const router = useRouter()
@@ -30,14 +30,10 @@ export function WarRoomRoute() {
         isLoggingOut={chrome.isLoggingOut}
         showSignalBell={Boolean(chrome.user)}
         showMobileDock={Boolean(chrome.user)}
-        dockHighlight="war-room"
         onDockHome={() => router.replace(getDashboardHomeHref())}
-        onDockJournal={() => router.replace(getDashboardTabHref("journal"))}
-        onDockWarRoom={() => router.replace("/war-room")}
         onDockPlanner={() => router.replace("/trade-planner")}
         onDockCoach={() => router.replace(getDashboardHomeHref())}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
-        onDockAnalytics={() => router.replace("/analytics")}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <WeeklyWarRoom />

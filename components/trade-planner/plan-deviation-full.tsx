@@ -21,7 +21,7 @@ function severityRowClass(severity: FieldDeviation["severity"]): string {
     case "green":
       return "border-profit/15 bg-profit/[0.04]"
     case "amber":
-      return "border-amber-500/20 bg-amber-500/[0.05]"
+      return "border-warning/20 bg-warning/[0.05]"
     case "red":
       return "border-loss/20 bg-loss/[0.05]"
     default:
@@ -75,7 +75,7 @@ export function PlanDeviationFull({ pairLabel, result, className }: PlanDeviatio
                   field.severity === "green"
                     ? "text-profit"
                     : field.severity === "amber"
-                      ? "text-amber-300"
+                      ? "text-warning-foreground"
                       : field.severity === "red"
                         ? "text-loss"
                         : "text-muted-foreground/60",

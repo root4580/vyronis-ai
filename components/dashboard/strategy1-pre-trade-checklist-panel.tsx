@@ -80,7 +80,7 @@ export function Strategy1PreTradeChecklistPanel({
                 "rounded-full border px-2 py-0.5 font-medium",
                 result.tradeLive
                   ? "border-profit/30 bg-profit/[0.08] text-profit"
-                  : "border-amber-500/30 bg-amber-500/[0.08] text-amber-200",
+                  : "border-warning/30 bg-warning/[0.08] text-warning-muted",
               )}
             >
               {result.tradeLive ? "OK to trade live" : "Skip on live account"}
@@ -124,7 +124,7 @@ export function Strategy1PreTradeChecklistPanel({
                   "rounded-lg border px-2.5 py-2 sm:px-3",
                   item.status === "pass" && "border-profit/15 bg-profit/[0.04]",
                   item.status === "fail" && "border-loss/20 bg-loss/[0.04]",
-                  item.status === "warn" && "border-amber-500/20 bg-amber-500/[0.04]",
+                  item.status === "warn" && "border-warning/20 bg-warning/[0.04]",
                   item.status === "pending" && "border-white/[0.06] bg-white/[0.02]",
                 )}
               >
@@ -144,7 +144,7 @@ export function Strategy1PreTradeChecklistPanel({
                       Journal: {item.vyronisFields.join(", ")}
                     </p>
                     {item.hint && (
-                      <p className="mt-1 text-[10px] text-amber-200/90">{item.hint}</p>
+                      <p className="mt-1 text-[10px] text-warning-muted/90">{item.hint}</p>
                     )}
                   </div>
                 </div>

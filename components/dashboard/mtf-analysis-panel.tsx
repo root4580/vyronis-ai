@@ -27,7 +27,7 @@ type MtfAnalysisPanelProps = {
 
 function scoreColor(score: number) {
   if (score >= 75) return "text-profit"
-  if (score >= 55) return "text-amber-400"
+  if (score >= 55) return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -37,7 +37,7 @@ function biasLabel(bias: string) {
 
 function recommendationColor(recommendation: MtfAnalysisResult["recommendation"]) {
   if (recommendation === "TAKE") return "text-profit"
-  if (recommendation === "CAUTION") return "text-amber-400"
+  if (recommendation === "CAUTION") return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -82,7 +82,7 @@ export function MtfAnalysisPanel({
             analysis.recommendation === "TAKE"
               ? "border-profit/25 bg-profit/[0.08]"
               : analysis.recommendation === "CAUTION"
-                ? "border-amber-500/25 bg-amber-500/[0.08]"
+                ? "border-warning/25 bg-warning/[0.08]"
                 : "border-loss/25 bg-loss/[0.08]",
           )}
         >
@@ -238,12 +238,12 @@ export function MtfAnalysisPanel({
 
       {bias.biasWarnings.length > 0 && (
         <div className="space-y-1">
-          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">
+          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">
             <AlertTriangle className="size-3" />
             Bias Warnings
           </p>
           {bias.biasWarnings.slice(0, compact ? 2 : 3).map((warning) => (
-            <p key={warning} className="text-[10px] text-amber-200/85">
+            <p key={warning} className="text-[10px] text-warning-muted/85">
               {warning}
             </p>
           ))}
@@ -252,12 +252,12 @@ export function MtfAnalysisPanel({
 
       {entry.entryWarnings.length > 0 && (
         <div className="space-y-1">
-          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">
+          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">
             <AlertTriangle className="size-3" />
             Entry Warnings
           </p>
           {entry.entryWarnings.slice(0, compact ? 2 : 3).map((warning) => (
-            <p key={warning} className="text-[10px] text-amber-200/85">
+            <p key={warning} className="text-[10px] text-warning-muted/85">
               {warning}
             </p>
           ))}

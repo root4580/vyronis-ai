@@ -161,8 +161,8 @@ export function WeeklyWarRoom() {
 
       <header className="space-y-1">
         <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-            <Swords className="size-5 text-amber-200" />
+          <div className="flex size-11 items-center justify-center rounded-lg border border-warning/30 bg-warning/10">
+            <Swords className="size-5 text-warning-muted" />
           </div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Weekly War Room</h1>

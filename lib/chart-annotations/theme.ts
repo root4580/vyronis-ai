@@ -11,10 +11,10 @@ export type AnnotationThemeStyle = {
 
 const TONE_STYLES: Record<ChartAnnotationTone, AnnotationThemeStyle> = {
   bullish: {
-    stroke: "rgba(34, 211, 238, 0.95)",
-    fill: "rgba(34, 211, 238, 0.12)",
-    glow: "rgba(34, 211, 238, 0.45)",
-    chipBg: "rgba(34, 211, 238, 0.16)",
+    stroke: "rgb(from var(--color-accent) r g b / 0.95)",
+    fill: "rgb(from var(--color-accent) r g b / 0.12)",
+    glow: "rgb(from var(--color-accent) r g b / 0.45)",
+    chipBg: "rgb(from var(--color-accent) r g b / 0.16)",
     chipText: "#a5f3fc",
   },
   bearish: {

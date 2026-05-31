@@ -41,7 +41,7 @@ export function WeeklyReviewSummaryCard({
             type="button"
             onClick={onGenerate}
             disabled={isGenerating}
-            className="mt-4 bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+            className="mt-4 btn-primary"
           >
             {isGenerating ? "Scanning journal…" : "Generate Weekly Review"}
           </Button>
@@ -103,7 +103,7 @@ export function WeeklyReviewSummaryCard({
               type="button"
               size="sm"
               onClick={onOpenReport}
-              className="bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+              className="btn-primary"
             >
               Open Full Report
               <ChevronRight className="ml-1 size-4" />

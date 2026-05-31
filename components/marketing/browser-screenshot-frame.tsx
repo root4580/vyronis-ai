@@ -20,10 +20,10 @@ export function BrowserScreenshotFrame({
     <figure className={cn("group relative", className)}>
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-3 rounded-[1.35rem] bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.14),transparent_68%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute -inset-3 rounded-[1.35rem] bg-[radial-gradient(ellipse_at_center,rgb(from var(--color-accent) r g b / 0.14),transparent_68%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100"
       />
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.14] bg-[#070b10] shadow-[0_28px_90px_rgba(0,0,0,0.58)] ring-1 ring-cyan-glow/15 transition-transform duration-300 group-hover:-translate-y-0.5">
-        <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[linear-gradient(180deg,#0a1017_0%,#060a10_100%)] px-3.5 py-2.5">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.14] bg-surface-page shadow-[0_28px_90px_rgba(0,0,0,0.58)] ring-1 ring-cyan-glow/15 transition-transform duration-300 group-hover:-translate-y-0.5">
+        <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[linear-gradient(180deg,var(--surface-card)_0%,var(--surface-page)_100%)] px-3.5 py-2.5">
           <div className="flex gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-[#ff5f57]" />
             <span className="size-2.5 rounded-full bg-[#febc2e]" />
@@ -36,10 +36,10 @@ export function BrowserScreenshotFrame({
             Product preview
           </span>
         </div>
-        <div className="relative overflow-hidden bg-[#0a0f14]">
+        <div className="relative overflow-hidden bg-surface-modal">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(34,211,238,0.04)_0%,transparent_18%,transparent_82%,rgba(0,0,0,0.22)_100%)]"
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(from var(--color-accent) r g b / 0.04)_0%,transparent_18%,transparent_82%,rgba(0,0,0,0.22)_100%)]"
           />
           <img
             src={src}
@@ -65,8 +65,8 @@ export function BrowserMockFrame({
   children: ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0a0f14] shadow-2xl shadow-black/40">
-      <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[#060a10] px-3 py-2">
+    <div className="overflow-hidden rounded-2xl border border-white/[0.12] bg-surface-modal shadow-2xl shadow-black/40">
+      <div className="flex items-center gap-2 border-b border-white/[0.08] bg-surface-page px-3 py-2">
         <div className="flex gap-1.5" aria-hidden>
           <span className="size-2 rounded-full bg-[#ff5f57]/90" />
           <span className="size-2 rounded-full bg-[#febc2e]/90" />

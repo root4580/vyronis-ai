@@ -317,7 +317,7 @@ export default function ProfileSettingsPage() {
                 <Button
                   type="submit"
                   disabled={isSaving}
-                  className="mt-6 h-11 w-full bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+                  className="mt-6 h-11 w-full btn-primary"
                 >
                   {isSaving ? (
                     <span className="flex items-center gap-2">

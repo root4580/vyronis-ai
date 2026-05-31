@@ -140,7 +140,7 @@ function CoachBubble({ message }: { message: TradeCoachMessageRecord }) {
           "max-w-[88%] rounded-2xl px-3 py-2 text-[12px] leading-snug sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-relaxed",
           isCoach
             ? isRedFlag
-              ? "border border-amber-500/25 bg-amber-500/[0.08] text-foreground/90"
+              ? "border border-warning/25 bg-warning/[0.08] text-foreground/90"
               : "border border-cyan-glow/15 bg-cyan-glow/[0.06] text-foreground/90"
             : isMtfEvent
               ? "border border-profit/20 bg-profit/[0.06] text-foreground/90"
@@ -888,7 +888,7 @@ export function TradeCoachPanel({
                     <Button
                       type="button"
                       onClick={() => onLogPlannedTrade(session.id)}
-                      className="h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-background"
+                      className="h-11 w-full btn-primary"
                     >
                       <ClipboardList className="mr-2 size-4" />
                       Log this trade
@@ -1030,7 +1030,7 @@ export function TradeCoachPanel({
                     type="button"
                     disabled={isSubmitting || isLoading || !draft}
                     onClick={() => void handleSubmitAnswer()}
-                    className="trade-coach-checkin-submit h-10 w-full bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                    className="trade-coach-checkin-submit h-10 w-full btn-primary"
                   >
                     {isSubmitting ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -1061,7 +1061,7 @@ export function TradeCoachPanel({
                     type="button"
                     disabled={isSubmitting || isLoading || !draft}
                     onClick={() => void handleSubmitAnswer()}
-                    className="trade-coach-checkin-submit h-10 w-full bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                    className="trade-coach-checkin-submit h-10 w-full btn-primary"
                   >
                     {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Continue"}
                   </Button>
@@ -1082,7 +1082,7 @@ export function TradeCoachPanel({
                     type="button"
                     disabled={isSubmitting || isLoading || !draft.trim()}
                     onClick={() => void handleSubmitAnswer()}
-                    className="trade-coach-checkin-submit h-10 shrink-0 px-4 bg-cyan-glow text-background hover:bg-cyan-glow/90"
+                    className="trade-coach-checkin-submit h-10 shrink-0 px-4 btn-primary"
                     aria-label="Submit answer"
                   >
                     {isSubmitting ? (

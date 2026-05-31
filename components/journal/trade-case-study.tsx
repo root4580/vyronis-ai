@@ -32,7 +32,7 @@ const SECTION_ICONS: Record<string, typeof Layers> = {
 
 function toneClass(tone: CaseStudySection["tone"]) {
   if (tone === "positive") return "border-profit/20 bg-profit/[0.04]"
-  if (tone === "warning") return "border-amber-500/25 bg-amber-500/[0.05]"
+  if (tone === "warning") return "border-warning/25 bg-warning/[0.05]"
   if (tone === "insight") return "border-cyan-glow/20 bg-cyan-glow/[0.04]"
   return "border-white/[0.08] bg-white/[0.02]"
 }
@@ -49,7 +49,7 @@ export function TradeCaseStudyView({ study, onSync, syncing, tradeId }: Props) {
 
   return (
     <div className="space-y-3">
-      <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.04] px-3 py-2.5">
+      <DashboardInsetPanel className="border-warning/15 bg-warning/[0.04] px-3 py-2.5">
         <p className="text-[11px] leading-relaxed text-amber-100/90">{study.discretionaryNote}</p>
       </DashboardInsetPanel>
 

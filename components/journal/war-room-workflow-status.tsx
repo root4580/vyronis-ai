@@ -11,7 +11,7 @@ export function WarRoomWorkflowStatus({ readiness }: { readiness: WarRoomReadine
     <div className="rounded-xl border border-white/[0.08] bg-black/35 px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-amber-200/80">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-warning-muted/80">
             Mission control
           </p>
           <p className="mt-0.5 text-[13px] font-medium text-foreground/92">{readiness.headline}</p>
@@ -19,7 +19,7 @@ export function WarRoomWorkflowStatus({ readiness }: { readiness: WarRoomReadine
         <div className="flex items-center gap-2">
           <div className="h-2 flex-1 min-w-[120px] overflow-hidden rounded-full bg-white/[0.06] sm:max-w-[140px]">
             <div
-              className="h-full rounded-full bg-amber-500/70 transition-[width]"
+              className="h-full rounded-full bg-warning/70 transition-[width]"
               style={{ width: `${readiness.percent}%` }}
             />
           </div>

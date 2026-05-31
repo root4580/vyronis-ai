@@ -36,7 +36,7 @@ export function AnalyticsDashboard({ analytics, startingBalance }: AnalyticsDash
         description="Log your first trade in the journal to unlock Vyronis performance analytics, equity curves, and coaching insights."
         className="min-h-[420px] rounded-2xl border border-white/[0.06] bg-black/20"
       >
-        <Button asChild size="sm" className="mt-4 bg-cyan-glow/90 text-black hover:bg-cyan-glow">
+        <Button asChild size="sm" className="mt-4 btn-primary">
           <Link href={`${APP_HOME_PATH}?action=new-trade`}>Log your first trade</Link>
         </Button>
       </DashboardEmptyState>

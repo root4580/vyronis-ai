@@ -49,7 +49,7 @@ export function AdaptiveCognitionPanel({ adaptive, className }: AdaptiveCognitio
           <span>Market {performance.marketConditions}%</span>
         </div>
         {performance.luckyWinWarning ? (
-          <p className="mt-2 text-[11px] text-amber-200/90">{performance.luckyWinWarning}</p>
+          <p className="mt-2 text-[11px] text-warning-muted/90">{performance.luckyWinWarning}</p>
         ) : null}
         <p className="mt-2 text-[10px] text-muted-foreground/75">{performance.narrative}</p>
       </div>
@@ -61,7 +61,7 @@ export function AdaptiveCognitionPanel({ adaptive, className }: AdaptiveCognitio
           {behavioral.cycles
             .filter((c) => c.active)
             .map((c) => (
-              <li key={c.cycle} className="text-[10px] capitalize text-amber-200/85">
+              <li key={c.cycle} className="text-[10px] capitalize text-warning-muted/85">
                 {c.cycle.replace(/_/g, " ")} — {c.narrative}
               </li>
             ))}

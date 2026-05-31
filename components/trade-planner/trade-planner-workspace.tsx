@@ -318,7 +318,7 @@ export function TradePlannerWorkspace({
       </div>
 
       {saveUnavailable ? (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3">
+        <div className="rounded-xl border border-warning/25 bg-warning/[0.08] px-4 py-3">
           <p className="text-[11px] font-medium text-amber-100/95">
             Planner saving unavailable — migration pending
           </p>
@@ -451,7 +451,7 @@ export function TradePlannerWorkspace({
                 <MetricTile
                   label={
                     <>
-                      <span className="text-amber-400">Est.</span> std lots
+                      <span className="text-warning-foreground">Est.</span> std lots
                     </>
                   }
                   value={formatLotSize(plan.recommendedLots)}
@@ -466,7 +466,7 @@ export function TradePlannerWorkspace({
                   plan.suggestedAction === "plan_valid"
                     ? "border-profit/20 bg-profit/[0.06]"
                     : plan.suggestedAction === "adjust_plan"
-                      ? "border-amber-500/20 bg-amber-500/[0.06]"
+                      ? "border-warning/20 bg-warning/[0.06]"
                       : "border-loss/20 bg-loss/[0.06]",
                 )}
               >
@@ -474,7 +474,7 @@ export function TradePlannerWorkspace({
                   {plan.suggestedAction === "plan_valid" ? (
                     <CheckCircle2 className="mt-0.5 size-4 text-profit" />
                   ) : (
-                    <AlertTriangle className="mt-0.5 size-4 text-amber-300" />
+                    <AlertTriangle className="mt-0.5 size-4 text-warning-foreground" />
                   )}
                   <p className="text-[12px] leading-relaxed text-foreground/90">{plan.suggestedActionLabel}</p>
                 </div>
@@ -485,7 +485,7 @@ export function TradePlannerWorkspace({
                   {plan.warnings.map((warning) => (
                     <DashboardInsetPanel
                       key={warning.id}
-                      className="border-amber-500/20 bg-amber-500/[0.05] px-3 py-2"
+                      className="border-warning/20 bg-warning/[0.05] px-3 py-2"
                     >
                       <p className="text-[11px] leading-relaxed text-amber-100/90">{warning.message}</p>
                     </DashboardInsetPanel>
@@ -496,7 +496,7 @@ export function TradePlannerWorkspace({
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
-                  className="w-full bg-cyan-glow text-black hover:bg-cyan-glow/90"
+                  className="w-full btn-primary"
                   disabled={!canSave || isSaving}
                   onClick={() => void handleSavePlan()}
                 >
@@ -542,7 +542,7 @@ export function TradePlannerWorkspace({
                       <div className="text-right text-[11px] tabular-nums">
                         <p className="text-cyan-glow">{formatRiskReward(saved.rr)}</p>
                         <p className="text-muted-foreground/70">
-                          <span className="text-amber-400/90">Est.</span> {formatLotSize(saved.recommendedLots)} lots
+                          <span className="text-warning-foreground/90">Est.</span> {formatLotSize(saved.recommendedLots)} lots
                         </p>
                       </div>
                     </DashboardInsetPanel>

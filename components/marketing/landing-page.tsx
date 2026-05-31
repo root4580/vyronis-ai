@@ -132,7 +132,7 @@ function Nav() {
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <Link href="/auth/login">Sign in</Link>
           </Button>
-          <Button asChild size="sm" className="bg-cyan-glow text-background hover:bg-cyan-glow/90">
+          <Button asChild size="sm" className="btn-primary">
             <Link href="/auth/sign-up">
               Start free beta
               <ArrowRight className="ml-1 size-3.5" />
@@ -195,7 +195,7 @@ export function LandingPage() {
                 <Button
                   asChild
                   size="lg"
-                  className="h-12 bg-gradient-to-r from-cyan-glow to-profit font-semibold text-background"
+                  className="h-12 btn-primary"
                 >
                   <Link href="/auth/sign-up">
                     Create free account
@@ -288,7 +288,7 @@ export function LandingPage() {
               <p className="mt-2 text-sm text-foreground/90">
                 Why it passed: HTF pro-trend aligned · CHoCH at AOI · R:R 1:3.2
               </p>
-              <p className="mt-2 text-sm text-amber-200/90">
+              <p className="mt-2 text-sm text-warning-muted/90">
                 Warning: Session outside London kill zone
               </p>
               <p className="mt-3 rounded-lg border border-cyan-glow/20 bg-cyan-glow/[0.05] p-3 text-[12px]">
@@ -353,7 +353,7 @@ export function LandingPage() {
                     ),
                   )}
                 </ul>
-                <Button asChild className="mt-6 w-full bg-cyan-glow text-background">
+                <Button asChild className="mt-6 w-full btn-primary">
                   <Link href="/auth/sign-up">Join closed beta</Link>
                 </Button>
               </div>
@@ -412,7 +412,7 @@ export function LandingPage() {
               Create your command center — free during closed beta, no credit card required.
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-12 bg-cyan-glow text-background">
+              <Button asChild size="lg" className="h-12 btn-primary">
                 <Link href="/auth/sign-up">Create free account</Link>
               </Button>
               <Button asChild variant="ghost" size="lg" className="h-12">

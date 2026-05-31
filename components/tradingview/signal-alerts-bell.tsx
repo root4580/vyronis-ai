@@ -25,13 +25,13 @@ type SignalAlertsBellProps = {
 function recommendationClass(rec: string | null | undefined) {
   if (rec === "TAKE") return "border-profit/25 bg-profit/[0.08] text-profit"
   if (rec === "SKIP") return "border-loss/25 bg-loss/[0.08] text-loss"
-  return "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+  return "border-warning/25 bg-warning/[0.08] text-warning-foreground"
 }
 
 function gradeClass(grade: string | null | undefined) {
   if (grade === "A+") return "border-profit/30 bg-profit/[0.1] text-profit"
   if (grade === "B") return "border-cyan-glow/30 bg-cyan-glow/[0.1] text-cyan-glow"
-  if (grade === "C") return "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+  if (grade === "C") return "border-warning/25 bg-warning/[0.08] text-warning-foreground"
   return "border-loss/25 bg-loss/[0.08] text-loss/90"
 }
 
@@ -83,7 +83,7 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
             )}
           />
           {hasUnread ? (
-            <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-cyan-glow px-1 text-[9px] font-semibold text-black shadow-[0_0_12px_rgba(34,211,238,0.55)]">
+            <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-cyan-glow px-1 text-[9px] font-semibold text-black shadow-[0_0_12px_rgb(from var(--color-accent) r g b / 0.55)]">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           ) : null}
@@ -91,7 +91,7 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-[min(100vw-2rem,24rem)] border-white/[0.08] bg-[#0a0f14]/98 p-0 backdrop-blur-xl"
+        className="w-[min(100vw-2rem,24rem)] border-white/[0.08] bg-surface-modal/98 p-0 backdrop-blur-xl"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-2.5">

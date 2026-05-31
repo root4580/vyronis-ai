@@ -88,7 +88,7 @@ export function CoachChartUpload({
           disabled || busy
             ? "cursor-not-allowed opacity-60"
             : isDragging
-              ? "scale-[1.01] border-cyan-glow bg-cyan-glow/[0.1] shadow-[0_0_24px_rgba(34,211,238,0.15)]"
+              ? "scale-[1.01] border-cyan-glow bg-cyan-glow/[0.1] shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.15)]"
               : "border-white/[0.08] bg-white/[0.02] hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.04]",
         )}
         onDragOver={(event) => {

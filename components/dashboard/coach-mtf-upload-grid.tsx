@@ -365,7 +365,7 @@ export function CoachMtfUploadGrid({
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] font-medium text-foreground/85">{countLabel}</p>
           {uploadedCount < 5 ? (
-            <p className="text-[10px] text-amber-400/85">Select up to 5 at once (W→M15)</p>
+            <p className="text-[10px] text-warning-foreground/85">Select up to 5 at once (W→M15)</p>
           ) : null}
         </div>
 
@@ -531,7 +531,7 @@ export function CoachMtfUploadGrid({
           uploadBusy
         }
         onClick={() => void onRunAnalysis()}
-        className="mobile-sticky-submit h-11 w-full shrink-0 bg-gradient-to-r from-cyan-glow to-profit text-background"
+        className="mobile-sticky-submit h-11 w-full shrink-0 btn-primary"
       >
         {isAnalyzing ? (
           <Loader2 className="size-4 animate-spin" />

@@ -5,9 +5,9 @@ import { WAR_ROOM_MIGRATION_FILES } from "@/lib/strategy-brain/migration-hint"
 
 export function StrategyBrainSetupBanner({ onRetry }: { onRetry?: () => void }) {
   return (
-    <div className="rounded-xl border border-amber-500/35 bg-amber-500/[0.08] px-4 py-4">
+    <div className="rounded-xl border border-warning/35 bg-warning/[0.08] px-4 py-4">
       <div className="flex gap-3">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-300" />
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning-foreground" />
         <div className="min-w-0 space-y-2">
           <p className="text-[13px] font-medium text-amber-100">Database setup required</p>
           <p className="text-[12px] leading-relaxed text-amber-100/85">

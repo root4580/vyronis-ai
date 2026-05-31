@@ -28,7 +28,7 @@ const BREAKDOWN_LABELS: { key: keyof SetupScoreResult["breakdown"]; label: strin
 function dimensionColor(value: number): string {
   if (value >= 80) return "text-cyan-glow"
   if (value >= 65) return "text-profit"
-  if (value >= 50) return "text-amber-300"
+  if (value >= 50) return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -110,10 +110,10 @@ export function SetupScorePanel({ result, compact = false }: SetupScorePanelProp
 
       {!compact && result.warnings.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">Warnings</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">Warnings</p>
           {result.warnings.slice(0, 3).map((warning) => (
-            <div key={warning} className="flex items-start gap-1.5 text-[10px] text-amber-200/85">
-              <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-400" />
+            <div key={warning} className="flex items-start gap-1.5 text-[10px] text-warning-muted/85">
+              <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
               <span>{warning}</span>
             </div>
           ))}

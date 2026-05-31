@@ -155,7 +155,7 @@ export default function ResetPasswordPage() {
           <AuthSuccessBanner message="Password saved successfully." />
           <Link
             href="/auth/login"
-            className="auth-submit-btn inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-glow to-cyan-glow/80 py-3 font-semibold text-background"
+            className="auth-submit-btn inline-flex w-full items-center justify-center gap-2 rounded-xl btn-primary py-3"
           >
             Sign In
             <ArrowRight className="size-4" />
@@ -176,7 +176,7 @@ export default function ResetPasswordPage() {
           {error && <AuthErrorBanner message={error} />}
           <Link
             href="/auth/forgot-password"
-            className="auth-submit-btn inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-glow to-cyan-glow/80 py-3 font-semibold text-background"
+            className="auth-submit-btn inline-flex w-full items-center justify-center gap-2 rounded-xl btn-primary py-3"
           >
             Request New Link
           </Link>

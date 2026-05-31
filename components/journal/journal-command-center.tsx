@@ -170,7 +170,7 @@ export function JournalCommandCenter({
           <Button
             type="button"
             onClick={() => onLogTrade(selectedDate)}
-            className="h-10 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+            className="h-10 w-full btn-primary sm:w-auto"
           >
             <Plus className="mr-2 size-4" />
             Log trade

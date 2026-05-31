@@ -253,7 +253,7 @@ export function WarRoomHtfUpload({
             "mt-3 space-y-2 rounded-lg border p-2.5 text-[11px]",
             preview.available
               ? "border-cyan-glow/25 bg-cyan-glow/[0.06]"
-              : "border-amber-500/25 bg-amber-500/[0.06]",
+              : "border-warning/25 bg-warning/[0.06]",
           )}
         >
           <p className="font-medium text-foreground/90">

@@ -32,7 +32,7 @@ function statusLabel(session: PlannedCoachSessionItem) {
 function recommendationClass(rec: string | null | undefined) {
   if (rec === "TAKE") return "border-profit/25 bg-profit/[0.08] text-profit"
   if (rec === "SKIP") return "border-loss/25 bg-loss/[0.08] text-loss"
-  if (rec === "CAUTION") return "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+  if (rec === "CAUTION") return "border-warning/25 bg-warning/[0.08] text-warning-foreground"
   return "border-white/10 text-muted-foreground"
 }
 
@@ -98,7 +98,7 @@ export function PlannedTradesSection({
                   className={cn(
                     "rounded-xl border px-3 py-3",
                     isTradingView
-                      ? "border-cyan-glow/20 bg-cyan-glow/[0.03] shadow-[inset_0_1px_0_rgba(34,211,238,0.08)]"
+                      ? "border-cyan-glow/20 bg-cyan-glow/[0.03] shadow-[inset_0_1px_0_rgb(from var(--color-accent) r g b / 0.08)]"
                       : "border-white/[0.06] bg-white/[0.02]",
                   )}
                 >

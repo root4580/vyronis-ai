@@ -17,9 +17,9 @@ const severityStyles = {
     icon: Info,
   },
   warning: {
-    border: "border-amber-500/25",
-    bg: "bg-amber-500/[0.08]",
-    text: "text-amber-200/90",
+    border: "border-warning/25",
+    bg: "bg-warning/[0.08]",
+    text: "text-warning-muted/90",
     icon: AlertTriangle,
   },
   critical: {

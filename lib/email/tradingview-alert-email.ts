@@ -1,3 +1,16 @@
+/*
+ * Email-safe token hex (mirrors app/globals.css — CSS var() not supported in clients)
+ * --surface-page    → #0f1117
+ * --surface-card    → #13161f
+ * --color-accent    → #22d3ee
+ * --color-profit    → #10b981
+ * --color-loss      → #ef4444
+ * --warning         → #f59e0b
+ * --text-primary    → #e6e6e6
+ * --text-secondary  → #9ca3af
+ * --text-muted      → #4b5563
+ */
+
 import { getAppBaseUrl } from "@/lib/env"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { isResendConfigured, sendResendEmail } from "@/lib/alerts/resend-config"

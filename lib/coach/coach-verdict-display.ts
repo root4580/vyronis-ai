@@ -60,6 +60,6 @@ export function mapCoachVerdict(input: {
 
 export function coachVerdictClassName(tone: CoachVerdictDisplay["tone"]): string {
   if (tone === "profit") return "border-profit/35 bg-profit/[0.12] text-profit"
-  if (tone === "amber") return "border-amber-500/35 bg-amber-500/[0.12] text-amber-300"
+  if (tone === "amber") return "border-warning/35 bg-warning/[0.12] text-warning-foreground"
   return "border-loss/35 bg-loss/[0.12] text-loss"
 }

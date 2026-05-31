@@ -3,13 +3,10 @@ import type { DashboardTab } from "@/components/dashboard/trading-components"
 
 export type DockHighlightId =
   | "dashboard"
-  | "journal"
   | "planner"
-  | "war-room"
   | "coach"
   | "log"
-  | "strategies"
-  | "analytics"
+  | "more"
   | null
 
 export function resolveDockHighlight(input: {
@@ -21,11 +18,7 @@ export function resolveDockHighlight(input: {
 }): DockHighlightId {
   if (input.tradeModalOpen) return "log"
   if (input.commandCenterOpen && input.commandCenterMode === "companion") return "coach"
-  if (input.pathname.startsWith("/war-room")) return "war-room"
   if (input.pathname.startsWith("/trade-planner")) return "planner"
-  if (input.pathname.startsWith("/analytics")) return "analytics"
-  if (input.activeTab === "journal") return "journal"
-  if (input.activeTab === "strategies") return "strategies"
   if (input.activeTab === "dashboard") return "dashboard"
   return null
 }

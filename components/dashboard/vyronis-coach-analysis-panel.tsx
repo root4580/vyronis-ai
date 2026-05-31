@@ -38,7 +38,7 @@ export function VyronisCoachAnalysisPanel({ coach, className }: VyronisCoachAnal
               coach.risk_level === "HIGH"
                 ? "text-loss"
                 : coach.risk_level === "MEDIUM"
-                  ? "text-amber-300"
+                  ? "text-warning-foreground"
                   : "text-profit",
             )}
           >
@@ -69,7 +69,7 @@ export function VyronisCoachAnalysisPanel({ coach, className }: VyronisCoachAnal
             {coach.warnings.map((warning) => (
               <li
                 key={warning}
-                className="text-[11px] leading-relaxed text-amber-200/90 before:mr-1.5 before:content-['·']"
+                className="text-[11px] leading-relaxed text-warning-muted/90 before:mr-1.5 before:content-['·']"
               >
                 {warning}
               </li>

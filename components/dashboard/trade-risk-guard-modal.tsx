@@ -32,10 +32,10 @@ function severityAccent(severity: TradeRiskGuardResult["severity"]) {
     }
   }
   return {
-    border: "border-amber-500/25",
-    glow: "from-amber-500/12 via-transparent to-transparent",
-    icon: "text-amber-200",
-    badge: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+    border: "border-warning/25",
+    glow: "from-warning/12 via-transparent to-transparent",
+    icon: "text-warning-muted",
+    badge: "border-warning/30 bg-warning/10 text-amber-100",
   }
 }
 
@@ -74,7 +74,7 @@ export function TradeRiskGuardModal({
         <div className="relative shrink-0 border-b border-white/[0.06] px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.12)]">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.08] shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]">
                 <Brain className={cn("size-5", accent.icon)} />
               </div>
               <div className="min-w-0">
@@ -118,7 +118,7 @@ export function TradeRiskGuardModal({
                       "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
                       flag.severity === "critical"
                         ? "border-loss/30 bg-loss/[0.08] text-loss"
-                        : "border-amber-500/25 bg-amber-500/[0.08] text-amber-200",
+                        : "border-warning/25 bg-warning/[0.08] text-warning-muted",
                     )}
                   >
                     {flag.severity === "critical" ? "High" : "Watch"}

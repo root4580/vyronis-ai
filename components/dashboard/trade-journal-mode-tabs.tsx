@@ -44,13 +44,13 @@ export function TradeJournalModeTabs({
         <button
           type="button"
           onClick={onDismissPlanHint}
-          className="absolute -top-11 left-0 z-10 max-w-[min(100%,240px)] rounded-lg border border-cyan-glow/25 bg-[#0d1118] px-3 py-2 text-left shadow-lg shadow-black/30"
+          className="absolute -top-11 left-0 z-10 max-w-[min(100%,240px)] rounded-lg border border-cyan-glow/25 bg-surface-modal px-3 py-2 text-left shadow-lg shadow-black/30"
         >
           <p className="text-[11px] font-medium leading-snug text-cyan-glow">
             Score your setup BEFORE you enter — use Setup Scoring
           </p>
           <p className="mt-0.5 text-[10px] text-muted-foreground/70">Tap to dismiss</p>
-          <span className="absolute -bottom-1.5 left-6 size-3 rotate-45 border-b border-r border-cyan-glow/25 bg-[#0d1118]" />
+          <span className="absolute -bottom-1.5 left-6 size-3 rotate-45 border-b border-r border-cyan-glow/25 bg-surface-modal" />
         </button>
       ) : null}
 
@@ -72,7 +72,7 @@ export function TradeJournalModeTabs({
             className={cn(
               "flex items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-[11px] font-semibold transition-all sm:gap-2 sm:px-3 sm:text-[12px]",
               active
-                ? "bg-gradient-to-r from-cyan-glow/20 to-cyan-glow/10 text-cyan-glow shadow-[0_0_16px_rgba(34,211,238,0.12)]"
+                ? "bg-gradient-to-r from-cyan-glow/20 to-cyan-glow/10 text-cyan-glow shadow-[0_0_16px_rgb(from var(--color-accent) r g b / 0.12)]"
                 : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground/85",
             )}
           >

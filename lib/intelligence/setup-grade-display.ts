@@ -20,7 +20,7 @@ export const GRADE_TONE_CLASSES: Record<
   string
 > = {
   profit: "border-profit/30 bg-profit/[0.1] text-profit",
-  amber: "border-amber-500/30 bg-amber-500/[0.1] text-amber-300",
+  amber: "border-warning/30 bg-warning/[0.1] text-warning-foreground",
   loss: "border-loss/30 bg-loss/[0.1] text-loss",
   muted: "border-white/[0.1] bg-white/[0.04] text-muted-foreground/80",
 }

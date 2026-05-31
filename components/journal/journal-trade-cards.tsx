@@ -43,7 +43,7 @@ export function JournalTradeCards({
             key={trade.id}
             className={cn(
               "relative overflow-hidden rounded-2xl border p-4 transition-all",
-              "hover:border-cyan-glow/25 hover:shadow-[0_0_24px_rgba(34,211,238,0.08)]",
+              "hover:border-cyan-glow/25 hover:shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.08)]",
               resultTone,
             )}
           >

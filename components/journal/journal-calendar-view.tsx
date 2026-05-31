@@ -142,7 +142,7 @@ function MobileDayList({
             onClick={() => onSelectDate(day.date)}
             className={cn(
               "flex w-full flex-col gap-2 rounded-xl border px-4 py-3 text-left",
-              tone === "win" && "border-emerald-500/30 bg-emerald-950/50",
+              tone === "win" && "border-profit/30 bg-emerald-950/50",
               tone === "loss" && "border-rose-500/30 bg-rose-950/50",
               tone === "neutral" && "border-white/[0.08] bg-zinc-800/80",
             )}
@@ -257,7 +257,7 @@ export function JournalCalendarView({
                 />
                 <div className="flex flex-wrap gap-3 border-t border-white/[0.06] pt-3 text-[10px] text-muted-foreground/70">
                   <span className="flex items-center gap-1.5">
-                    <span className="size-3 rounded-md border border-emerald-500/35 bg-emerald-950/80" />
+                    <span className="size-3 rounded-md border border-profit/35 bg-emerald-950/80" />
                     Win day
                   </span>
                   <span className="flex items-center gap-1.5">
@@ -275,7 +275,7 @@ export function JournalCalendarView({
               <Button
                 type="button"
                 onClick={onLogTrade}
-                className="w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+                className="w-full btn-primary sm:w-auto"
               >
                 <Plus className="mr-2 size-4" />
                 Log trade

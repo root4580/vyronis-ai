@@ -1,49 +1,34 @@
 "use client"
 
-import { BarChart3, BookOpen, Brain, ClipboardList, Crosshair, LayoutDashboard, Target } from "lucide-react"
-import type { DashboardTab } from "@/components/dashboard/trading-components"
+import { Brain, ClipboardList, LayoutDashboard, Menu, Target } from "lucide-react"
 import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { cn } from "@/lib/utils"
 
 type DashboardMobileDockProps = {
-  activeTab: DashboardTab
   dockHighlight?: DockHighlightId
   onHome: () => void
-  onJournal: () => void
-  onCoach: () => void
+  onPlanner: () => void
   onLog: () => void
-  onPlanner?: () => void
-  onWarRoom?: () => void
-  onAnalytics?: () => void
+  onCoach: () => void
+  onMore: () => void
   className?: string
 }
 
 export function DashboardMobileDock({
-  activeTab,
   dockHighlight = null,
   onHome,
-  onJournal,
-  onCoach,
-  onLog,
   onPlanner,
-  onWarRoom,
-  onAnalytics,
+  onLog,
+  onCoach,
+  onMore,
   className,
 }: DashboardMobileDockProps) {
   const items = [
     { id: "dashboard" as const, label: "Home", icon: LayoutDashboard, onClick: onHome },
-    ...(onPlanner
-      ? [{ id: "planner" as const, label: "Plan", icon: Target, onClick: onPlanner }]
-      : []),
-    { id: "journal" as const, label: "Journal", icon: BookOpen, onClick: onJournal },
-    { id: "coach" as const, label: "Chat", icon: Brain, onClick: onCoach, accent: true },
+    { id: "planner" as const, label: "Plan", icon: Target, onClick: onPlanner },
     { id: "log" as const, label: "Log", icon: ClipboardList, onClick: onLog },
-    ...(onWarRoom
-      ? [{ id: "war-room" as const, label: "War Room", icon: Crosshair, onClick: onWarRoom }]
-      : []),
-    ...(onAnalytics
-      ? [{ id: "analytics" as const, label: "Stats", icon: BarChart3, onClick: onAnalytics }]
-      : []),
+    { id: "coach" as const, label: "Chat", icon: Brain, onClick: onCoach, accent: true },
+    { id: "more" as const, label: "More", icon: Menu, onClick: onMore },
   ]
 
   return (

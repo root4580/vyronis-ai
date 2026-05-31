@@ -97,7 +97,7 @@ export function FirstRunSetupModal({
   }
 
   const selectMenuClassName =
-    "z-[200] border-white/[0.1] bg-[#0d1118] shadow-xl shadow-black/40"
+    "z-[200] border-white/[0.1] bg-surface-modal shadow-xl shadow-black/40"
 
   return (
     <div
@@ -237,7 +237,7 @@ export function FirstRunSetupModal({
                 <Button
                   type="button"
                   size="sm"
-                  className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+                  className="btn-primary"
                   disabled={isSaving}
                   onClick={() => void handleFinish(true)}
                 >
@@ -257,7 +257,7 @@ export function FirstRunSetupModal({
               <Button
                 type="button"
                 size="sm"
-                className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+                className="btn-primary"
                 disabled={isSaving}
                 onClick={() => setStep((value) => value + 1)}
               >

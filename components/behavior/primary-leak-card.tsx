@@ -32,10 +32,10 @@ function statusStyles(insight: PrimaryLeakInsight) {
   }
   if (insight.status === "low_confidence") {
     return {
-      border: "border-amber-500/20",
-      glow: "from-amber-500/10 via-transparent to-transparent",
-      accent: "text-amber-200/90",
-      pill: "border-amber-500/28 bg-amber-500/10 text-amber-100/90",
+      border: "border-warning/20",
+      glow: "from-warning/10 via-transparent to-transparent",
+      accent: "text-warning-muted/90",
+      pill: "border-warning/28 bg-warning/10 text-amber-100/90",
     }
   }
   return {

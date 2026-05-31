@@ -165,7 +165,7 @@ export function TodayHeroStrip({
     <section
       aria-label="Today"
       className={cn(
-        "today-hero-strip relative overflow-hidden rounded-2xl border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.08] via-white/[0.02] to-profit/[0.04] p-4 shadow-[0_0_40px_rgba(34,211,238,0.08)] sm:p-5",
+        "today-hero-strip relative overflow-hidden rounded-2xl border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.08] via-white/[0.02] to-profit/[0.04] p-4 shadow-[0_0_40px_rgb(from var(--color-accent) r g b / 0.08)] sm:p-5",
         className,
       )}
     >
@@ -221,7 +221,7 @@ export function TodayHeroStrip({
       <Button
         type="button"
         onClick={handlePrimaryCta}
-        className="today-hero-cta mt-4 h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-[13px] font-semibold text-background shadow-[0_0_28px_rgba(34,211,238,0.2)] hover:from-cyan-glow/95 hover:to-profit/95 sm:h-12"
+        className="btn-primary today-hero-cta mt-4 h-11 w-full text-[13px] sm:h-12"
       >
         {action.ctaLabel}
         <ArrowRight className="ml-2 size-4" />

@@ -28,7 +28,7 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
       <div className="mt-6 space-y-2">
         <Link
           href="/auth/login"
-          className="auth-submit-btn inline-flex w-full min-h-[48px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-glow to-cyan-glow/80 py-3 font-semibold text-background"
+          className="auth-submit-btn inline-flex w-full min-h-[48px] items-center justify-center gap-2 rounded-xl btn-primary py-3"
         >
           Back to Login
           <ArrowRight className="size-4" />

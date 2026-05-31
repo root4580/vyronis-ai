@@ -101,7 +101,7 @@ export function VyronisScoreResultModal({
           <Button
             type="button"
             onClick={onClose}
-            className="h-11 w-full bg-gradient-to-r from-cyan-glow to-profit font-semibold text-background"
+            className="h-11 w-full btn-primary"
           >
             Done
           </Button>
@@ -111,7 +111,7 @@ export function VyronisScoreResultModal({
       <div
         ref={captureRef}
         aria-hidden
-        className="pointer-events-none fixed left-[-9999px] top-0 w-[420px] overflow-hidden rounded-2xl border border-cyan-500/30 bg-[#0a0f14] p-6 text-white"
+        className="pointer-events-none fixed left-[-9999px] top-0 w-[420px] overflow-hidden rounded-2xl border border-accent/30 bg-surface-modal p-6 text-white"
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/90">
           Vyronis · Strategy score

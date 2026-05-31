@@ -145,7 +145,7 @@ export function SetupEvaluatorPanel({ pairPlans }: Props) {
               className={cn(
                 "rounded-lg border px-2 py-2 text-left text-[10px] transition-colors",
                 v === true && "border-profit/30 bg-profit/10 text-profit",
-                v === "borderline" && "border-amber-500/30 bg-amber-500/10 text-amber-200",
+                v === "borderline" && "border-warning/30 bg-warning/10 text-warning-muted",
                 v === false && "border-white/[0.06] bg-black/20 text-muted-foreground",
               )}
             >

@@ -1,9 +1,10 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { DashboardAppShell } from "@/components/dashboard/dashboard-app-shell"
 import { DashboardFab } from "@/components/dashboard/dashboard-fab"
 import { DashboardMobileDock } from "@/components/dashboard/dashboard-mobile-dock"
+import { DashboardMobileMoreSheet } from "@/components/dashboard/dashboard-mobile-more-sheet"
 import { DashboardUserBar } from "@/components/dashboard/dashboard-user-bar"
 import type { DashboardTab } from "@/components/dashboard/trading-components"
 import type { UserProfileCardProps } from "@/components/dashboard/user-profile-card"
@@ -21,12 +22,9 @@ type DashboardChromeProps = {
   onFabClick?: () => void
   showMobileDock?: boolean
   onDockHome?: () => void
-  onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
   onDockPlanner?: () => void
-  onDockWarRoom?: () => void
-  onDockAnalytics?: () => void
   aiLauncher?: ReactNode
   banner?: ReactNode
   mainClassName?: string
@@ -47,12 +45,9 @@ export function DashboardChrome({
   onFabClick,
   showMobileDock = false,
   onDockHome,
-  onDockJournal,
   onDockCoach,
   onDockLog,
   onDockPlanner,
-  onDockWarRoom,
-  onDockAnalytics,
   aiLauncher,
   banner,
   mainClassName,
@@ -60,6 +55,8 @@ export function DashboardChrome({
   onSignalAlertClick,
   dockHighlight = null,
 }: DashboardChromeProps) {
+  const [moreOpen, setMoreOpen] = useState(false)
+
   return (
     <DashboardAppShell
       activeTab={activeTab}
@@ -82,18 +79,22 @@ export function DashboardChrome({
       aiLauncher={aiLauncher}
       fab={showFab && onFabClick ? <DashboardFab onClick={onFabClick} /> : null}
       mobileDock={
-        showMobileDock && onDockHome && onDockJournal && onDockCoach && onDockLog ? (
-          <DashboardMobileDock
-            activeTab={activeTab}
-            dockHighlight={dockHighlight}
-            onHome={onDockHome}
-            onJournal={onDockJournal}
-            onCoach={onDockCoach}
-            onLog={onDockLog}
-            onPlanner={onDockPlanner}
-            onWarRoom={onDockWarRoom}
-            onAnalytics={onDockAnalytics}
-          />
+        showMobileDock && onDockHome && onDockCoach && onDockLog && onDockPlanner ? (
+          <>
+            <DashboardMobileDock
+              dockHighlight={moreOpen ? "more" : dockHighlight}
+              onHome={onDockHome}
+              onPlanner={onDockPlanner}
+              onLog={onDockLog}
+              onCoach={onDockCoach}
+              onMore={() => setMoreOpen(true)}
+            />
+            <DashboardMobileMoreSheet
+              open={moreOpen}
+              onClose={() => setMoreOpen(false)}
+              onOpenSettings={onOpenSettings}
+            />
+          </>
         ) : null
       }
       banner={banner}

@@ -183,6 +183,7 @@ export type DashboardTradeRow = {
   entry_quality?: string | null
   vyronis_evaluation?: import("@/lib/strategy/vyronis-journal-bridge").VyronisJournalEvaluationRecord | null
   import_source?: string | null
+  plan_id?: string | null
   created_at: string
 }
 
@@ -267,9 +268,9 @@ function detectTradingSession(): SessionInfo {
       name: "London Session",
       color: "amber",
       glowClass: "",
-      borderClass: "border-amber-500/30",
-      bgClass: "bg-amber-500/10",
-      textClass: "text-amber-500",
+      borderClass: "border-warning/30",
+      bgClass: "bg-warning/10",
+      textClass: "text-warning",
       isActive: true,
     }
   }
@@ -353,11 +354,11 @@ export function DashboardHeader({
 
   const researchLabActive = pathname.startsWith("/research-lab")
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
-  const warRoomActive = pathname.startsWith("/war-room") || dockHighlight === "war-room"
-  const analyticsActive = pathname.startsWith("/analytics") || dockHighlight === "analytics"
+  const warRoomActive = pathname.startsWith("/war-room")
+  const analyticsActive = pathname.startsWith("/analytics") || activeTab === "analytics"
   const coachActive = dockHighlight === "coach"
   const journalActive = activeTab === "journal" || pathname.startsWith("/journal/")
-  const strategiesActive = activeTab === "strategies" || dockHighlight === "strategies"
+  const strategiesActive = activeTab === "strategies"
   const dashboardActive =
     (activeTab === "dashboard" && !analyticsActive && !plannerActive && !warRoomActive) ||
     dockHighlight === "dashboard"
@@ -439,11 +440,11 @@ export function DashboardHeader({
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
                 d="M7 1L13 4V10L7 13L1 10V4L7 1Z"
-                stroke="#2dd4bf"
+                stroke="var(--color-accent)"
                 strokeWidth="1.5"
                 fill="none"
               />
-              <path d="M7 4L10 5.5V8.5L7 10L4 8.5V5.5L7 4Z" fill="#2dd4bf" opacity="0.6" />
+              <path d="M7 4L10 5.5V8.5L7 10L4 8.5V5.5L7 4Z" fill="var(--color-accent)" opacity="0.6" />
             </svg>
           </div>
           <div className="vyronis-nav__logo-text">
@@ -763,7 +764,7 @@ export function EquityCurveChart({ trades, startingBalance }: { trades?: Dashboa
                 contentStyle={CHART_TOOLTIP_STYLE}
                 labelStyle={{ color: "rgba(255,255,255,0.5)", marginBottom: 4, fontSize: 11 }}
                 formatter={(value: number) => [`$${value.toLocaleString()}`, "Equity"]}
-                cursor={{ stroke: "rgba(34, 211, 238, 0.25)", strokeWidth: 1 }}
+                cursor={{ stroke: "rgb(from var(--color-accent) r g b / 0.25)", strokeWidth: 1 }}
               />
               <Area
                 type="monotone"
@@ -995,7 +996,7 @@ export function RecentTradesTable({
             description="Log your first trade to start building analytics and coach feedback."
             className="min-h-[160px]"
           >
-            <Button asChild size="sm" className="mt-3 bg-cyan-glow/90 text-black hover:bg-cyan-glow">
+            <Button asChild size="sm" className="mt-3 btn-primary">
               <Link href={`${APP_HOME_PATH}?action=new-trade`}>Log your first trade</Link>
             </Button>
           </DashboardEmptyState>
@@ -1119,7 +1120,7 @@ export function RecentTradesTable({
                           <button
                             type="button"
                             onClick={() => trade && onScreenshotClick?.(trade)}
-                            className="group/chart journal-screenshot-thumb relative overflow-hidden rounded-lg border border-white/[0.08] transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-glow/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.18)]"
+                            className="group/chart journal-screenshot-thumb relative overflow-hidden rounded-lg border border-white/[0.08] transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-glow/40 hover:shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.18)]"
                             title="View chart screenshot"
                           >
                             <img
@@ -1128,7 +1129,7 @@ export function RecentTradesTable({
                               className="dashboard-image-zoom size-10 object-cover"
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover/chart:opacity-100">
-                              <ImageIcon className="size-4 text-cyan-glow drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                              <ImageIcon className="size-4 text-cyan-glow drop-shadow-[0_0_8px_rgb(from var(--color-accent) r g b / 0.6)]" />
                             </div>
                             <div className="pointer-events-none absolute -inset-1 rounded-lg opacity-0 blur-md transition-opacity duration-300 group-hover/chart:opacity-100 bg-cyan-glow/20" />
                           </button>
@@ -1350,7 +1351,7 @@ export function DisciplineScore({
                 strokeWidth="7"
                 strokeLinecap="round"
                 strokeDasharray={`${score * 2.51} ${100 * 2.51}`}
-                className="drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                className="drop-shadow-[0_0_10px_rgb(from var(--color-accent) r g b / 0.35)]"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -1368,13 +1369,13 @@ export function DisciplineScore({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground/80">Risk managed</span>
-            <span className={`font-medium tabular-nums ${riskManaged >= 80 ? "text-profit" : "text-amber-400"}`}>
+            <span className={`font-medium tabular-nums ${riskManaged >= 80 ? "text-profit" : "text-warning-foreground"}`}>
               {riskManaged}%
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground/80">Journal entries</span>
-            <span className="font-medium tabular-nums text-amber-400">{journalScore}%</span>
+            <span className="font-medium tabular-nums text-warning-foreground">{journalScore}%</span>
           </div>
         </div>
       </DashboardCardBody>
@@ -1665,11 +1666,11 @@ export function AITradeCoachPlaceholder({
   const activeInsight = rotationPool[activeInsightIndex] ?? analysis.insights[0]
 
   const typeStyles: Record<CoachInsightType, string> = {
-    warning: "border-amber-500/30 bg-amber-500/[0.08] text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.08)]",
-    success: "border-profit/30 bg-profit/[0.08] text-profit shadow-[0_0_20px_rgba(34,197,94,0.08)]",
-    insight: "border-cyan-glow/30 bg-cyan-glow/[0.08] text-cyan-glow shadow-[0_0_24px_rgba(34,211,238,0.1)]",
+    warning: "border-warning/30 bg-warning/[0.08] text-warning-foreground shadow-[0_0_20px_rgb(from_var(--color-warning)_r_g_b_/_0.08)]",
+    success: "border-profit/30 bg-profit/[0.08] text-profit shadow-[0_0_20px_rgb(from var(--color-profit) r g b / 0.08)]",
+    insight: "border-cyan-glow/30 bg-cyan-glow/[0.08] text-cyan-glow shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.1)]",
     info: "border-white/[0.08] bg-white/[0.03] text-muted-foreground shadow-[0_0_16px_rgba(255,255,255,0.03)]",
-    tip: "border-profit/25 bg-profit/[0.06] text-profit/90 shadow-[0_0_16px_rgba(34,197,94,0.06)]",
+    tip: "border-profit/25 bg-profit/[0.06] text-profit/90 shadow-[0_0_16px_rgb(from var(--color-profit) r g b / 0.06)]",
   }
 
   const typeIcons: Record<CoachInsightType, typeof Brain> = {
@@ -1738,11 +1739,11 @@ export function AITradeCoachPlaceholder({
             {analysis.activeWarnings.slice(0, 2).map((warning) => (
               <DashboardInsetPanel
                 key={warning.id}
-                className="border-amber-500/20 bg-amber-500/[0.06] px-3 py-2"
+                className="border-warning/20 bg-warning/[0.06] px-3 py-2"
               >
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-400" />
-                  <p className="text-[11px] leading-relaxed text-amber-200/90">{warning.message}</p>
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
+                  <p className="text-[11px] leading-relaxed text-warning-muted/90">{warning.message}</p>
                 </div>
               </DashboardInsetPanel>
             ))}
@@ -1752,9 +1753,9 @@ export function AITradeCoachPlaceholder({
         {mistakeAnalysis.insights[0] && (
           <DashboardInsetPanel className="glass border-loss/20 bg-loss/[0.05] px-3 py-2.5">
             <div className="flex items-start gap-2">
-              <Flame className="mt-0.5 size-3.5 shrink-0 text-amber-400" />
+              <Flame className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
               <div>
-                <p className="text-[9px] uppercase tracking-[0.12em] text-amber-400/80">Mistake Analysis</p>
+                <p className="text-[9px] uppercase tracking-[0.12em] text-warning-foreground/80">Mistake Analysis</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-foreground/85">{mistakeAnalysis.insights[0].message}</p>
               </div>
             </div>
@@ -1899,7 +1900,7 @@ export function StreakTrackerPlaceholder({ trades }: { trades?: DashboardTradeRo
 
   return (
     <DashboardCard interactive className="overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/[0.04] via-transparent to-cyan-glow/[0.03]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-warning/[0.04] via-transparent to-cyan-glow/[0.03]" />
       <DashboardCardHeader title="Streak Tracker" icon={Zap} />
       <DashboardCardBody className="relative">
         <div className="space-y-4">
@@ -2020,7 +2021,7 @@ export function QuantumAnalyticsPlaceholder({ trades }: { trades?: DashboardTrad
   const patternItems = [
     { label: 'Best Setup', value: patterns.bestSetup, color: 'text-cyan-glow' },
     { label: 'Best Session', value: patterns.bestSession, color: 'text-profit' },
-    { label: 'Win Emotion', value: patterns.winningEmotion, color: 'text-amber-500' },
+    { label: 'Win Emotion', value: patterns.winningEmotion, color: 'text-warning' },
     { label: 'Top Strategy', value: patterns.topStrategy, color: 'text-purple-400' },
   ]
 

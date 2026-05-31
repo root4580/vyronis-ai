@@ -222,7 +222,7 @@ export function CommandCenterInput({
       </div>
 
       {uploadError ? (
-        <p className="shrink-0 px-1 text-[10px] text-amber-200/90">{uploadError}</p>
+        <p className="shrink-0 px-1 text-[10px] text-warning-muted/90">{uploadError}</p>
       ) : null}
     </form>
   )

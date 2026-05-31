@@ -216,7 +216,7 @@ export function StrategyList({
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">{strategy.name}</span>
                   {strategy.isAPlus && (
-                    <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border-amber-500/30 text-[10px] px-1.5 shrink-0">
+                    <Badge className="bg-gradient-to-r from-warning/20 to-yellow-500/20 text-warning-foreground border-warning/30 text-[10px] px-1.5 shrink-0">
                       <Award className="size-3 mr-0.5" />
                       A+
                     </Badge>
@@ -263,7 +263,7 @@ export function StrategyComplianceScore({ score, isAPlus }: { score: number; isA
             Strategy Compliance
           </span>
           {isAPlus && (
-            <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border-amber-500/30 animate-pulse">
+            <Badge className="bg-gradient-to-r from-warning/20 to-yellow-500/20 text-warning-foreground border-warning/30 animate-pulse">
               <Award className="size-3 mr-1" />
               A+ Setup
             </Badge>
@@ -291,7 +291,7 @@ export function StrategyComplianceScore({ score, isAPlus }: { score: number; isA
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={`${score * 2.51} ${100 * 2.51}`}
-                className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all duration-700"
+                className="drop-shadow-[0_0_8px_rgb(from var(--color-accent) r g b / 0.5)] transition-all duration-700"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -739,7 +739,7 @@ export function StrategyEditor({
               <div className="flex items-center gap-2">
                 <CardTitle className="text-lg">{editedStrategy.name}</CardTitle>
                 {editedStrategy.isAPlus && (
-                  <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border-amber-500/30">
+                  <Badge className="bg-gradient-to-r from-warning/20 to-yellow-500/20 text-warning-foreground border-warning/30">
                     <Award className="size-3 mr-1" />
                     A+ Setup
                   </Badge>

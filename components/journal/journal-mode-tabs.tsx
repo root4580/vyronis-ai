@@ -39,7 +39,7 @@ export function JournalModeTabs({
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-[11px] font-semibold transition-all sm:flex-none sm:px-4",
               active
-                ? "bg-cyan-glow/15 text-cyan-glow shadow-[0_0_20px_rgba(34,211,238,0.12)]"
+                ? "bg-cyan-glow/15 text-cyan-glow shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]"
                 : "text-muted-foreground/70 hover:text-foreground/90",
             )}
           >

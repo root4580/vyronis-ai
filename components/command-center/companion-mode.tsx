@@ -123,7 +123,7 @@ export function CompanionMode() {
       ) : null}
 
       {error ? (
-        <p className="shrink-0 rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] text-amber-200/90">
+        <p className="shrink-0 rounded-lg border border-warning/25 bg-warning/[0.08] px-3 py-2 text-[11px] text-warning-muted/90">
           {error}
         </p>
       ) : null}

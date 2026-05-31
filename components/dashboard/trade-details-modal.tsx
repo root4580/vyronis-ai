@@ -229,7 +229,7 @@ export function TradeDetailsModal({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.05] via-transparent to-amber-500/[0.04]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.05] via-transparent to-warning/[0.04]" />
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 top-0 h-32 opacity-70",
@@ -457,7 +457,7 @@ export function TradeDetailsModal({
               )}
 
               {isMobile ? (
-                <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+                <DashboardInsetPanel className="border-warning/20 bg-warning/[0.07] px-4 py-3">
                   <p className="text-[12px] font-medium text-foreground/90">
                     Open on desktop for full cinematic replay
                   </p>
@@ -580,7 +580,7 @@ export function TradeDetailsModal({
               <Button
                 type="button"
                 onClick={() => onEdit(trade)}
-                className="flex-1 bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+                className="flex-1 btn-primary"
               >
                 <Pencil className="mr-2 size-4" />
                 Edit Trade

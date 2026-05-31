@@ -87,7 +87,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
           type="button"
           onClick={() => void handleGenerate()}
           disabled={isGenerating}
-          className="w-full bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+          className="w-full btn-primary"
         >
           {isGenerating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
           Generate Coach Review
@@ -134,7 +134,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
               feedback.discipline_score >= 75
                 ? "text-profit"
                 : feedback.discipline_score >= 50
-                  ? "text-amber-400"
+                  ? "text-warning-foreground"
                   : "text-loss",
             )}
           >
@@ -158,7 +158,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-[10px] font-medium",
                   insight.includes("broke") || insight.includes("FOMO") || insight.includes("Revenge") || insight.includes("Euphoric")
-                    ? "border-amber-500/25 bg-amber-500/[0.08] text-amber-300"
+                    ? "border-warning/25 bg-warning/[0.08] text-warning-foreground"
                     : "border-profit/20 bg-profit/[0.06] text-profit/90",
                 )}
               >
@@ -181,12 +181,12 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
                 "rounded-xl border px-3 py-2.5 text-[11px]",
                 item.aligned
                   ? "border-profit/15 bg-profit/[0.04]"
-                  : "border-amber-500/15 bg-amber-500/[0.04]",
+                  : "border-warning/15 bg-warning/[0.04]",
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-foreground/85">{item.field}</span>
-                <span className={item.aligned ? "text-profit" : "text-amber-400"}>
+                <span className={item.aligned ? "text-profit" : "text-warning-foreground"}>
                   {item.aligned ? "Aligned" : "Gap"}
                 </span>
               </div>

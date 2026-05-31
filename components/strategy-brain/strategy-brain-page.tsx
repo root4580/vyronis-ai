@@ -99,8 +99,8 @@ export function StrategyBrainPageClient() {
       </div>
 
       {error ? (
-        <StrategyBrainGlass className="border-amber-500/30">
-          <p className="text-[12px] text-amber-200">{error}</p>
+        <StrategyBrainGlass className="border-warning/30">
+          <p className="text-[12px] text-warning-muted">{error}</p>
           <p className="mt-1 text-[10px] text-muted-foreground">
             Run <code className="text-foreground/80">supabase/026-strategy-brain-foundation.sql</code>{" "}
             in Supabase SQL Editor, then refresh.

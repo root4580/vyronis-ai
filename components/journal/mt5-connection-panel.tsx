@@ -51,7 +51,7 @@ const CONNECTION_META: Record<
 > = {
   connected: {
     label: "Connected",
-    dotClass: "bg-profit shadow-[0_0_8px_rgba(34,197,94,0.5)]",
+    dotClass: "bg-profit shadow-[0_0_8px_rgb(from var(--color-profit) r g b / 0.5)]",
     description: "MT5 EA reached Vyronis recently",
   },
   waiting: {
@@ -61,7 +61,7 @@ const CONNECTION_META: Record<
   },
   error: {
     label: "Sync error",
-    dotClass: "bg-loss shadow-[0_0_8px_rgba(239,68,68,0.45)]",
+    dotClass: "bg-loss shadow-[0_0_8px_rgb(from var(--color-loss) r g b / 0.45)]",
     description: "Check Experts log — WebRequest whitelist & API key",
   },
   disabled: {
@@ -249,7 +249,7 @@ export function Mt5ConnectionPanel({
             </DashboardInsetPanel>
 
             {settings.diagnostics?.map((line) => (
-              <p key={line} className="text-[10px] text-amber-200/80">
+              <p key={line} className="text-[10px] text-warning-muted/80">
                 {line}
               </p>
             ))}

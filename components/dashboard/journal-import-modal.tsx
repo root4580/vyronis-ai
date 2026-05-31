@@ -201,7 +201,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && handleClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/[0.08] bg-[#0a0f14] sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/[0.08] bg-surface-modal sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import to Journal</DialogTitle>
           <DialogDescription>
@@ -370,7 +370,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
             <DashboardInsetPanel
               className={cn(
                 "px-3 py-2 text-[12px]",
-                validRowCount > 0 ? "text-cyan-glow/90" : "text-amber-300/90",
+                validRowCount > 0 ? "text-cyan-glow/90" : "text-warning-foreground/90",
               )}
             >
               {preview.summaryMessage ||
@@ -411,7 +411,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
                     "—"}
                 </p>
                 {!preview.columnDiagnostics.inferredTradeDate ? (
-                  <p className="text-amber-300/90">
+                  <p className="text-warning-foreground/90">
                     No Date / Close Time / Open Time found. Add a Date column (YYYY-MM-DD) or
                     export with Close Time from TradeZella.
                   </p>
@@ -422,7 +422,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
             {preview.dateLogs.length > 0 ? (
               <div className="max-h-[200px] overflow-auto rounded-xl border border-cyan-glow/15 bg-cyan-glow/[0.03]">
                 <table className="w-full text-left text-[11px]">
-                  <thead className="sticky top-0 bg-[#0a1218] text-[9px] uppercase tracking-wide text-muted-foreground/70">
+                  <thead className="sticky top-0 bg-surface-card text-[9px] uppercase tracking-wide text-muted-foreground/70">
                     <tr>
                       <th className="px-2 py-1.5">Row</th>
                       <th className="px-2 py-1.5">CSV datetime</th>
@@ -463,7 +463,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
 
             <div className="max-h-[320px] overflow-auto rounded-xl border border-white/[0.06]">
               <table className="w-full text-left text-[12px]">
-                <thead className="sticky top-0 bg-[#0d1218] text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                <thead className="sticky top-0 bg-surface-card text-[10px] uppercase tracking-wide text-muted-foreground/70">
                   <tr>
                     <th className="px-3 py-2">Ticket</th>
                     <th className="px-3 py-2">Date</th>
@@ -534,8 +534,8 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
                               : row.status === "replace"
                                 ? "border-cyan-glow/30 text-cyan-glow"
                                 : row.status === "needs_date_fix"
-                                  ? "border-amber-500/30 text-amber-300"
-                                  : "border-amber-500/25 text-amber-300",
+                                  ? "border-warning/30 text-warning-foreground"
+                                  : "border-warning/25 text-warning-foreground",
                           )}
                         >
                           {row.status === "ready"
@@ -576,7 +576,7 @@ export function JournalImportModal({ open, onClose, onImported }: JournalImportM
             <Button
               type="button"
               disabled={isImporting || validRowCount === 0}
-              className="bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+              className="btn-primary"
               onClick={() => void handleConfirm()}
             >
               {isImporting ? (

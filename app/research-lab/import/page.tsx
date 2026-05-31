@@ -283,7 +283,7 @@ export default function ResearchLabImportPage() {
               </Button>
               <Button
                 type="button"
-                className="h-9 bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+                className="h-9 btn-primary"
                 disabled={!file || !selectedStrategyId || readyCount === 0 || isImporting}
                 onClick={() => void handleImport()}
               >

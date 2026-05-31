@@ -198,7 +198,7 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
         <Button
           type="button"
           size="sm"
-          className="mt-4 bg-cyan-glow/90 text-black hover:bg-cyan-glow"
+          className="mt-4 btn-primary"
           onClick={() => router.push(getTradeReplayHref(tradeId))}
         >
           <Play className="mr-1.5 size-3.5" />

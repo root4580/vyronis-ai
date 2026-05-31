@@ -46,9 +46,9 @@ function HighlightTile({
   icon: typeof Target
 }) {
   const styles = {
-    best: "border-profit/25 bg-profit/[0.06] hover:border-profit/40 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]",
-    worst: "border-loss/25 bg-loss/[0.06] hover:border-loss/40 hover:shadow-[0_0_24px_rgba(239,68,68,0.12)]",
-    neutral: "border-cyan-glow/20 bg-cyan-glow/[0.05] hover:border-cyan-glow/35 hover:shadow-[0_0_24px_rgba(34,211,238,0.1)]",
+    best: "border-profit/25 bg-profit/[0.06] hover:border-profit/40 hover:shadow-[0_0_24px_rgb(from var(--color-profit) r g b / 0.12)]",
+    worst: "border-loss/25 bg-loss/[0.06] hover:border-loss/40 hover:shadow-[0_0_24px_rgb(from var(--color-loss) r g b / 0.12)]",
+    neutral: "border-cyan-glow/20 bg-cyan-glow/[0.05] hover:border-cyan-glow/35 hover:shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.1)]",
   }
 
   const iconStyles = {
@@ -162,7 +162,7 @@ export function AdvancedAnalyticsPanel({ trades }: AdvancedAnalyticsPanelProps) 
           <DashboardInsetPanel className="glass space-y-3">
             <div className="flex items-center justify-between">
               <DashboardMetricLabel>Streak Tracking</DashboardMetricLabel>
-              <Zap className="size-3.5 text-amber-400" />
+              <Zap className="size-3.5 text-warning-foreground" />
             </div>
             <div className="flex items-end gap-4">
               <div>

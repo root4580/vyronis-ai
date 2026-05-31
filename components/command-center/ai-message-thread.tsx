@@ -77,7 +77,7 @@ function stateFromPayload(payload: Record<string, unknown>): CompanionConversati
 const stateBubbleStyles: Record<CompanionConversationalState, string> = {
   calm: "border-white/[0.07] bg-white/[0.04]",
   analytical: "border-cyan-glow/15 bg-cyan-glow/[0.05]",
-  warning: "border-amber-500/20 bg-amber-500/[0.06]",
+  warning: "border-warning/20 bg-warning/[0.06]",
   protective: "border-loss/25 bg-loss/[0.08]",
   confident: "border-profit/20 bg-profit/[0.06]",
   reflective: "border-violet-400/20 bg-violet-400/[0.06]",
@@ -144,7 +144,7 @@ function DecisionBadge({ decision }: { decision: TradeDecisionPayload }) {
       className={cn(
         "mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]",
         rec === "TAKE" && "border-profit/30 bg-profit/10 text-profit",
-        rec === "CAUTION" && "border-amber-500/30 bg-amber-500/10 text-amber-200",
+        rec === "CAUTION" && "border-warning/30 bg-warning/10 text-warning-muted",
         rec === "SKIP" && "border-loss/30 bg-loss/10 text-loss",
       )}
     >
@@ -180,7 +180,7 @@ function VisionChecklist({ items }: { items: VisionChecklistItem[] }) {
                 className={cn(
                   "text-right",
                   item.status === "good" && "text-profit/90",
-                  item.status === "warn" && "text-amber-200/90",
+                  item.status === "warn" && "text-warning-muted/90",
                   item.status === "neutral" && "text-foreground/80",
                 )}
               >

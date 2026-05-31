@@ -15,13 +15,13 @@ type TradeQualityPanelProps = {
 
 function gradeColor(grade: TradeQualityResult["grade"]) {
   if (grade === "A" || grade === "B") return "text-profit"
-  if (grade === "C") return "text-amber-400"
+  if (grade === "C") return "text-warning-foreground"
   return "text-loss"
 }
 
 function recommendationColor(recommendation: TradeQualityResult["recommendation"]) {
   if (recommendation === "TAKE") return "text-profit"
-  if (recommendation === "CAUTION") return "text-amber-400"
+  if (recommendation === "CAUTION") return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -93,12 +93,12 @@ export function TradeQualityPanel({
 
       {quality.warnings.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">
             Warnings
           </p>
           {quality.warnings.slice(0, compact ? 3 : 5).map((warning) => (
-            <div key={warning} className="flex items-start gap-1.5 text-[10px] text-amber-200/85">
-              <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-400" />
+            <div key={warning} className="flex items-start gap-1.5 text-[10px] text-warning-muted/85">
+              <AlertTriangle className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
               <span>{warning}</span>
             </div>
           ))}

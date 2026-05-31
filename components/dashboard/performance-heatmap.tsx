@@ -117,7 +117,7 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
                 <p className="mt-1 flex items-center gap-1 text-sm font-semibold tabular-nums text-foreground">
                   {heatmap.currentStreak.count > 0 ? (
                     <>
-                      <Flame className="size-3.5 text-amber-400" />
+                      <Flame className="size-3.5 text-warning-foreground" />
                       {heatmap.currentStreak.count}d{" "}
                       {heatmap.currentStreak.type === "profit" ? "green" : "red"}
                     </>

@@ -112,7 +112,7 @@ export default function PricingPage() {
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link href="/auth/login">Sign in</Link>
             </Button>
-            <Button asChild size="sm" className="bg-cyan-glow text-background hover:bg-cyan-glow/90">
+            <Button asChild size="sm" className="btn-primary">
               <Link href="/auth/sign-up">
                 Start free beta
                 <ArrowRight className="ml-1 size-3.5" />
@@ -196,7 +196,7 @@ export default function PricingPage() {
                 {plan.id === "team" ? (
                   <TeamNotifyForm />
                 ) : plan.cta.variant === "primary" ? (
-                  <Button asChild className="mt-6 w-full bg-cyan-glow text-background">
+                  <Button asChild className="mt-6 w-full btn-primary">
                     <Link href={plan.cta.href}>
                       {plan.cta.label}
                       <ArrowRight className="ml-1.5 size-3.5" />
@@ -260,7 +260,7 @@ export default function PricingPage() {
               Join closed beta today. No credit card required. Lock in early Pro pricing before
               public launch.
             </p>
-            <Button asChild size="lg" className="mt-6 h-12 bg-cyan-glow text-background">
+            <Button asChild size="lg" className="mt-6 h-12 btn-primary">
               <Link href="/auth/sign-up">
                 Create free account
                 <ArrowRight className="ml-2 size-4" />

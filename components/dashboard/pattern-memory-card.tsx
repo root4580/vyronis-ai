@@ -103,7 +103,7 @@ export function PatternMemoryCard({ tradeCount = 0, refreshKey = 0 }: PatternMem
               className={cn(
                 "rounded-lg border px-2.5 py-2",
                 pattern.severity === "warning"
-                  ? "border-amber-500/20 bg-amber-500/[0.06]"
+                  ? "border-warning/20 bg-warning/[0.06]"
                   : pattern.severity === "positive"
                     ? "border-profit/20 bg-profit/[0.06]"
                     : "border-cyan-glow/15 bg-cyan-glow/[0.04]",
@@ -114,7 +114,7 @@ export function PatternMemoryCard({ tradeCount = 0, refreshKey = 0 }: PatternMem
                   className={cn(
                     "size-3 shrink-0",
                     pattern.severity === "warning"
-                      ? "text-amber-400"
+                      ? "text-warning-foreground"
                       : pattern.severity === "positive"
                         ? "text-profit"
                         : "text-cyan-glow",

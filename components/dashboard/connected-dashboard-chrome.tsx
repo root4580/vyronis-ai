@@ -20,12 +20,9 @@ type ConnectedDashboardChromeProps = {
   onFabClick?: () => void
   showMobileDock?: boolean
   onDockHome?: () => void
-  onDockJournal?: () => void
   onDockCoach?: () => void
   onDockLog?: () => void
   onDockPlanner?: () => void
-  onDockWarRoom?: () => void
-  onDockAnalytics?: () => void
   aiLauncher?: ReactNode
   banner?: ReactNode
   mainClassName?: string

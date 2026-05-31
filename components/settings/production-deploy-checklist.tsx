@@ -29,7 +29,7 @@ const CHECKLIST = [
 
 export function ProductionDeployChecklist() {
   return (
-    <DashboardInsetPanel className="space-y-3 border-amber-500/20 bg-amber-500/[0.04] px-4 py-3">
+    <DashboardInsetPanel className="space-y-3 border-warning/20 bg-warning/[0.04] px-4 py-3">
       <div>
         <p className="text-[12px] font-semibold text-foreground/90">Production parity</p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/75">

@@ -283,7 +283,7 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
           ) : null}
           <Button
             type="button"
-            className="h-9 bg-gradient-to-r from-cyan-glow to-profit text-background"
+            className="h-9 btn-primary"
             disabled={isSaving}
             onClick={() => void handleSave()}
           >

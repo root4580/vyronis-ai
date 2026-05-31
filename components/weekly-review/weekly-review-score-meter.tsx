@@ -21,7 +21,7 @@ const toneBarClass = {
 const toneTextClass = {
   excellent: "text-cyan-glow",
   solid: "text-profit",
-  caution: "text-amber-300",
+  caution: "text-warning-foreground",
   critical: "text-loss",
 } as const
 

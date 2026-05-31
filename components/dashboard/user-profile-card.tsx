@@ -39,7 +39,7 @@ export function UserProfileCard({
       className="group flex min-w-0 items-center gap-3 rounded-[12px] border border-transparent px-1 py-0.5 transition-all hover:border-cyan-glow/15 hover:bg-cyan-glow/[0.04]"
       title="Edit profile"
     >
-      <div className="relative flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.12] to-cyan-glow/[0.04] shadow-[0_0_16px_rgba(34,211,238,0.08)]">
+      <div className="relative flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-cyan-glow/20 bg-gradient-to-br from-cyan-glow/[0.12] to-cyan-glow/[0.04] shadow-[0_0_16px_rgb(from var(--color-accent) r g b / 0.08)]">
         <span className="text-[11px] font-semibold tracking-wide text-cyan-glow">{initials}</span>
       </div>
       <div className="min-w-0">

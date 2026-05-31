@@ -11,12 +11,12 @@ type CognitiveSurfaceProps = {
 }
 
 const STATE_STYLES: Record<string, string> = {
-  calm: "border-cyan-500/25 bg-cyan-500/[0.06] text-cyan-100/95",
-  focused: "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-100/95",
-  disciplined: "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-100/95",
+  calm: "border-accent/25 bg-accent/[0.06] text-cyan-100/95",
+  focused: "border-profit/25 bg-profit/[0.06] text-emerald-100/95",
+  disciplined: "border-profit/30 bg-profit/[0.08] text-emerald-100/95",
   impulsive: "border-orange-500/30 bg-orange-500/[0.08] text-orange-100/95",
   revenge_driven: "border-rose-500/35 bg-rose-500/[0.1] text-rose-100/95",
-  fatigued: "border-amber-500/30 bg-amber-500/[0.08] text-amber-100/95",
+  fatigued: "border-warning/30 bg-warning/[0.08] text-amber-100/95",
   euphoric: "border-violet-500/30 bg-violet-500/[0.08] text-violet-100/95",
 }
 
@@ -88,7 +88,7 @@ export function CognitiveSurface({ cognitive, className }: CognitiveSurfaceProps
           {(confidenceGraph.fakeConfidence ||
             confidenceGraph.emotionalCertainty ||
             confidenceGraph.hesitationPattern) && (
-            <p className="flex items-start gap-1 text-[10px] text-amber-200/90">
+            <p className="flex items-start gap-1 text-[10px] text-warning-muted/90">
               <Sparkles className="mt-0.5 size-3 shrink-0 opacity-70" />
               {confidenceGraph.fakeConfidence
                 ? "Perceived confidence may exceed setup quality."

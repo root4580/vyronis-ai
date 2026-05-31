@@ -37,7 +37,7 @@ export function FirstRunBanner({ onLogTrade, onOpenWarRoom }: FirstRunBannerProp
             <Crosshair className="mr-1.5 size-3.5" />
             Open War Room
           </Button>
-          <Button type="button" size="sm" className="bg-cyan-glow/90 text-black hover:bg-cyan-glow" onClick={onLogTrade}>
+          <Button type="button" size="sm" className="btn-primary" onClick={onLogTrade}>
             <BookOpen className="mr-1.5 size-3.5" />
             Log first trade
           </Button>

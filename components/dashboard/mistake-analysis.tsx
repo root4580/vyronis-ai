@@ -47,7 +47,7 @@ function ScoreTile({
   const styles = {
     cyan: "border-cyan-glow/20 bg-cyan-glow/[0.06] text-cyan-glow",
     profit: "border-profit/20 bg-profit/[0.06] text-profit",
-    amber: "border-amber-500/20 bg-amber-500/[0.06] text-amber-400",
+    amber: "border-warning/20 bg-warning/[0.06] text-warning-foreground",
   }
 
   return (
@@ -68,8 +68,8 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
     <div
       className={`mistake-row rounded-xl border p-3 transition-all duration-300 hover:-translate-y-0.5 ${
         entry.dangerous
-          ? "border-amber-500/20 bg-amber-500/[0.04] hover:border-amber-500/35 hover:shadow-[0_0_22px_rgba(245,158,11,0.12)]"
-          : "border-white/[0.06] bg-white/[0.02] hover:border-cyan-glow/20 hover:shadow-[0_0_20px_rgba(34,211,238,0.08)]"
+          ? "border-warning/20 bg-warning/[0.04] hover:border-warning/35 hover:shadow-[0_0_22px_rgba(245,158,11,0.12)]"
+          : "border-white/[0.06] bg-white/[0.02] hover:border-cyan-glow/20 hover:shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.08)]"
       }`}
       style={{ animationDelay: `${index * 45}ms` }}
     >
@@ -81,7 +81,7 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
             </span>
             <p className="truncate text-sm font-medium text-foreground">{entry.label}</p>
             {entry.dangerous && (
-              <Badge className="h-4 border-amber-500/30 bg-amber-500/10 px-1.5 text-[8px] text-amber-300">
+              <Badge className="h-4 border-warning/30 bg-warning/10 px-1.5 text-[8px] text-warning-foreground">
                 RISK
               </Badge>
             )}
@@ -95,7 +95,7 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
               value={barValue}
               className={`h-1.5 bg-white/[0.05] ${
                 entry.dangerous
-                  ? "[&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-amber-500/80 [&_[data-slot=progress-indicator]]:to-loss"
+                  ? "[&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-warning/80 [&_[data-slot=progress-indicator]]:to-loss"
                   : "[&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-cyan-glow/70 [&_[data-slot=progress-indicator]]:to-cyan-glow"
               }`}
             />
@@ -103,7 +103,7 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Loss link</p>
-          <p className={`text-sm font-semibold tabular-nums ${entry.lossRate >= 50 ? "text-loss" : "text-amber-400"}`}>
+          <p className={`text-sm font-semibold tabular-nums ${entry.lossRate >= 50 ? "text-loss" : "text-warning-foreground"}`}>
             {entry.lossCount} · {entry.lossRate}%
           </p>
           {entry.totalLossAmount > 0 && (
@@ -117,7 +117,7 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
 
 function InsightCard({ insight, index }: { insight: MistakeInsight; index: number }) {
   const styles = {
-    warning: "border-amber-500/25 bg-amber-500/[0.06] text-amber-200/90",
+    warning: "border-warning/25 bg-warning/[0.06] text-warning-muted/90",
     success: "border-profit/25 bg-profit/[0.06] text-profit/90",
     insight: "border-cyan-glow/20 bg-cyan-glow/[0.05] text-foreground/90",
   }
@@ -162,15 +162,15 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
 
   return (
     <DashboardCard interactive glow className="glass-card floating-glow overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/[0.04] via-transparent to-loss/[0.04]" />
-      <div className="pointer-events-none absolute -left-10 top-0 size-40 rounded-full bg-amber-500/[0.05] blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-warning/[0.04] via-transparent to-loss/[0.04]" />
+      <div className="pointer-events-none absolute -left-10 top-0 size-40 rounded-full bg-warning/[0.05] blur-3xl" />
       <DashboardCardHeader
         title="Mistake Analysis"
         icon={AlertTriangle}
         badge={
           <Badge
             variant="outline"
-            className="h-5 border-amber-500/30 bg-amber-500/[0.08] text-[9px] font-semibold tracking-wider text-amber-400 live-pulse"
+            className="h-5 border-warning/30 bg-warning/[0.08] text-[9px] font-semibold tracking-wider text-warning-foreground live-pulse"
           >
             BEHAVIOR ENGINE
           </Badge>
@@ -192,7 +192,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
             )}
           </DashboardInsetPanel>
 
-          <DashboardInsetPanel className="glass border-loss/20 bg-loss/[0.05] shadow-[0_0_20px_rgba(239,68,68,0.08)]">
+          <DashboardInsetPanel className="glass border-loss/20 bg-loss/[0.05] shadow-[0_0_20px_rgb(from var(--color-loss) r g b / 0.08)]">
             <p className="text-[10px] uppercase tracking-[0.12em] text-loss/80">Biggest Loss Cause</p>
             {analysis.biggestLossCauses[0] ? (
               <>

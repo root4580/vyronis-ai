@@ -67,7 +67,7 @@ export function AccountSettingsModal({
         <div className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1] shadow-[0_0_20px_rgba(34,211,238,0.12)]">
+              <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1] shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]">
                 <Settings className="size-4 text-cyan-glow" />
               </div>
               <div>
@@ -262,7 +262,7 @@ export function AccountSettingsModal({
             <Button
               type="submit"
               disabled={isSaving}
-              className="h-11 w-full bg-gradient-to-r from-cyan-glow to-cyan-glow/80 text-background"
+              className="h-11 w-full btn-primary"
             >
               {isSaving ? (
                 <div className="flex items-center gap-2">

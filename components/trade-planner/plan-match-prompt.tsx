@@ -57,7 +57,7 @@ export function PlanMatchPrompt({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 bg-cyan-glow text-black hover:bg-cyan-glow/90"
+                  className="h-8 btn-primary"
                   onClick={() => onConfirm(singleMatch)}
                 >
                   <Check className="mr-1.5 size-3.5" />

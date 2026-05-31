@@ -198,7 +198,7 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
                   <Tooltip
                     contentStyle={{
                       background: "rgba(15,23,42,0.95)",
-                      border: "1px solid rgba(34,211,238,0.2)",
+                      border: "1px solid rgb(from var(--color-accent) r g b / 0.2)",
                       borderRadius: 8,
                       fontSize: 11,
                     }}
@@ -207,7 +207,7 @@ export function TradeLearningPanel({ refreshKey = 0 }: TradeLearningPanelProps) 
                     {pairData.map((entry) => (
                       <Cell
                         key={entry.pair}
-                        fill={entry.winRate >= 55 ? "rgba(34,197,94,0.75)" : "rgba(248,113,113,0.75)"}
+                        fill={entry.winRate >= 55 ? "rgb(from var(--color-profit) r g b / 0.75)" : "rgba(248,113,113,0.75)"}
                       />
                     ))}
                   </Bar>

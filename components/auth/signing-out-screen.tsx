@@ -19,7 +19,7 @@ export function SigningOutScreen() {
       <div className="relative flex flex-col items-center gap-4 text-center">
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-cyan-glow/20 blur-xl" />
-          <div className="relative flex size-14 items-center justify-center rounded-2xl border border-cyan-glow/30 bg-gradient-to-br from-cyan-glow/20 to-cyan-glow/5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
+          <div className="relative flex size-14 items-center justify-center rounded-2xl border border-cyan-glow/30 bg-gradient-to-br from-cyan-glow/20 to-cyan-glow/5 shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.12)]">
             <Activity className="size-6 animate-pulse text-cyan-glow" />
           </div>
         </div>

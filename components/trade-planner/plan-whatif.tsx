@@ -30,7 +30,7 @@ function gradeBadgeClass(grade: PlanDisciplineResult["grade"]): string {
     case "B":
       return "border-cyan-glow/30 bg-cyan-glow/[0.1] text-cyan-glow"
     case "C":
-      return "border-amber-500/30 bg-amber-500/[0.1] text-amber-200"
+      return "border-warning/30 bg-warning/[0.1] text-warning-muted"
     default:
       return "border-loss/30 bg-loss/[0.1] text-loss"
   }

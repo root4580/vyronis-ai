@@ -12,11 +12,11 @@ type PreTradeApprovalStripProps = {
 const STATUS_CONFIG = {
   approved: {
     icon: ShieldCheck,
-    style: "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-100/95",
+    style: "border-profit/30 bg-profit/[0.08] text-emerald-100/95",
   },
   reduced: {
     icon: ShieldAlert,
-    style: "border-amber-500/30 bg-amber-500/[0.08] text-amber-100/95",
+    style: "border-warning/30 bg-warning/[0.08] text-amber-100/95",
   },
   reflection_required: {
     icon: ShieldAlert,

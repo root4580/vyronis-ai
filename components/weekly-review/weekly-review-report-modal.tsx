@@ -102,7 +102,7 @@ export function WeeklyReviewReportModal({
 
       <div
         className={cn(
-          "relative flex max-h-[96dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-white/[0.08] bg-[#0a0c10] shadow-2xl sm:rounded-2xl",
+          "relative flex max-h-[96dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-white/[0.08] bg-surface-modal shadow-2xl sm:rounded-2xl",
           visible ? "translate-y-0 scale-100" : "translate-y-4 scale-[0.98]",
         )}
         style={{ transition: `transform ${ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)` }}
@@ -231,7 +231,7 @@ export function WeeklyReviewReportModal({
                   Session edge: {report.strongestSession ?? "—"}
                 </li>
                 <li className="flex items-start gap-2">
-                  <Target className="mt-0.5 size-3.5 shrink-0 text-amber-300" />
+                  <Target className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
                   Weakest habit: {report.weakestHabit ?? "—"}
                 </li>
               </ul>

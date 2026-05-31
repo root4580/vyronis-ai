@@ -106,7 +106,7 @@ export function VyronisCoreModelFields({ form, onFormChange, rrWarning }: Vyroni
         />
         <BiasRow label="H4" value={form.h4_bias} onChange={(h4_bias) => onFormChange({ h4_bias })} />
         {htfIncomplete && (
-          <p className="flex items-center gap-1.5 text-[10px] text-amber-300">
+          <p className="flex items-center gap-1.5 text-[10px] text-warning-foreground">
             <AlertTriangle className="size-3 shrink-0" />
             All three HTF biases required — missing alignment auto-grades Skip.
           </p>
@@ -144,7 +144,7 @@ export function VyronisCoreModelFields({ form, onFormChange, rrWarning }: Vyroni
       </div>
 
       {rrWarning && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] text-amber-200">
+        <p className="flex items-center gap-1.5 rounded-lg border border-warning/25 bg-warning/[0.08] px-3 py-2 text-[11px] text-warning-muted">
           <AlertTriangle className="size-3.5 shrink-0" />
           R:R below 1:2 — Vyronis will warn on this entry.
         </p>

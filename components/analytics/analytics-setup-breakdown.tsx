@@ -19,8 +19,8 @@ type AnalyticsSetupBreakdownProps = {
 const BUCKET_BADGE: Record<string, string> = {
   "A+": "border-cyan-glow/35 bg-cyan-glow/[0.12] text-cyan-glow",
   A: "border-profit/30 bg-profit/[0.1] text-profit",
-  B: "border-emerald-400/25 bg-emerald-500/[0.08] text-emerald-300",
-  C: "border-amber-500/30 bg-amber-500/[0.1] text-amber-300",
+  B: "border-emerald-400/25 bg-profit/[0.08] text-emerald-300",
+  C: "border-warning/30 bg-warning/[0.1] text-warning-foreground",
 }
 
 export function AnalyticsSetupBreakdown({ data }: AnalyticsSetupBreakdownProps) {

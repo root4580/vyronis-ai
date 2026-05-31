@@ -51,8 +51,8 @@ function StrategyHighlightCard({
     <div
       className={`strategy-card group rounded-xl border p-3 transition-all duration-300 hover:-translate-y-0.5 ${
         isBest
-          ? "border-profit/25 bg-profit/[0.06] hover:border-profit/40 hover:shadow-[0_0_24px_rgba(34,197,94,0.12)]"
-          : "border-loss/25 bg-loss/[0.06] hover:border-loss/40 hover:shadow-[0_0_24px_rgba(239,68,68,0.12)]"
+          ? "border-profit/25 bg-profit/[0.06] hover:border-profit/40 hover:shadow-[0_0_24px_rgb(from var(--color-profit) r g b / 0.12)]"
+          : "border-loss/25 bg-loss/[0.06] hover:border-loss/40 hover:shadow-[0_0_24px_rgb(from var(--color-loss) r g b / 0.12)]"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -93,7 +93,7 @@ function StrategyRow({ strategy, index }: { strategy: StrategyStats; index: numb
 
   return (
     <div
-      className="strategy-row rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-300 hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.03] hover:shadow-[0_0_20px_rgba(34,211,238,0.08)]"
+      className="strategy-row rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-300 hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.03] hover:shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.08)]"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(140px,1.4fr)_repeat(4,minmax(0,1fr))] lg:items-center lg:gap-4">
@@ -248,13 +248,13 @@ export function StrategyPerformance({
       />
       <DashboardCardBody className="relative space-y-4">
         {loadError && (
-          <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
+          <DashboardInsetPanel className="border-warning/15 bg-warning/[0.05] px-3 py-2.5">
             <p className="text-[11px] leading-relaxed text-muted-foreground/85">{loadError}</p>
           </DashboardInsetPanel>
         )}
 
         {!summary.hasStrategyData && !showUnassignedBanner && (
-          <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
+          <DashboardInsetPanel className="border-warning/15 bg-warning/[0.05] px-3 py-2.5">
             <p className="text-[11px] leading-relaxed text-muted-foreground/85">
               Assign strategy names when logging trades for sharper analytics. Showing unassigned trades for now.
             </p>
@@ -262,7 +262,7 @@ export function StrategyPerformance({
         )}
 
         {showUnassignedBanner ? (
-          <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
+          <DashboardInsetPanel className="border-warning/20 bg-warning/[0.07] px-4 py-3">
             <p className="text-[12px] font-medium text-foreground/90">
               Most of your trades have no strategy assigned.
             </p>
@@ -360,8 +360,8 @@ export function StrategyPerformance({
         </div>
 
         {mistakeAnalysis.strategyInsight && (
-          <DashboardInsetPanel className="border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-amber-400/80">Mistake Link</p>
+          <DashboardInsetPanel className="border-warning/15 bg-warning/[0.05] px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-warning-foreground/80">Mistake Link</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/85">{mistakeAnalysis.strategyInsight}</p>
           </DashboardInsetPanel>
         )}

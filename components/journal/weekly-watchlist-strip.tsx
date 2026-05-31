@@ -28,7 +28,7 @@ export function WeeklyWatchlistStrip({
       <Link
         href="/war-room"
         className={cn(
-          "flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2.5 text-[12px] text-amber-100/90 transition-colors hover:border-amber-500/45",
+          "flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/[0.08] px-3 py-2.5 text-[12px] text-amber-100/90 transition-colors hover:border-warning/45",
           className,
         )}
       >
@@ -46,7 +46,7 @@ export function WeeklyWatchlistStrip({
         "rounded-xl border px-3 py-2.5",
         complete
           ? "border-cyan-glow/20 bg-cyan-glow/[0.04]"
-          : "border-amber-500/25 bg-amber-500/[0.06]",
+          : "border-warning/25 bg-warning/[0.06]",
         className,
       )}
     >

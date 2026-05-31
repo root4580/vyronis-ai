@@ -95,7 +95,7 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
                 contentStyle={CHART_TOOLTIP_STYLE}
                 labelStyle={{ color: "rgba(255,255,255,0.5)", marginBottom: 4, fontSize: 11 }}
                 formatter={(value: number) => [`$${value.toLocaleString()}`, "Equity"]}
-                cursor={{ stroke: "rgba(34, 211, 238, 0.3)", strokeWidth: 1 }}
+                cursor={{ stroke: "rgb(from var(--color-accent) r g b / 0.3)", strokeWidth: 1 }}
               />
               <Area
                 type="monotone"

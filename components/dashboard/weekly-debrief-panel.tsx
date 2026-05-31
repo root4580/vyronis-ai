@@ -54,7 +54,7 @@ type WeeklyDebriefPanelProps = {
 
 function gradeColor(grade: string) {
   if (grade === "A" || grade === "B") return "text-profit"
-  if (grade === "C") return "text-amber-400"
+  if (grade === "C") return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -73,7 +73,7 @@ function CommentaryList({
     tone === "positive"
       ? "border-profit/15 bg-profit/[0.04]"
       : tone === "warning"
-        ? "border-amber-500/15 bg-amber-500/[0.04]"
+        ? "border-warning/15 bg-warning/[0.04]"
         : tone === "danger"
           ? "border-loss/15 bg-loss/[0.04]"
           : "border-white/[0.06] bg-white/[0.02]"
@@ -213,7 +213,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
               type="button"
               size="sm"
               variant={weekOffset === 0 ? "default" : "outline"}
-              className={cn("h-8", weekOffset === 0 && "bg-cyan-glow text-background")}
+              className={cn("h-8", weekOffset === 0 && "nav-link--active")}
               onClick={() => setWeekOffset(0)}
             >
               This Week
@@ -297,7 +297,7 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5 text-center">
                 <p className="text-[9px] text-muted-foreground/65">Worst Emotion</p>
-                <p className="mt-1 text-[12px] font-semibold text-amber-300">{summary.worstEmotionalState || "—"}</p>
+                <p className="mt-1 text-[12px] font-semibold text-warning-foreground">{summary.worstEmotionalState || "—"}</p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="glass px-3 py-2.5 text-center">
                 <p className="text-[9px] text-muted-foreground/65">Avg Quality</p>

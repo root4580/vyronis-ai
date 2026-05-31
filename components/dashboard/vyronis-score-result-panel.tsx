@@ -78,10 +78,10 @@ export function VyronisScoreResultPanel({
 
       {evaluation.warnings.length > 0 && (
         <div>
-          <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-300/80">Warnings</p>
+          <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">Warnings</p>
           <ul className="space-y-1">
             {evaluation.warnings.slice(0, 4).map((warning) => (
-              <li key={warning} className="text-[11px] leading-snug text-amber-200/90">
+              <li key={warning} className="text-[11px] leading-snug text-warning-muted/90">
                 · {warning}
               </li>
             ))}
@@ -106,7 +106,7 @@ export function VyronisScoreResultPanel({
       )}
 
       {evaluation.rrBelowMinimum && (
-        <p className="flex items-center gap-1.5 text-[11px] text-amber-300">
+        <p className="flex items-center gap-1.5 text-[11px] text-warning-foreground">
           <AlertTriangle className="size-3.5 shrink-0" />
           R:R below 1:2 — Vyronis warns before you size up.
         </p>

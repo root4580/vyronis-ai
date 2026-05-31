@@ -174,7 +174,7 @@ export function TradeIntelligencePanel({
             Memory synced {new Date(bundle.syncedAt).toLocaleString()}
           </p>
         ) : (
-          <p className="text-[9px] text-amber-400/80">
+          <p className="text-[9px] text-warning-foreground/80">
             Intelligence not synced yet — use Sync &amp; analyze or wait for webhook post-ingest.
           </p>
         )}
@@ -234,7 +234,7 @@ export function TradeIntelligencePanel({
               bundle.disciplineScore >= 75
                 ? "text-profit"
                 : bundle.disciplineScore >= 50
-                  ? "text-amber-400"
+                  ? "text-warning-foreground"
                   : "text-loss",
             )}
           >

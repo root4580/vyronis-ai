@@ -87,7 +87,7 @@ export function TradeQualityTradeSection({
             quality.grade === "A" || quality.grade === "B"
               ? "border-profit/25 text-profit"
               : quality.grade === "C"
-                ? "border-amber-500/25 text-amber-400"
+                ? "border-warning/25 text-warning-foreground"
                 : "border-loss/25 text-loss",
           )}
         >
@@ -114,7 +114,7 @@ export function TradeQualityTradeSection({
 
       <p className="text-[11px] leading-relaxed text-muted-foreground/80">
         Did low score predict outcome?{" "}
-        <span className={predictionMatched ? "text-profit" : "text-amber-400"}>
+        <span className={predictionMatched ? "text-profit" : "text-warning-foreground"}>
           {quality.score < 50
             ? predictionMatched
               ? "Yes — low quality aligned with a loss."

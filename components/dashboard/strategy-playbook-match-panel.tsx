@@ -13,13 +13,13 @@ type StrategyPlaybookMatchPanelProps = {
 
 function scoreColor(score: number) {
   if (score >= 75) return "text-profit"
-  if (score >= 55) return "text-amber-400"
+  if (score >= 55) return "text-warning-foreground"
   return "text-loss"
 }
 
 function recommendationColor(recommendation: StrategyPlaybookMatchResult["recommendation"]) {
   if (recommendation === "TAKE") return "text-profit"
-  if (recommendation === "CAUTION") return "text-amber-400"
+  if (recommendation === "CAUTION") return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -92,7 +92,7 @@ export function StrategyPlaybookMatchPanel({
             match.recommendation === "TAKE"
               ? "border-profit/25 bg-profit/[0.08]"
               : match.recommendation === "CAUTION"
-                ? "border-amber-500/25 bg-amber-500/[0.08]"
+                ? "border-warning/25 bg-warning/[0.08]"
                 : "border-loss/25 bg-loss/[0.08]",
           )}
         >
@@ -115,7 +115,7 @@ export function StrategyPlaybookMatchPanel({
           {detections.slice(0, compact ? 3 : 5).map((item) => (
             <span
               key={item}
-              className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-[9px] text-amber-200/90"
+              className="rounded-md border border-warning/20 bg-warning/[0.08] px-2 py-0.5 text-[9px] text-warning-muted/90"
             >
               {item}
             </span>
@@ -159,11 +159,11 @@ export function StrategyPlaybookMatchPanel({
 
       {match.missingConfirmations.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">
             Missing Confirmations
           </p>
           {match.missingConfirmations.slice(0, compact ? 2 : 4).map((item) => (
-            <p key={item} className="text-[10px] text-amber-200/85">
+            <p key={item} className="text-[10px] text-warning-muted/85">
               {item}
             </p>
           ))}

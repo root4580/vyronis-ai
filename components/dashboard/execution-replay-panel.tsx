@@ -50,22 +50,22 @@ const REPLAY_SPEEDS = [
 type ReplaySpeed = (typeof REPLAY_SPEEDS)[number]["id"]
 
 function toneBorder(tone: ExecutionReplayTone) {
-  if (tone === "success") return "border-profit/35 shadow-[0_0_24px_rgba(34,197,94,0.14)]"
-  if (tone === "danger") return "border-loss/35 shadow-[0_0_24px_rgba(239,68,68,0.14)]"
-  if (tone === "warning") return "border-amber-500/35 shadow-[0_0_24px_rgba(245,158,11,0.12)]"
-  return "border-cyan-glow/30 shadow-[0_0_24px_rgba(34,211,238,0.1)]"
+  if (tone === "success") return "border-profit/35 shadow-[0_0_24px_rgb(from var(--color-profit) r g b / 0.14)]"
+  if (tone === "danger") return "border-loss/35 shadow-[0_0_24px_rgb(from var(--color-loss) r g b / 0.14)]"
+  if (tone === "warning") return "border-warning/35 shadow-[0_0_24px_rgba(245,158,11,0.12)]"
+  return "border-cyan-glow/30 shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.1)]"
 }
 
 function scoreColor(score: number) {
   if (score >= 75) return "text-profit"
-  if (score >= 55) return "text-amber-400"
+  if (score >= 55) return "text-warning-foreground"
   return "text-loss"
 }
 
 function gradeRingColor(grade: string) {
   if (grade === "A" || grade === "B") return "from-profit/30 via-cyan-glow/20 to-profit/10"
-  if (grade === "C") return "from-amber-500/25 via-cyan-glow/15 to-amber-500/10"
-  return "from-loss/25 via-amber-500/10 to-loss/10"
+  if (grade === "C") return "from-warning/25 via-cyan-glow/15 to-warning/10"
+  return "from-loss/25 via-warning/10 to-loss/10"
 }
 
 function markerIcon(type: ExecutionReplayTimelineMarkerType) {
@@ -79,7 +79,7 @@ function markerIcon(type: ExecutionReplayTimelineMarkerType) {
 
 function markerColor(severity: ExecutionReplayTimelineMarker["severity"]) {
   if (severity === "critical") return "text-loss border-loss/45 bg-loss/12 replay-severity-glow-critical replay-marker-critical"
-  if (severity === "warning") return "text-amber-300 border-amber-500/40 bg-amber-500/10 replay-severity-glow-warning"
+  if (severity === "warning") return "text-warning-foreground border-warning/40 bg-warning/10 replay-severity-glow-warning"
   return "text-cyan-glow border-cyan-glow/35 bg-cyan-glow/10 replay-severity-glow-info"
 }
 
@@ -112,7 +112,7 @@ function candleColors(candle: ExecutionReplayCandleState, active: boolean, passe
 
   return cn(
     base,
-    active && "ring-2 ring-cyan-glow/70 ring-offset-1 ring-offset-[#070b12] scale-110 z-10",
+    active && "ring-2 ring-cyan-glow/70 ring-offset-1 ring-offset-surface-page scale-110 z-10",
     passed && !active && "opacity-55",
     !passed && !active && "opacity-35",
   )
@@ -206,8 +206,8 @@ function SessionRecapScore({
   const { sessionRecap } = replay
 
   return (
-    <div className="replay-fade-in relative overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-black/50 via-[#0a1018] to-black/40 p-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.06),transparent_45%)]" />
+    <div className="replay-fade-in relative overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-black/50 via-surface-card to-black/40 p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgb(from var(--color-accent) r g b / 0.06),transparent_45%)]" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div
@@ -272,11 +272,11 @@ function CommentaryBubble({ event, stepKey }: { event: ExecutionReplayEvent; ste
     <div key={stepKey} className="replay-bubble-in replay-coach-float relative">
       <div
         className={cn(
-          "rounded-lg border border-white/[0.08] border-l-2 bg-[#0a0f14]/95 px-4 py-3 shadow-[0_10px_36px_rgba(0,0,0,0.45)] backdrop-blur-sm",
+          "rounded-lg border border-white/[0.08] border-l-2 bg-surface-modal/95 px-4 py-3 shadow-[0_10px_36px_rgba(0,0,0,0.45)] backdrop-blur-sm",
           event.tone === "danger"
             ? "border-l-loss/70"
             : event.tone === "warning"
-              ? "border-l-amber-500/60"
+              ? "border-l-warning/60"
               : event.tone === "success"
                 ? "border-l-profit/60"
                 : "border-l-cyan-glow/55",
@@ -297,7 +297,7 @@ function CommentaryBubble({ event, stepKey }: { event: ExecutionReplayEvent; ste
             className={cn(
               "h-5 shrink-0 text-[9px] capitalize",
               event.tone === "danger" && "border-loss/30 text-loss",
-              event.tone === "warning" && "border-amber-500/30 text-amber-300",
+              event.tone === "warning" && "border-warning/30 text-warning-foreground",
               event.tone === "success" && "border-profit/30 text-profit",
             )}
           >
@@ -325,7 +325,7 @@ function TimelineHoverPreview({
 
   return (
     <div
-      className="pointer-events-none absolute bottom-full z-10 mb-2 -translate-x-1/2 rounded-md border border-white/10 bg-[#0a0f14]/95 px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
+      className="pointer-events-none absolute bottom-full z-10 mb-2 -translate-x-1/2 rounded-md border border-white/10 bg-surface-modal/95 px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
       style={{ left: `${left}%` }}
     >
       <p className="whitespace-nowrap text-[9px] font-medium uppercase tracking-[0.1em] text-cyan-glow/80">
@@ -341,7 +341,7 @@ function SessionFinaleCard({ replay }: { replay: ExecutionReplayResult }) {
   const criticalCount = drifts.filter((drift) => drift.severity === "critical").length
 
   return (
-    <div className="replay-finale-in relative overflow-hidden rounded-xl border border-white/[0.1] bg-gradient-to-b from-[#0c1219] via-[#090e15] to-[#070b12] p-4 sm:p-5">
+    <div className="replay-finale-in relative overflow-hidden rounded-xl border border-white/[0.1] bg-gradient-to-b from-surface-card via-surface-card to-surface-page p-4 sm:p-5">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-glow/40 to-transparent" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -425,7 +425,7 @@ function EntryComparisonPanel({ replay }: { replay: ExecutionReplayResult }) {
               "rounded-lg border px-2.5 py-2 transition-colors",
               row.aligned
                 ? "border-profit/20 bg-profit/[0.04]"
-                : "border-amber-500/25 bg-amber-500/[0.05]",
+                : "border-warning/25 bg-warning/[0.05]",
             )}
           >
             <div className="mb-1 flex items-center justify-between gap-2">
@@ -434,7 +434,7 @@ function EntryComparisonPanel({ replay }: { replay: ExecutionReplayResult }) {
                 variant="outline"
                 className={cn(
                   "h-4 px-1.5 text-[8px]",
-                  row.aligned ? "border-profit/25 text-profit" : "border-amber-500/30 text-amber-300",
+                  row.aligned ? "border-profit/25 text-profit" : "border-warning/30 text-warning-foreground",
                 )}
               >
                 {row.aligned ? "Aligned" : "Drift"}
@@ -486,7 +486,7 @@ function WhatChangedSection({ replay }: { replay: ExecutionReplayResult }) {
   return (
     <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
       <div className="mb-2 flex items-center gap-2">
-        <Target className="size-3.5 text-amber-400" />
+        <Target className="size-3.5 text-warning-foreground" />
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/85">
           What Changed?
         </p>
@@ -499,7 +499,7 @@ function WhatChangedSection({ replay }: { replay: ExecutionReplayResult }) {
               "rounded-lg border px-2.5 py-2",
               change.impact === "critical"
                 ? "border-loss/25 bg-loss/[0.05] replay-severity-glow-critical"
-                : "border-amber-500/20 bg-amber-500/[0.04] replay-severity-glow-warning",
+                : "border-warning/20 bg-warning/[0.04] replay-severity-glow-warning",
             )}
           >
             <div className="flex items-center justify-between gap-2">
@@ -510,7 +510,7 @@ function WhatChangedSection({ replay }: { replay: ExecutionReplayResult }) {
                   "h-4 text-[8px] capitalize",
                   change.impact === "critical"
                     ? "border-loss/30 text-loss"
-                    : "border-amber-500/30 text-amber-300",
+                    : "border-warning/30 text-warning-foreground",
                 )}
               >
                 {change.impact}
@@ -561,7 +561,7 @@ function ReplayStage({
       {event.warnings.length > 0 && (
         <div className="mb-3 space-y-1.5">
           {event.warnings.map((warning) => (
-            <p key={warning} className="flex items-start gap-1.5 text-[10px] text-amber-200/90">
+            <p key={warning} className="flex items-start gap-1.5 text-[10px] text-warning-muted/90">
               <AlertTriangle className="mt-0.5 size-3 shrink-0" />
               {warning}
             </p>
@@ -763,7 +763,7 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
 
   if (isLoading) {
     return (
-      <div className="replay-terminal flex min-h-[220px] items-center justify-center rounded-xl border border-cyan-glow/15 bg-[#070b12]">
+      <div className="replay-terminal flex min-h-[220px] items-center justify-center rounded-xl border border-cyan-glow/15 bg-surface-page">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-6 animate-spin text-cyan-glow" />
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">
@@ -783,17 +783,17 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
   }
 
   return (
-    <div className="replay-terminal relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#070b12]">
+    <div className="replay-terminal relative overflow-hidden rounded-xl border border-white/[0.08] bg-surface-page">
       {flashToken > 0 && (
         <div key={flashToken} className="replay-critical-flash pointer-events-none absolute inset-0 z-20 rounded-xl" />
       )}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.05),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgb(from var(--color-accent) r g b / 0.05),transparent_55%)]" />
       <div className="replay-scanline pointer-events-none absolute inset-0 opacity-[0.015]" />
 
       <div className="relative space-y-4 p-3 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-[12px] border border-cyan-glow/25 bg-cyan-glow/[0.08] shadow-[0_0_20px_rgba(34,211,238,0.12)]">
+            <div className="flex size-10 items-center justify-center rounded-[12px] border border-cyan-glow/25 bg-cyan-glow/[0.08] shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]">
               <Play className="size-4 text-cyan-glow" />
             </div>
             <div>
@@ -865,13 +865,13 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
               "replay-fade-in flex items-start gap-2 rounded-xl border px-3 py-2.5",
               replay.rrCollapse.severity === "critical"
                 ? "border-loss/30 bg-loss/[0.07] replay-severity-glow-critical"
-                : "border-amber-500/30 bg-amber-500/[0.06] replay-severity-glow-warning",
+                : "border-warning/30 bg-warning/[0.06] replay-severity-glow-warning",
             )}
           >
             <TrendingDown
               className={cn(
                 "mt-0.5 size-4 shrink-0",
-                replay.rrCollapse.severity === "critical" ? "text-loss" : "text-amber-400",
+                replay.rrCollapse.severity === "critical" ? "text-loss" : "text-warning-foreground",
               )}
             />
             <div>
@@ -1028,7 +1028,7 @@ export function ExecutionReplayPanel({ tradeId, refreshKey = 0 }: ExecutionRepla
                   "h-5 text-[9px]",
                   drift.severity === "critical"
                     ? "border-loss/25 text-loss replay-severity-glow-critical"
-                    : "border-amber-500/25 text-amber-300 replay-severity-glow-warning",
+                    : "border-warning/25 text-warning-foreground replay-severity-glow-warning",
                 )}
               >
                 {drift.label}

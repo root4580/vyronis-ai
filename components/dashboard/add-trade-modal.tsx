@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
@@ -67,8 +68,18 @@ import {
   filterActivePlansForTrade,
   type MatchableTradePlan,
 } from "@/lib/trade-planner/plan-match"
+import {
+  disciplineGradeLabel,
+  type PlanDisciplineResult,
+} from "@/lib/trade-planner/deviation-engine"
+import { disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 
 const PLAN_MODE_HINT_KEY = "seenPlanModeHint"
+
+export type PostSaveDisciplineSummary = {
+  result: PlanDisciplineResult
+  tradeDetailHref?: string
+}
 
 type AddTradeModalProps = {
   open: boolean
@@ -101,6 +112,37 @@ type AddTradeModalProps = {
   existingStrategyNames?: string[]
   linkedPlan?: MatchableTradePlan | null
   onLinkedPlanChange?: (plan: MatchableTradePlan | null) => void
+  postSaveDiscipline?: PostSaveDisciplineSummary | null
+}
+
+function PostLogDisciplineInline({
+  result,
+  tradeDetailHref,
+}: PostSaveDisciplineSummary) {
+  return (
+    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-surface-card p-3">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border text-sm font-semibold tabular-nums",
+            disciplineGradeBoxClass(result.grade),
+          )}
+        >
+          {result.grade}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-text-primary">
+            {result.score}/100 · {disciplineGradeLabel(result.grade)}
+          </p>
+          {tradeDetailHref ? (
+            <Link href={tradeDetailHref} className="text-[11px] text-text-accent hover:underline">
+              See full breakdown →
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -147,7 +189,7 @@ function EmotionPicker({
               className={cn(
                 "rounded-lg border px-1.5 py-2 text-center transition-all duration-200",
                 active
-                  ? "border-cyan-glow/40 bg-cyan-glow/[0.12] shadow-[0_0_16px_rgba(34,211,238,0.12)]"
+                  ? "border-cyan-glow/40 bg-cyan-glow/[0.12] shadow-[0_0_16px_rgb(from var(--color-accent) r g b / 0.12)]"
                   : "border-white/[0.06] bg-white/[0.02] hover:border-cyan-glow/20 hover:bg-cyan-glow/[0.04]",
               )}
             >
@@ -192,6 +234,7 @@ export function AddTradeModal({
   existingStrategyNames = [],
   linkedPlan = null,
   onLinkedPlanChange,
+  postSaveDiscipline = null,
 }: AddTradeModalProps) {
   const [logSetupOpen, setLogSetupOpen] = useState(false)
   const [showPlanHint, setShowPlanHint] = useState(false)
@@ -314,7 +357,7 @@ export function AddTradeModal({
         <div className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1] shadow-[0_0_20px_rgba(34,211,238,0.12)]">
+              <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1] shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]">
                 {isEditing ? <Pencil className="size-4 text-cyan-glow" /> : <Plus className="size-4 text-cyan-glow" />}
               </div>
               <div>
@@ -381,9 +424,9 @@ export function AddTradeModal({
                           className={cn(
                             "flex h-10 items-center justify-center gap-2 rounded-lg border text-[13px] font-semibold transition-all duration-200",
                             active && isBuy
-                              ? "border-profit/40 bg-profit/[0.12] text-profit shadow-[0_0_16px_rgba(34,197,94,0.12)]"
+                              ? "border-profit/40 bg-profit/[0.12] text-profit shadow-[0_0_16px_rgb(from var(--color-profit) r g b / 0.12)]"
                               : active && !isBuy
-                                ? "border-loss/40 bg-loss/[0.12] text-loss shadow-[0_0_16px_rgba(239,68,68,0.12)]"
+                                ? "border-loss/40 bg-loss/[0.12] text-loss shadow-[0_0_16px_rgb(from var(--color-loss) r g b / 0.12)]"
                                 : "border-white/[0.06] bg-white/[0.02] text-muted-foreground hover:border-white/[0.12]",
                           )}
                         >
@@ -698,9 +741,9 @@ export function AddTradeModal({
                       className={cn(
                         "rounded-lg border py-2.5 text-[12px] font-bold tracking-wide transition-all duration-200",
                         active && result.tone === "profit"
-                          ? "border-profit/40 bg-profit/[0.12] text-profit shadow-[0_0_18px_rgba(34,197,94,0.14)]"
+                          ? "border-profit/40 bg-profit/[0.12] text-profit shadow-[0_0_18px_rgb(from var(--color-profit) r g b / 0.14)]"
                           : active && result.tone === "loss"
-                            ? "border-loss/40 bg-loss/[0.12] text-loss shadow-[0_0_18px_rgba(239,68,68,0.14)]"
+                            ? "border-loss/40 bg-loss/[0.12] text-loss shadow-[0_0_18px_rgb(from var(--color-loss) r g b / 0.14)]"
                             : active
                               ? "border-white/20 bg-white/[0.06] text-foreground"
                               : "border-white/[0.06] bg-white/[0.02] text-muted-foreground hover:border-white/[0.12]",
@@ -793,9 +836,9 @@ export function AddTradeModal({
                           "rounded-full border px-2.5 py-1 text-[10px] font-medium transition-all duration-200",
                           active
                             ? isDangerousMistakeLabel(normalizeMistakeLabel(tag))
-                              ? "border-loss/35 bg-loss/[0.12] text-loss shadow-[0_0_12px_rgba(239,68,68,0.18)]"
-                              : "border-amber-500/35 bg-amber-500/[0.12] text-amber-300"
-                            : "border-white/[0.06] bg-white/[0.02] text-muted-foreground hover:border-amber-500/20",
+                              ? "border-loss/35 bg-loss/[0.12] text-loss shadow-[0_0_12px_rgb(from var(--color-loss) r g b / 0.18)]"
+                              : "border-warning/35 bg-warning/[0.12] text-warning-foreground"
+                            : "border-white/[0.06] bg-white/[0.02] text-muted-foreground hover:border-warning/20",
                         )}
                       >
                         {normalizeMistakeLabel(tag)}
@@ -908,7 +951,7 @@ export function AddTradeModal({
                   className={cn(
                     "add-trade-dropzone flex h-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300 sm:h-32",
                     isDragging
-                      ? "scale-[1.01] border-cyan-glow bg-cyan-glow/[0.1] shadow-[0_0_24px_rgba(34,211,238,0.15)]"
+                      ? "scale-[1.01] border-cyan-glow bg-cyan-glow/[0.1] shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.15)]"
                       : "border-white/[0.08] bg-white/[0.02] hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.04]",
                   )}
                   onDragOver={onDragOver}
@@ -953,52 +996,58 @@ export function AddTradeModal({
           </div>
 
           <div className="mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/20 px-3 py-3 backdrop-blur-md sm:px-4 sm:py-4 md:px-6">
-            {canRepeatLast && onRepeatLast && !isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onRepeatLast}
-                className="mb-3 h-10 w-full border-white/[0.1] bg-white/[0.03] text-[12px] text-foreground/85 hover:bg-white/[0.06]"
-              >
-                Repeat last setup
-                {repeatSourceLabel ? (
-                  <span className="ml-1.5 text-muted-foreground/60">· {repeatSourceLabel}</span>
-                ) : null}
-              </Button>
+            {postSaveDiscipline ? (
+              <PostLogDisciplineInline {...postSaveDiscipline} />
+            ) : (
+              <>
+                {canRepeatLast && onRepeatLast && !isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onRepeatLast}
+                    className="mb-3 h-10 w-full border-white/[0.1] bg-white/[0.03] text-[12px] text-foreground/85 hover:bg-white/[0.06]"
+                  >
+                    Repeat last setup
+                    {repeatSourceLabel ? (
+                      <span className="ml-1.5 text-muted-foreground/60">· {repeatSourceLabel}</span>
+                    ) : null}
+                  </Button>
+                )}
+                {onOpenCoach && !isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onOpenCoach}
+                    className="mb-3 h-11 w-full border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
+                  >
+                    <Sparkles className="mr-2 size-4" />
+                    {hasCoachSession ? "Continue Pre-Trade Coach" : "Start Pre-Trade Coach"}
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || isUploading}
+                  className="btn-primary mobile-sticky-submit h-11 w-full text-sm transition-all sm:h-12 sm:text-base"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="size-4 animate-spin rounded-full border-2 border-background/30 border-t-background" />
+                      {isEditing ? "Updating Trade..." : "Saving Trade..."}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      {isEditing ? <Pencil className="size-5" /> : <Sparkles className="size-5" />}
+                      {submitLabel(journalMode, isEditing)}
+                    </span>
+                  )}
+                </Button>
+                <p className="mt-2 text-center text-[10px] text-muted-foreground/60">
+                  {isPlan
+                    ? "Saves as planned setup (BE · $0) — Vyronis scores your entry plan. Log result later via Edit."
+                    : "Vyronis strategy scoring runs automatically when you save"}
+                </p>
+              </>
             )}
-            {onOpenCoach && !isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onOpenCoach}
-                className="mb-3 h-11 w-full border-cyan-glow/20 bg-cyan-glow/[0.04] text-cyan-glow hover:bg-cyan-glow/[0.08]"
-              >
-                <Sparkles className="mr-2 size-4" />
-                {hasCoachSession ? "Continue Pre-Trade Coach" : "Start Pre-Trade Coach"}
-              </Button>
-            )}
-            <Button
-              type="submit"
-              disabled={isSubmitting || isUploading}
-              className="mobile-sticky-submit h-11 w-full bg-gradient-to-r from-cyan-glow to-profit text-sm font-bold text-background shadow-[0_0_24px_rgba(34,211,238,0.2)] transition-all hover:from-cyan-glow/90 hover:to-profit/90 sm:h-12 sm:text-base"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <span className="size-4 animate-spin rounded-full border-2 border-background/30 border-t-background" />
-                  {isEditing ? "Updating Trade..." : "Saving Trade..."}
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  {isEditing ? <Pencil className="size-5" /> : <Sparkles className="size-5" />}
-                  {submitLabel(journalMode, isEditing)}
-                </span>
-              )}
-            </Button>
-            <p className="mt-2 text-center text-[10px] text-muted-foreground/60">
-              {isPlan
-                ? "Saves as planned setup (BE · $0) — Vyronis scores your entry plan. Log result later via Edit."
-                : "Vyronis strategy scoring runs automatically when you save"}
-            </p>
           </div>
         </form>
       </div>

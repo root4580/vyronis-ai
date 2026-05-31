@@ -82,7 +82,7 @@ export function JournalAnalyticsStrip({
               label="Current"
               value={`-${drawdown.currentDrawdownPercent.toFixed(1)}%`}
               valueClass={
-                drawdown.currentDrawdownPercent > 0 ? "text-amber-300" : "text-profit"
+                drawdown.currentDrawdownPercent > 0 ? "text-warning-foreground" : "text-profit"
               }
             />
           </div>

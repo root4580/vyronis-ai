@@ -58,7 +58,7 @@ function PanelChrome({
   children: ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.1] bg-[#0a0f14] shadow-2xl shadow-black/40">
+    <div className="overflow-hidden rounded-xl border border-white/[0.1] bg-surface-modal shadow-2xl shadow-black/40">
       <div className="flex items-center justify-between border-b border-white/[0.06] bg-black/40 px-3 py-2">
         <div>
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/75">

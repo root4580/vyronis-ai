@@ -160,7 +160,7 @@ export function WeeklyReviewPanel({
                   type="button"
                   onClick={() => void handleGenerate()}
                   disabled={isGenerating}
-                  className="flex-1 bg-gradient-to-r from-cyan-glow via-cyan-glow/90 to-violet-400/80 text-background shadow-[0_0_24px_rgba(34,211,238,0.25)]"
+                  className="btn-primary flex-1"
                 >
                   {isGenerating ? (
                     <>

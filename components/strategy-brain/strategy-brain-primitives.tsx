@@ -38,7 +38,7 @@ export function GradeBadge({ grade }: { grade: SetupGrade }) {
         "rounded-md px-2 py-0.5 text-[11px] font-bold tabular-nums tracking-wide",
         grade === "A+" && "bg-profit/20 text-profit",
         grade === "B" && "bg-cyan-glow/15 text-cyan-glow",
-        grade === "C" && "bg-amber-500/15 text-amber-200",
+        grade === "C" && "bg-warning/15 text-warning-muted",
         grade === "D" && "bg-loss/15 text-loss",
       )}
     >
@@ -53,7 +53,7 @@ export function RecommendationBadge({ rec }: { rec: TradeRecommendation }) {
       className={cn(
         "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
         rec === "TAKE" && "bg-profit/15 text-profit",
-        rec === "CAUTION" && "bg-amber-500/15 text-amber-200",
+        rec === "CAUTION" && "bg-warning/15 text-warning-muted",
         rec === "SKIP" && "bg-white/10 text-muted-foreground",
       )}
     >

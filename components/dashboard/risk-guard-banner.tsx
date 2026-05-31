@@ -35,9 +35,9 @@ const TONE_STYLES: Record<
     dot: "bg-cyan-glow/80",
   },
   caution: {
-    border: "border-amber-500/22",
-    bg: "bg-amber-500/[0.05]",
-    icon: "text-amber-200/90",
+    border: "border-warning/22",
+    bg: "bg-warning/[0.05]",
+    icon: "text-warning-muted/90",
     dot: "bg-amber-400/90",
   },
   elevated: {

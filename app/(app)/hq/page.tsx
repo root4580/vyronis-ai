@@ -9,7 +9,6 @@ import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import {
-  StatsCards,
   RecentTradesTable,
   CalendarHeatmapPlaceholder,
   AITradeCoachPlaceholder,
@@ -25,7 +24,7 @@ import {
 import { TabTransition } from "@/components/dashboard/tab-transition"
 import { DashboardOverviewSkeleton, TableSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
-import { AddTradeModal } from "@/components/dashboard/add-trade-modal"
+import { AddTradeModal, type PostSaveDisciplineSummary } from "@/components/dashboard/add-trade-modal"
 import { collectStrategyNamesFromTrades } from "@/components/dashboard/strategy-name-select"
 import { TradeDetailsModal } from "@/components/dashboard/trade-details-modal"
 import { PlannedTradesSection } from "@/components/dashboard/planned-trades-section"
@@ -85,7 +84,6 @@ import {
   buildUserProfileCardProps,
 } from "@/components/dashboard/user-profile-card"
 import { ConnectedDashboardChrome } from "@/components/dashboard/connected-dashboard-chrome"
-import { DashboardRecentTradesSection } from "@/components/dashboard/dashboard-recent-trades-section"
 import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
@@ -112,8 +110,7 @@ import type { SetupCoachingInsight, SetupScoreBreakdown } from "@/lib/trade-coac
 import type { VyronisScoreBreakdown } from "@/types/strategy"
 import { VyronisScoreResultModal } from "@/components/dashboard/vyronis-score-result-modal"
 import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
-import { WeeklyWatchlistBanner } from "@/components/dashboard/weekly-watchlist-banner"
-import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
+import { HqDashboard } from "@/components/dashboard/hq-dashboard"
 import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
 import { getTradingViewSignalHref } from "@/lib/tradingview/signal-navigation"
 import { buildPlannedContextFromSignalItem } from "@/lib/tradingview/planned-context-from-list-item"
@@ -130,10 +127,6 @@ import {
   type PlanDisciplineResult,
 } from "@/lib/trade-planner/deviation-engine"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
-import { PlanDisciplineResultModal } from "@/components/trade-planner/plan-discipline-result-modal"
-import { PlanDisciplineSummaryWidget } from "@/components/trade-planner/plan-discipline-summary-widget"
-import { buildCoachContextFromPlanDeviation } from "@/lib/trade-planner/coach-post-trade-context"
-import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
 import {
@@ -283,23 +276,7 @@ function Home() {
   const [lastVyronisEvaluation, setLastVyronisEvaluation] = useState<VyronisJournalEvaluationRecord | null>(null)
   const [lastVyronisPairLabel, setLastVyronisPairLabel] = useState<string>("")
   const [linkedPlan, setLinkedPlan] = useState<MatchableTradePlan | null>(null)
-  const [planDisciplineOpen, setPlanDisciplineOpen] = useState(false)
-  const [planDisciplineResult, setPlanDisciplineResult] = useState<PlanDisciplineResult | null>(null)
-  const [planDisciplinePairLabel, setPlanDisciplinePairLabel] = useState("")
-  const [planDisciplineTradeId, setPlanDisciplineTradeId] = useState<string | null>(null)
-  const [planDisciplineReviewPlan, setPlanDisciplineReviewPlan] = useState<MatchableTradePlan | null>(null)
-  const [planDisciplineReviewTrade, setPlanDisciplineReviewTrade] = useState<{
-    pair: string
-    direction: string
-    result: string
-    pnl: number
-    entryPrice?: number | null
-    stopLoss?: number | null
-    takeProfit?: number | null
-    riskPercent?: number | null
-    emotion?: string | null
-    tradeDate?: string | null
-  } | null>(null)
+  const [postSaveDiscipline, setPostSaveDiscipline] = useState<PostSaveDisciplineSummary | null>(null)
   const [tradeJournalMode, setTradeJournalMode] = useState<TradeJournalMode>("log")
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
@@ -1697,32 +1674,16 @@ function Home() {
       setEditingTrade(null)
       setTradeJournalMode("log")
       setLinkedPlan(null)
-      setIsModalOpen(false)
       setLastVyronisEvaluation(vyronisEvaluation)
       setLastVyronisPairLabel(savedPairLabel)
       if (linkedPlanDiscipline && savedTradeId) {
-        setPlanDisciplineResult(linkedPlanDiscipline)
-        setPlanDisciplinePairLabel(savedPairLabel)
-        setPlanDisciplineTradeId(savedTradeId)
-        if (planToLink) {
-          setPlanDisciplineReviewPlan(planToLink)
-          setPlanDisciplineReviewTrade({
-            pair: savedFormSnapshot.pair,
-            direction: savedFormSnapshot.direction,
-            result: form.result,
-            pnl: normalizePnL(parseFloat(form.pnl), form.result),
-            entryPrice: parseOptionalNumber(savedFormSnapshot.entry_price),
-            stopLoss: parseOptionalNumber(savedFormSnapshot.stop_loss),
-            takeProfit: parseOptionalNumber(savedFormSnapshot.take_profit),
-            riskPercent: savedFormSnapshot.risk_percent
-              ? parseFloat(savedFormSnapshot.risk_percent)
-              : null,
-            emotion: form.emotion || null,
-            tradeDate: form.trade_date || null,
-          })
-        }
-        setPlanDisciplineOpen(true)
+        setPostSaveDiscipline({
+          result: linkedPlanDiscipline,
+          tradeDetailHref: `/journal/trade/${savedTradeId}`,
+        })
       } else {
+        setIsModalOpen(false)
+        setPostSaveDiscipline(null)
         setVyronisResultOpen(true)
       }
       fetchTrades(activeUserId)
@@ -1912,6 +1873,7 @@ function Home() {
     setConvertSessionId(null)
     setTradeJournalMode("log")
     setLinkedPlan(null)
+    setPostSaveDiscipline(null)
     setRiskGuardOpen(false)
     setRiskGuardResult(null)
     setForm(createInitialTradeForm())
@@ -2082,22 +2044,16 @@ function Home() {
         setActiveTab("dashboard")
         router.replace(getDashboardHomeHref())
       }}
-      onDockJournal={() => {
-        setActiveTab("journal")
-        router.replace(getDashboardTabHref("journal"))
-      }}
       onDockCoach={() => {
         openCommandCenterRef.current()
         if (user?.id) markRitualCoachEngaged(user.id)
       }}
       onDockLog={handleDockLog}
       onDockPlanner={() => router.push("/trade-planner")}
-      onDockWarRoom={() => router.push("/war-room")}
-      onDockAnalytics={() => router.replace("/analytics")}
       banner={
         showLoadFallbackBanner ? (
-          <DashboardInsetPanel className="border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
-            <p className="text-[12px] font-medium text-amber-200/90">{tradesLoadError}</p>
+          <DashboardInsetPanel className="border-warning/20 bg-warning/[0.06] px-4 py-3">
+            <p className="text-[12px] font-medium text-warning-muted/90">{tradesLoadError}</p>
           </DashboardInsetPanel>
         ) : null
       }
@@ -2107,7 +2063,7 @@ function Home() {
             showTradesSkeleton ? (
               <DashboardOverviewSkeleton />
             ) : (
-              <div className="space-y-4 md:space-y-6">
+              <div className="hq-content space-y-5">
                 {trades.length === 0 ? (
                   <FirstRunBanner
                     onLogTrade={() => openManualTrade()}
@@ -2115,77 +2071,23 @@ function Home() {
                   />
                 ) : null}
 
-                <StatsCards
-                  accountBalance={accountBalance}
-                  totalPnL={totalPnL}
-                  winRate={winRate}
-                  avgRisk={avgRisk}
-                  maxRiskPerTrade={maxRiskPerTrade}
-                  tradeCount={trades.length}
-                />
-
-                <DashboardTrustStrip
-                  tradeCount={trades.length}
-                  lastSyncedLabel={
-                    lastSyncedAt
-                      ? `Synced ${lastSyncedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
-                      : isLoadingTrades
-                        ? "Syncing…"
-                        : null
-                  }
-                />
-
-                <WeeklyWatchlistBanner className="mb-1" />
-
-                {user?.id ? (
-                  <TodayHeroStrip
-                    userId={user.id}
-                    trades={trades}
-                    maxRiskPerTrade={maxRiskPerTrade}
-                    plannedSessions={plannedSessions}
-                    onOpenWarRoom={() => router.push("/war-room")}
-                    onOpenCoach={() => void handleOpenCoach()}
-                    onOpenLog={() => openManualTrade()}
-                    onOpenPlan={() => openPlanTrade()}
-                    onOpenJournal={() => {
-                      setActiveTab("journal")
-                      router.replace(getDashboardTabHref("journal"))
-                    }}
-                    onOpenWeeklyDebrief={() => {
-                      setActiveTab("journal")
-                      router.replace(getDashboardTabHref("journal"))
-                      window.setTimeout(() => {
-                        document
-                          .getElementById("weekly-debrief-panel")
-                          ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                      }, 120)
-                    }}
-                    onCoachEngaged={() => {
-                      if (user.id) markRitualCoachEngaged(user.id)
-                    }}
-                    onViewPerformance={openDashboardPerformance}
-                  />
-                ) : null}
-
-                <PlanDisciplineSummaryWidget className="mb-1" />
-
-                <DashboardRecentTradesSection
+                <HqDashboard
                   trades={trades}
-                  limit={3}
-                  variant="compact"
-                  onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
-                  onEdit={handleEditTrade}
-                  onDelete={(trade) => {
-                    setTradeToDelete(trade)
-                    setIsDeleteModalOpen(true)
-                  }}
-                  onScreenshotClick={(trade) =>
-                    setScreenshotViewer({ url: trade.screenshot_url, label: trade.pair })
-                  }
-                  onSeeAll={() => {
+                  winRate={winRate}
+                  onOpenCoach={() => void handleOpenCoach()}
+                  onOpenWarRoom={() => router.push("/war-room")}
+                  onOpenJournal={() => {
                     setActiveTab("journal")
                     router.replace(getDashboardTabHref("journal"))
                   }}
+                  onOpenPlanner={(pair) => {
+                    if (pair) {
+                      router.push(`/trade-planner?pair=${encodeURIComponent(pair)}`)
+                      return
+                    }
+                    router.push("/trade-planner")
+                  }}
+                  onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
                 />
 
                 <PrimaryLeakCardWithSettings
@@ -2343,7 +2245,7 @@ function Home() {
                       <Button
                         type="button"
                         onClick={() => openManualTrade()}
-                        className="h-9 w-full bg-cyan-glow/90 text-black hover:bg-cyan-glow sm:w-auto"
+                        className="h-9 w-full btn-primary sm:w-auto"
                       >
                         <Plus className="mr-2 size-4" />
                         New Trade
@@ -2429,6 +2331,7 @@ function Home() {
         }}
         linkedPlan={linkedPlan}
         onLinkedPlanChange={setLinkedPlan}
+        postSaveDiscipline={postSaveDiscipline}
       />
 
       <FirstRunSetupModal
@@ -2579,43 +2482,6 @@ function Home() {
         evaluation={lastVyronisEvaluation}
         pairLabel={lastVyronisPairLabel}
         onClose={() => setVyronisResultOpen(false)}
-      />
-
-      <PlanDisciplineResultModal
-        open={planDisciplineOpen}
-        pairLabel={planDisciplinePairLabel}
-        result={planDisciplineResult}
-        tradeDetailHref={
-          planDisciplineTradeId ? `/journal/trade/${planDisciplineTradeId}` : undefined
-        }
-        showCoachCta={
-          planDisciplineResult != null &&
-          planDisciplineResult.score < 70 &&
-          planDisciplineReviewPlan != null &&
-          planDisciplineReviewTrade != null
-        }
-        onOpenCoach={() => {
-          if (!planDisciplineReviewPlan || !planDisciplineResult || !planDisciplineReviewTrade) return
-          const context = buildCoachContextFromPlanDeviation({
-            plan: planDisciplineReviewPlan,
-            trade: planDisciplineReviewTrade,
-            discipline: planDisciplineResult,
-            maxRiskPerTrade,
-          })
-          setPlanDisciplineOpen(false)
-          setPlanDisciplineResult(null)
-          setPlanDisciplineTradeId(null)
-          setPlanDisciplineReviewPlan(null)
-          setPlanDisciplineReviewTrade(null)
-          void handleOpenCoach(context)
-        }}
-        onClose={() => {
-          setPlanDisciplineOpen(false)
-          setPlanDisciplineResult(null)
-          setPlanDisciplineTradeId(null)
-          setPlanDisciplineReviewPlan(null)
-          setPlanDisciplineReviewTrade(null)
-        }}
       />
 
       <VyronisCommandCenter />

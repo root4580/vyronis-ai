@@ -71,7 +71,7 @@ export async function createResearchStrategy(
       name,
       description: input.description?.trim() || "",
       magic_number: input.magic_number ?? null,
-      color: input.color || "#22d3ee",
+      color: input.color || "var(--color-accent)",
       account_type: "demo",
       is_active: true,
       updated_at: new Date().toISOString(),

@@ -122,7 +122,7 @@ export function buildResearchStrategyComparison(
       return {
         strategyId,
         name: meta?.name || tradeStrategyFallbackName(bucket),
-        color: meta?.color || "#22d3ee",
+        color: meta?.color || "var(--color-accent)",
         tradeCount: bucket.length,
         wins,
         losses,

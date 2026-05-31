@@ -98,7 +98,7 @@ export function ChartAnnotatedImage({
               refY="2"
               orient="auto"
             >
-              <path d="M0,0 L4,2 L0,4 Z" fill="rgba(34, 211, 238, 0.9)" />
+              <path d="M0,0 L4,2 L0,4 Z" fill="rgb(from var(--color-accent) r g b / 0.9)" />
             </marker>
           </defs>
           {annotations.map((annotation) => (

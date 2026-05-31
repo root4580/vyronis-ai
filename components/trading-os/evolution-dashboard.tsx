@@ -10,9 +10,9 @@ type EvolutionDashboardProps = {
 
 function TrendBadge({ trend }: { trend: "improving" | "stable" | "declining" }) {
   const styles = {
-    improving: "text-emerald-300/90 bg-emerald-500/10 border-emerald-500/25",
-    stable: "text-cyan-200/85 bg-cyan-500/10 border-cyan-500/20",
-    declining: "text-amber-200/90 bg-amber-500/10 border-amber-500/25",
+    improving: "text-emerald-300/90 bg-profit/10 border-profit/25",
+    stable: "text-cyan-200/85 bg-accent/10 border-accent/20",
+    declining: "text-warning-muted/90 bg-warning/10 border-warning/25",
   }
   return (
     <span

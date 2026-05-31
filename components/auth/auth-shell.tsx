@@ -36,7 +36,7 @@ export function AuthShell({
           <Link href="/" className="group mb-4 inline-flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-cyan-glow/20 blur-xl transition-opacity group-hover:opacity-100" />
-              <div className="relative flex size-12 items-center justify-center rounded-xl border border-cyan-glow/30 bg-gradient-to-br from-cyan-glow/20 to-cyan-glow/5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
+              <div className="relative flex size-12 items-center justify-center rounded-xl border border-cyan-glow/30 bg-gradient-to-br from-cyan-glow/20 to-cyan-glow/5 shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.12)]">
                 <Activity className="size-6 text-cyan-glow" />
               </div>
             </div>
@@ -77,7 +77,7 @@ export function AuthShell({
   return (
     <div className="auth-page relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-6 sm:p-6">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(34,211,238,0.06),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgb(from var(--color-accent) r g b / 0.06),transparent_50%)]" />
       <div className="auth-grid-overlay absolute inset-0 opacity-[0.02]" />
       {card}
     </div>
@@ -113,7 +113,7 @@ export function AuthSubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className="auth-submit-btn group flex w-full min-h-[48px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-glow to-cyan-glow/80 py-3 font-semibold text-background transition-all hover:shadow-[0_0_24px_rgba(34,211,238,0.25)] disabled:opacity-50 touch-manipulation"
+      className="auth-submit-btn group flex w-full min-h-[48px] items-center justify-center gap-2 rounded-xl btn-primary py-3 transition-all hover:shadow-[0_0_24px_rgb(from var(--color-accent) r g b / 0.25)] disabled:opacity-50 touch-manipulation"
     >
       {loading ? (
         <>

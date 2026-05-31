@@ -21,7 +21,7 @@ type ChartVisionPanelProps = {
 
 function scoreColor(score: number) {
   if (score >= 75) return "text-profit"
-  if (score >= 55) return "text-amber-400"
+  if (score >= 55) return "text-warning-foreground"
   return "text-loss"
 }
 
@@ -43,7 +43,7 @@ function trendBadge(bias: ChartVisionResult["trendBias"]) {
   if (bias === "mixed") {
     return {
       label: "Mixed bias",
-      className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-200/90",
+      className: "border-warning/25 bg-warning/[0.08] text-warning-muted/90",
       icon: TrendingDown,
     }
   }
@@ -139,7 +139,7 @@ export function ChartVisionPanel({ analysis, compact = false }: ChartVisionPanel
 
       <div className="flex flex-wrap gap-1.5">
         {(vision?.metrics.countertrend ?? analysis.countertrend) && (
-          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/25 bg-amber-500/[0.08] px-2 py-0.5 text-[10px] text-amber-200/90">
+          <span className="inline-flex items-center gap-1 rounded-md border border-warning/25 bg-warning/[0.08] px-2 py-0.5 text-[10px] text-warning-muted/90">
             Countertrend
           </span>
         )}
@@ -162,12 +162,12 @@ export function ChartVisionPanel({ analysis, compact = false }: ChartVisionPanel
 
       {warnings.length > 0 && (
         <div className="space-y-1.5">
-          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-400/80">
+          <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/80">
             <AlertTriangle className="size-3" />
             Warnings
           </p>
           {warnings.slice(0, compact ? 2 : 4).map((warning) => (
-            <p key={warning} className="text-[10px] leading-relaxed text-amber-200/85">
+            <p key={warning} className="text-[10px] leading-relaxed text-warning-muted/85">
               {warning}
             </p>
           ))}

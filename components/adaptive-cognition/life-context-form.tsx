@@ -96,7 +96,7 @@ export function LifeContextForm({ onSaved }: LifeContextFormProps) {
         rows={2}
         className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-[11px] text-foreground/90"
       />
-      {error ? <p className="text-[10px] text-amber-200/90">{error}</p> : null}
+      {error ? <p className="text-[10px] text-warning-muted/90">{error}</p> : null}
       <Button type="submit" size="sm" disabled={saving} className="h-8 text-xs">
         {saving ? "Saving…" : "Log today"}
       </Button>

@@ -54,7 +54,7 @@ function PointerBadge({ category }: { category: ReturnType<typeof parsePlanPoint
       )
     case "rr":
       return (
-        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/[0.08] text-[9px] text-amber-200">
+        <Badge variant="outline" className="border-warning/30 bg-warning/[0.08] text-[9px] text-warning-muted">
           R:R
         </Badge>
       )
@@ -76,7 +76,7 @@ function PointerIcon({ category }: { category: ReturnType<typeof parsePlanPointe
     case "structure":
       return <ScanLine className="mt-0.5 size-3 shrink-0 text-cyan-glow/80" />
     case "rr":
-      return <TrendingUp className="mt-0.5 size-3 shrink-0 text-amber-300/80" />
+      return <TrendingUp className="mt-0.5 size-3 shrink-0 text-warning-foreground/80" />
     default:
       return <Lightbulb className="mt-0.5 size-3 shrink-0 text-cyan-glow/70" />
   }

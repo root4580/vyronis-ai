@@ -298,7 +298,7 @@ export function TradingViewWebhookSettings() {
             </div>
           </>
         ) : (
-          <p className="text-amber-300/80">
+          <p className="text-warning-foreground/80">
             Run <code className="text-cyan-glow/80">supabase/013-tradingview-signals.sql</code> in
             Supabase, then reload this page.
           </p>

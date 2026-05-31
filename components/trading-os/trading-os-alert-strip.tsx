@@ -10,8 +10,8 @@ type TradingOsAlertStripProps = {
 }
 
 const SEVERITY_STYLES = {
-  info: "border-cyan-500/20 bg-cyan-500/[0.05] text-cyan-100/90",
-  warning: "border-amber-500/30 bg-amber-500/[0.08] text-amber-100/95",
+  info: "border-accent/20 bg-accent/[0.05] text-cyan-100/90",
+  warning: "border-warning/30 bg-warning/[0.08] text-amber-100/95",
   critical: "border-rose-500/35 bg-rose-500/[0.1] text-rose-100/95",
 } as const
 
