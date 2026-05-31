@@ -10,6 +10,7 @@ import {
 import type { PlannedVsActualComparison, PreTradePlannedContext } from "@/lib/trade-coach/types"
 import { listPlannedCoachSessions } from "@/lib/trade-coach/server-service"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+import { DEFAULT_USER_PROFILE, normalizeUserProfile } from "@/lib/user-profile"
 import { buildTraderContextMemory } from "@/lib/intelligence/trader-context"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
 
@@ -38,13 +39,23 @@ async function loadUserSettings(supabase: SupabaseClient, userId: string) {
   }
 }
 
-async function loadProfileName(supabase: SupabaseClient, userId: string) {
+async function loadProfileContext(supabase: SupabaseClient, userId: string) {
   const { data } = await supabase
     .from("user_profiles")
-    .select("display_name")
+    .select("display_name, first_name, last_name, timezone")
     .eq("user_id", userId)
     .maybeSingle()
-  return data?.display_name ?? null
+
+  const profile = normalizeUserProfile(data)
+  const displayName =
+    data?.display_name?.trim() ||
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+    null
+
+  return {
+    traderName: displayName,
+    timeZone: profile.timezone || DEFAULT_USER_PROFILE.timezone,
+  }
 }
 
 async function loadTrades(supabase: SupabaseClient, userId: string) {
@@ -108,7 +119,7 @@ async function loadUnreadSignalCount(supabase: SupabaseClient, userId: string) {
 
 export async function buildMemoryBundle(supabase: SupabaseClient, userId: string) {
   const settings = await loadUserSettings(supabase, userId)
-  const traderName = await loadProfileName(supabase, userId)
+  const profile = await loadProfileContext(supabase, userId)
   const trades = await loadTrades(supabase, userId)
   const patternResult = await loadPatternInputs(supabase, userId, settings.maxRiskPerTrade)
   const plannedSessions = await listPlannedCoachSessions(supabase, userId)
@@ -148,9 +159,16 @@ export async function buildMemoryBundle(supabase: SupabaseClient, userId: string
     primaryLeak,
     patterns: patternResult.patterns,
     plannedSessions,
-    traderName,
+    traderName: profile.traderName,
+    timeZone: profile.timeZone,
     unreadSignalCount,
   })
 
-  return { settings, memory, recentTrades: trades.slice(0, 12) as RecentTradeMemory[], traderName }
+  return {
+    settings,
+    memory,
+    recentTrades: trades.slice(0, 12) as RecentTradeMemory[],
+    traderName: profile.traderName,
+    timeZone: profile.timeZone,
+  }
 }

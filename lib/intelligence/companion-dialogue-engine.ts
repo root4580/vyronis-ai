@@ -18,7 +18,8 @@ import {
   isTradingIntent,
   type CompanionIntent,
 } from "@/lib/intelligence/companion-intent-engine"
-import { getTimeOfDayGreeting } from "@/lib/intelligence/greeting-engine"
+import { getTimeOfDayGreeting, getLocalHour } from "@/lib/intelligence/greeting-engine"
+import { DEFAULT_USER_PROFILE } from "@/lib/user-profile"
 
 function joinParts(parts: string[]): string {
   return parts.filter(Boolean).join(" ")
@@ -256,12 +257,14 @@ export function buildConversationalGreeting(input: {
   memory: TraderContextMemory
   recentTrades: RecentTradeMemory[]
   traderName?: string | null
+  timeZone?: string
 }): { content: string; companionState: CompanionReplyResult["companionState"] } {
   const name = firstNameFromDisplay(input.traderName)
   const now = new Date()
-  const timeHello = getTimeOfDayGreeting(now)
+  const timeZone = input.timeZone || DEFAULT_USER_PROFILE.timezone
+  const timeHello = getTimeOfDayGreeting(now, timeZone)
   const hello = name ? `${timeHello}, ${name}.` : `${timeHello}.`
-  const hour = now.getHours()
+  const hour = getLocalHour(now, timeZone)
   const dayCheckIn =
     hour >= 22 || hour < 5 ? "How's everything going?" : "How's your day going?"
 

@@ -33,6 +33,7 @@ export type TraderContextInput = {
   patterns: PatternMemoryPattern[]
   plannedSessions: PlannedCoachSessionItem[]
   traderName?: string | null
+  timeZone?: string
   unreadSignalCount?: number
 }
 
@@ -69,6 +70,7 @@ export function buildTraderContextMemory(input: TraderContextInput): TraderConte
     primaryLeak: input.primaryLeak,
     plannedSessions: input.plannedSessions,
     traderName: input.traderName,
+    timeZone: input.timeZone,
   })
 
   const warnings = buildBehavioralWarnings({

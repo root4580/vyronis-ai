@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { buildMemoryBundle } from "@/lib/intelligence/memory-bundle"
 import { buildConversationalGreeting } from "@/lib/intelligence/companion-dialogue-engine"
+import { GREETING_VERSION, getLocalDateKey } from "@/lib/intelligence/greeting-engine"
+import { DEFAULT_USER_PROFILE } from "@/lib/user-profile"
 import { generateCompanionIntelligenceReply } from "@/lib/intelligence/companion-llm-engine"
 import { compressInteractionMemory, storeMemoryInsight } from "@/lib/intelligence/memory-compression"
 import { persistCognitiveSnapshot } from "@/lib/intelligence/cognitive-snapshot-service"
@@ -200,8 +202,8 @@ async function insertMessage(
   return mapMessage(data)
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10)
+function todayKey(timeZone = DEFAULT_USER_PROFILE.timezone) {
+  return getLocalDateKey(new Date(), timeZone)
 }
 
 async function ensureDailyGreeting(
@@ -211,14 +213,17 @@ async function ensureDailyGreeting(
   memory: Awaited<ReturnType<typeof buildMemoryBundle>>["memory"],
   recentTrades: RecentTradeMemory[],
   traderName: string | null,
+  timeZone: string,
   existingMessages?: CommandCenterMessageRecord[],
 ) {
   const allMessages =
     existingMessages ?? (await listThreadMessages(supabase, userId, threadId, 80))
   const lastGreeting = [...allMessages].reverse().find((m) => m.message_type === "greeting")
   const greetingDay = lastGreeting?.payload?.dayKey
+  const greetingVersion = lastGreeting?.payload?.greetingVersion
+  const localDayKey = todayKey(timeZone)
 
-  if (greetingDay === todayKey() && lastGreeting) {
+  if (greetingDay === localDayKey && lastGreeting && greetingVersion === GREETING_VERSION) {
     return allMessages
   }
 
@@ -226,6 +231,7 @@ async function ensureDailyGreeting(
     memory,
     recentTrades,
     traderName,
+    timeZone,
   })
 
   const seededWarningIds = greetingWarningIds(memory)
@@ -237,7 +243,8 @@ async function ensureDailyGreeting(
     messageType: "greeting",
     content: greeting.content,
     payload: {
-      dayKey: todayKey(),
+      dayKey: localDayKey,
+      greetingVersion: GREETING_VERSION,
       companionState: greeting.companionState,
       mentionedWarningIds: seededWarningIds,
     },
@@ -331,7 +338,7 @@ export async function getCommandCenterContext(
   focusId: string | null = null,
   options?: { sessionThreadId?: string | null; fresh?: boolean; lean?: boolean },
 ): Promise<CommandCenterContext> {
-  const [{ settings, memory, recentTrades, traderName }, activeCompanionThreadId] =
+  const [{ settings, memory, recentTrades, traderName, timeZone }, activeCompanionThreadId] =
     await Promise.all([
       buildMemoryBundle(supabase, userId),
       options?.fresh && mode === "companion" && !options?.sessionThreadId
@@ -365,6 +372,7 @@ export async function getCommandCenterContext(
       memory,
       recentTrades,
       traderName,
+      timeZone,
       initialMessages,
     )
   }
