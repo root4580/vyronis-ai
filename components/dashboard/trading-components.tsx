@@ -109,7 +109,7 @@ import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
-import { detectTradingSession, type TradingSessionInfo } from "@/lib/trading/session-timing"
+import { getForexSessionHeaderState } from "@/lib/trading/forex-sessions"
 import {
   buildDailyRules,
   buildRiskSnapshot,
@@ -220,12 +220,12 @@ export function DashboardHeader({
   const pathname = usePathname() ?? "/"
   const router = useRouter()
   const { enabled: researchLabEnabled } = useResearchLabEnabled()
-  const [session, setSession] = useState<TradingSessionInfo>(() => detectTradingSession())
+  const [forexHeader, setForexHeader] = useState(() => getForexSessionHeaderState())
   const [localTime, setLocalTime] = useState<string>("")
 
   useEffect(() => {
     const updateTime = () => {
-      setSession(detectTradingSession())
+      setForexHeader(getForexSessionHeaderState())
       setLocalTime(
         new Date().toLocaleTimeString("en-US", {
           hour: "numeric",
@@ -436,16 +436,19 @@ export function DashboardHeader({
             </button>
           ) : null}
 
-          <div className="vyronis-nav__status">
+          <div
+            className="vyronis-nav__status"
+            title={forexHeader.secondaryLabel}
+          >
             <span
               className={cn(
                 "vyronis-nav__status-dot",
-                session.isActive && "vyronis-nav__status-dot--open",
+                forexHeader.isLive && "vyronis-nav__status-dot--open",
               )}
               aria-hidden="true"
             />
-            <span>{session.isActive ? "Open" : "Closed"}</span>
-            <span>· {session.name}</span>
+            <span>{forexHeader.isLive ? "Open" : "Closed"}</span>
+            <span>· {forexHeader.primaryLabel}</span>
           </div>
 
           {localTime ? <span className="vyronis-nav__time">{localTime}</span> : null}
