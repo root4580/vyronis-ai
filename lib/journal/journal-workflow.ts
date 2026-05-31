@@ -1,3 +1,5 @@
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
+
 /** Pre-trade → post-trade learning workflow (decision intelligence, not just logging). */
 
 export type JournalWorkflowStepId =
@@ -51,14 +53,14 @@ export const JOURNAL_WORKFLOW_STEPS: JournalWorkflowStep[] = [
     id: "trade_decision",
     label: "Session guard",
     shortLabel: "Decide",
-    href: "/?tab=dashboard",
+    href: getDashboardTabHref("dashboard"),
     description: "Command Center chart review verdict",
   },
   {
     id: "journal_entry",
     label: "Log trade",
     shortLabel: "Log",
-    href: "/?tab=journal",
+    href: getDashboardTabHref("journal"),
     description: "Journal entry with screenshots and tags",
   },
   {
@@ -72,7 +74,7 @@ export const JOURNAL_WORKFLOW_STEPS: JournalWorkflowStep[] = [
     id: "pattern_memory",
     label: "Pattern memory",
     shortLabel: "Memory",
-    href: "/?tab=journal",
+    href: getDashboardTabHref("journal"),
     description: "Compare setups to historical mistakes",
   },
 ]

@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { JournalTradeCards } from "@/components/journal/journal-trade-cards"
 import type { DashboardTradeRow } from "@/components/dashboard/trading-components"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type DashboardRecentTradesSectionProps = {
@@ -79,7 +80,7 @@ export function DashboardRecentTradesSection({
             asChild
             className="h-7 shrink-0 gap-1 px-2 text-[10px] text-cyan-glow/90"
           >
-            <Link href="/?tab=journal">
+            <Link href={getDashboardTabHref("journal")}>
               Calendar
               <ArrowRight className="size-3" />
             </Link>

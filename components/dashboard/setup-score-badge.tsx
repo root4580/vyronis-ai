@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils"
 
 const CLASSIFICATION_LABELS: Record<SetupClassification, string> = {
   "A+": "A+ Setup",
+  A: "A Setup",
   B: "B Setup",
+  Skip: "Skip",
   C: "C Setup",
   Impulsive: "Impulsive",
   Revenge: "Revenge",
@@ -15,7 +17,9 @@ const CLASSIFICATION_LABELS: Record<SetupClassification, string> = {
 
 const CLASSIFICATION_GLOW: Record<SetupClassification, string> = {
   "A+": "from-cyan-glow/30 via-cyan-glow/10 to-transparent",
+  A: "from-profit/20 via-profit/5 to-transparent",
   B: "from-profit/20 via-profit/5 to-transparent",
+  Skip: "from-loss/25 to-transparent",
   C: "from-amber-500/15 to-transparent",
   Impulsive: "from-orange-500/20 to-transparent",
   Revenge: "from-loss/25 to-transparent",

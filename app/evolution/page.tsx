@@ -9,6 +9,7 @@ import { LifeContextForm } from "@/components/adaptive-cognition/life-context-fo
 import type { AdaptiveCognitionSnapshot } from "@/lib/adaptive-cognition/types"
 import { EvolutionRoadmapPanel } from "@/components/vyronis-core/evolution-roadmap-panel"
 import type { VyronisCoreSnapshot } from "@/lib/vyronis-core/types"
+import { DashboardOverviewSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
@@ -63,8 +64,16 @@ export default function EvolutionPage() {
 
   if (!chrome.isAuthReady) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground/75">
-        Loading…
+      <div className="min-h-[100dvh] bg-background">
+        <div className="border-b border-white/[0.06] bg-black/40 px-4 py-4 md:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-3">
+            <div className="size-9 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-4 w-24 animate-pulse rounded bg-white/[0.06]" />
+          </div>
+        </div>
+        <div className="mx-auto max-w-5xl px-4 py-8">
+          <DashboardOverviewSkeleton />
+        </div>
       </div>
     )
   }

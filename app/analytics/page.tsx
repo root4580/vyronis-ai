@@ -21,6 +21,7 @@ import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 
 export default function AnalyticsPage() {
   const router = useRouter()
@@ -119,7 +120,7 @@ export default function AnalyticsPage() {
                 trades={rawTrades}
                 maxRiskPerTrade={maxRiskPerTrade}
                 onViewTrade={(tradeId) =>
-                  router.push(`/?tab=journal&trade=${encodeURIComponent(tradeId)}`)
+                  router.push(`${getDashboardTabHref("journal")}&trade=${encodeURIComponent(tradeId)}`)
                 }
               />
             </section>

@@ -1,4 +1,5 @@
 import { sanitizeRedirectPath } from "@/lib/auth-routes"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { getAppBaseUrl } from "@/lib/env"
 
 export const AUTH_RESEND_COOLDOWN_MS = 60_000
@@ -11,15 +12,15 @@ export function getAuthSiteOrigin(): string {
 /** OAuth/email callback; optional post-login path via `next`. */
 export function getAuthCallbackUrl(nextPath?: string | null): string {
   const origin = getAuthSiteOrigin()
-  const next = sanitizeRedirectPath(nextPath, "/")
-  if (next === "/") {
+  const next = sanitizeRedirectPath(nextPath, APP_HOME_PATH)
+  if (next === APP_HOME_PATH) {
     return `${origin}/auth/callback`
   }
   return `${origin}/auth/callback?next=${encodeURIComponent(next)}`
 }
 
 export function getSignupEmailRedirectUrl(): string {
-  return getAuthCallbackUrl("/")
+  return getAuthCallbackUrl(APP_HOME_PATH)
 }
 
 /** Supabase appends ?code= to this URL; must be in Auth redirect allow list. */

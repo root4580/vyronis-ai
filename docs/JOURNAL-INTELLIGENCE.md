@@ -1,6 +1,6 @@
-# Journal Intelligence System
+# Vyronis Journal Intelligence
 
-Vyronis journal is a **decision and learning workflow**, not a trade history table.
+**Vyronis journal intelligence** is Vyronis AI's decision and learning workflow — not a trade history table.
 
 ## Modes (Journal tab)
 

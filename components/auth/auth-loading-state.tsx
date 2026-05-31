@@ -1,20 +1,18 @@
 "use client"
 
-import { AuthShell } from "@/components/auth/auth-shell"
+import { AuthPageFrame } from "@/components/auth/auth-page-frame"
+import { AuthShellSkeleton } from "@/components/auth/auth-shell-skeleton"
 
 export function AuthLoadingState({
-  title,
-  subtitle = "Please wait…",
+  title: _title,
+  subtitle: _subtitle,
 }: {
   title: string
   subtitle?: string
 }) {
   return (
-    <AuthShell title={title} subtitle={subtitle}>
-      <div className="flex flex-col items-center gap-3 py-6" role="status" aria-live="polite">
-        <span className="size-8 animate-spin rounded-full border-2 border-cyan-glow/30 border-t-cyan-glow" />
-        <p className="text-sm text-muted-foreground/80">{subtitle}</p>
-      </div>
-    </AuthShell>
+    <AuthPageFrame>
+      <AuthShellSkeleton />
+    </AuthPageFrame>
   )
 }

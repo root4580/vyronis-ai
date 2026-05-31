@@ -1,6 +1,6 @@
-# Strategy Brain
+# Strategy Brain (Vyronis AI)
 
-Structured decision engine for the **Top-Down AOI** discretionary forex strategy (aligned with `lib/strategy/vyronis-strategy-playbook.ts`). No MT5 automation — intelligence and workflow only.
+Structured decision engine for the **Top-Down AOI** discretionary forex strategy (aligned with `lib/strategy/vyronis-strategy-playbook.ts`). Uses workflow scoring in-app; canonical doctrine lives in the **Vyronis Core Model** (`lib/strategy/vyronis-core.ts` — see [`VYRONIS-CORE-MODEL.md`](./VYRONIS-CORE-MODEL.md)). No MT5 automation — intelligence and workflow only.
 
 ## Setup
 

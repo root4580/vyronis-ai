@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getPasswordResetRedirectUrl } from "@/lib/auth-email"
+import { AuthPageFrame } from "@/components/auth/auth-page-frame"
 import {
   AuthErrorBanner,
   AuthField,
@@ -62,29 +63,34 @@ export default function ForgotPasswordPage() {
   if (sent) {
     const trimmed = email.trim()
     return (
-      <AuthShell
-        title="Check Your Email"
-        subtitle="If an account exists, we sent a password reset link"
-        accent="profit"
-      >
-        <AuthEmailSentPanel
-          email={trimmed}
-          title="Password reset email sent"
-          description="Open the link on this device to set a new password. The link expires in about one hour."
-          resendLabel="Resend reset link"
-          resendSuccessMessage="Password reset email sent again."
-          resendStorageKey={`${RESEND_KEY_PREFIX}${trimmed}`}
-          onResend={() => sendResetEmail(trimmed)}
-        />
-      </AuthShell>
+      <AuthPageFrame>
+        <AuthShell
+          compact
+          title="Check Your Email"
+          subtitle="If an account exists, we sent a password reset link"
+          accent="profit"
+        >
+          <AuthEmailSentPanel
+            email={trimmed}
+            title="Password reset email sent"
+            description="Open the link on this device to set a new password. The link expires in about one hour."
+            resendLabel="Resend reset link"
+            resendSuccessMessage="Password reset email sent again."
+            resendStorageKey={`${RESEND_KEY_PREFIX}${trimmed}`}
+            onResend={() => sendResetEmail(trimmed)}
+          />
+        </AuthShell>
+      </AuthPageFrame>
     )
   }
 
   return (
-    <AuthShell
-      title="Reset Password"
-      subtitle="Enter your email and we will send a secure reset link"
-    >
+    <AuthPageFrame>
+      <AuthShell
+        compact
+        title="Reset Password"
+        subtitle="Enter your email and we will send a secure reset link"
+      >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField
           label="Email"
@@ -113,5 +119,6 @@ export default function ForgotPasswordPage() {
         </Link>
       </div>
     </AuthShell>
+    </AuthPageFrame>
   )
 }

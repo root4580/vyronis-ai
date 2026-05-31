@@ -20,11 +20,15 @@ import { TradeIntelligencePanel } from "@/components/dashboard/trade-intelligenc
 import { ExecutionReplayPanel } from "@/components/dashboard/execution-replay-panel"
 import { TradeQualityTradeSection } from "@/components/dashboard/trade-quality-trade-section"
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
+import { VyronisScoreResultPanel } from "@/components/dashboard/vyronis-score-result-panel"
+import { VyronisGradeBadge } from "@/components/dashboard/vyronis-grade-badge"
+import type { VyronisJournalEvaluationRecord } from "@/lib/strategy/vyronis-journal-bridge"
 import {
   resolveStoredSetupScore,
   type SetupCoachingInsight,
   type SetupScoreBreakdown,
 } from "@/lib/trade-coach/setup-score-engine"
+import type { VyronisScoreBreakdown } from "@/types/strategy"
 import {
   buildTradeDetailAnalysis,
   getEmotionDisplay,
@@ -59,8 +63,15 @@ export type TradeDetails = {
   screenshot_url?: string | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: SetupScoreBreakdown | null
+  setup_score_breakdown?: SetupScoreBreakdown | VyronisScoreBreakdown | null
   setup_coaching_insights?: SetupCoachingInsight[] | null
+  weekly_bias?: string | null
+  daily_bias?: string | null
+  h4_bias?: string | null
+  aoi_type?: string | null
+  confirmation_type?: string | null
+  entry_quality?: string | null
+  vyronis_evaluation?: VyronisJournalEvaluationRecord | null
 }
 
 type TradeDetailsModalProps = {
@@ -167,6 +178,7 @@ export function TradeDetailsModal({
     () => (trade ? resolveStoredSetupScore(trade) : null),
     [trade],
   )
+  const vyronisEvaluation = trade?.vyronis_evaluation ?? null
   const riskReward = useMemo(() => (trade ? getTradeRiskReward(trade) : null), [trade])
 
   if (!mounted || !trade || !analysis || !setupScore) return null
@@ -256,12 +268,20 @@ export function TradeDetailsModal({
                 >
                   {trade.result}
                 </Badge>
-                <SetupScoreBadge
-                  classification={setupScore.classification}
-                  score={setupScore.score}
-                  size="md"
-                  showScore
-                />
+                {vyronisEvaluation ? (
+                  <VyronisGradeBadge
+                    grade={vyronisEvaluation.grade}
+                    score={vyronisEvaluation.score}
+                    size="md"
+                  />
+                ) : (
+                  <SetupScoreBadge
+                    classification={setupScore.classification}
+                    score={setupScore.score}
+                    size="md"
+                    showScore
+                  />
+                )}
               </div>
               <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70">
                 Trade discipline review
@@ -361,6 +381,52 @@ export function TradeDetailsModal({
                 </DashboardInsetPanel>
               )}
 
+              {(trade.weekly_bias || trade.daily_bias || trade.h4_bias || trade.aoi_type) && (
+                <DashboardInsetPanel className="glass">
+                  <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">
+                    Vyronis Core Model
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3">
+                    {trade.weekly_bias && (
+                      <div>
+                        <span className="text-muted-foreground/60">Weekly</span>
+                        <p className="font-medium capitalize">{trade.weekly_bias}</p>
+                      </div>
+                    )}
+                    {trade.daily_bias && (
+                      <div>
+                        <span className="text-muted-foreground/60">Daily</span>
+                        <p className="font-medium capitalize">{trade.daily_bias}</p>
+                      </div>
+                    )}
+                    {trade.h4_bias && (
+                      <div>
+                        <span className="text-muted-foreground/60">H4</span>
+                        <p className="font-medium capitalize">{trade.h4_bias}</p>
+                      </div>
+                    )}
+                    {trade.aoi_type && (
+                      <div>
+                        <span className="text-muted-foreground/60">AOI</span>
+                        <p className="font-medium capitalize">{trade.aoi_type.replace(/_/g, " ")}</p>
+                      </div>
+                    )}
+                    {trade.confirmation_type && (
+                      <div>
+                        <span className="text-muted-foreground/60">Confirmation</span>
+                        <p className="font-medium capitalize">{trade.confirmation_type.replace(/_/g, " ")}</p>
+                      </div>
+                    )}
+                    {trade.entry_quality && (
+                      <div>
+                        <span className="text-muted-foreground/60">Entry</span>
+                        <p className="font-medium capitalize">{trade.entry_quality}</p>
+                      </div>
+                    )}
+                  </div>
+                </DashboardInsetPanel>
+              )}
+
               <ExecutionReplayPanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
 
               <DashboardInsetPanel className="glass overflow-hidden p-0">
@@ -406,6 +472,10 @@ export function TradeDetailsModal({
             </div>
 
             <aside className="space-y-4">
+              {vyronisEvaluation && (
+                <VyronisScoreResultPanel evaluation={vyronisEvaluation} compact />
+              )}
+
               <TradeIntelligencePanel
                 tradeId={trade.id}
                 refreshKey={coachFeedbackRefreshKey}

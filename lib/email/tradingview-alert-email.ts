@@ -1,4 +1,5 @@
 import { getAppBaseUrl } from "@/lib/env"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import type { SetupGrade } from "@/lib/strategy-brain/types"
 import type { TradingViewSetupVerdict } from "@/lib/tradingview/types"
@@ -39,8 +40,8 @@ export async function sendTradingViewAlertEmail(
 
   const base = getAppBaseUrl()
   const journalUrl = input.coachSessionId
-    ? `${base}/?tab=journal&coach=${input.coachSessionId}`
-    : `${base}/?tab=journal`
+    ? `${base}${getDashboardTabHref("journal")}&coach=${input.coachSessionId}`
+    : `${base}${getDashboardTabHref("journal")}`
 
   const verdictLabel = setupVerdictLabel(input.setupVerdict)
   const subject = `Vyronis · ${input.symbol} ${input.direction} · Grade ${input.setupGrade} · ${verdictLabel}`

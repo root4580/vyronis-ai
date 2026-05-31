@@ -60,6 +60,7 @@ import {
   type UserSettingsRecord,
 } from "@/lib/user-settings"
 import { DEFAULT_DASHBOARD_PREFERENCES } from "@/lib/user-preferences"
+import { APP_HOME_PATH } from "@/lib/branding"
 import {
   buildDashboardHomePath,
   getDashboardHomeHref,
@@ -82,7 +83,6 @@ import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeR
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
-import { AuthLoadingState } from "@/components/auth/auth-loading-state"
 import { clearClientSessionData } from "@/lib/client-session"
 import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import {
@@ -97,14 +97,13 @@ import {
 } from "@/lib/dashboard-loading-debug"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import {
-  generatePatternMemory,
-  type PatternMemoryTrade,
-} from "@/lib/trade-coach/pattern-memory"
-import {
-  computeSetupScore,
-  type SetupCoachingInsight,
-  type SetupScoreBreakdown,
-} from "@/lib/trade-coach/setup-score-engine"
+  evaluateVyronisJournalTrade,
+  buildVyronisJournalPersistFields,
+  type VyronisJournalEvaluationRecord,
+} from "@/lib/strategy/vyronis-journal-bridge"
+import type { SetupCoachingInsight, SetupScoreBreakdown } from "@/lib/trade-coach/setup-score-engine"
+import type { VyronisScoreBreakdown } from "@/types/strategy"
+import { VyronisScoreResultModal } from "@/components/dashboard/vyronis-score-result-modal"
 import { PrimaryLeakCardWithSettings } from "@/components/behavior/primary-leak-card"
 import { WeeklyWatchlistBanner } from "@/components/dashboard/weekly-watchlist-banner"
 import { TodayHeroStrip } from "@/components/dashboard/today-hero-strip"
@@ -116,6 +115,12 @@ import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-wat
 import { DashboardTrustStrip } from "@/components/dashboard/dashboard-trust-strip"
 import { CollapsibleDashboardSection } from "@/components/dashboard/collapsible-dashboard-section"
 import { markRitualCoachComplete, markRitualCoachEngaged } from "@/lib/daily-ritual"
+import {
+  appendPlannedSetupMarker,
+  stripPlannedSetupMarker,
+  validateTradeFormForMode,
+  type TradeJournalMode,
+} from "@/lib/trade-journal-mode"
 import {
   buildRepeatTradeDraft,
   getMostRecentTradeForRepeat,
@@ -164,8 +169,15 @@ type Trade = {
   trade_notes?: string | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: SetupScoreBreakdown | null
+  setup_score_breakdown?: SetupScoreBreakdown | VyronisScoreBreakdown | null
   setup_coaching_insights?: SetupCoachingInsight[] | null
+  weekly_bias?: string | null
+  daily_bias?: string | null
+  h4_bias?: string | null
+  aoi_type?: string | null
+  confirmation_type?: string | null
+  entry_quality?: string | null
+  vyronis_evaluation?: VyronisJournalEvaluationRecord | null
   import_source?: string | null
   created_at: string
 }
@@ -190,7 +202,7 @@ function getTradeViolations(trade: Trade, maxRiskPerTrade: number): Violation[] 
     violations.push({ type: "rules", message: "Rules broken" })
   }
   
-  if (trade.result === "LOSS" && (trade.emotion === "Revenge" || trade.emotion === "FOMO")) {
+  if (trade.result === "LOSS" && (trade.emotion === "Revenge" || trade.emotion === "Impulsive" || trade.emotion === "FOMO")) {
     violations.push({ type: "emotional", message: "Emotional risk" })
   }
   
@@ -243,6 +255,10 @@ function Home() {
   const [plannedSessions, setPlannedSessions] = useState<PlannedCoachSessionItem[]>([])
   const [riskGuardOpen, setRiskGuardOpen] = useState(false)
   const [riskGuardResult, setRiskGuardResult] = useState<TradeRiskGuardResult | null>(null)
+  const [vyronisResultOpen, setVyronisResultOpen] = useState(false)
+  const [lastVyronisEvaluation, setLastVyronisEvaluation] = useState<VyronisJournalEvaluationRecord | null>(null)
+  const [lastVyronisPairLabel, setLastVyronisPairLabel] = useState<string>("")
+  const [tradeJournalMode, setTradeJournalMode] = useState<TradeJournalMode>("log")
   const [isLoadingPlannedSessions, setIsLoadingPlannedSessions] = useState(false)
   const [deletingPlannedSessionId, setDeletingPlannedSessionId] = useState<string | null>(null)
   const [performanceSectionOpen, setPerformanceSectionOpen] = useState(false)
@@ -869,6 +885,7 @@ function Home() {
 
     setEditingTrade(null)
     setConvertSessionId(null)
+    setTradeJournalMode("log")
     setForm(createInitialTradeForm())
     setIsModalOpen(true)
 
@@ -877,7 +894,7 @@ function Home() {
     if (tab && tab !== "dashboard") {
       params.set("tab", tab)
     }
-    const next = params.toString() ? `/?${params.toString()}` : "/"
+    const next = params.toString() ? `${APP_HOME_PATH}?${params.toString()}` : APP_HOME_PATH
     router.replace(next)
   }, [activeTab, router, searchParams])
 
@@ -918,7 +935,7 @@ function Home() {
     const params = new URLSearchParams(searchParams.toString())
     params.delete("coach")
     params.delete("tab")
-    const next = params.toString() ? `/?${params.toString()}` : getDashboardHomeHref()
+    const next = params.toString() ? `${APP_HOME_PATH}?${params.toString()}` : getDashboardHomeHref()
     router.replace(next)
   }, [searchParams, user?.id, router])
 
@@ -1159,11 +1176,12 @@ function Home() {
       setConvertSessionId(sessionId)
       setCoachSessionId(sessionId)
       setEditingTrade(null)
+      setTradeJournalMode("log")
       setForm(buildTradeFormFromPlannedSession(session))
       setIsModalOpen(true)
       toast({
         title: "Plan loaded",
-        description: "Add the trade outcome and save to link this plan to your completed trade.",
+        description: "Log the trade result — outcome, P&L, and psychology.",
       })
     } catch (error) {
       toast({
@@ -1300,10 +1318,11 @@ function Home() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!form.pair || !form.direction || !form.result || !form.pnl) {
+    const validation = validateTradeFormForMode(form, editingTrade ? "edit" : tradeJournalMode)
+    if (!validation.ok) {
       toast({
         title: "Missing fields",
-        description: "Please fill in all required fields",
+        description: validation.message,
         variant: "destructive",
       })
       return
@@ -1369,6 +1388,8 @@ function Home() {
 
     const computedRiskReward = calculateRiskReward(form)
 
+    const isPlanSave = tradeJournalMode === "plan" && !editingTrade
+
     const extendedTradeData = {
       entry_price: parseOptionalNumber(form.entry_price),
       stop_loss: parseOptionalNumber(form.stop_loss),
@@ -1378,92 +1399,30 @@ function Home() {
       mistake_tags: form.mistake_tags.length > 0 ? form.mistake_tags.join(",") : null,
       trade_notes: editingTrade
         ? preserveRepeatMarkerOnEdit(editingTrade.trade_notes, form.trade_notes.trim())
-        : form.trade_notes.trim() || null,
+        : isPlanSave
+          ? appendPlannedSetupMarker(form.trade_notes.trim())
+          : form.trade_notes.trim() || null,
     }
 
-    const normalizedResult = normalizeTradeResultForDb(form.result)
-
-    const setupScoreInput = {
-      direction: form.direction,
-      result: normalizedResult,
-      emotion: form.emotion || "Calm",
-      emotion_after: form.emotion_after.trim() || null,
-      setup: form.setup || "A+ Setup",
-      strategy_name: form.strategy_name || null,
-      risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
-      rule_followed: form.rule_followed,
-      session: form.session || null,
-      trade_date: form.trade_date || new Date().toISOString().split("T")[0],
-      confirmation_signal: form.confirmation_signal || null,
-      higher_timeframe: form.higher_timeframe || null,
-      entry_timeframe: form.entry_timeframe || null,
-      confirmation_timeframe: form.confirmation_timeframe || null,
-      mistake_tags: form.mistake_tags.length > 0 ? form.mistake_tags.join(",") : null,
-      entry_price: parseOptionalNumber(form.entry_price),
-      stop_loss: parseOptionalNumber(form.stop_loss),
-      take_profit: parseOptionalNumber(form.take_profit),
-      risk_reward: computedRiskReward,
-    }
+    const normalizedResult = isPlanSave
+      ? "BREAKEVEN"
+      : normalizeTradeResultForDb(form.result)
 
     const maxRiskPerTrade =
       userSettings?.max_risk_per_trade ?? settingsForm.max_risk_per_trade ?? 1
 
-    const patternMemory = generatePatternMemory({
-      trades: trades.map(
-        (trade): PatternMemoryTrade => ({
-          id: trade.id,
-          direction: trade.direction,
-          result: trade.result,
-          pnl: trade.pnl,
-          emotion: trade.emotion,
-          emotion_after: trade.emotion_after,
-          strategy_name: trade.strategy_name,
-          session: trade.session,
-          risk_percent: trade.risk_percent,
-          rule_followed: trade.rule_followed,
-          mistake_tags: trade.mistake_tags,
-          confirmation_signal: trade.confirmation_signal,
-          trade_date: trade.trade_date,
-          created_at: trade.created_at,
-        }),
-      ),
-      feedback: [],
-      sessions: [],
-      maxRiskPerTrade,
+    const vyronisEvaluation = evaluateVyronisJournalTrade(form, {
+      riskReward: computedRiskReward,
+      maxRiskPercent: maxRiskPerTrade,
     })
 
-    const setupScore = computeSetupScore({
-      trade: setupScoreInput,
-      maxRiskPerTrade,
-      patterns: patternMemory.patterns,
-      historicalTrades: trades.map((trade) => ({
-        direction: trade.direction,
-        result: trade.result,
-        emotion: trade.emotion,
-        emotion_after: trade.emotion_after,
-        setup: trade.setup,
-        strategy_name: trade.strategy_name,
-        risk_percent: trade.risk_percent,
-        rule_followed: trade.rule_followed,
-        session: trade.session,
-        trade_date: trade.trade_date,
-        confirmation_signal: trade.confirmation_signal,
-        higher_timeframe: trade.higher_timeframe,
-        entry_timeframe: trade.entry_timeframe,
-        confirmation_timeframe: trade.confirmation_timeframe,
-        mistake_tags: trade.mistake_tags,
-        entry_price: trade.entry_price,
-        stop_loss: trade.stop_loss,
-        take_profit: trade.take_profit,
-        risk_reward: trade.risk_reward,
-      })),
-    })
+    const vyronisFields = buildVyronisJournalPersistFields(form, vyronisEvaluation)
 
     const tradeData = {
       pair: form.pair,
       direction: form.direction,
       result: normalizedResult,
-      pnl: normalizePnL(parseFloat(form.pnl), form.result),
+      pnl: isPlanSave ? 0 : normalizePnL(parseFloat(form.pnl), form.result),
       emotion: form.emotion || "Calm",
       setup: form.setup || "A+ Setup",
       strategy_name: form.strategy_name || null,
@@ -1474,13 +1433,9 @@ function Home() {
       higher_timeframe: form.higher_timeframe || null,
       entry_timeframe: form.entry_timeframe || null,
       confirmation_timeframe: form.confirmation_timeframe || null,
-      confirmation_signal: form.confirmation_signal || null,
       session: form.session || null,
       screenshot_url: form.screenshot_url || null,
-      setup_score: setupScore.score,
-      setup_classification: setupScore.classification,
-      setup_score_breakdown: setupScore.breakdown,
-      setup_coaching_insights: setupScore.insights,
+      ...vyronisFields,
       ...extendedTradeData,
     }
 
@@ -1516,6 +1471,13 @@ function Home() {
         setup_classification,
         setup_score_breakdown,
         setup_coaching_insights,
+        weekly_bias,
+        daily_bias,
+        h4_bias,
+        aoi_type,
+        confirmation_type,
+        entry_quality,
+        vyronis_evaluation,
         ...coreTradeData
       } = tradeData
       result = await persistTrade(coreTradeData as typeof tradeData)
@@ -1532,15 +1494,21 @@ function Home() {
     } else {
       const savedTradeId = editingTrade?.id ?? result.data?.id
       toast({
-        title: editingTrade ? "Trade updated" : "Trade saved",
+        title: editingTrade ? "Trade updated" : isPlanSave ? "Setup saved" : "Trade saved",
         description: usedFallbackSave
-          ? `${form.pair} saved without extended DB columns. Run supabase/trade-fields-migration.sql and supabase/007-setup-score-columns.sql in Supabase.`
-          : `${form.pair} ${form.direction} ${form.result} — ${setupScore.classification} (${setupScore.score}/100).`,
+          ? `${form.pair} saved without Vyronis columns. Run supabase/028-vyronis-journal-scoring.sql in Supabase.`
+          : isPlanSave
+            ? `${form.pair} plan scored — Vyronis ${vyronisEvaluation.grade}. Edit later to log WIN/LOSS.`
+            : `${form.pair} ${form.direction} — Vyronis ${vyronisEvaluation.grade} (${vyronisEvaluation.score}/100).`,
         variant: usedFallbackSave ? "destructive" : "default",
       })
       setForm(createInitialTradeForm())
       setEditingTrade(null)
+      setTradeJournalMode("log")
       setIsModalOpen(false)
+      setLastVyronisEvaluation(vyronisEvaluation)
+      setLastVyronisPairLabel(`${form.pair} ${form.direction}`)
+      setVyronisResultOpen(true)
       fetchTrades(activeUserId)
       if (savedTradeId) {
         void syncTradeLearningMemory(savedTradeId).catch(() => undefined)
@@ -1555,6 +1523,16 @@ function Home() {
     setSelectedTrade(null)
     setEditingTrade(null)
     setConvertSessionId(null)
+    setTradeJournalMode("log")
+    setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
+    setIsModalOpen(true)
+  }, [])
+
+  const openPlanTrade = useCallback((tradeDate?: string) => {
+    setSelectedTrade(null)
+    setEditingTrade(null)
+    setConvertSessionId(null)
+    setTradeJournalMode("plan")
     setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
     setIsModalOpen(true)
   }, [])
@@ -1562,6 +1540,7 @@ function Home() {
   function handleEditTrade(trade: Trade) {
     setSelectedTrade(null)
     setEditingTrade(trade)
+    setTradeJournalMode("edit")
     setForm({
       pair: trade.pair,
       direction: trade.direction,
@@ -1584,7 +1563,13 @@ function Home() {
       stop_loss: trade.stop_loss?.toString() || "",
       take_profit: trade.take_profit?.toString() || "",
       mistake_tags: parseMistakeTags(trade.mistake_tags),
-      trade_notes: trade.trade_notes || "",
+      trade_notes: stripPlannedSetupMarker(trade.trade_notes || ""),
+      weekly_bias: trade.weekly_bias || "",
+      daily_bias: trade.daily_bias || "",
+      h4_bias: trade.h4_bias || "",
+      aoi_type: trade.aoi_type || "",
+      confirmation_type: trade.confirmation_type || "",
+      entry_quality: trade.entry_quality || "perfect",
     })
     setIsModalOpen(true)
   }
@@ -1661,6 +1646,7 @@ function Home() {
     setIsModalOpen(false)
     setEditingTrade(null)
     setConvertSessionId(null)
+    setTradeJournalMode("log")
     setRiskGuardOpen(false)
     setRiskGuardResult(null)
     setForm(createInitialTradeForm())
@@ -1749,10 +1735,17 @@ function Home() {
 
   if (!user && !isLoadingTrades && !dashboardLoadTimedOut) {
     return (
-      <AuthLoadingState
-        title="Vyronis HQ"
-        subtitle="Loading your dashboard…"
-      />
+      <div className="min-h-[100dvh] bg-background">
+        <div className="border-b border-white/[0.06] bg-black/40 px-4 py-4 md:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-3">
+            <div className="size-9 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-4 w-24 animate-pulse rounded bg-white/[0.06]" />
+          </div>
+        </div>
+        <div className="mx-auto max-w-7xl px-3 py-6 md:px-6">
+          <DashboardOverviewSkeleton />
+        </div>
+      </div>
     )
   }
 
@@ -2114,6 +2107,8 @@ function Home() {
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         isEditing={!!editingTrade}
+        journalMode={editingTrade ? "edit" : tradeJournalMode}
+        onJournalModeChange={setTradeJournalMode}
         startingBalance={startingBalance}
         maxRiskPerTrade={maxRiskPerTrade}
         isUploading={isUploading}
@@ -2271,6 +2266,13 @@ function Home() {
         onScreenshotClick={(trade) =>
           setScreenshotViewer({ url: trade.screenshot_url ?? null, label: trade.pair })
         }
+      />
+
+      <VyronisScoreResultModal
+        open={vyronisResultOpen}
+        evaluation={lastVyronisEvaluation}
+        pairLabel={lastVyronisPairLabel}
+        onClose={() => setVyronisResultOpen(false)}
       />
 
       <VyronisCommandCenter />

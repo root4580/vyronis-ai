@@ -1,8 +1,22 @@
+import { APP_HOME_PATH } from "@/lib/branding"
+
 /**
- * App routes that require an authenticated Supabase session.
- * `/` hosts dashboard + journal tabs; `/analytics` is the standalone analytics page.
+ * Authenticated app routes — require Supabase session (middleware).
+ * Public marketing lives at `/`; product shell at `/hq`.
  */
-export const PROTECTED_PATHS = ["/", "/analytics", "/strategy", "/profile", "/research-lab"] as const
+export const PROTECTED_PATHS = [
+  APP_HOME_PATH,
+  "/analytics",
+  "/strategy",
+  "/profile",
+  "/research-lab",
+  "/war-room",
+  "/strategy-brain",
+  "/evolution",
+  "/journal",
+] as const
+
+export const PUBLIC_MARKETING_PATHS = ["/"] as const
 
 export const AUTH_ENTRY_PATHS = [
   "/auth/login",
@@ -20,8 +34,7 @@ export const AUTH_PUBLIC_PATHS = [
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PATHS.some(
-    (path) =>
-      pathname === path || (path !== "/" && pathname.startsWith(`${path}/`)),
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
   )
 }
 
@@ -29,10 +42,14 @@ export function isAuthEntryPath(pathname: string): boolean {
   return AUTH_ENTRY_PATHS.includes(pathname as (typeof AUTH_ENTRY_PATHS)[number])
 }
 
+export function isPublicMarketingPath(pathname: string): boolean {
+  return PUBLIC_MARKETING_PATHS.includes(pathname as (typeof PUBLIC_MARKETING_PATHS)[number])
+}
+
 /** Prevent open redirects — only allow same-app relative paths. */
 export function sanitizeRedirectPath(
   path: string | null | undefined,
-  fallback = "/",
+  fallback = APP_HOME_PATH,
 ): string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
     return fallback
@@ -40,6 +57,10 @@ export function sanitizeRedirectPath(
 
   if (path.includes("\\") || path.includes(":")) {
     return fallback
+  }
+
+  if (isPublicMarketingPath(path)) {
+    return APP_HOME_PATH
   }
 
   return path

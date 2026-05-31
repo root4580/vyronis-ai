@@ -5,7 +5,9 @@ import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 
 export type SetupClassification =
   | "A+"
+  | "A"
   | "B"
+  | "Skip"
   | "C"
   | "Impulsive"
   | "Revenge"
@@ -545,7 +547,7 @@ export function resolveStoredSetupScore(
   trade: {
     setup_score?: number | null
     setup_classification?: string | null
-    setup_score_breakdown?: SetupScoreBreakdown | null
+    setup_score_breakdown?: SetupScoreBreakdown | import("@/types/strategy").VyronisScoreBreakdown | null
     setup_coaching_insights?: SetupCoachingInsight[] | null
   } & SetupScoreTradeInput,
 ): SetupScoreResult {
@@ -557,7 +559,7 @@ export function resolveStoredSetupScore(
     return {
       score: trade.setup_score,
       classification: trade.setup_classification as SetupClassification,
-      breakdown: trade.setup_score_breakdown,
+      breakdown: trade.setup_score_breakdown as SetupScoreBreakdown,
       insights: trade.setup_coaching_insights ?? [],
       strengths: [],
       warnings: [],

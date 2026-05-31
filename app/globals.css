@@ -2082,8 +2082,21 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
   .add-trade-modal,
   .dashboard-modal-panel {
     max-height: 100dvh;
+    max-width: 100vw;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .add-trade-modal input,
+  .add-trade-modal select,
+  .add-trade-modal textarea,
+  .add-trade-modal [role="combobox"] {
+    font-size: 16px;
+  }
+
+  .mobile-form-footer button {
+    min-height: 44px;
+    touch-action: manipulation;
   }
 
   .trade-coach-modal-footer.mobile-form-footer {

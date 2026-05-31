@@ -22,7 +22,7 @@ export async function GET(_request: Request, context: RouteContext) {
   } catch (error) {
     console.error("Journal intelligence error:", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to build journal intelligence" },
+      { error: error instanceof Error ? error.message : "Failed to build Vyronis journal intelligence" },
       { status: 500 },
     )
   }

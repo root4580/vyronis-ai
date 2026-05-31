@@ -28,7 +28,7 @@ export function JournalIntelligencePanel({ tradeId, refreshKey = 0 }: JournalInt
         if (!cancelled) setJournal(result)
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Journal intelligence unavailable")
+          setError(loadError instanceof Error ? loadError.message : "Vyronis journal intelligence unavailable")
           setJournal(null)
         }
       } finally {
@@ -65,7 +65,7 @@ export function JournalIntelligencePanel({ tradeId, refreshKey = 0 }: JournalInt
         <div className="flex items-center gap-2">
           <Brain className="size-3.5 text-cyan-glow" />
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/90">
-            Journal Intelligence
+            Vyronis Journal Intelligence
           </p>
         </div>
         <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase", verdictClass)}>

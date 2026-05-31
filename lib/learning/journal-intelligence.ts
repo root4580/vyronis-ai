@@ -1,3 +1,6 @@
+/**
+ * Vyronis journal intelligence — per-trade learning analysis for Vyronis AI.
+ */
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import {

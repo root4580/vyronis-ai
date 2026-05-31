@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
+import { APP_HOME_PATH } from "@/lib/branding"
 import {
   DEFAULT_USER_PROFILE,
   getProfileDisplayName,
@@ -170,7 +171,7 @@ export default function ProfileSettingsPage() {
       description: "Your trader profile has been saved.",
     })
     setIsSaving(false)
-    router.push("/")
+    router.push(APP_HOME_PATH)
     router.refresh()
   }
 

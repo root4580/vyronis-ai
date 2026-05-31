@@ -8,7 +8,7 @@ import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning
 import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
 import { WeeklyWatchlistStrip } from "@/components/journal/weekly-watchlist-strip"
 import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
-import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
+import { getDashboardHomeHref, getDashboardTabHref } from "@/lib/dashboard-nav"
 import { SectionLabel, StrategyBrainGlass } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -29,6 +29,7 @@ import {
 } from "@/lib/strategy-brain/migration-hint"
 import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
+import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 
 export function WeeklyWarRoom() {
   const { toast } = useToast()
@@ -151,7 +152,7 @@ export function WeeklyWarRoom() {
   return (
     <div className="mx-auto max-w-4xl space-y-4 pb-12">
       <Link
-        href="/?tab=journal"
+        href={getDashboardTabHref("journal")}
         className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-cyan-glow"
       >
         <ArrowLeft className="size-3" />
@@ -323,10 +324,10 @@ export function WeeklyWarRoom() {
         <Link href="/strategy-brain" className="font-medium text-cyan-glow hover:underline">
           Setup evaluator →
         </Link>
-        <Link href="/?tab=dashboard" className="text-muted-foreground hover:text-foreground">
+        <Link href={getDashboardTabHref("dashboard")} className="text-muted-foreground hover:text-foreground">
           Command Center
         </Link>
-        <Link href="/?tab=journal" className="text-muted-foreground hover:text-foreground">
+        <Link href={getDashboardTabHref("journal")} className="text-muted-foreground hover:text-foreground">
           Journal
         </Link>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AuthLoadingState } from "@/components/auth/auth-loading-state"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { fetchResearchLabEnabled } from "@/lib/research/api-client"
 
 export default function ResearchLabLayout({ children }: { children: React.ReactNode }) {
@@ -18,14 +19,14 @@ export default function ResearchLabLayout({ children }: { children: React.ReactN
         if (cancelled) return
         if (!enabled) {
           setStatus("blocked")
-          router.replace("/")
+          router.replace(APP_HOME_PATH)
           return
         }
         setStatus("ready")
       } catch {
         if (!cancelled) {
           setStatus("blocked")
-          router.replace("/")
+          router.replace(APP_HOME_PATH)
         }
       }
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   AlertTriangle,
   Calculator,
@@ -44,6 +44,14 @@ import {
   TRADING_SESSIONS,
   type TradeFormState,
 } from "@/lib/trade-form-config"
+import { VyronisCoreModelFields } from "@/components/dashboard/vyronis-core-model-fields"
+import { Strategy1PreTradeChecklistPanel } from "@/components/dashboard/strategy1-pre-trade-checklist-panel"
+import { TradeJournalModeTabs } from "@/components/dashboard/trade-journal-mode-tabs"
+import {
+  journalModeDescription,
+  submitLabel,
+  type TradeJournalMode,
+} from "@/lib/trade-journal-mode"
 import {
   calculatePositionSize,
   calculateRiskReward,
@@ -78,6 +86,8 @@ type AddTradeModalProps = {
   onRepeatLast?: () => void
   onMt5Autofill?: () => void
   isMt5Autofilling?: boolean
+  journalMode?: TradeJournalMode
+  onJournalModeChange?: (mode: TradeJournalMode) => void
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -113,7 +123,7 @@ function EmotionPicker({
   return (
     <div className="space-y-2">
       <FieldLabel>{label}</FieldLabel>
-      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-3">
         {EMOTION_OPTIONS.map((option) => {
           const active = value === option.value
           return (
@@ -164,7 +174,18 @@ export function AddTradeModal({
   onRepeatLast,
   onMt5Autofill,
   isMt5Autofilling = false,
+  journalMode = "log",
+  onJournalModeChange,
 }: AddTradeModalProps) {
+  const [logSetupOpen, setLogSetupOpen] = useState(false)
+
+  const isPlan = journalMode === "plan"
+  const isLog = journalMode === "log"
+  const isEdit = journalMode === "edit"
+  const showPlanFlow = isPlan || isEdit
+  const showLogFlow = isLog || isEdit
+  const showChecklist = isPlan || isEdit
+  const showVyronisPrimary = isPlan || isEdit
   const riskReward = useMemo(() => calculateRiskReward(form), [form])
   const positionSize = useMemo(
     () => calculatePositionSize(form, startingBalance),
@@ -176,6 +197,7 @@ export function AddTradeModal({
 
   const riskPercent = parseFloat(form.risk_percent)
   const isRiskTooHigh = Number.isFinite(riskPercent) && riskPercent > maxRiskPerTrade
+  const rrBelowMinimum = riskReward != null && riskReward < 2
 
   const toggleMistakeTag = (tag: string) => {
     const exists = form.mistake_tags.includes(tag)
@@ -199,7 +221,7 @@ export function AddTradeModal({
 
       <div
         className={cn(
-          "add-trade-modal glass-card relative flex max-h-[94vh] w-full flex-col overflow-hidden sm:max-h-[90vh] sm:max-w-2xl",
+          "add-trade-modal glass-card relative flex max-h-[94vh] w-full max-w-[100vw] flex-col overflow-hidden sm:max-h-[90vh] sm:max-w-2xl",
           resultTone === "profit" && "add-trade-modal-win",
           resultTone === "loss" && "add-trade-modal-loss",
         )}
@@ -218,10 +240,10 @@ export function AddTradeModal({
               </div>
               <div>
                 <h2 id="add-trade-title" className="text-[16px] font-semibold tracking-tight text-foreground">
-                  {isEditing ? "Edit Trade" : "Add Trade"}
+                  {isEditing ? "Edit Trade" : isPlan ? "Plan Setup" : isLog ? "Log Result" : "Add Trade"}
                 </h2>
                 <p className="text-[11px] text-muted-foreground/70">
-                  Log execution, psychology, and performance in one place
+                  {journalModeDescription(journalMode)}
                 </p>
               </div>
             </div>
@@ -236,9 +258,17 @@ export function AddTradeModal({
         </div>
 
         <form onSubmit={onSubmit} className="relative flex min-h-0 flex-1 flex-col">
-          <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3 sm:space-y-5 sm:px-4 sm:py-4 md:px-6 md:py-5">
+          <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-5 sm:px-4 sm:py-4 md:px-6 md:py-5">
+            {!isEditing && onJournalModeChange && (
+              <TradeJournalModeTabs
+                mode={journalMode}
+                onChange={onJournalModeChange}
+                disabled={isSubmitting || isUploading}
+              />
+            )}
+
             <section className="space-y-3">
-              <SectionLabel>Market Setup</SectionLabel>
+              <SectionLabel>{isLog ? "Trade" : "Market Setup"}</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <FieldLabel required>Pair</FieldLabel>
@@ -318,6 +348,7 @@ export function AddTradeModal({
                 </Select>
               </div>
 
+              {showPlanFlow && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <FieldLabel>Strategy</FieldLabel>
@@ -350,8 +381,10 @@ export function AddTradeModal({
                   </Select>
                 </div>
               </div>
+              )}
             </section>
 
+            {showPlanFlow && (
             <section className="space-y-3">
               <SectionLabel>Execution & Risk</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -442,7 +475,96 @@ export function AddTradeModal({
                 </div>
               </div>
             </section>
+            )}
 
+            {showChecklist && (
+              <Strategy1PreTradeChecklistPanel
+                form={form}
+                riskReward={riskReward}
+                defaultOpen
+              />
+            )}
+
+            {showVyronisPrimary && (
+            <VyronisCoreModelFields
+              form={form}
+              onFormChange={onFormChange}
+              rrWarning={rrBelowMinimum}
+            />
+            )}
+
+            {isLog && (
+              <DashboardInsetPanel className="overflow-hidden border-white/[0.08] p-0">
+                <button
+                  type="button"
+                  onClick={() => setLogSetupOpen((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-3 text-left sm:px-4"
+                >
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground/90">Setup details (optional)</p>
+                    <p className="text-[10px] text-muted-foreground/65">
+                      Add HTF & confirmation for a stronger Vyronis score
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-cyan-glow">{logSetupOpen ? "Hide" : "Show"}</span>
+                </button>
+                {logSetupOpen && (
+                  <div className="space-y-4 border-t border-white/[0.06] px-3 pb-3 sm:px-4 sm:pb-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {[
+                        { key: "entry_price" as const, label: "Entry" },
+                        { key: "stop_loss" as const, label: "Stop" },
+                        { key: "take_profit" as const, label: "Target" },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="space-y-1.5">
+                          <FieldLabel>{label}</FieldLabel>
+                          <Input
+                            type="number"
+                            step="0.00001"
+                            value={form[key]}
+                            onChange={(e) => onFormChange({ [key]: e.target.value })}
+                            className="add-trade-input h-9 tabular-nums"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <VyronisCoreModelFields
+                      form={form}
+                      onFormChange={onFormChange}
+                      rrWarning={rrBelowMinimum}
+                    />
+                  </div>
+                )}
+              </DashboardInsetPanel>
+            )}
+
+            {isPlan && (
+            <section className="space-y-3">
+              <SectionLabel>Before Entry</SectionLabel>
+              <EmotionPicker
+                label="Emotion before trade"
+                value={form.emotion}
+                onChange={(emotion) => onFormChange({ emotion })}
+              />
+              <div
+                className={cn(
+                  "flex items-center justify-between rounded-lg border p-3 transition-colors",
+                  form.rule_followed
+                    ? "border-profit/25 bg-profit/[0.06]"
+                    : "border-loss/25 bg-loss/[0.06]",
+                )}
+              >
+                <span className="text-[12px] font-medium text-foreground/90">Rules followed (plan)</span>
+                <Switch
+                  checked={form.rule_followed}
+                  onCheckedChange={(checked) => onFormChange({ rule_followed: checked })}
+                  className="data-[state=checked]:bg-profit data-[state=unchecked]:bg-loss"
+                />
+              </div>
+            </section>
+            )}
+
+            {showLogFlow && (
             <section className="space-y-3">
               <SectionLabel>Outcome</SectionLabel>
               <div className="grid grid-cols-3 gap-2">
@@ -519,17 +641,29 @@ export function AddTradeModal({
                   className="data-[state=checked]:bg-profit data-[state=unchecked]:bg-loss"
                 />
               </div>
-            </section>
 
+              <div className="space-y-2">
+                <FieldLabel>Trade Date</FieldLabel>
+                <Input
+                  type="date"
+                  value={form.trade_date}
+                  onChange={(e) => onFormChange({ trade_date: e.target.value })}
+                  className="dashboard-date-input add-trade-input h-10 border-white/[0.08] text-white"
+                />
+              </div>
+            </section>
+            )}
+
+            {showLogFlow && (
             <section className="space-y-3">
-              <SectionLabel>Psychology</SectionLabel>
+              <SectionLabel>After Trade</SectionLabel>
               <EmotionPicker
-                label="Emotion Before Trade"
+                label="Emotion before trade"
                 value={form.emotion}
                 onChange={(emotion) => onFormChange({ emotion })}
               />
               <EmotionPicker
-                label="Emotion After Trade"
+                label="Emotion after trade"
                 value={form.emotion_after}
                 onChange={(emotion_after) => onFormChange({ emotion_after })}
               />
@@ -592,6 +726,7 @@ export function AddTradeModal({
                 />
               </div>
             </section>
+            )}
 
             <section className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -744,12 +879,14 @@ export function AddTradeModal({
               ) : (
                 <span className="flex items-center gap-2">
                   {isEditing ? <Pencil className="size-5" /> : <Sparkles className="size-5" />}
-                  {isEditing ? "Update Trade" : "Save Trade"}
+                  {submitLabel(journalMode, isEditing)}
                 </span>
               )}
             </Button>
             <p className="mt-2 text-center text-[10px] text-muted-foreground/60">
-              Dashboard, journal, analytics, and AI coach update instantly
+              {isPlan
+                ? "Saves as planned setup (BE · $0) — Vyronis scores your entry plan. Log result later via Edit."
+                : "Vyronis strategy scoring runs automatically when you save"}
             </p>
           </div>
         </form>

@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { AuthLoadingState } from "@/components/auth/auth-loading-state"
+import { AuthPageSuspenseFallback } from "@/components/auth/auth-page-frame"
+import { MARKETING_DESCRIPTION } from "@/lib/branding"
 
 export const metadata: Metadata = {
   title: "Sign In",
+  description: MARKETING_DESCRIPTION,
+  robots: { index: true, follow: true },
 }
 
 export default function LoginLayout({
@@ -11,9 +14,5 @@ export default function LoginLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <Suspense fallback={<AuthLoadingState title="Sign In" subtitle="Loading…" />}>
-      {children}
-    </Suspense>
-  )
+  return <Suspense fallback={<AuthPageSuspenseFallback />}>{children}</Suspense>
 }

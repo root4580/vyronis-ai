@@ -160,8 +160,18 @@ export type DashboardTradeRow = {
   emotion_after?: string | null
   setup_score?: number | null
   setup_classification?: string | null
-  setup_score_breakdown?: import("@/lib/trade-coach/setup-score-engine").SetupScoreBreakdown | null
+  setup_score_breakdown?:
+    | import("@/lib/trade-coach/setup-score-engine").SetupScoreBreakdown
+    | import("@/types/strategy").VyronisScoreBreakdown
+    | null
   setup_coaching_insights?: import("@/lib/trade-coach/setup-score-engine").SetupCoachingInsight[] | null
+  weekly_bias?: string | null
+  daily_bias?: string | null
+  h4_bias?: string | null
+  aoi_type?: string | null
+  confirmation_type?: string | null
+  entry_quality?: string | null
+  vyronis_evaluation?: import("@/lib/strategy/vyronis-journal-bridge").VyronisJournalEvaluationRecord | null
   import_source?: string | null
   created_at: string
 }

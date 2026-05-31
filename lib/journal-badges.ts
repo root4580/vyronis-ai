@@ -11,7 +11,9 @@ export const JOURNAL_MISTAKE_METRICS_MD = "h-7 min-h-[28px] px-2.5 text-[11px] f
 
 const SETUP_GLOW: Record<SetupClassification, string> = {
   "A+": "shadow-[0_0_14px_rgba(34,211,238,0.28)] hover:shadow-[0_0_20px_rgba(34,211,238,0.38)]",
+  A: "shadow-[0_0_12px_rgba(34,197,94,0.18)] hover:shadow-[0_0_18px_rgba(34,197,94,0.28)]",
   B: "shadow-[0_0_12px_rgba(34,197,94,0.2)] hover:shadow-[0_0_18px_rgba(34,197,94,0.3)]",
+  Skip: "shadow-[0_0_14px_rgba(239,68,68,0.22)] hover:shadow-[0_0_20px_rgba(239,68,68,0.32)]",
   C: "shadow-[0_0_10px_rgba(245,158,11,0.15)] hover:shadow-[0_0_16px_rgba(245,158,11,0.22)]",
   Impulsive:
     "shadow-[0_0_14px_rgba(249,115,22,0.22)] hover:shadow-[0_0_20px_rgba(249,115,22,0.32)]",
@@ -22,7 +24,9 @@ const SETUP_GLOW: Record<SetupClassification, string> = {
 
 const SETUP_STYLES: Record<SetupClassification, string> = {
   "A+": "border-cyan-glow/45 bg-cyan-glow/[0.14] text-cyan-glow hover:border-cyan-glow/60 hover:bg-cyan-glow/[0.18]",
+  A: "border-profit/40 bg-profit/[0.12] text-profit hover:border-profit/50 hover:bg-profit/[0.16]",
   B: "border-profit/35 bg-profit/[0.12] text-profit hover:border-profit/45 hover:bg-profit/[0.16]",
+  Skip: "border-loss/45 bg-loss/[0.15] text-loss hover:border-loss/55 hover:bg-loss/[0.2]",
   C: "border-amber-500/35 bg-amber-500/[0.12] text-amber-300 hover:border-amber-500/45 hover:bg-amber-500/[0.16]",
   Impulsive:
     "border-orange-500/40 bg-orange-500/[0.14] text-orange-300 hover:border-orange-500/50 hover:bg-orange-500/[0.18]",

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import {
   Plus,
   Edit3,
@@ -165,10 +167,10 @@ export function StrategyHeader() {
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" className="border-border/50 hover:border-cyan-glow/30 hover:bg-cyan-glow/5">
-            <a href="/" className="flex items-center gap-2">
+            <Link href={getDashboardHomeHref()} className="flex items-center gap-2">
               <Activity className="size-4" />
               Dashboard
-            </a>
+            </Link>
           </Button>
           <Button size="sm" className="bg-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/30 border border-cyan-glow/30">
             <Plus className="size-4 mr-1" />

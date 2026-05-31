@@ -21,7 +21,48 @@ export type TradeFormState = {
   entry_timeframe: string
   confirmation_timeframe: string
   confirmation_signal: string
+  /** Vyronis Core Model — HTF bias */
+  weekly_bias: string
+  daily_bias: string
+  h4_bias: string
+  /** Vyronis Core Model — AOI & confirmation */
+  aoi_type: string
+  confirmation_type: string
+  entry_quality: string
 }
+
+export const VYRONIS_BIAS_OPTIONS = [
+  { value: "bullish", label: "Bullish" },
+  { value: "bearish", label: "Bearish" },
+  { value: "neutral", label: "Neutral" },
+] as const
+
+export const VYRONIS_AOI_OPTIONS = [
+  { value: "supply", label: "Supply" },
+  { value: "demand", label: "Demand" },
+  { value: "support", label: "Support" },
+  { value: "resistance", label: "Resistance" },
+  { value: "liquidity_sweep", label: "Liquidity sweep" },
+  { value: "ema_zone", label: "EMA zone" },
+  { value: "breakout_retest", label: "Breakout retest" },
+] as const
+
+export const VYRONIS_CONFIRMATION_OPTIONS = [
+  { value: "choch", label: "CHoCH" },
+  { value: "bos", label: "BOS" },
+  { value: "engulfing", label: "Engulfing" },
+  { value: "pin_bar", label: "Pin bar" },
+  { value: "break_retest", label: "Break & retest" },
+  { value: "ema_retest", label: "EMA retest" },
+  { value: "none", label: "No confirmation" },
+] as const
+
+export const VYRONIS_ENTRY_QUALITY_OPTIONS = [
+  { value: "perfect", label: "Perfect" },
+  { value: "early", label: "Early" },
+  { value: "late", label: "Late" },
+  { value: "impulsive", label: "Impulsive" },
+] as const
 
 export const TRADE_PAIRS = [
   "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
@@ -67,12 +108,10 @@ export const TRADE_STRATEGIES = [
 export const EMOTION_OPTIONS = [
   { value: "Calm", emoji: "😌", label: "Calm" },
   { value: "Confident", emoji: "💪", label: "Confident" },
-  { value: "Disciplined", emoji: "🎯", label: "Disciplined" },
-  { value: "Anxious", emoji: "😰", label: "Anxious" },
-  { value: "FOMO", emoji: "🚀", label: "FOMO" },
-  { value: "Revenge", emoji: "😤", label: "Revenge" },
-  { value: "Euphoric", emoji: "🤩", label: "Euphoric" },
   { value: "Fearful", emoji: "😨", label: "Fearful" },
+  { value: "Revenge", emoji: "😤", label: "Revenge" },
+  { value: "Impulsive", emoji: "⚡", label: "Impulsive" },
+  { value: "Overconfident", emoji: "🔥", label: "Overconfident" },
 ]
 
 export const MISTAKE_TAGS = [
@@ -125,6 +164,12 @@ export function createInitialTradeForm(overrides?: Partial<TradeFormState>): Tra
     entry_timeframe: "",
     confirmation_timeframe: "",
     confirmation_signal: "",
+    weekly_bias: "",
+    daily_bias: "",
+    h4_bias: "",
+    aoi_type: "",
+    confirmation_type: "",
+    entry_quality: "perfect",
     ...overrides,
   }
 }

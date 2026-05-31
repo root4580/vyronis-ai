@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { isAuthEntryPath, isProtectedPath, sanitizeRedirectPath } from "@/lib/auth-routes"
+import { APP_HOME_PATH } from "@/lib/branding"
+import {
+  isAuthEntryPath,
+  isProtectedPath,
+  isPublicMarketingPath,
+  sanitizeRedirectPath,
+} from "@/lib/auth-routes"
 import { assertProductionEnv, getPublicEnv } from "@/lib/env"
 
 export async function updateSession(request: NextRequest) {
@@ -40,18 +46,24 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  if (user && isPublicMarketingPath(pathname)) {
+    const url = request.nextUrl.clone()
+    url.pathname = APP_HOME_PATH
+    return NextResponse.redirect(url)
+  }
+
   if (!user && isProtectedPath(pathname)) {
     const returnPath = `${pathname}${request.nextUrl.search}`
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
     url.search = ""
-    url.searchParams.set("next", sanitizeRedirectPath(returnPath, "/"))
+    url.searchParams.set("next", sanitizeRedirectPath(returnPath, APP_HOME_PATH))
     return NextResponse.redirect(url)
   }
 
   if (user && isAuthEntryPath(pathname)) {
     const url = request.nextUrl.clone()
-    url.pathname = "/"
+    url.pathname = APP_HOME_PATH
     return NextResponse.redirect(url)
   }
 

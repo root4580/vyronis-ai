@@ -22,6 +22,7 @@ import type { TradeDetails } from "@/components/dashboard/trade-details-modal"
 import type { TradeIntelligenceBundle } from "@/lib/intelligence/trade-intelligence-types"
 import type { FingerprintTradeInput } from "@/lib/journal/setup-fingerprint"
 import type { MarketBiasRecord, PairPlanRecord } from "@/lib/strategy-brain/types"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type TradeIntelligencePageProps = {
@@ -126,7 +127,7 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
     return (
       <div className="space-y-3 py-8 text-center">
         <p className="text-[13px] text-loss">Trade not found</p>
-        <Button type="button" variant="outline" onClick={() => router.push("/?tab=journal")}>
+        <Button type="button" variant="outline" onClick={() => router.push(getDashboardTabHref("journal"))}>
           Back to journal
         </Button>
       </div>
@@ -139,7 +140,7 @@ export function TradeIntelligencePage({ tradeId, onEdit }: TradeIntelligencePage
     <div className="mx-auto max-w-3xl space-y-4 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
-          href="/?tab=journal"
+          href={getDashboardTabHref("journal")}
           className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-cyan-glow"
         >
           <ArrowLeft className="size-3" />

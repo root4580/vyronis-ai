@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { Toaster } from "@/components/ui/toaster"
 import { AccountSettingsModal } from "@/components/dashboard/account-settings-modal"
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
@@ -32,7 +33,7 @@ export function TradeIntelligenceRoute({ tradeId }: { tradeId: string }) {
         <TradeIntelligencePage
           tradeId={tradeId}
           onEdit={(trade: TradeDetails) => {
-            router.push(`/?tab=journal&edit=${trade.id}`)
+            router.push(`${getDashboardTabHref("journal")}&edit=${trade.id}`)
           }}
         />
       </DashboardChrome>

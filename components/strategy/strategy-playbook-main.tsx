@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -252,7 +253,7 @@ export function StrategyPlaybookMain({ embedded = false }: { embedded?: boolean 
         <div>
           {!embedded && (
             <Link
-              href="/"
+              href={getDashboardHomeHref()}
               className="mb-2 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/70 hover:text-cyan-glow"
             >
               <ArrowLeft className="size-3.5" />

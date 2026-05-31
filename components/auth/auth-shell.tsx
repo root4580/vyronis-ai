@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Activity, Zap } from "lucide-react"
 import type { ReactNode } from "react"
+import { cn } from "@/lib/utils"
 
 type AuthShellProps = {
   title: string
@@ -10,6 +11,7 @@ type AuthShellProps = {
   children: ReactNode
   footer?: ReactNode
   accent?: "cyan" | "profit" | "loss"
+  compact?: boolean
 }
 
 export function AuthShell({
@@ -18,6 +20,7 @@ export function AuthShell({
   children,
   footer,
   accent = "cyan",
+  compact = false,
 }: AuthShellProps) {
   const accentBorder =
     accent === "profit"
@@ -26,17 +29,13 @@ export function AuthShell({
         ? "from-loss/50 via-loss/20 to-loss/50"
         : "from-cyan-glow/50 via-cyan-glow/20 to-cyan-glow/50"
 
-  return (
-    <div className="auth-page min-h-[100dvh] bg-background flex items-center justify-center px-4 py-6 sm:p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(34,211,238,0.06),transparent_50%)]" />
-      <div className="auth-grid-overlay absolute inset-0 opacity-[0.02]" />
-
-      <div className="auth-page-panel w-full max-w-md relative">
-        <div className="text-center mb-8">
-          <Link href="/auth/login" className="inline-flex items-center gap-3 mb-4 group">
+  const card = (
+    <div className={cn("auth-page-panel relative w-full max-w-md", compact && "max-w-lg")}>
+      {!compact && (
+        <div className="mb-8 text-center">
+          <Link href="/" className="group mb-4 inline-flex items-center gap-3">
             <div className="relative">
-              <div className="absolute inset-0 bg-cyan-glow/20 blur-xl rounded-full transition-opacity group-hover:opacity-100" />
+              <div className="absolute inset-0 rounded-full bg-cyan-glow/20 blur-xl transition-opacity group-hover:opacity-100" />
               <div className="relative flex size-12 items-center justify-center rounded-xl border border-cyan-glow/30 bg-gradient-to-br from-cyan-glow/20 to-cyan-glow/5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
                 <Activity className="size-6 text-cyan-glow" />
               </div>
@@ -45,29 +44,42 @@ export function AuthShell({
               <h1 className="text-2xl font-bold tracking-tight text-foreground">Vyronis HQ</h1>
               <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-glow">
                 <Zap className="size-3" />
-                Command Center
+                Trading OS
               </p>
             </div>
           </Link>
         </div>
+      )}
 
-        <div className="relative">
-          <div className={`absolute -inset-[1px] bg-gradient-to-r ${accentBorder} rounded-2xl blur-sm`} />
-          <div className="auth-card relative rounded-2xl border border-white/[0.08] bg-card/85 p-6 sm:p-8 backdrop-blur-xl">
-            <div className="mb-5 sm:mb-6 text-center">
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground">{title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground/80">{subtitle}</p>
-            </div>
-            {children}
+      <div className="relative">
+        <div className={`absolute -inset-[1px] bg-gradient-to-r ${accentBorder} rounded-2xl blur-sm`} />
+        <div className="auth-card relative rounded-2xl border border-white/[0.08] bg-card/85 p-6 backdrop-blur-xl sm:p-8">
+          <div className="mb-5 text-center sm:mb-6">
+            <h2 className="text-lg font-semibold text-foreground sm:text-xl">{title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground/80">{subtitle}</p>
           </div>
+          {children}
         </div>
-
-        {footer ?? (
-          <p className="mt-6 text-center text-xs text-muted-foreground/70">
-            Secure cloud sync · Per-user data isolation · Vyronis HQ
-          </p>
-        )}
       </div>
+
+      {footer ?? (
+        <p className="mt-6 text-center text-xs text-muted-foreground/70">
+          Secure cloud sync · Per-user data isolation · Vyronis HQ
+        </p>
+      )}
+    </div>
+  )
+
+  if (compact) {
+    return card
+  }
+
+  return (
+    <div className="auth-page relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-4 py-6 sm:p-6">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(34,211,238,0.06),transparent_50%)]" />
+      <div className="auth-grid-overlay absolute inset-0 opacity-[0.02]" />
+      {card}
     </div>
   )
 }

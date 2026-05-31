@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { Lock, Mail } from "lucide-react"
+import { AuthPageFrame } from "@/components/auth/auth-page-frame"
 import {
   AuthErrorBanner,
   AuthField,
@@ -11,6 +12,7 @@ import {
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
 import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { formatAuthError } from "@/lib/auth-errors"
 import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
@@ -83,7 +85,7 @@ export default function SignUpPage() {
     if (data.session?.user) {
       await ensureDefaultSettings(data.session.user.id)
       await ensureDefaultProfile(data.session.user.id)
-      window.location.assign("/")
+      window.location.assign(APP_HOME_PATH)
       return
     }
 
@@ -107,25 +109,29 @@ export default function SignUpPage() {
 
   if (success) {
     return (
-      <AuthShell
-        title="Check Your Email"
-        subtitle="Confirm your email to activate your Vyronis HQ account"
-        accent="profit"
-      >
-        <AuthEmailSentPanel
-          email={email.trim()}
-          title="Verification email sent"
-          description="Open the link in your email to activate your account and access your trading dashboard."
-          resendLabel="Resend verification email"
-          resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
-          onResend={resendSignupEmail}
-        />
-      </AuthShell>
+      <AuthPageFrame>
+        <AuthShell
+          compact
+          title="Check Your Email"
+          subtitle="Confirm your email to activate your Vyronis HQ account"
+          accent="profit"
+        >
+          <AuthEmailSentPanel
+            email={email.trim()}
+            title="Verification email sent"
+            description="Open the link in your email to activate your account and access your trading dashboard."
+            resendLabel="Resend verification email"
+            resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
+            onResend={resendSignupEmail}
+          />
+        </AuthShell>
+      </AuthPageFrame>
     )
   }
 
   return (
-    <AuthShell title="Create Account" subtitle="Start journaling trades with cloud sync and analytics">
+    <AuthPageFrame>
+      <AuthShell compact title="Create Account" subtitle="Start journaling trades with cloud sync and analytics">
       <form onSubmit={handleSignUp} className="space-y-4">
         <AuthField
           label="Email"
@@ -174,5 +180,6 @@ export default function SignUpPage() {
         </Link>
       </div>
     </AuthShell>
+    </AuthPageFrame>
   )
 }

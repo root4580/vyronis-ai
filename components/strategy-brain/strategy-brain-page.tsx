@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import { Brain, ArrowLeft, Layers } from "lucide-react"
 import { fetchStrategyBrainDashboard } from "@/lib/strategy-brain/api-client"
 import type {
@@ -69,7 +70,7 @@ export function StrategyBrainPageClient() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <Link
-            href="/"
+            href={getDashboardHomeHref()}
             className="mb-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-cyan-glow"
           >
             <ArrowLeft className="size-3" />

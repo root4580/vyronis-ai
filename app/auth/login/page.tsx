@@ -5,12 +5,14 @@ import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Lock, Mail } from "lucide-react"
+import { AuthPageFrame } from "@/components/auth/auth-page-frame"
 import {
   AuthErrorBanner,
   AuthField,
   AuthShell,
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
+import { APP_HOME_PATH } from "@/lib/branding"
 import { formatAuthError, isEmailNotConfirmedError } from "@/lib/auth-errors"
 import { getVerifyEmailPageUrl } from "@/lib/auth-email"
 import { sanitizeRedirectPath } from "@/lib/auth-routes"
@@ -18,7 +20,7 @@ import { sanitizeRedirectPath } from "@/lib/auth-routes"
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const nextQuery =
-    sanitizeRedirectPath(searchParams.get("next")) === "/"
+    sanitizeRedirectPath(searchParams.get("next")) === APP_HOME_PATH
       ? ""
       : `?next=${encodeURIComponent(sanitizeRedirectPath(searchParams.get("next")))}`
   const [email, setEmail] = useState("")
@@ -52,8 +54,13 @@ export default function LoginPage() {
   const showVerifyLink = error ? isEmailNotConfirmedError(error) : false
 
   return (
-    <AuthShell title="Welcome Back" subtitle="Sign in to access your trading dashboard">
-      <form onSubmit={handleLogin} className="space-y-4">
+    <AuthPageFrame>
+      <AuthShell
+        compact
+        title="Welcome back"
+        subtitle="Sign in to your Vyronis command center"
+      >
+        <form onSubmit={handleLogin} className="space-y-4">
         <AuthField
           label="Email"
           icon={Mail}
@@ -106,6 +113,7 @@ export default function LoginPage() {
           Create Account
         </Link>
       </div>
-    </AuthShell>
+      </AuthShell>
+    </AuthPageFrame>
   )
 }

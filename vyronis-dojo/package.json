@@ -1,0 +1,15 @@
+{
+  "name": "vyronis-dojo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "3h/day bootcamp — programming + Linux",
+  "scripts": {
+    "day": "tsx scripts/print-day.ts",
+    "check:day": "tsx scripts/check-day.ts",
+    "play": "tsx scripts/playground.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
