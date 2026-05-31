@@ -122,7 +122,7 @@ export function JournalIntelligenceMode({
               key={p.id}
               className={cn(
                 "rounded-lg border px-3 py-2.5 text-[12px] leading-relaxed",
-                p.severity === "warning" && "border-warning/25 bg-warning/[0.06] text-amber-100/90",
+                p.severity === "warning" && "border-warning/25 bg-warning/[0.06] text-warning-foreground/90",
                 p.severity === "positive" && "border-profit/25 bg-profit/[0.06] text-profit/90",
                 p.severity === "insight" && "border-white/[0.08] bg-white/[0.03] text-foreground/85",
               )}
@@ -164,7 +164,7 @@ export function JournalIntelligenceMode({
         ))}
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/[0.05] px-3 py-2 text-[11px] text-amber-100/85">
+      <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/[0.05] px-3 py-2 text-[11px] text-warning-muted/85">
         <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
         <span>
           Tap any trade in Calendar view for HTF alignment, checklist, grade, screenshots, and AI

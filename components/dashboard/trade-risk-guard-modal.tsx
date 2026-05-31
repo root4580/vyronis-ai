@@ -35,7 +35,7 @@ function severityAccent(severity: TradeRiskGuardResult["severity"]) {
     border: "border-warning/25",
     glow: "from-warning/12 via-transparent to-transparent",
     icon: "text-warning-muted",
-    badge: "border-warning/30 bg-warning/10 text-amber-100",
+    badge: "border-warning/30 bg-warning/10 text-warning-foreground",
   }
 }
 

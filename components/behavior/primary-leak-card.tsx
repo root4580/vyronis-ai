@@ -35,7 +35,7 @@ function statusStyles(insight: PrimaryLeakInsight) {
       border: "border-warning/20",
       glow: "from-warning/10 via-transparent to-transparent",
       accent: "text-warning-muted/90",
-      pill: "border-warning/28 bg-warning/10 text-amber-100/90",
+      pill: "border-warning/28 bg-warning/10 text-warning-foreground/90",
     }
   }
   return {

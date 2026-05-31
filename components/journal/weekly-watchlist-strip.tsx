@@ -28,7 +28,7 @@ export function WeeklyWatchlistStrip({
       <Link
         href="/war-room"
         className={cn(
-          "flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/[0.08] px-3 py-2.5 text-[12px] text-amber-100/90 transition-colors hover:border-warning/45",
+          "flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/[0.08] px-3 py-2.5 text-[12px] text-warning-foreground/90 transition-colors hover:border-warning/45",
           className,
         )}
       >

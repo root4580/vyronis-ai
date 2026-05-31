@@ -37,7 +37,7 @@ type StripContent = {
 const TONE_STYLES: Record<StripTone, string> = {
   calm: "border-white/[0.08] bg-white/[0.03] text-foreground/88",
   insight: "border-violet-500/20 bg-violet-500/[0.05] text-violet-100/92",
-  caution: "border-warning/25 bg-warning/[0.07] text-amber-100/92",
+  caution: "border-warning/25 bg-warning/[0.07] text-warning-foreground/92",
   protective: "border-rose-500/30 bg-rose-500/[0.08] text-rose-100/95",
 }
 

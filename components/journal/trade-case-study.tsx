@@ -50,7 +50,7 @@ export function TradeCaseStudyView({ study, onSync, syncing, tradeId }: Props) {
   return (
     <div className="space-y-3">
       <DashboardInsetPanel className="border-warning/15 bg-warning/[0.04] px-3 py-2.5">
-        <p className="text-[11px] leading-relaxed text-amber-100/90">{study.discretionaryNote}</p>
+        <p className="text-[11px] leading-relaxed text-warning-muted/90">{study.discretionaryNote}</p>
       </DashboardInsetPanel>
 
       {showSyncPrompt ? (

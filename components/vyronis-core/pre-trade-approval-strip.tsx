@@ -16,7 +16,7 @@ const STATUS_CONFIG = {
   },
   reduced: {
     icon: ShieldAlert,
-    style: "border-warning/30 bg-warning/[0.08] text-amber-100/95",
+    style: "border-warning/30 bg-warning/[0.08] text-warning-foreground/95",
   },
   reflection_required: {
     icon: ShieldAlert,

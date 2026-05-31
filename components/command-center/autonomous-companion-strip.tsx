@@ -11,7 +11,7 @@ type AutonomousCompanionStripProps = {
 
 const RISK_STYLES = {
   low: "border-profit/20 bg-profit/[0.06] text-emerald-200/90",
-  moderate: "border-warning/25 bg-warning/[0.06] text-amber-100/90",
+  moderate: "border-warning/25 bg-warning/[0.06] text-warning-foreground/90",
   elevated: "border-orange-500/30 bg-orange-500/[0.08] text-orange-100/90",
   critical: "border-rose-500/35 bg-rose-500/[0.1] text-rose-100/95",
 } as const

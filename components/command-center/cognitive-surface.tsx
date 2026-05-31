@@ -16,7 +16,7 @@ const STATE_STYLES: Record<string, string> = {
   disciplined: "border-profit/30 bg-profit/[0.08] text-emerald-100/95",
   impulsive: "border-orange-500/30 bg-orange-500/[0.08] text-orange-100/95",
   revenge_driven: "border-rose-500/35 bg-rose-500/[0.1] text-rose-100/95",
-  fatigued: "border-warning/30 bg-warning/[0.08] text-amber-100/95",
+  fatigued: "border-warning/30 bg-warning/[0.08] text-warning-foreground/95",
   euphoric: "border-violet-500/30 bg-violet-500/[0.08] text-violet-100/95",
 }
 

@@ -46,7 +46,7 @@ export const TRADER_FINAL_ACTION_STYLES: Record<
   string
 > = {
   skip: "border-loss/40 bg-loss/[0.12] text-loss shadow-[0_0_32px_rgb(from var(--color-loss) r g b / 0.12)]",
-  wait: "border-warning/35 bg-warning/[0.1] text-amber-100 shadow-[0_0_28px_rgba(245,158,11,0.1)]",
+  wait: "border-warning/35 bg-warning/[0.1] text-warning-foreground shadow-[0_0_28px_rgba(245,158,11,0.1)]",
   execute: "border-cyan-glow/35 bg-cyan-glow/[0.1] text-cyan-glow shadow-[0_0_28px_rgb(from var(--color-accent) r g b / 0.12)]",
   aplus:
     "border-profit/40 bg-profit/[0.12] text-profit shadow-[0_0_32px_rgb(from var(--color-profit) r g b / 0.14)]",

@@ -9,8 +9,8 @@ export function StrategyBrainSetupBanner({ onRetry }: { onRetry?: () => void }) 
       <div className="flex gap-3">
         <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning-foreground" />
         <div className="min-w-0 space-y-2">
-          <p className="text-[13px] font-medium text-amber-100">Database setup required</p>
-          <p className="text-[12px] leading-relaxed text-amber-100/85">
+          <p className="text-[13px] font-medium text-warning-foreground">Database setup required</p>
+          <p className="text-[12px] leading-relaxed text-warning-muted/85">
             War Room and Strategy Brain need tables in the{" "}
             <strong className="font-medium">same Supabase project</strong> your Vercel deployment uses
             (<code className="text-[11px]">NEXT_PUBLIC_SUPABASE_URL</code>).
