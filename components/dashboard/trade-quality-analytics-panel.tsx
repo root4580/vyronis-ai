@@ -4,6 +4,7 @@ import { Loader2, Target } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { useTradeQualityAnalytics } from "@/hooks/use-trade-quality-analytics"
+import { formatTradeResultLabel } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
 type TradeQualityAnalyticsPanelProps = {
@@ -41,9 +42,7 @@ export function TradeQualityAnalyticsPanel({ refreshKey = 0 }: TradeQualityAnaly
     <DashboardInsetPanel className="space-y-3 border-white/[0.06] bg-white/[0.02] px-3 py-3">
       <div className="flex items-center gap-2">
         <Target className="size-3.5 text-cyan-glow" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-          Quality Analytics
-        </p>
+        <p className="section-label">Quality analytics</p>
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground/80">{analytics.summary}</p>
@@ -87,9 +86,7 @@ export function TradeQualityAnalyticsPanel({ refreshKey = 0 }: TradeQualityAnaly
 
       {analytics.bestQualityTrades.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
-            Best Quality Plans
-          </p>
+          <p className="section-label">Best quality plans</p>
           {analytics.bestQualityTrades.map((trade) => (
             <div
               key={trade.sessionId}
@@ -98,7 +95,7 @@ export function TradeQualityAnalyticsPanel({ refreshKey = 0 }: TradeQualityAnaly
               <span className={cn("font-semibold", trade.grade === "A" ? "text-profit" : "text-cyan-glow")}>
                 {trade.grade} · {trade.score}/100
               </span>
-              <span className="text-muted-foreground/70">{trade.result || "Planned"}</span>
+              <span className="text-muted-foreground/70">{formatTradeResultLabel(trade.result) || "Planned"}</span>
             </div>
           ))}
         </div>

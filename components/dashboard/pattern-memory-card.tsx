@@ -65,9 +65,7 @@ export function PatternMemoryCard({ tradeCount = 0, refreshKey = 0 }: PatternMem
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Brain className="size-3.5 text-cyan-glow" />
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-            Pattern Memory
-          </p>
+          <p className="section-label">Pattern memory</p>
         </div>
         {memory?.hasEnoughData && (
           <span className="text-[9px] tabular-nums text-muted-foreground/65">
@@ -120,7 +118,7 @@ export function PatternMemoryCard({ tradeCount = 0, refreshKey = 0 }: PatternMem
                         : "text-cyan-glow",
                   )}
                 />
-                <span className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground/70">
+                <span className="section-label">
                   {categoryLabels[pattern.category]}
                 </span>
               </div>

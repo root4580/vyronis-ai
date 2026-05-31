@@ -37,3 +37,12 @@ export function formatPnL(pnl: number, result: string): string {
 export function getPnLTextClass(pnl: number, result: string): string {
   return getSignedPnL(pnl, result) >= 0 ? "text-profit" : "text-loss"
 }
+
+/** Sentence-case result label for UI (DB values stay WIN/LOSS/BE). */
+export function formatTradeResultLabel(result: string | null | undefined): string {
+  if (!result) return "—"
+  if (result === "WIN") return "Win"
+  if (result === "LOSS") return "Loss"
+  if (result === "BE" || result === "BREAKEVEN") return "BE"
+  return result
+}

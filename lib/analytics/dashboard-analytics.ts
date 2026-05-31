@@ -1,3 +1,4 @@
+import { buildEquityCurvePoints } from "@/lib/equity-curve"
 import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import type {
   AnalyticsTradeRow,
@@ -109,22 +110,7 @@ function buildEquityCurve(
   trades: AnalyticsTradeRow[],
   startingBalance: number,
 ): EquityCurvePoint[] {
-  const sorted = [...trades].sort((a, b) => getTradeTimestamp(a) - getTradeTimestamp(b))
-  const points: EquityCurvePoint[] = [{ date: "Start", equity: startingBalance, pnl: 0 }]
-
-  let cumulative = 0
-  for (const trade of sorted) {
-    const pnl = getSignedPnL(trade.pnl, trade.result)
-    cumulative += pnl
-    const date = new Date(trade.trade_date || trade.created_at)
-    points.push({
-      date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      equity: startingBalance + cumulative,
-      pnl,
-    })
-  }
-
-  return points
+  return buildEquityCurvePoints(trades, startingBalance)
 }
 
 function getWeekStartKey(trade: AnalyticsTradeRow): string {

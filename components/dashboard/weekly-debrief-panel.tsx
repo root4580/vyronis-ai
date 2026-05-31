@@ -340,14 +340,14 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
             </DashboardInsetPanel>
 
             <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
-              <TrendChart title="Discipline Graph" data={visualizations.disciplineGraph} color="oklch(0.72 0.14 195)" />
+              <TrendChart title="Discipline graph" data={visualizations.disciplineGraph} color="oklch(0.72 0.14 195)" />
               <TrendChart
-                title="Emotional Stability"
+                title="Emotional stability"
                 data={visualizations.emotionalStabilityGraph}
                 color="oklch(0.7 0.18 155)"
               />
               <TrendChart
-                title="Quality Score Trend"
+                title="Quality score trend"
                 data={visualizations.qualityScoreTrend}
                 color="oklch(0.75 0.16 300)"
               />

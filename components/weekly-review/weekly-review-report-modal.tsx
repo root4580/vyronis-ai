@@ -165,21 +165,21 @@ export function WeeklyReviewReportModal({
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="rounded-xl border border-white/[0.06] bg-black/30 px-3 py-2">
-              <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground/60">Trades</p>
+              <p className="section-label text-muted-foreground/60">Trades</p>
               <p className="mt-0.5 text-lg font-bold tabular-nums">{report.tradeCount}</p>
             </div>
             <div className="rounded-xl border border-white/[0.06] bg-black/30 px-3 py-2">
-              <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground/60">Win Rate</p>
+              <p className="section-label text-muted-foreground/60">Win rate</p>
               <p className="mt-0.5 text-lg font-bold tabular-nums text-cyan-glow">{report.winRate}%</p>
             </div>
             <div className="rounded-xl border border-white/[0.06] bg-black/30 px-3 py-2">
-              <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground/60">P&L</p>
+              <p className="section-label text-muted-foreground/60">P&L</p>
               <p className={cn("mt-0.5 text-lg font-bold tabular-nums", getPnLTextClass(report.totalPnL, pnlTone))}>
                 {formatPnL(report.totalPnL, pnlTone)}
               </p>
             </div>
             <div className="rounded-xl border border-white/[0.06] bg-black/30 px-3 py-2">
-              <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground/60">Overall</p>
+              <p className="section-label text-muted-foreground/60">Overall</p>
               <p className="mt-0.5 text-lg font-bold tabular-nums text-cyan-glow">
                 {report.scores.overall}/100
               </p>
@@ -187,8 +187,8 @@ export function WeeklyReviewReportModal({
           </div>
 
           <section className="mt-6">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/80">
-              Weekly Grades
+            <p className="mb-3 section-label text-cyan-glow/80">
+              Weekly grades
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <WeeklyReviewScoreMeter label="Discipline" score={report.scores.discipline} delayMs={80} />
@@ -204,8 +204,8 @@ export function WeeklyReviewReportModal({
 
           <section className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-                Behavioral Scan
+              <p className="section-label">
+                Behavioral scan
               </p>
               <ul className="mt-2 space-y-2 text-[11px] text-foreground/85">
                 <li className="flex items-start gap-2">
@@ -238,8 +238,8 @@ export function WeeklyReviewReportModal({
             </div>
 
             <div className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-                Setup & Mistake Intel
+              <p className="section-label">
+                Setup & mistake intel
               </p>
               <div className="mt-2 space-y-2">
                 {report.bestSetupTypes.length > 0 ? (
@@ -257,7 +257,7 @@ export function WeeklyReviewReportModal({
                 )}
                 {report.recurringMistakes.length > 0 && (
                   <div className="pt-1">
-                    <p className="text-[9px] uppercase tracking-[0.1em] text-loss/80">Recurring mistakes</p>
+                    <p className="section-label text-loss/80">Recurring mistake</p>
                     {report.recurringMistakes.map((mistake) => (
                       <p key={mistake} className="mt-1 text-[11px] text-foreground/85">
                         · {mistake}
@@ -271,9 +271,9 @@ export function WeeklyReviewReportModal({
 
           {report.insights.length > 0 && (
             <section className="mt-6">
-              <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow/80">
+              <p className="mb-3 flex items-center gap-2 section-label text-cyan-glow/80">
                 <Sparkles className="size-3.5" />
-                AI Insight Stream
+                AI insight stream
               </p>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {report.insights.map((insight) => (
@@ -285,9 +285,9 @@ export function WeeklyReviewReportModal({
 
           {report.improvementPlan.length > 0 && (
             <section className="mt-6 rounded-xl border border-cyan-glow/20 bg-cyan-glow/[0.04] p-4">
-              <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-glow">
+              <p className="flex items-center gap-2 section-label text-cyan-glow">
                 <TrendingUp className="size-3.5" />
-                Next Week Improvement Plan
+                Next week improvement plan
               </p>
               <ol className="mt-3 space-y-2">
                 {report.improvementPlan.map((step, index) => (

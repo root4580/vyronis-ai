@@ -20,6 +20,7 @@ import {
   type StrategyTrade,
 } from "@/lib/strategy-performance"
 import { buildMistakeAnalysis, type MistakeTrade } from "@/lib/mistake-analysis"
+import { formatTradeResultLabel } from "@/lib/trade-utils"
 import { StrategyPerformanceSkeleton } from "@/components/dashboard/dashboard-skeletons"
 import {
   collectStrategyNamesFromTrades,
@@ -301,7 +302,7 @@ export function StrategyPerformance({
                   <div>
                     <p className="text-[12px] font-medium text-foreground/90">{trade.pair ?? "Trade"}</p>
                     <p className="text-[10px] text-muted-foreground/70">
-                      {trade.result} · {formatStrategyPnL(trade.pnl)}
+                      {formatTradeResultLabel(trade.result)} · {formatStrategyPnL(trade.pnl)}
                     </p>
                   </div>
                   <StrategyNameSelect

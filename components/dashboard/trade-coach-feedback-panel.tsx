@@ -77,7 +77,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
       <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-cyan-glow" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Coach Review</p>
+          <p className="text-[11px] font-semibold">Coach review</p>
         </div>
         <p className="text-[12px] leading-relaxed text-muted-foreground/80">
           Generate a plan vs outcome review and discipline analysis for this trade.
@@ -90,7 +90,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
           className="w-full btn-primary"
         >
           {isGenerating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-          Generate Coach Review
+          Generate coach review
         </Button>
       </DashboardInsetPanel>
     )
@@ -109,7 +109,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-cyan-glow" />
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Coach Review</p>
+            <p className="text-[11px] font-semibold">Coach review</p>
             <p className="text-[10px] text-muted-foreground/70">Plan vs outcome analysis</p>
           </div>
         </div>
@@ -127,7 +127,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/70">Discipline Score</span>
+          <span className="section-label">Discipline score</span>
           <span
             className={cn(
               "text-xl font-bold tabular-nums",
@@ -148,9 +148,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       {coachingInsights.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-            Coaching Insights
-          </p>
+          <p className="section-label">Coaching insights</p>
           <div className="flex flex-wrap gap-1.5">
             {coachingInsights.map((insight) => (
               <span
@@ -171,9 +169,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       {comparisons.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-            Planned vs Actual
-          </p>
+          <p className="section-label">Planned vs actual</p>
           {comparisons.map((item) => (
             <div
               key={item.field}
@@ -202,9 +198,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       {feedback.feedback_points?.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-            Coaching Points
-          </p>
+          <p className="section-label">Coaching points</p>
           <ul className="space-y-1.5">
             {feedback.feedback_points.map((point, index) => (
               <li key={`${point}-${index}`} className="text-[11px] leading-relaxed text-muted-foreground/85">

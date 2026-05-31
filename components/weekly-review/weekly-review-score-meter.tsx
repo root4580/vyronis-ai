@@ -42,7 +42,7 @@ export function WeeklyReviewScoreMeter({
       style={{ animationDelay: `${delayMs}ms`, animationFillMode: "forwards" }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+        <p className="section-label text-muted-foreground/75">
           {label}
         </p>
         <span className={cn("text-lg font-bold tabular-nums", toneTextClass[tone])}>{score}</span>

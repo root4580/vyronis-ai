@@ -63,6 +63,7 @@ import {
   CHART_TOOLTIP_STYLE,
 } from "@/components/dashboard/dashboard-primitives"
 import { formatPnL, getPnLTextClass, getSignedPnL } from "@/lib/trade-utils"
+import { buildEquityCurvePoints, computeEquityChartDomain } from "@/lib/equity-curve"
 import {
   generateCoachAnalysis,
   type CoachInsightCategory,
@@ -565,31 +566,15 @@ export function StatsCards({ totalPnL, winRate, tradeCount, avgRisk, startingBal
 }
 
 export function EquityCurveChart({ trades, startingBalance }: { trades?: DashboardTradeRow[]; startingBalance?: number }) {
-  const baseBalance = startingBalance || 10000
+  const baseBalance = Number(startingBalance) || 10000
   const hasTrades = trades && trades.length > 0
-  
-  const equityData = hasTrades 
-    ? (() => {
-        const sorted = [...trades].sort(
-          (a, b) => getTradeTimestamp(a) - getTradeTimestamp(b),
-        )
-        const points = [{ date: "Start", equity: baseBalance, pnl: 0 }]
-        sorted.forEach((trade, index, arr) => {
-          const cumulativePnL = arr.slice(0, index + 1).reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
-          const date = new Date(trade.trade_date || trade.created_at)
-          points.push({
-            date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-            equity: baseBalance + cumulativePnL,
-            pnl: getSignedPnL(trade.pnl, trade.result),
-          })
-        })
-        return points
-      })()
-    : []
-  
+
+  const equityData = hasTrades ? buildEquityCurvePoints(trades, baseBalance) : []
+  const yDomain = computeEquityChartDomain(equityData)
+
   const totalPnL = hasTrades ? trades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0) : 0
   const roiPercent = baseBalance > 0 ? ((totalPnL / baseBalance) * 100).toFixed(1) : "0"
-  const chartKey = `${equityData.length}-${totalPnL.toFixed(0)}`
+  const chartKey = `${equityData.length}-${totalPnL.toFixed(0)}-${yDomain.join("-")}`
   
   return (
     <DashboardCard className="col-span-2 glass-card floating-glow" inset interactive glow>
@@ -646,7 +631,7 @@ export function EquityCurveChart({ trades, startingBalance }: { trades?: Dashboa
                 width={52}
                 tick={{ fill: "rgba(255,255,255,0.35)" }}
                 tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
-                domain={["auto", "auto"]}
+                domain={yDomain}
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
@@ -665,6 +650,7 @@ export function EquityCurveChart({ trades, startingBalance }: { trades?: Dashboa
                 animationDuration={1400}
                 animationEasing="ease-out"
                 dot={false}
+                baseValue={yDomain[0]}
                 activeDot={{ r: 5, fill: "oklch(0.72 0.14 195)", stroke: "rgba(255,255,255,0.9)", strokeWidth: 2 }}
               />
             </AreaChart>
@@ -1570,7 +1556,7 @@ export function AITradeCoachPlaceholder({
   }
 
   const categoryLabels: Record<CoachInsightCategory, string> = {
-    winrate: "Win Rate",
+    winrate: "Win rate",
     emotion: "Emotion",
     session: "Session",
     setup: "Setup",
@@ -1603,19 +1589,19 @@ export function AITradeCoachPlaceholder({
       <DashboardCardBody className="relative space-y-3">
         <div className="grid grid-cols-3 gap-2">
           <DashboardInsetPanel className="glass border-cyan-glow/10 bg-cyan-glow/[0.03] px-2.5 py-2 text-center">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">State</p>
+            <p className="section-label">State</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-cyan-glow">
               {analysis.confidenceScore}%
             </p>
           </DashboardInsetPanel>
           <DashboardInsetPanel className="glass border-loss/15 bg-loss/[0.04] px-2.5 py-2">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">Top Weakness</p>
+            <p className="section-label">Top weakness</p>
             <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-loss/90">
               {analysis.topWeakness ?? "Not enough data"}
             </p>
           </DashboardInsetPanel>
           <DashboardInsetPanel className="glass border-profit/15 bg-profit/[0.04] px-2.5 py-2">
-            <p className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">Top Strength</p>
+            <p className="section-label">Top strength</p>
             <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-profit/90">
               {analysis.topStrength ?? "Not enough data"}
             </p>
@@ -1643,7 +1629,7 @@ export function AITradeCoachPlaceholder({
             <div className="flex items-start gap-2">
               <Flame className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
               <div>
-                <p className="text-[9px] uppercase tracking-[0.12em] text-warning-foreground/80">Mistake Analysis</p>
+                <p className="section-label text-warning-foreground/80">Mistake analysis</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-foreground/85">{mistakeAnalysis.insights[0].message}</p>
               </div>
             </div>
@@ -1677,7 +1663,7 @@ export function AITradeCoachPlaceholder({
                   </div>
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
+                      <span className="section-label inline-flex rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5">
                         {categoryLabels[activeInsight.category]}
                       </span>
                       {rotationPool.length > 1 && (
@@ -1709,7 +1695,7 @@ export function AITradeCoachPlaceholder({
                     <Icon className="size-3.5" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <span className="inline-flex rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
+                    <span className="section-label inline-flex rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5">
                       {categoryLabels[insight.category]}
                     </span>
                     <p className="text-[12px] leading-relaxed text-foreground/90">{insight.message}</p>

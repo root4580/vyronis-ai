@@ -135,7 +135,7 @@ function MetricTile({
 }) {
   return (
     <DashboardInsetPanel className="glass min-w-0 text-center">
-      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">{label}</p>
+      <p className="section-label text-muted-foreground/60">{label}</p>
       <p className={cn("mt-1 truncate text-base font-bold tabular-nums sm:text-lg", valueClassName)}>{value}</p>
     </DashboardInsetPanel>
   )
@@ -288,9 +288,7 @@ export function TradeDetailsModal({
                   />
                 )}
               </div>
-              <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                Trade discipline review
-              </p>
+              <p className="section-label mt-1.5">Trade discipline review</p>
               <Link
                 href={`/journal/trade/${trade.id}`}
                 className="mt-2 inline-flex text-[11px] font-medium text-cyan-glow hover:text-cyan-glow/80"
@@ -356,17 +354,17 @@ export function TradeDetailsModal({
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <DashboardInsetPanel className="glass">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Session</p>
+                  <p className="section-label">Session</p>
                   <p className="mt-1 text-sm font-medium text-cyan-glow/95">{trade.session || "—"}</p>
                 </DashboardInsetPanel>
                 <DashboardInsetPanel className="glass">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Strategy</p>
+                  <p className="section-label">Strategy</p>
                   <p className="mt-1 text-sm font-medium text-foreground/90">{trade.strategy_name || "—"}</p>
                 </DashboardInsetPanel>
                 <DashboardInsetPanel className="glass flex items-center gap-2">
                   <Calendar className="size-4 shrink-0 text-muted-foreground/60" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Timestamp</p>
+                    <p className="section-label">Timestamp</p>
                     <p className="mt-0.5 text-sm font-medium text-foreground/90">{formattedDate}</p>
                     <p className="text-[11px] text-muted-foreground/70">{formattedTime}</p>
                   </div>
@@ -375,14 +373,14 @@ export function TradeDetailsModal({
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <DashboardInsetPanel className="glass">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Emotion Before</p>
+                  <p className="section-label">Emotion before</p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-2xl">{emotionBefore.emoji}</span>
                     <p className="text-sm font-medium text-foreground/90">{emotionBefore.label}</p>
                   </div>
                 </DashboardInsetPanel>
                 <DashboardInsetPanel className="glass">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Emotion After</p>
+                  <p className="section-label">Emotion after</p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-2xl">{emotionAfter.emoji}</span>
                     <p className="text-sm font-medium text-foreground/90">{emotionAfter.label}</p>
@@ -392,7 +390,7 @@ export function TradeDetailsModal({
 
               {(trade.entry_price || trade.stop_loss || trade.take_profit) && (
                 <DashboardInsetPanel className="glass">
-                  <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Execution Levels</p>
+                  <p className="section-label mb-2">Execution levels</p>
                   <div className="grid grid-cols-3 gap-2 text-[12px]">
                     <div>
                       <span className="text-muted-foreground/60">Entry</span>
@@ -412,9 +410,7 @@ export function TradeDetailsModal({
 
               {(trade.weekly_bias || trade.daily_bias || trade.h4_bias || trade.aoi_type) && (
                 <DashboardInsetPanel className="glass">
-                  <p className="mb-2 text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">
-                    Vyronis Core Model
-                  </p>
+                  <p className="section-label mb-2">Vyronis core model</p>
                   <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3">
                     {trade.weekly_bias && (
                       <div>
@@ -502,7 +498,7 @@ export function TradeDetailsModal({
                     />
                     <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent p-4 opacity-90 transition-opacity group-hover:opacity-100">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-white/70">Chart Preview</p>
+                        <p className="section-label text-white/70">Chart preview</p>
                         <p className="text-sm font-medium text-white">Click to zoom</p>
                       </div>
                       <div className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-black/35 backdrop-blur-sm">
@@ -522,7 +518,7 @@ export function TradeDetailsModal({
               </DashboardInsetPanel>
 
               <DashboardInsetPanel className="glass">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Notes</p>
+                <p className="section-label">Notes</p>
                 <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">
                   {trade.trade_notes?.trim() || "No notes recorded for this trade."}
                 </p>
@@ -546,7 +542,7 @@ export function TradeDetailsModal({
                 <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
                   <div className="flex items-center gap-2">
                     <Brain className="size-4 text-cyan-glow" />
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Quick Insights</p>
+                    <p className="text-[11px] font-semibold">Quick insights</p>
                   </div>
                   <div className="space-y-2">
                     {analysis.insights.map((insight) => (

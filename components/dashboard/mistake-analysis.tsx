@@ -55,7 +55,7 @@ function ScoreTile({
       <div className="mx-auto mb-2 flex size-8 items-center justify-center rounded-lg border border-white/[0.08] bg-black/20">
         <Icon className="size-4" />
       </div>
-      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</p>
+      <p className="section-label text-muted-foreground/70">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
     </DashboardInsetPanel>
   )
@@ -102,7 +102,7 @@ function MistakeRow({ entry, index, maxCount }: { entry: MistakeEntry; index: nu
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60">Loss link</p>
+          <p className="section-label">Loss link</p>
           <p className={`text-sm font-semibold tabular-nums ${entry.lossRate >= 50 ? "text-loss" : "text-warning-foreground"}`}>
             {entry.lossCount} · {entry.lossRate}%
           </p>
@@ -179,7 +179,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
       <DashboardCardBody className="relative space-y-5">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <DashboardInsetPanel className="glass border-cyan-glow/15 bg-cyan-glow/[0.04]">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-cyan-glow/80">Most Common Mistake</p>
+            <p className="section-label text-cyan-glow/80">Most common mistake</p>
             {analysis.topRepeated ? (
               <>
                 <p className="mt-1 text-lg font-semibold text-foreground">{analysis.topRepeated.label}</p>
@@ -193,7 +193,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
           </DashboardInsetPanel>
 
           <DashboardInsetPanel className="glass border-loss/20 bg-loss/[0.05] shadow-[0_0_20px_rgb(from var(--color-loss) r g b / 0.08)]">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-loss/80">Biggest Loss Cause</p>
+            <p className="section-label text-loss/80">Biggest loss cause</p>
             {analysis.biggestLossCauses[0] ? (
               <>
                 <p className="mt-1 text-lg font-semibold text-loss">{analysis.biggestLossCauses[0].label}</p>
@@ -230,7 +230,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
                 <Trophy className="size-4 text-profit" />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-profit/80">Most Improved Behavior</p>
+                <p className="section-label text-profit/80">Most improved behavior</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">{analysis.mostImproved.label}</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground/75">
                   Down {analysis.mostImproved.improvement}% vs earlier trades
@@ -295,7 +295,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
 
             {analysis.biggestLossCauses.length > 0 && (
               <DashboardInsetPanel className="glass mt-3 border-loss/20 bg-loss/[0.04]">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-loss/80">Top Loss Drivers</p>
+                <p className="section-label text-loss/80">Top loss drivers</p>
                 <div className="mt-2 space-y-2">
                   {analysis.biggestLossCauses.slice(0, 3).map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between text-[11px]">
@@ -312,7 +312,7 @@ export function MistakeAnalysisPanel({ trades }: MistakeAnalysisPanelProps) {
                 <div className="flex items-start gap-2">
                   <Target className="mt-0.5 size-4 shrink-0 text-cyan-glow" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.12em] text-cyan-glow/80">Strategy Link</p>
+                    <p className="section-label text-cyan-glow/80">Strategy link</p>
                     <p className="mt-1 text-[12px] leading-relaxed text-foreground/85">{analysis.strategyInsight}</p>
                   </div>
                 </div>

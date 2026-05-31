@@ -78,17 +78,13 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <DashboardInsetPanel className="px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Consistency
-                </p>
+                <p className="section-label">Consistency</p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-cyan-glow">
                   {heatmap.consistencyScore}%
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Month P&L
-                </p>
+                <p className="section-label">Month P&L</p>
                 <p
                   className={`mt-1 text-lg font-semibold tabular-nums ${
                     heatmap.totalPnL >= 0 ? "text-profit" : "text-loss"
@@ -99,9 +95,7 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Best Day
-                </p>
+                <p className="section-label">Best day</p>
                 <p
                   className={`mt-1 truncate text-sm font-semibold tabular-nums ${
                     heatmap.bestDay ? "text-profit" : "text-muted-foreground/60"
@@ -111,9 +105,7 @@ export function PerformanceHeatmap({ trades }: PerformanceHeatmapProps) {
                 </p>
               </DashboardInsetPanel>
               <DashboardInsetPanel className="px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                  Streak
-                </p>
+                <p className="section-label">Streak</p>
                 <p className="mt-1 flex items-center gap-1 text-sm font-semibold tabular-nums text-foreground">
                   {heatmap.currentStreak.count > 0 ? (
                     <>

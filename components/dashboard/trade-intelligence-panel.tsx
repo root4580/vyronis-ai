@@ -226,7 +226,7 @@ export function TradeIntelligencePanel({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Shield className="size-4 text-cyan-glow" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Discipline Score</p>
+            <p className="text-[11px] font-semibold">Discipline score</p>
           </div>
           <span
             className={cn(
@@ -248,7 +248,7 @@ export function TradeIntelligencePanel({
       </DashboardInsetPanel>
 
       <DashboardInsetPanel className="glass space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Emotion Tracking</p>
+        <p className="text-[11px] font-semibold">Emotion tracking</p>
         <div className="grid grid-cols-2 gap-2 text-[12px]">
           <div>
             <span className="text-muted-foreground/60">Before</span>
@@ -280,7 +280,7 @@ export function TradeIntelligencePanel({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Camera className="size-4 text-cyan-glow" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Screenshot</p>
+            <p className="text-[11px] font-semibold">Screenshot</p>
           </div>
           {bundle.screenshot.attached && onScreenshotClick && (
             <Button type="button" size="sm" variant="ghost" className="h-7 text-[10px]" onClick={onScreenshotClick}>
@@ -295,7 +295,7 @@ export function TradeIntelligencePanel({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-cyan-glow" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">AI Trade Analysis</p>
+            <p className="text-[11px] font-semibold">AI trade analysis</p>
           </div>
           <span
             className={cn(
@@ -326,7 +326,7 @@ export function TradeIntelligencePanel({
       <DashboardInsetPanel className="glass space-y-3">
         <div className="flex items-center gap-2">
           <GitCompare className="size-4 text-cyan-glow" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Historical Comparison</p>
+          <p className="text-[11px] font-semibold">Historical comparison</p>
         </div>
         <p className="text-[11px] text-muted-foreground/75">{bundle.historicalComparison.narrative}</p>
         {bundle.comparisonNarratives.map((line) => (
@@ -352,9 +352,9 @@ export function TradeIntelligencePanel({
       </DashboardInsetPanel>
 
       <DashboardInsetPanel className="glass space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Win / Loss Patterns</p>
+        <p className="text-[11px] font-semibold">Win / loss patterns</p>
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-profit/90">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-profit/90">
             <TrendingUp className="size-3.5" />
             Winning patterns
           </div>
@@ -372,7 +372,7 @@ export function TradeIntelligencePanel({
           )}
         </div>
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-loss/90">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-loss/90">
             <TrendingDown className="size-3.5" />
             Losing patterns
           </div>

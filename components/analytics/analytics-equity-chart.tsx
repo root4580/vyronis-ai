@@ -21,6 +21,7 @@ import {
   DashboardEmptyState,
 } from "@/components/dashboard/dashboard-primitives"
 import type { EquityCurvePoint } from "@/lib/analytics/types"
+import { computeEquityChartDomain } from "@/lib/equity-curve"
 
 type AnalyticsEquityChartProps = {
   data: EquityCurvePoint[]
@@ -30,8 +31,9 @@ type AnalyticsEquityChartProps = {
 export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityChartProps) {
   const hasData = data.length > 1
   const endEquity = data[data.length - 1]?.equity ?? startingBalance
-  const totalPnL = endEquity - startingBalance
-  const roiPercent = startingBalance > 0 ? ((totalPnL / startingBalance) * 100).toFixed(1) : "0"
+  const totalPnL = endEquity - Number(startingBalance)
+  const roiPercent = startingBalance > 0 ? ((totalPnL / Number(startingBalance)) * 100).toFixed(1) : "0"
+  const yDomain = computeEquityChartDomain(data)
 
   return (
     <DashboardCard className="hq-surface-card analytics-fade-in opacity-0 col-span-1 lg:col-span-2" style={{ animationDelay: "320ms", animationFillMode: "forwards" }} inset interactive>
@@ -77,6 +79,7 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
                 width={56}
                 tick={{ fill: "rgba(255,255,255,0.35)" }}
                 tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
+                domain={yDomain}
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
@@ -94,6 +97,7 @@ export function AnalyticsEquityChart({ data, startingBalance }: AnalyticsEquityC
                 animationDuration={1400}
                 animationEasing="ease-out"
                 dot={false}
+                baseValue={yDomain[0]}
                 activeDot={{
                   r: 5,
                   fill: "var(--color-accent)",
