@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, type RefCallback } from "react"
 import { ArrowRight, Crosshair, Shield, Sparkles, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
-import { PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
+import { DEFAULT_USER_SETTINGS, PROP_FIRM_SIZES, type UserSettingsForm } from "@/lib/user-settings"
 
 const PROP_BALANCE_MAP: Record<string, number> = {
   "5K": 5000,
@@ -27,10 +27,24 @@ const PROP_BALANCE_MAP: Record<string, number> = {
 
 const SESSION_OPTIONS = [
   "London Session",
-  "New York Session",
+  "NY Session",
   "Asia Session",
   "London + NY Overlap",
 ] as const
+
+function normalizePreferredSession(session?: string | null): (typeof SESSION_OPTIONS)[number] {
+  const value = session ?? DEFAULT_USER_SETTINGS.preferred_session ?? "NY Session"
+  if (SESSION_OPTIONS.includes(value as (typeof SESSION_OPTIONS)[number])) {
+    return value as (typeof SESSION_OPTIONS)[number]
+  }
+
+  const lower = value.toLowerCase()
+  if (lower.includes("overlap")) return "London + NY Overlap"
+  if (lower.includes("new york") || lower.includes("ny")) return "NY Session"
+  if (lower.includes("london")) return "London Session"
+  if (lower.includes("asia")) return "Asia Session"
+  return "NY Session"
+}
 
 type FirstRunSetupModalProps = {
   open: boolean
@@ -48,7 +62,24 @@ export function FirstRunSetupModal({
   onOpenWarRoom,
 }: FirstRunSetupModalProps) {
   const [step, setStep] = useState(0)
-  const [draft, setDraft] = useState<UserSettingsForm>(form)
+  const [overlayEl, setOverlayEl] = useState<HTMLElement | null>(null)
+  const [draft, setDraft] = useState<UserSettingsForm>(() => ({
+    ...form,
+    preferred_session: normalizePreferredSession(form.preferred_session),
+  }))
+
+  const overlayRef: RefCallback<HTMLDivElement> = (node) => {
+    setOverlayEl(node)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    setStep(0)
+    setDraft({
+      ...form,
+      preferred_session: normalizePreferredSession(form.preferred_session),
+    })
+  }, [open, form])
 
   if (!open) return null
 
@@ -86,11 +117,17 @@ export function FirstRunSetupModal({
     })
   }
 
+  const selectMenuClassName =
+    "z-[200] border-white/[0.1] bg-[#0d1118] shadow-xl shadow-black/40"
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+    >
       <div className="add-trade-backdrop absolute inset-0" aria-hidden />
 
-      <div className="add-trade-modal glass-card relative mx-0 flex max-h-[94vh] w-full flex-col overflow-hidden sm:mx-4 sm:max-h-[90vh] sm:max-w-lg">
+      <div className="add-trade-modal glass-card relative z-10 mx-0 flex max-h-[94vh] w-full flex-col overflow-hidden sm:mx-4 sm:max-h-[90vh] sm:max-w-lg">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.08] via-transparent to-profit/[0.05]" />
 
         <div className="relative border-b border-white/[0.06] px-4 py-4 md:px-6">
@@ -127,7 +164,7 @@ export function FirstRunSetupModal({
                 <SelectTrigger className="add-trade-input h-10">
                   <SelectValue placeholder="Select account size" />
                 </SelectTrigger>
-                <SelectContent className="glass-card border-white/[0.08]">
+                <SelectContent container={overlayEl} className={selectMenuClassName}>
                   {PROP_FIRM_SIZES.map((size) => (
                     <SelectItem key={size} value={size}>
                       {size} account
@@ -173,7 +210,7 @@ export function FirstRunSetupModal({
                   Preferred session
                 </Label>
                 <Select
-                  value={draft.preferred_session ?? "New York Session"}
+                  value={normalizePreferredSession(draft.preferred_session)}
                   onValueChange={(value) =>
                     setDraft((prev) => ({
                       ...prev,
@@ -184,7 +221,7 @@ export function FirstRunSetupModal({
                   <SelectTrigger className="add-trade-input h-10">
                     <SelectValue placeholder="Select session" />
                   </SelectTrigger>
-                  <SelectContent className="glass-card border-white/[0.08]">
+                  <SelectContent container={overlayEl} className={selectMenuClassName}>
                     {SESSION_OPTIONS.map((session) => (
                       <SelectItem key={session} value={session}>
                         {session}
