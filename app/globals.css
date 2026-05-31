@@ -343,6 +343,35 @@
     border-color: var(--border-default);
     outline: none;
   }
+
+  .add-trade-field-input {
+    height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-input);
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .add-trade-field-input:focus-visible {
+    border-color: var(--border-strong);
+    outline: none;
+  }
+
+  .add-trade-field-textarea {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-input);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .add-trade-field-textarea:focus-visible {
+    border-color: var(--border-default);
+    outline: none;
+  }
 }
 
 /* ── Dashboard shell (Linear-inspired layout surface) ── */
@@ -829,14 +858,21 @@
 }
 
 .add-trade-input {
-  @apply border-white/[0.08] bg-white/[0.03] text-foreground placeholder:text-muted-foreground/45;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.add-trade-input::placeholder {
+  color: var(--text-muted);
 }
 
 .add-trade-input:focus-visible {
-  border-color: rgb(from var(--color-accent) r g b / 0.35);
-  box-shadow: 0 0 0 3px rgb(from var(--color-accent) r g b / 0.12);
+  border-color: var(--border-strong);
   outline: none;
+  box-shadow: none;
 }
 
 .add-trade-dropzone {
@@ -1971,28 +2007,46 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 }
 
 .command-center-panel {
-  max-height: min(90vh, 900px);
-  background: linear-gradient(
-    165deg,
-    rgba(8, 12, 20, 0.98) 0%,
-    rgba(6, 10, 16, 0.99) 45%,
-    rgba(10, 8, 18, 0.98) 100%
-  );
-  border: 1px solid rgb(from var(--color-accent) r g b / 0.16);
-  box-shadow:
-    0 0 0 1px rgb(from var(--color-accent) r g b / 0.1),
-    0 24px 80px rgba(0, 0, 0, 0.55),
-    0 0 48px rgb(from var(--color-accent) r g b / 0.1);
+  max-height: 100dvh;
+  height: 100dvh;
+  background: var(--surface-modal);
+  border-left: 1px solid var(--border-subtle);
+  border-radius: 0;
+  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.35);
   animation: command-center-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .command-center-header {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%);
+  min-height: 50px;
+  background: var(--surface-modal);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.command-center-compose-bar {
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+  background: var(--surface-modal);
+}
+
+.command-center-quick-prompt {
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.command-center-quick-prompt:hover {
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }
 
 .command-center-body {
   min-height: 0;
-  max-height: calc(90vh - 72px);
+  max-height: calc(100dvh - 50px);
 }
 
 .command-center-thread-scroll,
@@ -2063,10 +2117,7 @@ input.dashboard-date-input[type="date"]:focus-visible::-webkit-calendar-picker-i
 }
 
 .command-center-panel-expanded {
-  box-shadow:
-    0 0 0 1px rgb(from var(--color-accent) r g b / 0.14),
-    0 28px 90px rgba(0, 0, 0, 0.6),
-    0 0 56px rgb(from var(--color-accent) r g b / 0.12);
+  box-shadow: -16px 0 56px rgba(0, 0, 0, 0.4);
 }
 
 .command-center-mode-transition {

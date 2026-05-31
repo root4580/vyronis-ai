@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
   Calculator,
-  Pencil,
-  Plus,
   Sparkles,
   ScanLine,
   Target,
@@ -120,11 +118,11 @@ function PostLogDisciplineInline({
   tradeDetailHref,
 }: PostSaveDisciplineSummary) {
   return (
-    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-surface-card p-3">
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-3">
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border text-sm font-semibold tabular-nums",
+            "flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border text-base font-semibold tabular-nums",
             disciplineGradeBoxClass(result.grade),
           )}
         >
@@ -147,7 +145,7 @@ function PostLogDisciplineInline({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-medium text-text-muted">{children}</p>
+    <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">{children}</p>
   )
 }
 
@@ -159,9 +157,9 @@ function FieldLabel({
   required?: boolean
 }) {
   return (
-    <Label className="text-[11px] font-medium text-muted-foreground/80">
+    <Label className="mb-1 block text-[10px] font-medium text-text-muted">
       {children}
-      {required && <span className="ml-1 text-loss">*</span>}
+      {required && <span className="ml-1 text-[var(--color-loss)]">*</span>}
     </Label>
   )
 }
@@ -340,13 +338,18 @@ export function AddTradeModal({
 
   if (!open) return null
 
+  const headerSub =
+    form.pair && form.direction
+      ? `${form.pair} · ${form.direction}${isPlan ? " · before entry" : isLog ? " · after close" : ""}`
+      : journalModeDescription(journalMode)
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="add-trade-backdrop absolute inset-0" onClick={onClose} aria-hidden />
 
       <div
         className={cn(
-          "add-trade-modal glass-card relative flex max-h-[94vh] w-full max-w-[100vw] flex-col overflow-hidden sm:max-h-[90vh] sm:max-w-2xl",
+          "add-trade-modal relative flex max-h-[100dvh] w-full max-w-[560px] flex-col overflow-hidden sm:max-h-[94vh]",
           resultTone === "profit" && "add-trade-modal-win",
           resultTone === "loss" && "add-trade-modal-loss",
         )}
@@ -354,46 +357,36 @@ export function AddTradeModal({
         aria-modal="true"
         aria-labelledby="add-trade-title"
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-glow/[0.07] via-transparent to-profit/[0.05]" />
-        <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-cyan-glow/[0.08] blur-3xl" />
+        {!isEditing && onJournalModeChange ? (
+          <TradeJournalModeTabs
+            mode={journalMode}
+            onChange={onJournalModeChange}
+            disabled={isSubmitting || isUploading}
+            showPlanHint={showPlanHint}
+            onDismissPlanHint={dismissPlanHint}
+          />
+        ) : null}
 
-        <div className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
+        <div className="relative shrink-0 border-b border-[var(--border-subtle)] px-5 py-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-glow/25 bg-cyan-glow/[0.1] shadow-[0_0_20px_rgb(from var(--color-accent) r g b / 0.12)]">
-                {isEditing ? <Pencil className="size-4 text-cyan-glow" /> : <Plus className="size-4 text-cyan-glow" />}
-              </div>
-              <div>
-                <h2 id="add-trade-title" className="text-[16px] font-semibold tracking-tight text-foreground">
-                  {isEditing ? "Edit Trade" : isPlan ? "Plan Setup" : isLog ? "Log Result" : "Add Trade"}
-                </h2>
-                <p className="text-[11px] text-muted-foreground/70">
-                  {journalModeDescription(journalMode)}
-                </p>
-              </div>
+            <div>
+              <h2 id="add-trade-title" className="text-[15px] font-medium text-text-primary">
+                {isEditing ? "Edit trade" : isPlan ? "Plan setup" : isLog ? "Log trade" : "Add trade"}
+              </h2>
+              <p className="mt-0.5 text-[11px] text-text-muted">{headerSub}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-[10px] border border-transparent p-2 transition-colors hover:border-white/[0.06] hover:bg-white/[0.04]"
+              className="rounded-[var(--radius-sm)] p-1.5 text-text-muted transition-colors hover:text-text-primary"
             >
-              <X className="size-5 text-muted-foreground" />
+              <X className="size-5" />
             </button>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="relative flex min-h-0 flex-1 flex-col">
-          <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-5 sm:px-4 sm:py-4 md:px-6 md:py-5">
-            {!isEditing && onJournalModeChange && (
-              <TradeJournalModeTabs
-                mode={journalMode}
-                onChange={onJournalModeChange}
-                disabled={isSubmitting || isUploading}
-                showPlanHint={showPlanHint}
-                onDismissPlanHint={dismissPlanHint}
-              />
-            )}
-
+          <div className="mobile-safe-scroll min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:space-y-5">
             <section className="space-y-3">
               <SectionLabel>{isLog ? "Trade" : "Market Setup"}</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -998,7 +991,7 @@ export function AddTradeModal({
             </section>
           </div>
 
-          <div className="mobile-form-footer relative shrink-0 border-t border-white/[0.06] bg-black/20 px-3 py-3 backdrop-blur-md sm:px-4 sm:py-4 md:px-6">
+          <div className="mobile-form-footer relative shrink-0 border-t border-[var(--border-subtle)] bg-[var(--surface-modal)] px-5 py-4">
             {postSaveDiscipline ? (
               <PostLogDisciplineInline {...postSaveDiscipline} />
             ) : (
@@ -1030,18 +1023,15 @@ export function AddTradeModal({
                 <Button
                   type="submit"
                   disabled={isSubmitting || isUploading}
-                  className="btn-primary mobile-sticky-submit h-11 w-full text-sm transition-all sm:h-12 sm:text-base"
+                  className="btn-primary mobile-sticky-submit h-10 w-full rounded-[var(--radius-md)] text-[13px] font-medium"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <span className="size-4 animate-spin rounded-full border-2 border-background/30 border-t-background" />
-                      {isEditing ? "Updating Trade..." : "Saving Trade..."}
+                      {isEditing ? "Updating…" : "Saving…"}
                     </span>
                   ) : (
-                    <span className="flex items-center gap-2">
-                      {isEditing ? <Pencil className="size-5" /> : <Sparkles className="size-5" />}
-                      {submitLabel(journalMode, isEditing)}
-                    </span>
+                    submitLabel(journalMode, isEditing)
                   )}
                 </Button>
                 <p className="mt-2 text-center text-[10px] text-muted-foreground/60">

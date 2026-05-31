@@ -1,7 +1,7 @@
 "use client"
 
 import { FormEvent, useRef, useState } from "react"
-import { ImagePlus, Loader2, SendHorizonal } from "lucide-react"
+import { ArrowUp, ImagePlus, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   ChartUploadThumbnailStrip,
@@ -131,10 +131,7 @@ export function CommandCenterInput({
   return (
     <form
       onSubmit={(event) => void handleSubmit(event)}
-      className={cn(
-        "command-center-input box-border flex w-full max-w-full min-w-0 flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-black/30 p-2",
-        className,
-      )}
+      className={cn("command-center-compose-bar box-border flex w-full max-w-full min-w-0 flex-col gap-2", className)}
     >
       {pendingImages.length > 0 ? (
         <div className="shrink-0">
@@ -184,7 +181,7 @@ export function CommandCenterInput({
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          rows={2}
+          rows={1}
           placeholder={
             pendingImages.length > 0
               ? isBundle
@@ -193,7 +190,7 @@ export function CommandCenterInput({
               : placeholder
           }
           disabled={busy}
-          className="command-center-input-field min-h-[40px] min-w-0 max-h-20 flex-1 resize-none bg-transparent px-1 py-1.5 text-[16px] leading-snug text-foreground placeholder:text-muted-foreground/50 focus:outline-none sm:max-h-24 sm:min-h-[44px] sm:text-[13px]"
+          className="command-center-input-field min-h-9 min-w-0 max-h-[120px] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white/[0.03] px-3 py-2 text-[13px] leading-snug text-text-primary placeholder:text-text-muted focus:border-[var(--border-default)] focus:outline-none sm:min-h-9 sm:text-[13px]"
           onFocus={(event) => {
             requestAnimationFrame(() => {
               event.target.scrollIntoView({ block: "end", behavior: "smooth" })
@@ -210,13 +207,13 @@ export function CommandCenterInput({
           type="submit"
           size="icon"
           disabled={busy || !canSend}
-          className="size-9 shrink-0 rounded-lg bg-cyan-glow/90 text-background hover:bg-cyan-glow"
+          className="btn-primary size-9 shrink-0 rounded-[var(--radius-md)]"
           aria-label="Send message"
         >
           {isSending || isUploading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <SendHorizonal className="size-4" />
+            <ArrowUp className="size-4" />
           )}
         </Button>
       </div>

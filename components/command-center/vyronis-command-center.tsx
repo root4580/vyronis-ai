@@ -2,28 +2,19 @@
 
 import { useEffect } from "react"
 import { useVisualViewportCssVars } from "@/hooks/use-visual-viewport-css-vars"
-import { ArrowLeft, Brain, Eye, X } from "lucide-react"
+import { ArrowLeft, Bot, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CompanionMode } from "@/components/command-center/companion-mode"
 import { PreTradeMode } from "@/components/command-center/pre-trade-mode"
 import { SessionHistoryMenu } from "@/components/command-center/session-history-menu"
 import { useAIContext } from "@/providers/ai-context-provider"
-import { COMPANION_STATE_LABELS } from "@/lib/intelligence/conversational-types"
 import { cn } from "@/lib/utils"
-
-const MODE_LABELS = {
-  companion: "Companion",
-  pre_trade: "Pre-trade coach",
-  post_trade: "Post-trade debrief",
-  weekly: "Weekly review",
-} as const
 
 export function VyronisCommandCenter() {
   const {
     isOpen,
     close,
     mode,
-    context,
     isTransitioning,
     coachPlannedContext,
     returnToCompanion,
@@ -63,67 +54,44 @@ export function VyronisCommandCenter() {
       <aside
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "command-center-panel fixed bottom-0 right-0 z-[60] flex w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden",
-          "sm:bottom-4 sm:right-4 sm:h-[min(90dvh,900px)] sm:max-h-[90dvh]",
-          "rounded-t-2xl sm:rounded-2xl",
-          "command-center-mode-transition",
+          "command-center-panel fixed inset-y-0 right-0 z-[60] flex w-full max-w-[100vw] min-h-0 flex-col overflow-hidden",
           isExpanded
             ? "command-center-panel-expanded sm:w-[min(640px,calc(100vw-2rem))]"
-            : "sm:w-[min(420px,calc(100vw-2rem))]",
+            : "sm:w-[400px]",
           isTransitioning && "command-center-panel-transitioning",
         )}
         role="dialog"
         aria-label="Vyronis HQ Command Center"
       >
-        <header className="command-center-header sticky top-0 z-20 flex items-start justify-between gap-2 overflow-hidden border-b border-white/[0.08] px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
-          <div className="min-w-0 flex-1">
-            {mode !== "companion" ? (
-              <button
-                type="button"
-                onClick={() => void returnToCompanion()}
-                className="command-center-back-btn mb-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-cyan-glow/90 transition-colors hover:text-cyan-glow"
-              >
-                <ArrowLeft className="size-3.5" />
-                Back to companion
-              </button>
-            ) : null}
+        <header className="command-center-header sticky top-0 z-20 flex h-[50px] shrink-0 items-center gap-2 px-4">
+          {mode !== "companion" ? (
+            <button
+              type="button"
+              onClick={() => void returnToCompanion()}
+              className="command-center-back-btn mr-1 inline-flex items-center gap-1 text-[11px] font-medium text-text-accent transition-colors hover:opacity-90"
+              aria-label="Back to companion"
+            >
+              <ArrowLeft className="size-3.5" />
+            </button>
+          ) : null}
 
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg border border-cyan-glow/25 bg-cyan-glow/[0.1]">
-                <Brain className="size-4 text-cyan-glow" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold tracking-tight text-foreground">
-                  {mode === "companion" ? "Vyronis HQ" : MODE_LABELS[mode]}
-                </p>
-                <p className="text-[10px] text-muted-foreground/75">
-                  {mode === "companion"
-                    ? (context?.companionState
-                        ? COMPANION_STATE_LABELS[context.companionState]
-                        : context?.greeting.sessionLabel ?? "Online")
-                    : pairLabel || "Upload charts → analyze → quick check-in"}
-                </p>
-              </div>
-            </div>
+          <Bot className="size-4 shrink-0 text-text-accent" aria-hidden />
+          <p className="text-[14px] font-medium text-text-primary">Coach</p>
 
-            {mode === "pre_trade" ? (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-glow/25 bg-cyan-glow/[0.08] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-glow">
-                  <Eye className="size-3" />
-                  Vision-enabled
-                </span>
-              </div>
-            ) : null}
-          </div>
+          {pairLabel ? (
+            <span className="rounded-[var(--radius-sm)] border border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] px-2 py-0.5 text-[11px] text-text-accent">
+              {pairLabel}
+            </span>
+          ) : null}
 
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="ml-auto flex shrink-0 items-center gap-0.5">
             {mode === "companion" ? <SessionHistoryMenu /> : null}
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={close}
-              className="size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.06]"
+              className="size-8 shrink-0 rounded-[var(--radius-sm)] text-text-muted hover:bg-white/[0.04] hover:text-text-primary"
             >
               <X className="size-4" />
             </Button>
@@ -132,14 +100,14 @@ export function VyronisCommandCenter() {
 
         <div
           className={cn(
-            "command-center-body flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden px-3 py-2 sm:gap-3 sm:px-4 sm:py-3",
-            isExpanded && "px-2 sm:px-4",
+            "command-center-body flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 py-3",
+            isExpanded && "px-3 sm:px-4",
           )}
         >
           <div
             key={mode}
             className={cn(
-              "command-center-mode-content flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-3",
+              "command-center-mode-content flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col",
               isExpanded ? "overflow-hidden" : "",
             )}
           >

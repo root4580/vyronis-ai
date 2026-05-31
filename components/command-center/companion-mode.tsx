@@ -1,12 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { CompanionContextStrip } from "@/components/command-center/companion-context-strip"
 import { AiMessageThread } from "@/components/command-center/ai-message-thread"
 import { CommandCenterInput } from "@/components/command-center/command-center-input"
 import { useAIContext } from "@/providers/ai-context-provider"
 import { cn } from "@/lib/utils"
+
+const GENERIC_PROMPTS = [
+  "How's my session looking?",
+  "Review my last trade",
+  "What should I focus on today?",
+]
+
+function buildQuickPrompts(pair?: string | null, direction?: string | null): string[] {
+  if (pair) {
+    const dir = direction ? ` ${direction}` : ""
+    return [
+      `Is this ${pair}${dir} setup valid?`,
+      `What could invalidate ${pair}?`,
+      "Check my plan against War Room bias",
+      ...GENERIC_PROMPTS.slice(0, 2),
+    ]
+  }
+  return GENERIC_PROMPTS
+}
 
 export function CompanionMode() {
   const {
@@ -23,10 +42,20 @@ export function CompanionMode() {
     openPreTradeCoach,
     viewingArchivedSession,
     startNewSession,
+    coachPlannedContext,
   } = useAIContext()
 
   const [plansExpanded, setPlansExpanded] = useState(false)
   const plannedCount = context?.plannedSessions.length ?? 0
+  const quickPrompts = useMemo(
+    () => buildQuickPrompts(coachPlannedContext.pair, coachPlannedContext.direction),
+    [coachPlannedContext.direction, coachPlannedContext.pair],
+  )
+  const showQuickPrompts =
+    !viewingArchivedSession &&
+    (context?.messages.length ?? 0) === 0 &&
+    !isThinking &&
+    !streamingMessage
 
   if (!context && (isLoading || isOpen)) {
     return (
@@ -123,12 +152,26 @@ export function CompanionMode() {
       ) : null}
 
       {error ? (
-        <p className="shrink-0 rounded-lg border border-warning/25 bg-warning/[0.08] px-3 py-2 text-[11px] text-warning-muted/90">
+        <p className="shrink-0 rounded-[var(--radius-md)] border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3 py-2 text-[11px] text-[var(--warning-muted)]">
           {error}
         </p>
       ) : null}
 
-      <div className="command-center-compose-footer shrink-0 pt-1">
+      <div className="command-center-compose-footer shrink-0">
+        {showQuickPrompts ? (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {quickPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => void sendMessage({ content: prompt })}
+                className="command-center-quick-prompt"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <CommandCenterInput
           onSend={sendMessage}
           disabled={
@@ -140,7 +183,7 @@ export function CompanionMode() {
           placeholder={
             viewingArchivedSession
               ? "Past session — start a new session to chat"
-              : "Message Vyronis…"
+              : "Ask Coach…"
           }
         />
       </div>

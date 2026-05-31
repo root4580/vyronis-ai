@@ -2,7 +2,6 @@
 
 import { Check, ChevronDown, Link2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
 import { cn } from "@/lib/utils"
 
@@ -42,18 +41,18 @@ export function PlanMatchPrompt({
   return (
     <div className={cn("space-y-2", className)}>
       {showAutoPrompt && singleMatch ? (
-        <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.06] px-3 py-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-accent-border)] bg-[rgb(from_var(--color-accent)_r_g_b_/_0.05)] px-3 py-3">
           <div className="flex items-start gap-2">
-            <Link2 className="mt-0.5 size-4 shrink-0 text-cyan-glow" />
+            <Link2 className="mt-0.5 size-4 shrink-0 text-text-accent" />
             <div className="min-w-0 flex-1 space-y-2">
-              <p className="text-[12px] font-medium text-foreground/90">
+              <p className="text-[12px] font-medium text-text-primary">
                 Did this trade follow your {pair} plan?
               </p>
-              <p className="text-[11px] leading-relaxed text-muted-foreground/75">
+              <p className="text-[11px] leading-relaxed text-text-muted">
                 Planned {singleMatch.direction} · entry {singleMatch.entryPrice} · SL{" "}
                 {singleMatch.stopLoss}
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -84,11 +83,11 @@ export function PlanMatchPrompt({
               </div>
             </div>
           </div>
-        </DashboardInsetPanel>
+        </div>
       ) : null}
 
       {showAutoPrompt && matchedPlans.length > 1 ? (
-        <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.06] px-3 py-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-accent-border)] bg-[rgb(from_var(--color-accent)_r_g_b_/_0.05)] px-3 py-3">
           <div className="space-y-2">
             <p className="text-[12px] font-medium text-foreground/90">
               Multiple {pair} plans today — pick one to link
@@ -123,30 +122,30 @@ export function PlanMatchPrompt({
               Skip linking
             </Button>
           </div>
-        </DashboardInsetPanel>
+        </div>
       ) : null}
 
       {selectedPlan ? (
-        <DashboardInsetPanel className="border-profit/20 bg-profit/[0.06] px-3 py-2.5">
+        <div className="rounded-[var(--radius-md)] border border-[rgb(from_var(--color-profit)_r_g_b_/_0.2)] bg-[rgb(from_var(--color-profit)_r_g_b_/_0.06)] px-3 py-2.5">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[11px] font-medium text-foreground/90">
+              <p className="text-[11px] font-medium text-text-primary">
                 Linked to {selectedPlan.pair} plan
               </p>
-              <p className="text-[10px] text-muted-foreground/70">
+              <p className="text-[10px] text-text-muted">
                 {selectedPlan.direction} · planned entry {selectedPlan.entryPrice}
               </p>
             </div>
             <button
               type="button"
               onClick={onClearSelection}
-              className="rounded-md p-1 text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+              className="rounded-[var(--radius-sm)] p-1 text-text-muted hover:bg-white/[0.06] hover:text-text-primary"
               aria-label="Remove plan link"
             >
               <X className="size-3.5" />
             </button>
           </div>
-        </DashboardInsetPanel>
+        </div>
       ) : null}
 
       {!showAutoPrompt && !selectedPlan ? (
