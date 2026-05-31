@@ -62,7 +62,7 @@ export function TestimonialsSection() {
             </h2>
           </div>
           <p className="text-[12px] text-muted-foreground/75">
-            Closed beta · 40+ traders journaling weekly
+            Traders using Vyronis identify their #1 behavioral leak within the first week of journaling.
           </p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">

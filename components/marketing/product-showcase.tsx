@@ -2,10 +2,13 @@ import type { ReactNode } from "react"
 import { BarChart3, BookOpen, Swords } from "lucide-react"
 import { BrowserScreenshotFrame } from "@/components/marketing/browser-screenshot-frame"
 import {
+  getAiCoachScreenshotFile,
   getAnalyticsScreenshotFile,
+  getBehavioralLeakScreenshotFile,
   getHeroScreenshotFile,
   getJournalScreenshotFile,
   getWarRoomScreenshotFile,
+  getWeeklyDebriefScreenshotFile,
   marketingScreenshotSrc,
 } from "@/lib/marketing/screenshots"
 
@@ -13,6 +16,9 @@ const SCREENSHOT_URLS = {
   journal: "vyronishq.com/hq?tab=journal",
   warRoom: "vyronishq.com/war-room",
   analytics: "vyronishq.com/analytics",
+  aiCoach: "vyronishq.com/hq",
+  weeklyDebrief: "vyronishq.com/hq?tab=journal",
+  behavioralLeak: "vyronishq.com/hq",
 } as const
 
 function ScreenshotFrame({
@@ -136,74 +142,62 @@ function AnalyticsPreviewMock() {
   )
 }
 
-function JournalPreview() {
+function AiCoachPreview() {
   return (
     <ScreenshotFrame
-      file={getJournalScreenshotFile()}
-      alt="Vyronis journal Plan mode with A+ setup scoring"
-      urlPath={SCREENSHOT_URLS.journal}
+      file={getAiCoachScreenshotFile() ?? getHeroScreenshotFile()}
+      alt="Vyronis AI Trade Coach SKIP verdict with deep chart analysis"
+      urlPath={SCREENSHOT_URLS.aiCoach}
       priority
       fallback={<JournalPreviewMock />}
     />
   )
 }
 
-function WarRoomPreview() {
+function WeeklyDebriefPreview() {
   return (
     <ScreenshotFrame
-      file={getWarRoomScreenshotFile()}
-      alt="Vyronis War Room weekly planning dashboard"
-      urlPath={SCREENSHOT_URLS.warRoom}
-      fallback={<WarRoomPreviewMock />}
-    />
-  )
-}
-
-function AnalyticsPreview() {
-  return (
-    <ScreenshotFrame
-      file={getAnalyticsScreenshotFile()}
-      alt="Vyronis analytics and discipline metrics"
-      urlPath={SCREENSHOT_URLS.analytics}
+      file={getWeeklyDebriefScreenshotFile()}
+      alt="Vyronis Weekly AI Debrief scorecard"
+      urlPath={SCREENSHOT_URLS.weeklyDebrief}
       fallback={<AnalyticsPreviewMock />}
     />
   )
 }
 
-export function ProductShowcase() {
-  const heroFile = getHeroScreenshotFile()
+function BehavioralLeakPreview() {
+  return (
+    <ScreenshotFrame
+      file={getBehavioralLeakScreenshotFile()}
+      alt="Vyronis Primary Behavioral Leak detection"
+      urlPath={SCREENSHOT_URLS.behavioralLeak}
+      fallback={<WarRoomPreviewMock />}
+    />
+  )
+}
 
+export function ProductShowcase() {
   return (
     <div id="product-preview" className="relative">
       <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.12),transparent_70%)]" />
       <div className="relative space-y-3">
-        {heroFile ? (
-          <ScreenshotFrame
-            file={heroFile}
-            alt="Vyronis HQ command center dashboard"
-            urlPath={SCREENSHOT_URLS.journal}
-            priority
-            fallback={<JournalPreview />}
-          />
-        ) : (
-          <JournalPreview />
-        )}
+        <AiCoachPreview />
         <div className="grid gap-3 sm:grid-cols-2">
-          <WarRoomPreview />
-          <AnalyticsPreview />
+          <WeeklyDebriefPreview />
+          <BehavioralLeakPreview />
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 pt-1 text-[10px] text-muted-foreground/70">
           <span className="inline-flex items-center gap-1.5">
             <BookOpen className="size-3 text-cyan-glow/80" />
-            Journal scoring
+            AI Coach verdicts
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Swords className="size-3 text-cyan-glow/80" />
-            War Room
+            Weekly debrief grades
           </span>
           <span className="inline-flex items-center gap-1.5">
             <BarChart3 className="size-3 text-cyan-glow/80" />
-            Analytics
+            Behavioral leak detection
           </span>
         </div>
       </div>
@@ -214,11 +208,36 @@ export function ProductShowcase() {
 export function ProductScreenshotsSection() {
   const previews = [
     {
+      title: "AI Trade Coach",
+      caption: "Upload a chart and get SKIP / CAUTION / EXECUTE with deep analysis and journal cross-reference.",
+      file: getAiCoachScreenshotFile(),
+      alt: "Vyronis AI Trade Coach",
+      mock: <AiCoachPreview />,
+      urlPath: SCREENSHOT_URLS.aiCoach,
+    },
+    {
+      title: "Weekly AI Debrief",
+      caption: "Graded report card: Discipline, Execution, Psychology, Risk, and Overall — with AI commentary.",
+      file: getWeeklyDebriefScreenshotFile(),
+      alt: "Vyronis Weekly AI Debrief",
+      mock: <WeeklyDebriefPreview />,
+      urlPath: SCREENSHOT_URLS.weeklyDebrief,
+    },
+    {
+      title: "Behavioral Leak Detection",
+      caption: "Your #1 costliest habit with confidence scoring and corrective focus — from journal data only.",
+      file: getBehavioralLeakScreenshotFile(),
+      alt: "Vyronis Behavioral Leak Detection",
+      mock: <BehavioralLeakPreview />,
+      urlPath: SCREENSHOT_URLS.behavioralLeak,
+    },
+    {
       title: "Journal · Plan mode",
       caption: "Score every setup with Vyronis Core Model fields before you click.",
       file: getJournalScreenshotFile(),
       alt: "Vyronis journal Plan mode",
       mock: <JournalPreviewMock />,
+      urlPath: SCREENSHOT_URLS.journal,
     },
     {
       title: "War Room · Weekly plan",
@@ -226,13 +245,15 @@ export function ProductScreenshotsSection() {
       file: getWarRoomScreenshotFile(),
       alt: "Vyronis War Room",
       mock: <WarRoomPreviewMock />,
+      urlPath: SCREENSHOT_URLS.warRoom,
     },
     {
       title: "Analytics · Discipline OS",
-      caption: "Win rate, A+ setup rate, and leak detection — not vanity metrics.",
+      caption: "Win rate, equity curve, and honest performance metrics.",
       file: getAnalyticsScreenshotFile(),
       alt: "Vyronis analytics dashboard",
       mock: <AnalyticsPreviewMock />,
+      urlPath: SCREENSHOT_URLS.analytics,
     },
   ]
 
@@ -246,24 +267,13 @@ export function ProductScreenshotsSection() {
           Real Vyronis HQ — not a mockup
         </h2>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Journal scoring, War Room planning, and discipline analytics — captured from the live product
-          interface.
+          AI Coach verdicts, weekly debrief grades, behavioral leak detection, and journal scoring —
+          captured from the live Vyronis HQ interface.
         </p>
-        <div className="mt-10 grid gap-8 lg:grid-cols-3">
-          {previews.map(({ title, caption, file, alt, mock }) => (
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {previews.map(({ title, caption, file, alt, mock, urlPath }) => (
             <article key={title} className="space-y-3">
-              <ScreenshotFrame
-                file={file}
-                alt={alt}
-                fallback={mock}
-                urlPath={
-                  title.includes("Journal")
-                    ? SCREENSHOT_URLS.journal
-                    : title.includes("War Room")
-                      ? SCREENSHOT_URLS.warRoom
-                      : SCREENSHOT_URLS.analytics
-                }
-              />
+              <ScreenshotFrame file={file} alt={alt} fallback={mock} urlPath={urlPath} />
               <div>
                 <h3 className="font-semibold">{title}</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground">{caption}</p>

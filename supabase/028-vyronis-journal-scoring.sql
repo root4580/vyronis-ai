@@ -29,6 +29,7 @@ ALTER TABLE public.trades
   ADD CONSTRAINT trades_h4_bias_check
   CHECK (h4_bias IS NULL OR h4_bias IN ('bullish', 'bearish', 'neutral'));
 
+
 ALTER TABLE public.trades
   DROP CONSTRAINT IF EXISTS trades_aoi_type_check;
 

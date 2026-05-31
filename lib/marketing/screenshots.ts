@@ -7,7 +7,10 @@ export const MARKETING_SCREENSHOT_BASES = {
   journal: "journal-plan",
   warRoom: "war-room",
   analytics: "analytics",
-  hero: "hero-dashboard",
+  hero: "ai-coach",
+  aiCoach: "ai-coach",
+  weeklyDebrief: "weekly-debrief",
+  behavioralLeak: "behavioral-leak",
 } as const
 
 const EXTENSIONS = ["png", "webp", "jpg", "jpeg", "svg"] as const
@@ -38,9 +41,21 @@ export function getAnalyticsScreenshotFile(): string | null {
   return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.analytics)
 }
 
-/** Hero uses dedicated shot, or falls back to journal. */
+/** Hero uses AI coach screenshot, or falls back to journal. */
 export function getHeroScreenshotFile(): string | null {
   return (
     resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.hero) ?? getJournalScreenshotFile()
   )
+}
+
+export function getAiCoachScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.aiCoach)
+}
+
+export function getWeeklyDebriefScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.weeklyDebrief)
+}
+
+export function getBehavioralLeakScreenshotFile(): string | null {
+  return resolveMarketingAsset(MARKETING_SCREENSHOT_BASES.behavioralLeak)
 }

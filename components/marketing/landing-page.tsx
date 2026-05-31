@@ -2,10 +2,11 @@ import Link from "next/link"
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Brain,
+  CalendarRange,
   CheckCircle2,
   ChevronDown,
+  Crosshair,
   Shield,
   Sparkles,
   Target,
@@ -21,11 +22,37 @@ import {
   PRECISION_FLOW_TAGLINE,
 } from "@/lib/branding"
 import { ProductScreenshotsSection, ProductShowcase } from "@/components/marketing/product-showcase"
+import { FlagshipFeaturesSection } from "@/components/marketing/flagship-features-section"
 import { BlogTeaserSection } from "@/components/marketing/blog-teaser-section"
 import { TestimonialsSection } from "@/components/marketing/testimonials-section"
 import { getCanonicalSiteUrl } from "@/lib/site-url"
 
 const FEATURES = [
+  {
+    icon: Brain,
+    title: "AI Trade Coach",
+    body: "Upload a chart — get SKIP, CAUTION, or EXECUTE with deep HTF, confirmation, R:R, and journal cross-reference.",
+  },
+  {
+    icon: Crosshair,
+    title: "Weekly War Room",
+    body: "Sunday bias, watchlist, and AOI pair cards. Plan the week before the market opens.",
+  },
+  {
+    icon: Target,
+    title: "Behavioral Leak Detection",
+    body: "Your #1 costliest habit surfaced with confidence scoring and corrective focus from journal data.",
+  },
+  {
+    icon: CalendarRange,
+    title: "Weekly AI Debrief",
+    body: "Graded report card: Discipline, Execution, Psychology, Risk, and Overall — plus AI commentary.",
+  },
+  {
+    icon: Sparkles,
+    title: "Pattern Memory",
+    body: "Recurring mistakes, session leaks, and winning conditions remembered across every journal entry.",
+  },
   {
     icon: Target,
     title: "Precision Flow Strategy",
@@ -35,11 +62,6 @@ const FEATURES = [
     icon: Brain,
     title: "Vyronis AI Scoring",
     body: "Every journal entry graded A+ / A / B / Skip with reasons, warnings, and one improvement.",
-  },
-  {
-    icon: BarChart3,
-    title: "Discipline Analytics",
-    body: "Win rate, leak detection, emotion patterns, and session stats — not vanity metrics.",
   },
   {
     icon: Shield,
@@ -87,6 +109,9 @@ function Nav() {
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-[13px] text-muted-foreground md:flex">
+          <a href="#ai-coach" className="hover:text-foreground">
+            AI Coach
+          </a>
           <a href="#product-preview" className="hover:text-foreground">
             Product
           </a>
@@ -157,14 +182,14 @@ export function LandingPage() {
                 {BETA_ACCESS_LABEL} · No card required
               </p>
               <h1 className="text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
-                Trade with{" "}
+                Upload a chart. Get a verdict.{" "}
                 <span className="bg-gradient-to-r from-cyan-glow to-profit bg-clip-text text-transparent">
-                  institutional discipline
+                  Trade with discipline.
                 </span>
-                — powered by Vyronis AI
               </h1>
               <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                {MARKETING_DESCRIPTION}
+                Vyronis AI Coach gives SKIP / EXECUTE verdicts with deep analysis. Weekly debrief grades,
+                behavioral leak detection, and journal scoring — one trading OS.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button
@@ -199,6 +224,8 @@ export function LandingPage() {
         </section>
 
         <ProductScreenshotsSection />
+
+        <FlagshipFeaturesSection />
 
         {/* Precision Flow */}
         <section id="precision-flow" className="border-t border-white/[0.06] px-4 py-16 sm:px-6 sm:py-20">
@@ -275,7 +302,10 @@ export function LandingPage() {
         <section id="features" className="border-t border-white/[0.06] px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-6xl">
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Built for serious traders</h2>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <p className="mt-3 max-w-2xl text-muted-foreground">
+              The full Vyronis stack — not just a journal. Coach, War Room, debrief, leak detection, and scoring.
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {FEATURES.map(({ icon: Icon, title, body }) => (
                 <article
                   key={title}
