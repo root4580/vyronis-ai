@@ -126,10 +126,19 @@ export function generatePreTradeAnalysis(
 }
 
 export function buildPreTradeCompletionMessages(analysis: PreTradeAnalysis): string[] {
-  const messages = [
-    analysis.summary,
-    `AI confidence before entry: ${analysis.confidenceScore}/100 (${analysis.shouldTakeTrade.toUpperCase()}).`,
-  ]
+  const messages: string[] = []
+
+  if (analysis.vyronisCoach) {
+    messages.push(analysis.vyronisCoach.summary)
+    messages.push(
+      `State ${analysis.vyronisCoach.state_score}/100 · Setup ${analysis.vyronisCoach.setup_score}/100 · ${analysis.vyronisCoach.verdict}.`,
+    )
+  } else {
+    messages.push(analysis.summary)
+    messages.push(
+      `AI confidence before entry: ${analysis.confidenceScore}/100 (${analysis.shouldTakeTrade.toUpperCase()}).`,
+    )
+  }
 
   if (analysis.redFlags.length > 0) {
     messages.push(
@@ -137,21 +146,15 @@ export function buildPreTradeCompletionMessages(analysis: PreTradeAnalysis): str
     )
   }
 
-  if (analysis.insights.length > 0) {
+  if (analysis.insights.length > 0 && !analysis.vyronisCoach) {
     messages.push(`Coaching notes: ${analysis.insights.join(" · ")}`)
   }
 
-    if (analysis.tradeQuality) {
-      messages.push(
-        `Trade Quality Score: ${analysis.tradeQuality.score}/100 (${analysis.tradeQuality.grade}) — ${analysis.tradeQuality.recommendation}.`,
-      )
-    }
-
-    if (analysis.vyronisCoach) {
-      messages.push(analysis.vyronisCoach.summary)
-      messages.push(analysis.vyronisCoach.journal_cross_reference)
-      messages.push(`Focus: ${analysis.vyronisCoach.one_improvement}`)
-    }
+  if (analysis.tradeQuality) {
+    messages.push(
+      `Trade Quality Score: ${analysis.tradeQuality.score}/100 (${analysis.tradeQuality.grade}) — ${analysis.tradeQuality.recommendation}.`,
+    )
+  }
 
   messages.push(
     "Pre-trade check-in saved. Log the trade when execution is done — I'll compare plan vs outcome and score discipline after close.",

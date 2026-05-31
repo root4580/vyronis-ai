@@ -1,4 +1,5 @@
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
+import { calculateStateScore } from "@/lib/coach/state-score-engine"
 import { calculateRiskReward } from "@/lib/trade-form-utils"
 import { DAILY_LOSS_NOTIFY_RATIO } from "@/lib/alerts/evaluate-alerts"
 import { getRecentLossStreak, type TradeRiskGuardHistoryTrade } from "@/lib/trade-risk-guard"
@@ -183,12 +184,20 @@ function evaluateSession(context: PreTradePlannedContext): PrecisionFlowRuleResu
   }
 }
 
+function canIssueExecuteVerdict(stateScore: number, setupScore: number): boolean {
+  if (stateScore < 20) return false
+  if (stateScore < 40 && setupScore <= 85) return false
+  return true
+}
+
 function deriveVerdict(input: {
   rulesPassed: number
   emotion: string
   consecutiveLosses: number
   dailyLossRatio: number
   chartUnclear: boolean
+  stateScore: number
+  setupScore: number
 }): VyronisCoachVerdict {
   const emotion = normalizeEmotion(input.emotion)
 
@@ -198,11 +207,19 @@ function deriveVerdict(input: {
   }
   if (input.dailyLossRatio >= DAILY_LOSS_NOTIFY_RATIO) return "SKIP"
 
-  if (
+  const strictExecute =
     input.rulesPassed >= 6 &&
     EXECUTE_EMOTIONS.has(emotion) &&
     input.consecutiveLosses <= 3
-  ) {
+
+  const highConfidenceExecute =
+    input.stateScore > 70 &&
+    input.setupScore > 70 &&
+    input.rulesPassed >= 5 &&
+    EXECUTE_EMOTIONS.has(emotion) &&
+    input.consecutiveLosses <= 3
+
+  if ((strictExecute || highConfidenceExecute) && canIssueExecuteVerdict(input.stateScore, input.setupScore)) {
     return "EXECUTE"
   }
 
@@ -256,12 +273,13 @@ export function evaluatePrecisionFlow(input: {
   }
 
   const setupScore = Math.round((rulesPassed / 7) * 100)
-  const emotion = normalizeEmotion(input.responses.emotional_state)
-  const stateScore = BLOCKED_EMOTIONS.has(emotion)
-    ? 25
-    : EXECUTE_EMOTIONS.has(emotion)
-      ? 85
-      : 55
+  const stateScore = calculateStateScore({
+    trades: input.historicalTrades ?? [],
+    consecutiveLosses,
+    dailyLossRatio,
+    currentEmotion: input.responses.emotional_state || input.responses.emotion || "",
+    maxRiskPerTrade: input.settings?.max_risk_per_trade ?? 1,
+  })
 
   const verdict = deriveVerdict({
     rulesPassed,
@@ -269,6 +287,8 @@ export function evaluatePrecisionFlow(input: {
     consecutiveLosses,
     dailyLossRatio,
     chartUnclear,
+    stateScore,
+    setupScore,
   })
 
   const riskLevel: PrecisionFlowResult["riskLevel"] =

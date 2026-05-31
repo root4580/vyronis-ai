@@ -1,4 +1,9 @@
 import { generateCoachInsightWithProvider } from "@/lib/ai/providers"
+import {
+  buildConversationalMessage,
+  enforceCoachTone,
+  pickJournalDataPoint,
+} from "@/lib/coach/coach-tone-engine"
 import type { PrecisionFlowResult, VyronisCoachVerdict } from "@/lib/coach/precision-flow-engine"
 import {
   buildVyronisCoachTraderContext,
@@ -39,38 +44,45 @@ export type VyronisCoachResponse = {
 const INSUFFICIENT_JOURNAL =
   "Insufficient journal data — log 10+ trades to unlock pattern memory."
 
-function sanitizeLine(text: string): string {
-  return text
-    .replace(/\bconsider\b/gi, "do")
-    .replace(/\bit looks like\b/gi, "your journal shows")
-    .trim()
+function sanitizeLine(text: string, verdict: VyronisCoachVerdict): string {
+  return enforceCoachTone(text, verdict)
 }
 
 function buildJournalCrossReference(
   trader: VyronisCoachTraderContext,
-  patternMemory?: PatternMemoryResult,
+  patternMemory: PatternMemoryResult | undefined,
+  verdict: VyronisCoachVerdict,
 ): string {
-  if (!patternMemory?.hasEnoughData) return INSUFFICIENT_JOURNAL
-  const ref = patternMemory.patterns.find((p) => p.severity === "warning") ?? patternMemory.patterns[0]
-  if (!ref) return INSUFFICIENT_JOURNAL
-  return sanitizeLine(`Your journal: ${ref.message}`)
+  if (!patternMemory?.hasEnoughData && Number(trader.consecutive_losses) < 1) {
+    return INSUFFICIENT_JOURNAL
+  }
+  return sanitizeLine(`Journal: ${pickJournalDataPoint(trader, patternMemory)}.`, verdict)
 }
 
 function buildOneImprovement(
   precisionFlow: PrecisionFlowResult,
   trader: VyronisCoachTraderContext,
+  verdict: VyronisCoachVerdict,
 ): string {
   const failed = precisionFlow.rules.filter((rule) => !rule.passed)
+  if (verdict === "SKIP") {
+    return sanitizeLine(
+      "Journal one sentence on what you are trying to prove, then reassess from a clean state.",
+      verdict,
+    )
+  }
   if (failed[0]) {
-    return sanitizeLine(`Fix ${failed[0].label.toLowerCase()} first — ${failed[0].note}`)
+    return sanitizeLine(`Fix ${failed[0].label.toLowerCase()} first — ${failed[0].note}`, verdict)
   }
   if (Number(trader.consecutive_losses) >= 3) {
     return sanitizeLine(
-      `After ${trader.consecutive_losses} consecutive losses, cut size to 0.5% until you log a rule-clean win in ${trader.preferred_session}.`,
+      `Cut size to 0.5% until you log a rule-clean win in ${trader.preferred_session}.`,
+      verdict,
     )
   }
   return sanitizeLine(
-    `Keep ${trader.preferred_session} entries aligned with ${trader.best_setup_type} — your strongest logged edge.`,
+    `Execute at ${trader.max_risk} with your plan and do not move the stop.`,
+    verdict,
   )
 }
 
@@ -114,9 +126,10 @@ export function buildVyronisCoachResponse(input: {
   trader: VyronisCoachTraderContext
   patternMemory?: PatternMemoryResult
 }): VyronisCoachResponse {
-  const { precisionFlow, context, trader, patternMemory } = input
+  const { precisionFlow, context, trader, patternMemory, responses } = input
   const passedRules = precisionFlow.rules.filter((rule) => rule.passed)
   const failedRules = precisionFlow.rules.filter((rule) => !rule.passed)
+  const verdict = precisionFlow.verdict
 
   const warnings = failedRules.map((rule) => rule.note)
   if (precisionFlow.chartUnclear) {
@@ -128,30 +141,35 @@ export function buildVyronisCoachResponse(input: {
     )
   }
 
-  const summary =
-    precisionFlow.verdict === "EXECUTE"
-      ? `${context.pair || "Setup"} passes ${precisionFlow.rulesPassed}/7 Precision Flow gates — execute your plan at ${trader.max_risk} max risk.`
-      : precisionFlow.verdict === "CAUTION"
-        ? `${context.pair || "Setup"} is borderline (${precisionFlow.rulesPassed}/7 rules) — reduce size or wait for confirmation.`
-        : `${context.pair || "Setup"} fails process gates — skip until HTF, AOI, and emotion align.`
+  const summary = buildConversationalMessage({
+    verdict,
+    precisionFlow,
+    trader,
+    patternMemory,
+    responses,
+  })
 
   return {
-    verdict: precisionFlow.verdict,
+    verdict,
     setup_score: precisionFlow.setupScore,
     state_score: precisionFlow.stateScore,
     risk_level: precisionFlow.riskLevel,
     confidence: precisionFlow.confidence,
-    summary: sanitizeLine(summary),
-    why_it_passes: passedRules.slice(0, 3).map((rule) => sanitizeLine(rule.note)),
-    warnings: warnings.slice(0, 4).map(sanitizeLine),
-    journal_cross_reference: buildJournalCrossReference(trader, patternMemory),
-    one_improvement: buildOneImprovement(precisionFlow, trader),
+    summary,
+    why_it_passes: passedRules.slice(0, 3).map((rule) => sanitizeLine(rule.note, verdict)),
+    warnings: warnings.slice(0, 4).map((line) => sanitizeLine(line, verdict)),
+    journal_cross_reference: buildJournalCrossReference(trader, patternMemory, verdict),
+    one_improvement: buildOneImprovement(precisionFlow, trader, verdict),
     deep_analysis: buildDeepAnalysis(context, precisionFlow),
     source: "heuristic",
   }
 }
 
-function parseVyronisCoachJson(raw: string, lockedVerdict: VyronisCoachVerdict): VyronisCoachResponse | null {
+function parseVyronisCoachJson(
+  raw: string,
+  lockedVerdict: VyronisCoachVerdict,
+  lockedScores: Pick<VyronisCoachResponse, "setup_score" | "state_score" | "confidence" | "risk_level">,
+): VyronisCoachResponse | null {
   try {
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim()
     const parsed = JSON.parse(cleaned) as Partial<VyronisCoachResponse>
@@ -159,21 +177,22 @@ function parseVyronisCoachJson(raw: string, lockedVerdict: VyronisCoachVerdict):
 
     return {
       verdict: lockedVerdict,
-      setup_score: Number(parsed.setup_score) || 0,
-      state_score: Number(parsed.state_score) || 0,
-      risk_level: parsed.risk_level === "HIGH" || parsed.risk_level === "MEDIUM" ? parsed.risk_level : "LOW",
-      confidence: Number(parsed.confidence) || 0,
-      summary: sanitizeLine(String(parsed.summary)),
+      setup_score: lockedScores.setup_score,
+      state_score: lockedScores.state_score,
+      risk_level: lockedScores.risk_level,
+      confidence: lockedScores.confidence,
+      summary: sanitizeLine(String(parsed.summary), lockedVerdict),
       why_it_passes: Array.isArray(parsed.why_it_passes)
-        ? parsed.why_it_passes.map((line) => sanitizeLine(String(line))).slice(0, 4)
+        ? parsed.why_it_passes.map((line) => sanitizeLine(String(line), lockedVerdict)).slice(0, 4)
         : [],
       warnings: Array.isArray(parsed.warnings)
-        ? parsed.warnings.map((line) => sanitizeLine(String(line))).slice(0, 4)
+        ? parsed.warnings.map((line) => sanitizeLine(String(line), lockedVerdict)).slice(0, 4)
         : [],
       journal_cross_reference: sanitizeLine(
         String(parsed.journal_cross_reference || INSUFFICIENT_JOURNAL),
+        lockedVerdict,
       ),
-      one_improvement: sanitizeLine(String(parsed.one_improvement)),
+      one_improvement: sanitizeLine(String(parsed.one_improvement), lockedVerdict),
       deep_analysis: {
         trend_direction: String(parsed.deep_analysis?.trend_direction ?? ""),
         htf_ema_alignment: String(parsed.deep_analysis?.htf_ema_alignment ?? ""),
@@ -201,11 +220,15 @@ export async function enrichVyronisCoachResponseWithLlm(input: {
   const userPrompt = [
     `Narrate this pre-trade coach read for ${input.context.pair || "the pair"} ${input.context.direction || ""}.`,
     `Precision Flow: ${input.precisionFlow.rulesPassed}/7 rules passed.`,
+    `State score: ${input.base.state_score}/100. Setup score: ${input.base.setup_score}/100.`,
     `Failed rules: ${input.precisionFlow.rules
       .filter((r) => !r.passed)
       .map((r) => r.label)
       .join(", ") || "none"}.`,
-    `Keep verdict exactly ${input.base.verdict}. Return JSON only.`,
+    `Journal data you must reference: ${input.base.journal_cross_reference}`,
+    `Keep verdict exactly ${input.base.verdict}.`,
+    `Summary must be max 3 sentences, no greeting, no questions, end with a directive that matches ${input.base.verdict}.`,
+    `Return JSON only.`,
   ].join("\n")
 
   const raw = await generateCoachInsightWithProvider(
@@ -220,8 +243,19 @@ export async function enrichVyronisCoachResponseWithLlm(input: {
 
   if (!raw) return input.base
 
-  const parsed = parseVyronisCoachJson(raw, input.base.verdict)
-  return parsed ?? input.base
+  const parsed = parseVyronisCoachJson(raw, input.base.verdict, {
+    setup_score: input.base.setup_score,
+    state_score: input.base.state_score,
+    confidence: input.base.confidence,
+    risk_level: input.base.risk_level,
+  })
+  if (!parsed) return input.base
+
+  return {
+    ...parsed,
+    summary: enforceCoachTone(parsed.summary, input.base.verdict),
+    one_improvement: enforceCoachTone(parsed.one_improvement, input.base.verdict),
+  }
 }
 
 export function buildCoachAnalysisBundle(input: {
