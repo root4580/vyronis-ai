@@ -22,6 +22,7 @@ import {
   DashboardInsetPanel,
 } from "@/components/dashboard/dashboard-primitives"
 import { TradePlanVisual } from "@/components/trade-planner/trade-plan-visual"
+import { PlanChartUploadPanel } from "@/components/trade-planner/plan-chart-upload-panel"
 import { TRADE_PLANNER_PAIRS } from "@/lib/trade-planner/forex-pairs"
 import {
   buildTradePlanCalculation,
@@ -34,6 +35,7 @@ import {
   getTradePlannerCoachHref,
   writeTradePlannerCoachPrefill,
 } from "@/lib/trade-planner/coach-prefill"
+import { buildPlanSlCoaching, mergePlanPointers } from "@/lib/trade-planner/plan-sl-coaching"
 import type { TradePlanDirection } from "@/lib/trade-planner/types"
 import { APP_HOME_PATH } from "@/lib/branding"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
@@ -77,6 +79,10 @@ export function TradePlannerWorkspace({
   const [pastPlansOpen, setPastPlansOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveUnavailable, setSaveUnavailable] = useState(false)
+  const [chartScreenshotUrl, setChartScreenshotUrl] = useState<string | null>(null)
+  const [chartPointers, setChartPointers] = useState<string[]>([])
+  const [isChartUploading, setIsChartUploading] = useState(false)
+  const [isChartAnalyzing, setIsChartAnalyzing] = useState(false)
 
   useEffect(() => {
     if (accountSizeTouched || defaultAccountSize <= 0) return
@@ -99,6 +105,25 @@ export function TradePlannerWorkspace({
     })
   }, [pair, direction, accountSize, riskPercent, entryPrice, stopLoss, takeProfit])
 
+  const displayPointers = useMemo(() => {
+    const entry = parseTradePlanNumber(entryPrice)
+    const stop = parseTradePlanNumber(stopLoss)
+    const target = parseTradePlanNumber(takeProfit)
+    if (entry <= 0 || stop <= 0) return chartPointers
+
+    const tips = buildPlanSlCoaching({
+      pair,
+      direction,
+      accountSize: parseTradePlanNumber(accountSize),
+      riskPercent: parseTradePlanNumber(riskPercent),
+      entryPrice: entry,
+      stopLoss: stop,
+      takeProfit: target,
+    })
+
+    return mergePlanPointers(chartPointers, tips, pair)
+  }, [chartPointers, pair, direction, accountSize, riskPercent, entryPrice, stopLoss, takeProfit])
+
   useEffect(() => {
     void fetch("/api/trade-plans")
       .then(async (res) => {
@@ -116,6 +141,85 @@ export function TradePlannerWorkspace({
     if (!canCoach) return
     writeTradePlannerCoachPrefill(buildTradePlannerCoachPrefill(plan, tradePlanId))
     router.push(getTradePlannerCoachHref())
+  }
+
+  async function handleChartUpload(file: File) {
+    setIsChartUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      })
+
+      if (!uploadResponse.ok) {
+        const payload = await uploadResponse.json().catch(() => ({}))
+        throw new Error(payload.error || "Upload failed")
+      }
+
+      const { url } = (await uploadResponse.json()) as { url: string }
+      setChartScreenshotUrl(url)
+      setIsChartUploading(false)
+      setIsChartAnalyzing(true)
+
+      const autofillResponse = await fetch("/api/trade-planner/chart-autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: url,
+          pairHint: pair,
+          directionHint: direction,
+          accountSize: parseTradePlanNumber(accountSize),
+          riskPercent: parseTradePlanNumber(riskPercent),
+        }),
+      })
+
+      const autofillPayload = await autofillResponse.json().catch(() => ({}))
+      if (!autofillResponse.ok) {
+        throw new Error(autofillPayload.error || "Chart analysis failed")
+      }
+
+      const applied = autofillPayload.applied as
+        | {
+            pair: string
+            direction: TradePlanDirection
+            entryPrice: string
+            stopLoss: string
+            takeProfit: string
+          }
+        | null
+
+      if (applied) {
+        setPair(applied.pair)
+        setDirection(applied.direction)
+        if (applied.entryPrice) setEntryPrice(applied.entryPrice)
+        if (applied.stopLoss) setStopLoss(applied.stopLoss)
+        if (applied.takeProfit) setTakeProfit(applied.takeProfit)
+      }
+
+      setChartPointers(Array.isArray(autofillPayload.pointers) ? autofillPayload.pointers : [])
+
+      toast({
+        title: applied ? "Chart levels loaded" : "Chart uploaded",
+        description: applied
+          ? `${applied.pair} ${applied.direction} — review SL pointers before saving.`
+          : autofillPayload.vision?.summary ||
+            "Could not read prices — enter entry, SL, and TP manually.",
+        variant: applied ? "default" : "destructive",
+      })
+    } catch (error) {
+      toast({
+        title: "Chart upload failed",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsChartUploading(false)
+      setIsChartAnalyzing(false)
+    }
   }
 
   async function handleSavePlan() {
@@ -295,6 +399,19 @@ export function TradePlannerWorkspace({
                 />
               </Field>
             </div>
+
+            <PlanChartUploadPanel
+              screenshotUrl={chartScreenshotUrl}
+              pointers={displayPointers}
+              isUploading={isChartUploading}
+              isAnalyzing={isChartAnalyzing}
+              onUpload={(file) => void handleChartUpload(file)}
+              onRemove={() => {
+                setChartScreenshotUrl(null)
+                setChartPointers([])
+              }}
+              disabled={isSaving}
+            />
 
             <TradePlanVisual plan={plan} />
           </DashboardCardBody>
