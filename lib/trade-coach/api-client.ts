@@ -66,13 +66,28 @@ export async function submitCoachChart(
 export async function runCoachMtfAnalysis(
   sessionId: string,
 ): Promise<TradeCoachSessionWithMessages> {
-  const response = await fetch(`/api/coach/sessions/${sessionId}/mtf`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({ action: "analyze" }),
-  })
-  return parseJson(response)
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 130_000)
+
+  try {
+    const response = await fetch(`/api/coach/sessions/${sessionId}/mtf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ action: "analyze" }),
+      signal: controller.signal,
+    })
+    return parseJson(response)
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        "Analysis timed out after 2 minutes. Try again, or run with fewer charts if the connection is slow.",
+      )
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 export async function syncCoachWarRoomCharts(

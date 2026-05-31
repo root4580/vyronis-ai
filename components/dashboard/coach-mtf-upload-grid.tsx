@@ -550,6 +550,13 @@ export function CoachMtfUploadGrid({
         )}
       </Button>
 
+      {isAnalyzing ? (
+        <p className="text-center text-[10px] leading-relaxed text-muted-foreground/75">
+          Analyzing {uploadedCount} chart{uploadedCount === 1 ? "" : "s"} with AI — usually 30–90
+          seconds. Stay on this screen.
+        </p>
+      ) : null}
+
       <ScreenshotViewerModal
         open={Boolean(preview)}
         imageUrl={preview?.url ?? null}

@@ -304,8 +304,10 @@ export function TradeCoachPanel({
   }, [workflowPhase, onWorkflowPhaseChange])
 
   useEffect(() => {
-    if (workflowPhase !== "questions") setMtfDetailsOpen(false)
-  }, [workflowPhase])
+    if (workflowPhase === "questions" && mtfAnalysis) {
+      setMtfDetailsOpen(true)
+    }
+  }, [workflowPhase, mtfAnalysis])
 
   const uploadFocusMode =
     embedded &&
@@ -451,6 +453,13 @@ export function TradeCoachPanel({
   }
 
   useEffect(() => {
+    if (!session || playbooks.length === 0 || selectedPlaybookId) return
+    const defaultPlaybook = playbooks.find((row) => row.is_default) ?? playbooks[0]
+    if (!defaultPlaybook) return
+    void handlePlaybookChange(defaultPlaybook.id)
+  }, [session?.id, playbooks, selectedPlaybookId])
+
+  useEffect(() => {
     if (!active || !session || session.planned_context?.pair || isUpdatingPlaybook) return
 
     void fetchWeeklyPlan()
@@ -578,6 +587,7 @@ export function TradeCoachPanel({
       onSessionChange?.(updated.id)
 
       const analysis = resolveSessionMtfAnalysis(updated)
+      setMtfDetailsOpen(true)
       toast({
         title: "Analysis complete",
         description: analysis
@@ -820,7 +830,7 @@ export function TradeCoachPanel({
                   </div>
                 </DashboardInsetPanel>
               ) : null}
-              {mtfAnalysis && workflowPhase !== "upload" && !collapseMtfForCheckIn ? (
+              {mtfAnalysis && !collapseMtfForCheckIn ? (
                 <MtfAnalysisPanel
                   analysis={mtfAnalysis}
                   session={session}
@@ -1035,16 +1045,32 @@ export function TradeCoachPanel({
                   </p>
                 </div>
               )}
-              {analysisHasRun && vyronisCoach ? (
+              {analysisHasRun && mtfAnalysis ? (
+                <MtfAnalysisPanel
+                  analysis={mtfAnalysis}
+                  session={session}
+                  onOpenChart={({ url, title, timeframe }) => {
+                    setChartViewer({
+                      url,
+                      title,
+                      annotations: resolveChartAnnotationsForTimeframe({
+                        session,
+                        analysis: mtfAnalysis,
+                        timeframe,
+                      }),
+                    })
+                  }}
+                />
+              ) : analysisHasRun && vyronisCoach ? (
                 <VyronisCoachAnalysisPanel coach={vyronisCoach} />
-              ) : analysisHasRun && (mtfAnalysis || coachAnalysis) ? (
+              ) : analysisHasRun && coachAnalysis ? (
                 <CoachVerdictBadge
                   recommendation={mtfAnalysis?.recommendation}
                   shouldTakeTrade={coachAnalysis?.shouldTakeTrade}
                   className="w-full"
                 />
               ) : null}
-              {analysisHasRun && visionEngineLabel && (
+              {analysisHasRun && mtfAnalysis && visionEngineLabel ? (
                 <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="inline-flex items-center gap-1.5 font-semibold text-cyan-glow">
@@ -1071,7 +1097,7 @@ export function TradeCoachPanel({
                     )}
                   </div>
                 </DashboardInsetPanel>
-              )}
+              ) : null}
             </div>
           ) : questionDef && activeQuestion ? (
             <div className="trade-coach-checkin space-y-2.5">
