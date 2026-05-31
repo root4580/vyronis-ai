@@ -37,7 +37,7 @@ import {
 } from "@/lib/strategy/api-client"
 import type { StrategyPlaybookRecord } from "@/lib/strategy/types"
 import { MTF_TIMEFRAME_IDS } from "@/lib/coach/mtf-constants"
-import { getMtfScreenshotsFromSession, resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
+import { countMtfScreenshots, getMtfScreenshotsFromSession, resolveSessionMtfAnalysis } from "@/lib/trade-coach/mtf-session"
 import {
   fetchWarRoomVisionAutofill,
   fetchWeeklyPlan,
@@ -59,6 +59,7 @@ import {
   getCoachWorkflowPhase,
   getQuestionByKey,
   isMtfAnalysisComplete,
+  isTradePlannerCoachHandoff,
   validateAnswer,
   type CoachWorkflowPhase,
 } from "@/lib/trade-coach/pre-trade-flow"
@@ -187,6 +188,7 @@ export function TradeCoachPanel({
   } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const previousSessionStatusRef = useRef<string | null>(null)
+  const tradePlannerAutoMtfRef = useRef(false)
   const [mtfDetailsOpen, setMtfDetailsOpen] = useState(false)
 
   const mtfAnalysis = useMemo(() => {
@@ -542,6 +544,20 @@ export function TradeCoachPanel({
       setIsAnalyzing(false)
     }
   }
+
+  useEffect(() => {
+    tradePlannerAutoMtfRef.current = false
+  }, [session?.id])
+
+  useEffect(() => {
+    if (!active || !session || tradePlannerAutoMtfRef.current || isAnalyzing) return
+    if (!isTradePlannerCoachHandoff(session.planned_context)) return
+    if (resolveSessionMtfAnalysis(session)) return
+    if (countMtfScreenshots(getMtfScreenshotsFromSession(session)) === 0) return
+
+    tradePlannerAutoMtfRef.current = true
+    void handleRunMtfAnalysis()
+  }, [active, session, isAnalyzing])
 
   async function handleSubmitAnswer() {
     if (!session || !activeQuestion || !questionDef) return

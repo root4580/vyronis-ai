@@ -1,3 +1,4 @@
+import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import { fetchMarketBias, fetchWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import {
   biasAlignsWithPair,
@@ -21,6 +22,32 @@ function mergeSeverity(
   if (a === "blocked" || b === "blocked") return "blocked"
   if (a === "warning" || b === "warning") return "warning"
   return "ok"
+}
+
+export function hasTradePlannerCoachLevels(context: PreTradePlannedContext): boolean {
+  return (
+    Boolean(context.pair?.trim()) &&
+    Boolean(context.entry_price?.trim()) &&
+    Boolean(context.stop_loss?.trim()) &&
+    Boolean(context.take_profit?.trim())
+  )
+}
+
+/** Trade Planner check-ins already have entry/SL/TP — warn on War Room gaps, don't hard-block. */
+export function applyPlannerCoachGateSoftening(
+  gate: CoachReadinessResult,
+  plannedContext: PreTradePlannedContext,
+): CoachReadinessResult {
+  if (!hasTradePlannerCoachLevels(plannedContext) || gate.allowed) {
+    return gate
+  }
+
+  return {
+    ...gate,
+    allowed: true,
+    severity: "warning",
+    message: `${gate.message} Coach opened with your Trade Planner levels — complete War Room when you can.`,
+  }
 }
 
 export async function checkCoachReadiness(

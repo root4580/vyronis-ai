@@ -4,6 +4,7 @@ import {
   extractResponsesFromMessages,
   getNextQuestionKey,
   getQuestionByKey,
+  isTradePlannerCoachHandoff,
   normalizeAnswer,
 } from "@/lib/trade-coach/pre-trade-flow"
 import {
@@ -151,10 +152,18 @@ export async function createPreTradeSession(
     throw new Error(messagesError.message)
   }
 
-  return {
+  let hydrated: TradeCoachSessionWithMessages = {
     ...(session as TradeCoachSessionRecord),
     messages: (messages || []) as TradeCoachMessageRecord[],
   }
+
+  const chartUrl = contextWithRisk.chart_url?.trim() || contextWithRisk.screenshot_url?.trim()
+  if (isTradePlannerCoachHandoff(contextWithRisk) && chartUrl) {
+    hydrated = await submitCoachMtfScreenshot(supabase, userId, hydrated.id, "m15", chartUrl)
+    hydrated = await submitCoachMtfScreenshot(supabase, userId, hydrated.id, "h1", chartUrl)
+  }
+
+  return hydrated
 }
 
 export async function submitCoachChart(

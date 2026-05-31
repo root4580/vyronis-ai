@@ -7,6 +7,7 @@ import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 type OpenPreTradeOptions = {
   sessionId?: string
   plannedContext?: PreTradePlannedContext
+  plannerCheckIn?: boolean
 }
 
 type CommandCenterBridgeProps = {

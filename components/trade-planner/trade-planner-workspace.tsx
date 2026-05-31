@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { AlertTriangle, Brain, Calculator, CheckCircle2, ChevronDown, Save, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,10 +30,10 @@ import {
   parseTradePlanNumber,
 } from "@/lib/trade-planner/trade-plan-engine"
 import {
+  buildPlannedContextFromTradePlannerPrefill,
   buildTradePlannerCoachPrefill,
-  getTradePlannerCoachHref,
-  writeTradePlannerCoachPrefill,
 } from "@/lib/trade-planner/coach-prefill"
+import { useAIContext } from "@/providers/ai-context-provider"
 import { buildPlanSlCoaching, mergePlanPointers } from "@/lib/trade-planner/plan-sl-coaching"
 import type { TradePlanDirection } from "@/lib/trade-planner/types"
 import { APP_HOME_PATH } from "@/lib/branding"
@@ -55,17 +54,21 @@ type SavedPlanRow = {
 type TradePlannerWorkspaceProps = {
   defaultAccountSize?: number
   defaultRiskPercent?: number
+  maxRiskPerTrade?: number
   accountSizeReady?: boolean
   skippedBalanceTrades?: number
+  onCoachEngaged?: () => void
 }
 
 export function TradePlannerWorkspace({
   defaultAccountSize = DEFAULT_USER_SETTINGS.starting_balance,
   defaultRiskPercent = DEFAULT_USER_SETTINGS.max_risk_per_trade,
+  maxRiskPerTrade = DEFAULT_USER_SETTINGS.max_risk_per_trade,
   accountSizeReady = false,
   skippedBalanceTrades = 0,
+  onCoachEngaged,
 }: TradePlannerWorkspaceProps) {
-  const router = useRouter()
+  const { openPreTradeCoach } = useAIContext()
   const { toast } = useToast()
   const [pair, setPair] = useState<string>("EURUSD")
   const [direction, setDirection] = useState<TradePlanDirection>("BUY")
@@ -137,10 +140,26 @@ export function TradePlannerWorkspace({
       .catch(() => setSavedPlans([]))
   }, [])
 
-  function sendPlanToCoach(tradePlanId?: string) {
+  async function sendPlanToCoach(tradePlanId?: string) {
     if (!canCoach) return
-    writeTradePlannerCoachPrefill(buildTradePlannerCoachPrefill(plan, tradePlanId))
-    router.push(getTradePlannerCoachHref())
+
+    const prefill = buildTradePlannerCoachPrefill(plan, {
+      tradePlanId,
+      chartScreenshotUrl: chartScreenshotUrl,
+      chartPointers: displayPointers,
+    })
+    const plannedContext = buildPlannedContextFromTradePlannerPrefill(prefill, maxRiskPerTrade)
+
+    try {
+      await openPreTradeCoach({ plannedContext, plannerCheckIn: true })
+      onCoachEngaged?.()
+    } catch (error) {
+      toast({
+        title: "Could not open Coach",
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+        variant: "destructive",
+      })
+    }
   }
 
   async function handleChartUpload(file: File) {
@@ -253,7 +272,10 @@ export function TradePlannerWorkspace({
         title: "Pre-trade plan saved",
         description: "Stored separately from your post-trade journal.",
         action: (
-          <ToastAction altText="Run Coach check-in" onClick={() => sendPlanToCoach(String(data.plan.id))}>
+          <ToastAction
+            altText="Run Coach check-in"
+            onClick={() => void sendPlanToCoach(String(data.plan.id))}
+          >
             Run Coach
           </ToastAction>
         ),
@@ -486,7 +508,7 @@ export function TradePlannerWorkspace({
                   variant="outline"
                   className="w-full border-cyan-glow/25 bg-cyan-glow/[0.06] text-cyan-glow hover:bg-cyan-glow/10"
                   disabled={!canCoach}
-                  onClick={() => sendPlanToCoach()}
+                  onClick={() => void sendPlanToCoach()}
                 >
                   <Brain className="mr-2 size-4" />
                   Run Coach check-in

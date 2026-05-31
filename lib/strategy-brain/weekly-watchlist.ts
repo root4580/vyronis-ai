@@ -64,7 +64,7 @@ export function evaluateWeeklyWatchlistGate(input: {
       headline: "Sunday watchlist required",
       message:
         pairCount === 0
-          ? `Add at least one pair in War Room before opening chart coach.`
+          ? `Add at least one pair in War Room before opening pre-trade Coach.`
           : pairCount < WEEKLY_WATCHLIST_RECOMMENDED
             ? `You have ${pairCount} pair — add ${WEEKLY_WATCHLIST_RECOMMENDED}–${WEEKLY_WATCHLIST_MAX} in War Room for full weekly focus (or continue with one pair).`
             : `You have ${pairCount} pair${pairCount === 1 ? "" : "s"} — add up to ${WEEKLY_WATCHLIST_MAX} in War Room.`,

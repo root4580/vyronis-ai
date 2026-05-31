@@ -315,7 +315,11 @@ function Home() {
   const tradesFetchSettledRef = useRef(false)
   const openCommandCenterRef = useRef<() => void>(() => {})
   const openPreTradeCoachRef = useRef<
-    (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>
+    (options?: {
+      sessionId?: string
+      plannedContext?: PreTradePlannedContext
+      plannerCheckIn?: boolean
+    }) => Promise<void>
   >(async () => {})
   const skipUrlTabSyncRef = useRef(true)
   const bindOpenCommandCenter = useCallback((open: () => void) => {
@@ -332,9 +336,17 @@ function Home() {
         ?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 120)
   }, [router])
+  const [preTradeCoachReady, setPreTradeCoachReady] = useState(false)
   const bindOpenPreTradeCoach = useCallback(
-    (openPreTrade: (options?: { sessionId?: string; plannedContext?: PreTradePlannedContext }) => Promise<void>) => {
+    (
+      openPreTrade: (options?: {
+        sessionId?: string
+        plannedContext?: PreTradePlannedContext
+        plannerCheckIn?: boolean
+      }) => Promise<void>,
+    ) => {
       openPreTradeCoachRef.current = openPreTrade
+      setPreTradeCoachReady(true)
     },
     [],
   )
@@ -984,11 +996,10 @@ function Home() {
   }, [searchParams, user?.id, router])
 
   useEffect(() => {
-    if (searchParams.get("coachPlan") !== "1" || !user?.id) return
+    if (searchParams.get("coachPlan") !== "1" || !user?.id || !preTradeCoachReady) return
 
     void (async () => {
       const prefill = readTradePlannerCoachPrefill()
-      clearTradePlannerCoachPrefill()
 
       if (!prefill) {
         toast({
@@ -1000,12 +1011,16 @@ function Home() {
         return
       }
 
-      const plannedContext = buildPlannedContextFromTradePlannerPrefill(prefill)
-      await openPreTradeCoachRef.current({ plannedContext })
+      const plannedContext = buildPlannedContextFromTradePlannerPrefill(
+        prefill,
+        settingsForm.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
+      )
+      await openPreTradeCoachRef.current({ plannedContext, plannerCheckIn: true })
+      clearTradePlannerCoachPrefill()
       markRitualCoachEngaged(user.id)
       router.replace(getDashboardHomeHref())
     })()
-  }, [searchParams, user?.id, toast, router])
+  }, [searchParams, user?.id, preTradeCoachReady, settingsForm.max_risk_per_trade, toast, router])
 
   useEffect(() => {
     if (activeTab !== "analytics") return

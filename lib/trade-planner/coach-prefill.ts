@@ -21,14 +21,20 @@ export type TradePlannerCoachPrefillPayload = {
   rr: number | null
   recommendedLots: number | null
   riskAmount: number
+  chartScreenshotUrl?: string | null
+  chartPointers?: string[]
 }
 
 export function buildTradePlannerCoachPrefill(
   plan: TradePlanCalculation,
-  tradePlanId?: string,
+  options?: {
+    tradePlanId?: string
+    chartScreenshotUrl?: string | null
+    chartPointers?: string[]
+  },
 ): TradePlannerCoachPrefillPayload {
   return {
-    tradePlanId,
+    tradePlanId: options?.tradePlanId,
     pair: plan.pair,
     direction: plan.direction,
     riskPercent: plan.riskPercent,
@@ -40,6 +46,8 @@ export function buildTradePlannerCoachPrefill(
     rr: plan.rr,
     recommendedLots: plan.recommendedLots,
     riskAmount: plan.riskAmount,
+    chartScreenshotUrl: options?.chartScreenshotUrl ?? null,
+    chartPointers: options?.chartPointers,
   }
 }
 
@@ -50,16 +58,25 @@ export function buildPlannedContextFromTradePlannerPrefill(
   const lotLabel = formatLotSize(prefill.recommendedLots)
   const rrLabel = formatRiskReward(prefill.rr)
   const planRef = prefill.tradePlanId ? ` · saved plan` : ""
+  const chartUrl = prefill.chartScreenshotUrl?.trim() || undefined
+  const pointerSummary =
+    prefill.chartPointers && prefill.chartPointers.length > 0
+      ? prefill.chartPointers.slice(0, 4).join(" · ")
+      : undefined
 
   return {
     pair: prefill.pair,
-    direction: prefill.direction,
+    direction: prefill.direction === "BUY" ? "LONG" : prefill.direction === "SELL" ? "SHORT" : prefill.direction,
     entry_price: String(prefill.entryPrice),
     stop_loss: String(prefill.stopLoss),
     take_profit: String(prefill.takeProfit),
     risk_percent: String(prefill.riskPercent),
     trade_date: new Date().toISOString().split("T")[0],
     setup: `Trade Planner sizing — ${rrLabel} · SL ${prefill.slPips.toFixed(1)} pips · TP ${prefill.tpPips.toFixed(1)} pips · risk $${prefill.riskAmount.toFixed(2)} · ${lotLabel} std lots${planRef}`,
+    chart_url: chartUrl,
+    screenshot_url: chartUrl,
+    entry_timeframe: chartUrl ? "M15" : undefined,
+    confirmation_signal: pointerSummary,
     max_risk_per_trade: maxRiskPerTrade,
   }
 }

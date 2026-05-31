@@ -183,6 +183,14 @@ export function getActiveQuestionFromSession(
   return { key: nextKey, prompt: fallback.prompt }
 }
 
+export function isTradePlannerCoachHandoff(context: PreTradePlannedContext): boolean {
+  return (
+    typeof context.setup === "string" &&
+    context.setup.startsWith("Trade Planner sizing") &&
+    Boolean(context.chart_url?.trim() || context.screenshot_url?.trim())
+  )
+}
+
 export function buildCoachIntro(context: PreTradePlannedContext): string {
   if (context.signal_source === "tradingview") {
     const pair = context.pair || "your pair"
@@ -195,6 +203,12 @@ export function buildCoachIntro(context: PreTradePlannedContext): string {
         ? ` Vyronis scored this alert ${score}/100${rec ? ` — ${rec === "yes" ? "TAKE" : rec === "no" ? "SKIP" : "CAUTION"}` : ""}.`
         : ""
     return `TradingView alert: ${pair} ${direction}${strategy}.${scoreLine} War Room chart vision is attached — answer the quick check-in below before you enter on MT5.`
+  }
+
+  if (isTradePlannerCoachHandoff(context)) {
+    const pair = context.pair || "your pair"
+    const direction = context.direction || "setup"
+    return `Trade Planner handoff for ${pair} ${direction} — your entry chart and plan levels are loaded. Running chart coaching now, then a quick emotion and risk check-in.`
   }
 
   const pair = context.pair || "your pair"

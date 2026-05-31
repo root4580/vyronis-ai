@@ -11,7 +11,10 @@ import {
   type ReactNode,
 } from "react"
 import { fetchCoachSession } from "@/lib/trade-coach/api-client"
-import { checkCoachReadiness } from "@/lib/strategy-brain/coach-readiness-gate"
+import {
+  applyPlannerCoachGateSoftening,
+  checkCoachReadiness,
+} from "@/lib/strategy-brain/coach-readiness-gate"
 import { buildPlannedContextFromPairPlan } from "@/lib/strategy-brain/weekly-watchlist"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
 import type {
@@ -43,6 +46,8 @@ const FOCUS_STATE_KEY = "vyronis.commandCenter.focus"
 type OpenPreTradeOptions = {
   sessionId?: string
   plannedContext?: PreTradePlannedContext
+  /** Trade Planner sizing check-in — soften War Room hard blocks when levels are filled. */
+  plannerCheckIn?: boolean
 }
 
 type AIContextProviderProps = {
@@ -448,9 +453,19 @@ export function AIContextProvider({
           return
         }
 
-        const gate = await checkCoachReadiness(plannedContext.pair)
+        let gate = await checkCoachReadiness(plannedContext.pair)
+        if (options.plannerCheckIn) {
+          gate = applyPlannerCoachGateSoftening(gate, plannedContext)
+        }
         if (!gate.allowed) {
           setError(`${gate.headline} — ${gate.message}`)
+          toast({
+            title: gate.headline,
+            description: gate.message,
+            variant: "destructive",
+          })
+          setIsTransitioning(false)
+          preTradeOpenInFlightRef.current = false
           return
         }
         if (gate.severity === "warning") {
