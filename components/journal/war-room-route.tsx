@@ -70,6 +70,7 @@ export function WarRoomRoute() {
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <WeeklyWarRoom
+          accountId={chrome.activeAccountId}
           onCoachEngaged={() => {
             if (chrome.user?.id) markRitualCoachEngaged(chrome.user.id)
           }}

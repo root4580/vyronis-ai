@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
+import { ChapterWarRoomRecapSection } from "@/components/weekly-chapters/chapter-war-room-recap-section"
 import { Button } from "@/components/ui/button"
 import { fetchChapterReview } from "@/lib/weekly-chapters/api-client"
 import type {
@@ -215,6 +216,10 @@ export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewPro
             </ul>
           ) : null}
         </section>
+      ) : null}
+
+      {review.warRoomRecap ? (
+        <ChapterWarRoomRecapSection recap={review.warRoomRecap} />
       ) : null}
 
       {review.aiNarrative ? (

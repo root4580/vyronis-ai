@@ -6,6 +6,7 @@ import { AlertTriangle, Bot, ChevronDown, ChevronUp, History } from "lucide-reac
 import { MarketBiasPanel } from "@/components/strategy-brain/market-bias-panel"
 import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning-panel"
 import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
+import { WarRoomChapterRecapPanel } from "@/components/journal/war-room-chapter-recap-panel"
 import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
 import { getDashboardTabHref, getWarRoomCoachHref } from "@/lib/dashboard-nav"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
@@ -34,7 +35,13 @@ import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 
-export function WeeklyWarRoom({ onCoachEngaged }: { onCoachEngaged?: () => void } = {}) {
+export function WeeklyWarRoom({
+  onCoachEngaged,
+  accountId = null,
+}: {
+  onCoachEngaged?: () => void
+  accountId?: string | null
+} = {}) {
   const { toast } = useToast()
   const router = useRouter()
   const aiContext = useOptionalAIContext()
@@ -259,6 +266,8 @@ export function WeeklyWarRoom({ onCoachEngaged }: { onCoachEngaged?: () => void 
           ) : null}
 
           <WarRoomWorkflowStatus readiness={readiness} />
+
+          <WarRoomChapterRecapPanel accountId={accountId} warRoomWeekStart={weekStart} />
 
           {!watchlistComplete ? (
             <div id="war-room-planning">

@@ -1,7 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import {
-  accountScopeOrFilter,
   resolveLegacyTradeAccountId,
 } from "@/lib/accounts/server-active-account"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
@@ -30,7 +28,10 @@ import {
   generateChapterPatternAction,
   patternIdsKey,
 } from "@/lib/weekly-chapters/chapter-pattern-action"
-import type { PaperTradeRecord } from "@/lib/paper-trades/types"
+import {
+  fetchChapterReviewTradeRows,
+} from "@/lib/weekly-chapters/chapter-recap-trades"
+import { buildChapterWarRoomRecapForWeek } from "@/lib/weekly-chapters/war-room-recap-service"
 import {
   fetchChapterPaperTrades,
   fetchChapterTrades,
@@ -43,6 +44,7 @@ import type {
   ChapterReviewTrade,
   WeeklySummaryRecord,
 } from "@/lib/weekly-chapters/types"
+import type { PaperTradeRecord } from "@/lib/paper-trades/types"
 import {
   computeChapterNumber,
   disciplineGradeFromScore,
@@ -219,47 +221,6 @@ function mapReviewTrades(
       const db = b.trade_date ?? ""
       return db.localeCompare(da)
     })
-}
-
-async function fetchChapterReviewTradeRows(
-  supabase: SupabaseClient,
-  userId: string,
-  accountId: string,
-  legacyAccountId: string | null,
-): Promise<Array<Record<string, unknown>>> {
-  let query = supabase
-    .from("trades")
-    .select(
-      "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source, rule_followed, mistake_tags",
-    )
-    .eq("user_id", userId)
-    .order("trade_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(400)
-
-  query = query.or(accountScopeOrFilter(accountId, legacyAccountId))
-
-  const { data, error } = await query
-  let rows = (data ?? []) as Array<Record<string, unknown>>
-
-  if (error) {
-    if (/account_id|column/i.test(error.message)) {
-      const fallback = await supabase
-        .from("trades")
-        .select(
-          "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source, rule_followed, mistake_tags",
-        )
-        .eq("user_id", userId)
-        .limit(400)
-      rows = (fallback.data ?? []) as Array<Record<string, unknown>>
-    } else {
-      throw new Error(error.message)
-    }
-  }
-
-  return rows.filter((row) =>
-    isJournalTrade({ import_source: row.import_source as string | null | undefined }),
-  )
 }
 
 function resolveNavigation(
@@ -631,6 +592,13 @@ export async function getChapterReview(
   const patternAction = patternActionResult.patternAction
   const patternActionProvider = patternActionResult.patternActionProvider
 
+  const warRoomRecap = await buildChapterWarRoomRecapForWeek({
+    supabase,
+    userId,
+    chapterWeekStart: weekStart,
+    trades,
+  })
+
   const disciplineScore = summary.discipline_score
   if (disciplineScore != null && !summary.discipline_grade) {
     summary = {
@@ -649,6 +617,7 @@ export async function getChapterReview(
     patterns,
     patternAction,
     patternActionProvider,
+    warRoomRecap,
     aiNarrative,
     aiProvider,
     emotionSummary,

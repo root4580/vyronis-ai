@@ -424,6 +424,12 @@ function SundayCompleteCard({
         >
           📖 Review Chapter {summary.chapter_number}
         </Link>
+        <Link
+          href={`${getChapterReviewHref(summary.week_start)}#war-room-recap`}
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-[var(--radius-md)] border border-white/[0.1] bg-white/[0.03] px-3 text-[12px] font-medium text-text-secondary transition-colors hover:bg-white/[0.05] hover:text-text-primary"
+        >
+          War Room vs reality →
+        </Link>
         <button
           type="button"
           onClick={onDismiss}

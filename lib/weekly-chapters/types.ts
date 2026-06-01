@@ -109,6 +109,27 @@ export type ChapterReviewPattern = {
   message: string
 }
 
+export type ChapterWarRoomPairRecap = {
+  pair: string
+  plannedBias: string | null
+  plannedThesis: string | null
+  trades: Array<{ direction: string; result: string; pnl: number }>
+  alignment: "aligned" | "counter" | "neutral" | "mixed" | "unplanned" | "no_trades"
+  note: string
+}
+
+export type ChapterWarRoomRecap = {
+  hasPlan: boolean
+  sessionFocus: string | null
+  expectedScenarios: string | null
+  plannedPairs: string[]
+  tradedPairs: string[]
+  unplannedTradePairs: string[]
+  untouchedPairs: string[]
+  pairRecaps: ChapterWarRoomPairRecap[]
+  summaryLines: string[]
+}
+
 export type ChapterReviewPaperTrade = {
   id: string
   symbol: string
@@ -147,6 +168,7 @@ export type ChapterReviewPayload = {
   patterns: ChapterReviewPattern[]
   patternAction: string | null
   patternActionProvider: string | null
+  warRoomRecap: ChapterWarRoomRecap | null
   aiNarrative: string | null
   aiProvider: string | null
   emotionSummary: ChapterEmotionSummary | null
