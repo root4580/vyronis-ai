@@ -20,17 +20,25 @@ export function detectCouncilAgentByName(message: string): CouncilAgentId | null
   return null
 }
 
-/** Last agent who replied after the user started Q&A — ignores briefing-only transcript. */
+/** Last agent who replied to the most recent user turn — ignores briefing before Q&A. */
 export function getStickyCouncilAgentFromTranscript(
   transcript: CouncilTranscriptEntry[],
 ): CouncilAgentId | null {
-  const hasUserMessage = transcript.some((entry) => entry.agent === "user")
-  if (!hasUserMessage) return null
-
+  let lastUserIndex = -1
   for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    if (transcript[index]!.agent === "user") {
+      lastUserIndex = index
+      break
+    }
+  }
+
+  if (lastUserIndex === -1) return null
+
+  for (let index = transcript.length - 1; index > lastUserIndex; index -= 1) {
     const entry = transcript[index]!
-    if (entry.agent === "user" || entry.agent === "system") continue
-    return entry.agent as CouncilAgentId
+    if (entry.agent !== "user" && entry.agent !== "system") {
+      return entry.agent as CouncilAgentId
+    }
   }
 
   return null

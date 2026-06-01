@@ -50,6 +50,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [listenConfigured, setListenConfigured] = useState(false)
   const autoBriefingAttempted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const conversationAgentRef = useRef<CouncilAgentId | null>(null)
+  const selectedAgentRef = useRef<CouncilAgentId | "auto">("auto")
+  const submitQuestionRef = useRef<(message: string) => Promise<void>>(async () => {})
 
   const {
     voiceEnabled,
@@ -71,6 +74,14 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     stopConversation,
     clearMicError,
   } = useCouncilVoiceInput(listenConfigured)
+
+  useEffect(() => {
+    conversationAgentRef.current = conversationAgent
+  }, [conversationAgent])
+
+  useEffect(() => {
+    selectedAgentRef.current = selectedAgent
+  }, [selectedAgent])
 
   const greetingName = traderFirstName?.trim() || "Trader"
 
@@ -99,8 +110,10 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       const stickyAgent = getStickyCouncilAgentFromTranscript(state.session?.full_transcript ?? [])
       if (stickyAgent) {
         setConversationAgent(stickyAgent)
+        conversationAgentRef.current = stickyAgent
         setActiveAgent(stickyAgent)
         setSelectedAgent(stickyAgent)
+        selectedAgentRef.current = stickyAgent
       }
       if (state.migrationPending) {
         setError("Run supabase/RUN-COUNCIL.sql in Supabase to enable the AI Council.")
@@ -190,12 +203,16 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       clearMicError()
 
       const namedAgent = detectCouncilAgentByName(trimmed)
-      const manualAgent = selectedAgent === "auto" ? null : selectedAgent
-      const targetAgent = namedAgent ?? manualAgent ?? conversationAgent ?? undefined
+      const manualAgent =
+        selectedAgentRef.current === "auto" ? null : selectedAgentRef.current
+      const activeConversation = conversationAgentRef.current
+      const targetAgent = namedAgent ?? manualAgent ?? activeConversation ?? undefined
 
       if (namedAgent) {
         setConversationAgent(namedAgent)
+        conversationAgentRef.current = namedAgent
         setSelectedAgent(namedAgent)
+        selectedAgentRef.current = namedAgent
         setActiveAgent(namedAgent)
       }
 
@@ -212,10 +229,13 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           accountId,
           message: trimmed,
           agent: targetAgent,
+          conversationAgent: activeConversation ?? undefined,
         })
         setConversationAgent(result.agent)
+        conversationAgentRef.current = result.agent
         setActiveAgent(result.agent)
         setSelectedAgent(result.agent)
+        selectedAgentRef.current = result.agent
         setTranscript((current) => [...current, result.message])
         await speakEntries([result.message])
         scrollToBottom()
@@ -229,14 +249,16 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       accountId,
       isSending,
       migrationPending,
-      selectedAgent,
-      conversationAgent,
       speakEntries,
       stopPlayback,
       scrollToBottom,
       clearMicError,
     ],
   )
+
+  useEffect(() => {
+    submitQuestionRef.current = submitQuestion
+  }, [submitQuestion])
 
   async function handleAsk(event?: React.FormEvent) {
     event?.preventDefault()
@@ -256,7 +278,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
     stopPlayback()
     startConversation(async (text) => {
-      await submitQuestion(text)
+      await submitQuestionRef.current(text)
     })
   }
 
@@ -345,7 +367,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                 type="button"
                 onClick={() => {
                   setSelectedAgent(agent.id)
+                  selectedAgentRef.current = agent.id
                   setConversationAgent(agent.id)
+                  conversationAgentRef.current = agent.id
                   setActiveAgent(agent.id)
                 }}
                 className={cn(

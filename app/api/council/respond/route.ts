@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       message?: string
       accountId?: string | null
       agent?: string
+      conversationAgent?: string
     }
 
     const accountId =
@@ -34,13 +35,17 @@ export async function POST(request: Request) {
       body.agent && AGENTS.has(body.agent as CouncilAgentId)
         ? (body.agent as CouncilAgentId)
         : undefined
+    const conversationAgent =
+      body.conversationAgent && AGENTS.has(body.conversationAgent as CouncilAgentId)
+        ? (body.conversationAgent as CouncilAgentId)
+        : undefined
 
     const result = await runCouncilRespond(
       supabase,
       user.id,
       accountId,
       body.message ?? "",
-      preferredAgent,
+      { preferredAgent, conversationAgent },
     )
     return NextResponse.json(result)
   } catch (error) {

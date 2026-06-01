@@ -360,7 +360,10 @@ export async function runCouncilRespond(
   userId: string,
   accountId: string,
   message: string,
-  preferredAgent?: CouncilAgentId,
+  options?: {
+    preferredAgent?: CouncilAgentId
+    conversationAgent?: CouncilAgentId
+  },
 ): Promise<CouncilRespondResponse> {
   const trimmed = message.trim()
   if (!trimmed) {
@@ -372,7 +375,7 @@ export async function runCouncilRespond(
   const transcript = existing?.full_transcript ?? []
   const stickyAgent = getStickyCouncilAgentFromTranscript(transcript)
   const agentId = resolveCouncilAgentForMessage(trimmed, {
-    preferredAgent,
+    preferredAgent: options?.preferredAgent ?? options?.conversationAgent,
     stickyAgent,
   })
 
