@@ -11,7 +11,7 @@ import {
   runCouncilBriefing,
 } from "@/lib/council/api-client"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
-import { detectCouncilAgentByName } from "@/lib/council/router"
+import { detectCouncilAgentByName, getStickyCouncilAgentFromTranscript } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
 import { useCouncilVoicePlayback } from "@/hooks/use-council-voice-playback"
 import { useCouncilVoiceInput } from "@/hooks/use-council-voice-input"
@@ -36,6 +36,7 @@ function isAgentEntry(entry: CouncilTranscriptEntry): entry is CouncilTranscript
 export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspaceProps) {
   const [transcript, setTranscript] = useState<CouncilTranscriptEntry[]>([])
   const [activeAgent, setActiveAgent] = useState<CouncilAgentId | null>(null)
+  const [conversationAgent, setConversationAgent] = useState<CouncilAgentId | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<CouncilAgentId | "auto">("auto")
   const [question, setQuestion] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -95,6 +96,12 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setListenConfigured(Boolean(state.listenConfigured))
       setTranscript(state.session?.full_transcript ?? [])
       setBriefingDone(Boolean(state.session?.briefing_completed))
+      const stickyAgent = getStickyCouncilAgentFromTranscript(state.session?.full_transcript ?? [])
+      if (stickyAgent) {
+        setConversationAgent(stickyAgent)
+        setActiveAgent(stickyAgent)
+        setSelectedAgent(stickyAgent)
+      }
       if (state.migrationPending) {
         setError("Run supabase/RUN-COUNCIL.sql in Supabase to enable the AI Council.")
       }
@@ -183,7 +190,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       clearMicError()
 
       const namedAgent = detectCouncilAgentByName(trimmed)
+      const manualAgent = selectedAgent === "auto" ? null : selectedAgent
+      const targetAgent = namedAgent ?? manualAgent ?? conversationAgent ?? undefined
+
       if (namedAgent) {
+        setConversationAgent(namedAgent)
         setSelectedAgent(namedAgent)
         setActiveAgent(namedAgent)
       }
@@ -200,10 +211,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         const result = await askCouncil({
           accountId,
           message: trimmed,
-          agent:
-            namedAgent ?? (selectedAgent === "auto" ? undefined : selectedAgent),
+          agent: targetAgent,
         })
+        setConversationAgent(result.agent)
         setActiveAgent(result.agent)
+        setSelectedAgent(result.agent)
         setTranscript((current) => [...current, result.message])
         await speakEntries([result.message])
         scrollToBottom()
@@ -218,6 +230,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       isSending,
       migrationPending,
       selectedAgent,
+      conversationAgent,
       speakEntries,
       stopPlayback,
       scrollToBottom,
@@ -248,8 +261,12 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   }
 
   const headerLine = isConversationMode
-    ? "Open conversation — speak naturally, tap mic when you are done"
-    : listenConfigured
+    ? conversationAgent
+      ? `Talking with ${getCouncilAgent(conversationAgent).name} — say another name to switch`
+      : "Open conversation — speak naturally, tap mic when you are done"
+    : conversationAgent
+      ? `Continuing with ${getCouncilAgent(conversationAgent).name} — name someone else to switch`
+      : listenConfigured
       ? voiceAvailable && voiceEnabled
         ? "Tap mic for open conversation — speak, pause, agents reply"
         : voiceAvailable
@@ -326,7 +343,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               <button
                 key={agent.id}
                 type="button"
-                onClick={() => setSelectedAgent(agent.id)}
+                onClick={() => {
+                  setSelectedAgent(agent.id)
+                  setConversationAgent(agent.id)
+                  setActiveAgent(agent.id)
+                }}
                 className={cn(
                   "shrink-0 rounded-[var(--radius-md)] border px-3 py-2 text-left transition-colors",
                   agent.accentClass,

@@ -1,5 +1,5 @@
 import { COUNCIL_AGENTS } from "@/lib/council/agents"
-import type { CouncilAgentId } from "@/lib/council/types"
+import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 
 const AGENT_NAME_PATTERNS: Array<{ agent: CouncilAgentId; pattern: RegExp }> = COUNCIL_AGENTS.map(
   (agent) => ({
@@ -15,6 +15,22 @@ export function detectCouncilAgentByName(message: string): CouncilAgentId | null
 
   for (const { agent, pattern } of AGENT_NAME_PATTERNS) {
     if (pattern.test(trimmed)) return agent
+  }
+
+  return null
+}
+
+/** Last agent who replied after the user started Q&A — ignores briefing-only transcript. */
+export function getStickyCouncilAgentFromTranscript(
+  transcript: CouncilTranscriptEntry[],
+): CouncilAgentId | null {
+  const hasUserMessage = transcript.some((entry) => entry.agent === "user")
+  if (!hasUserMessage) return null
+
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const entry = transcript[index]!
+    if (entry.agent === "user" || entry.agent === "system") continue
+    return entry.agent as CouncilAgentId
   }
 
   return null
@@ -113,7 +129,14 @@ export function routeCouncilQuestion(message: string): CouncilAgentId {
 
 export function resolveCouncilAgentForMessage(
   message: string,
-  preferredAgent?: CouncilAgentId,
+  options?: {
+    preferredAgent?: CouncilAgentId
+    stickyAgent?: CouncilAgentId | null
+  },
 ): CouncilAgentId {
-  return detectCouncilAgentByName(message) ?? preferredAgent ?? routeCouncilQuestion(message)
+  const byName = detectCouncilAgentByName(message)
+  if (byName) return byName
+  if (options?.preferredAgent) return options.preferredAgent
+  if (options?.stickyAgent) return options.stickyAgent
+  return routeCouncilQuestion(message)
 }
