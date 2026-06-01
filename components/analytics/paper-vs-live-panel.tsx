@@ -11,9 +11,11 @@ import { cn } from "@/lib/utils"
 
 type PaperVsLivePanelProps = {
   accountId: string | null
+  /** Practice Room embed — no outbound link, no duplicate graduation banner. */
+  embedded?: boolean
 }
 
-export function PaperVsLivePanel({ accountId }: PaperVsLivePanelProps) {
+export function PaperVsLivePanel({ accountId, embedded = false }: PaperVsLivePanelProps) {
   const [stats, setStats] = useState<PaperVsLiveStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [migrationPending, setMigrationPending] = useState(false)
@@ -63,20 +65,26 @@ export function PaperVsLivePanel({ accountId }: PaperVsLivePanelProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[12px] text-text-secondary">
-          Compare paper practice performance against live journal trades on this account.
+      {!embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[12px] text-text-secondary">
+            Compare paper practice performance against live journal trades on this account.
+          </p>
+          <Link
+            href={getPracticeRoomHref()}
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-violet-200 hover:text-violet-100"
+          >
+            <NotebookPen className="size-3.5" />
+            Open Practice Room
+          </Link>
+        </div>
+      ) : (
+        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted">
+          Paper vs live
         </p>
-        <Link
-          href={getPracticeRoomHref()}
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-violet-200 hover:text-violet-100"
-        >
-          <NotebookPen className="size-3.5" />
-          Open Practice Room
-        </Link>
-      </div>
+      )}
 
-      {paper?.readyForLive ? (
+      {!embedded && paper?.readyForLive ? (
         <DashboardInsetPanel className="border-profit/30 bg-profit/[0.08]">
           <div className="flex items-start gap-2">
             <GraduationCap className="mt-0.5 size-4 text-profit" />

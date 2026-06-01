@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { PaperVsLivePanel } from "@/components/analytics/paper-vs-live-panel"
+import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
 import { PaperTradeModal } from "@/components/paper-trades/paper-trade-modal"
@@ -23,6 +25,7 @@ import {
 } from "@/lib/paper-trades/api-client"
 import { computeAchievedRR } from "@/lib/paper-trades/stats"
 import type { PaperTradeRecord, PaperTradeStats } from "@/lib/paper-trades/types"
+import type { SetupGrade } from "@/lib/strategy-brain/types"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -38,6 +41,10 @@ function PaperBadge() {
       Paper
     </span>
   )
+}
+
+function isSetupGrade(value: string | null | undefined): value is SetupGrade {
+  return value === "A+" || value === "A" || value === "B" || value === "C" || value === "D"
 }
 
 export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoomWorkspaceProps) {
@@ -159,12 +166,14 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
       {stats?.readyForLive ? (
         <DashboardInsetPanel className="border-profit/30 bg-profit/[0.08]">
           <div className="flex items-start gap-2">
-            <GraduationCap className="mt-0.5 size-4 text-profit" />
+            <GraduationCap className="mt-0.5 size-5 shrink-0 text-profit" />
             <div>
-              <p className="text-[13px] font-semibold text-profit">Ready for live trading</p>
-              <p className="mt-1 text-[11px] text-text-secondary">
-                {stats.winStreak} winning paper trades in a row. Your setup is proven on paper — consider
-                going live when rules allow.
+              <p className="text-[14px] font-semibold text-profit">
+                🎓 Setup proven. Ready to go live?
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
+                {stats.winStreak} winning paper trades in a row on this account. Your process held up on
+                paper — when live rules allow, take the same discipline to the journal.
               </p>
             </div>
           </div>
@@ -181,6 +190,8 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
         <StatCard label="Avg R:R" value={stats?.avgRR != null ? `${stats.avgRR.toFixed(2)}R` : "—"} />
         <StatCard label="Win streak" value={`${stats?.winStreak ?? 0}`} sub="/ 3 to graduate" />
       </div>
+
+      <PaperVsLivePanel accountId={accountId} embedded />
 
       <div className="flex flex-wrap gap-2">
         <PaperTradeButton
@@ -201,90 +212,27 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
       ) : (
         <div className="space-y-3">
           {trades.map((trade) => (
-            <DashboardInsetPanel key={trade.id} className="space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[13px] font-medium text-text-primary">{trade.symbol}</p>
-                    <PaperBadge />
-                    <span className="text-[11px] text-cyan-glow/90">{trade.direction}</span>
-                    <ResultPill result={trade.result} />
-                  </div>
-                  <p className="mt-1 text-[10px] text-text-muted">
-                    Entry {trade.entry ?? "—"} · SL {trade.sl ?? "—"} · TP {trade.tp ?? "—"}
-                    {trade.rr != null ? ` · ${trade.rr}R` : ""}
-                  </p>
-                  {trade.notes ? (
-                    <p className="mt-1 text-[11px] text-text-secondary">{trade.notes}</p>
-                  ) : null}
-                </div>
-                <p className="text-[10px] tabular-nums text-text-muted">
-                  {new Date(trade.created_at).toLocaleString()}
-                </p>
-              </div>
-
-              {trade.result === "PENDING" ? (
-                <div className="grid grid-cols-1 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-4">
-                  <div className="space-y-1 sm:col-span-1">
-                    <Label className="text-[10px] text-text-muted">Close price</Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      value={closingId === trade.id ? closePrice : ""}
-                      onChange={(e) => {
-                        setClosingId(trade.id)
-                        setClosePrice(e.target.value)
-                      }}
-                      className="add-trade-input h-9 tabular-nums"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-text-muted">Result</Label>
-                    <Select
-                      value={closingId === trade.id ? closeResult : "WIN"}
-                      onValueChange={(value) => {
-                        setClosingId(trade.id)
-                        setCloseResult(value as typeof closeResult)
-                      }}
-                    >
-                      <SelectTrigger className="add-trade-input h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="WIN">Win</SelectItem>
-                        <SelectItem value="LOSS">Loss</SelectItem>
-                        <SelectItem value="BREAKEVEN">Breakeven</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-text-muted">P&L (R)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={closingId === trade.id ? closePnl : ""}
-                      onChange={(e) => {
-                        setClosingId(trade.id)
-                        setClosePnl(e.target.value)
-                      }}
-                      placeholder="1.0"
-                      className="add-trade-input h-9 tabular-nums"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-9 w-full"
-                      disabled={closingId === trade.id && !closePrice}
-                      onClick={() => void handleClose(trade)}
-                    >
-                      Close paper trade
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </DashboardInsetPanel>
+            <PaperTradeCard
+              key={trade.id}
+              trade={trade}
+              closingId={closingId}
+              closePrice={closePrice}
+              closeResult={closeResult}
+              closePnl={closePnl}
+              onClosePriceChange={(id, value) => {
+                setClosingId(id)
+                setClosePrice(value)
+              }}
+              onCloseResultChange={(id, value) => {
+                setClosingId(id)
+                setCloseResult(value)
+              }}
+              onClosePnlChange={(id, value) => {
+                setClosingId(id)
+                setClosePnl(value)
+              }}
+              onClose={() => void handleClose(trade)}
+            />
           ))}
         </div>
       )}
@@ -301,6 +249,140 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
         />
       ) : null}
     </div>
+  )
+}
+
+type PaperTradeCardProps = {
+  trade: PaperTradeRecord
+  closingId: string | null
+  closePrice: string
+  closeResult: "WIN" | "LOSS" | "BREAKEVEN"
+  closePnl: string
+  onClosePriceChange: (id: string, value: string) => void
+  onCloseResultChange: (id: string, value: "WIN" | "LOSS" | "BREAKEVEN") => void
+  onClosePnlChange: (id: string, value: string) => void
+  onClose: () => void
+}
+
+function PaperTradeCard({
+  trade,
+  closingId,
+  closePrice,
+  closeResult,
+  closePnl,
+  onClosePriceChange,
+  onCloseResultChange,
+  onClosePnlChange,
+  onClose,
+}: PaperTradeCardProps) {
+  return (
+    <DashboardInsetPanel className="space-y-3">
+      <div className="flex gap-3">
+        {trade.chart_image_url ? (
+          <div className="shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-white/[0.08]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={trade.chart_image_url}
+              alt={`${trade.symbol} chart`}
+              className="size-[72px] object-cover object-top sm:size-20"
+            />
+          </div>
+        ) : null}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[13px] font-medium text-text-primary">{trade.symbol}</p>
+                <PaperBadge />
+                <span className="text-[11px] text-cyan-glow/90">{trade.direction}</span>
+                <ResultPill result={trade.result} />
+                {isSetupGrade(trade.setup_grade) ? (
+                  <SetupGradeBadge grade={trade.setup_grade} label="Coach" size="sm" />
+                ) : null}
+              </div>
+              <p className="mt-1 text-[10px] text-text-muted">
+                Entry {trade.entry ?? "—"} · SL {trade.sl ?? "—"} · TP {trade.tp ?? "—"}
+                {trade.rr != null ? ` · ${trade.rr.toFixed(2)}R` : ""}
+                {trade.pnl !== 0 && trade.result !== "PENDING"
+                  ? ` · ${trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(1)}R`
+                  : ""}
+              </p>
+              {trade.coach_feedback ? (
+                <p className="mt-1.5 text-[11px] leading-relaxed text-text-secondary line-clamp-2">
+                  {trade.coach_feedback}
+                </p>
+              ) : trade.notes ? (
+                <p className="mt-1.5 text-[11px] leading-relaxed text-text-secondary line-clamp-2">
+                  {trade.notes}
+                </p>
+              ) : null}
+            </div>
+            <p className="shrink-0 text-[10px] tabular-nums text-text-muted">
+              {new Date(trade.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {trade.result === "PENDING" ? (
+        <div className="grid grid-cols-1 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-4">
+          <div className="space-y-1 sm:col-span-1">
+            <Label className="text-[10px] text-text-muted">Close price</Label>
+            <Input
+              type="number"
+              step="any"
+              value={closingId === trade.id ? closePrice : ""}
+              onChange={(e) => onClosePriceChange(trade.id, e.target.value)}
+              className="add-trade-input h-9 tabular-nums"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-text-muted">Result</Label>
+            <Select
+              value={closingId === trade.id ? closeResult : "WIN"}
+              onValueChange={(value) =>
+                onCloseResultChange(trade.id, value as typeof closeResult)
+              }
+            >
+              <SelectTrigger className="add-trade-input h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="WIN">Win</SelectItem>
+                <SelectItem value="LOSS">Loss</SelectItem>
+                <SelectItem value="BREAKEVEN">Breakeven</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-text-muted">P&L (R)</Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={closingId === trade.id ? closePnl : ""}
+              onChange={(e) => onClosePnlChange(trade.id, e.target.value)}
+              placeholder="1.0"
+              className="add-trade-input h-9 tabular-nums"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 w-full"
+              disabled={closingId === trade.id && !closePrice}
+              onClick={onClose}
+            >
+              Close paper trade
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </DashboardInsetPanel>
   )
 }
 
