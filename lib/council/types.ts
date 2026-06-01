@@ -65,6 +65,8 @@ export type CouncilRespondResponse = {
   sessionId: string
   agent: CouncilAgentId
   message: CouncilTranscriptEntry
+  messages: CouncilTranscriptEntry[]
+  chimeIn?: CouncilTranscriptEntry | null
   migrationPending?: boolean
 }
 

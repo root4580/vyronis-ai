@@ -9,10 +9,15 @@ import {
 import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
+  buildCouncilChimeInUserPrompt,
   buildCouncilRespondUserPrompt,
   buildRecentTranscriptLines,
   getLastAgentReplyInTranscript,
 } from "@/lib/council/prompts"
+import {
+  buildChimeInFallback,
+  pickCouncilChimeInAgent,
+} from "@/lib/council/multi-agent-orchestrator"
 import { getStickyCouncilAgentFromTranscript, resolveCouncilAgentForMessage } from "@/lib/council/router"
 import type {
   CouncilAgentId,
@@ -154,6 +159,24 @@ async function generateAgentText(input: {
     }
   }
   return input.fallback
+}
+
+async function produceCouncilAgentReply(input: {
+  agentId: CouncilAgentId
+  context: Awaited<ReturnType<typeof loadCouncilAgentContext>>
+  userPrompt: string
+  fallback: string
+  temperature?: number
+  maxTokens?: number
+}): Promise<string> {
+  return generateAgentText({
+    agentId: input.agentId,
+    systemPrompt: buildCouncilAgentSystemPrompt(input.agentId, input.context, "conversation"),
+    userPrompt: input.userPrompt,
+    fallback: input.fallback,
+    temperature: input.temperature ?? 0.68,
+    maxTokens: input.maxTokens ?? 240,
+  })
 }
 
 export async function getOrCreateCouncilSettings(
@@ -468,9 +491,9 @@ export async function runCouncilRespond(
     lastAgentReply,
   ).catch(() => "")
 
-  const reply = await generateAgentText({
+  const reply = await produceCouncilAgentReply({
     agentId,
-    systemPrompt: buildCouncilAgentSystemPrompt(agentId, context, "conversation"),
+    context,
     userPrompt: buildCouncilRespondUserPrompt({
       question: trimmed,
       recentTranscript,
@@ -484,8 +507,6 @@ export async function runCouncilRespond(
       question: trimmed,
       lastReply: lastAgentReply,
     }),
-    temperature: 0.68,
-    maxTokens: 240,
   })
 
   const agentEntry: CouncilTranscriptEntry = {
@@ -495,9 +516,56 @@ export async function runCouncilRespond(
     createdAt: new Date().toISOString(),
   }
 
+  const workingTranscript = [...transcript, userEntry, agentEntry]
+  const agentMessages: CouncilTranscriptEntry[] = [agentEntry]
+  let chimeInEntry: CouncilTranscriptEntry | null = null
+
+  const chimeDecision = pickCouncilChimeInAgent({
+    primaryAgent: agentId,
+    question: trimmed,
+    primaryReply: reply,
+    context,
+  })
+
+  if (chimeDecision && chimeDecision.agent !== agentId) {
+    const chimeAgentId = chimeDecision.agent
+    const chimeReply = await produceCouncilAgentReply({
+      agentId: chimeAgentId,
+      context,
+      userPrompt: buildCouncilChimeInUserPrompt({
+        question: trimmed,
+        primaryAgentName: getCouncilAgent(agentId).name,
+        primaryReply: reply,
+        chimeAgentName: getCouncilAgent(chimeAgentId).name,
+        reason: chimeDecision.reason,
+      }),
+      fallback: buildChimeInFallback({
+        chimeAgent: chimeAgentId,
+        primaryAgent: agentId,
+        primaryReply: reply,
+      }),
+      temperature: 0.62,
+      maxTokens: 160,
+    })
+
+    chimeInEntry = {
+      id: randomUUID(),
+      agent: chimeAgentId,
+      content: chimeReply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(chimeInEntry)
+    await appendAgentMemory(supabase, userId, chimeAgentId, trimmed, chimeReply).catch(() => undefined)
+  }
+
   const session = await upsertTodaySession(supabase, userId, accountId, {
-    full_transcript: [...transcript, userEntry, agentEntry],
-    agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), getCouncilAgent(agentId).name])],
+    full_transcript: [...workingTranscript, ...(chimeInEntry ? [chimeInEntry] : [])],
+    agents_spoken: [
+      ...new Set([
+        ...(existing?.agents_spoken ?? []),
+        ...agentMessages.map((entry) => getCouncilAgent(entry.agent as CouncilAgentId).name),
+      ]),
+    ],
   })
 
   await appendAgentMemory(supabase, userId, agentId, trimmed, reply).catch(() => undefined)
@@ -506,5 +574,7 @@ export async function runCouncilRespond(
     sessionId: session.id,
     agent: agentId,
     message: agentEntry,
+    messages: agentMessages,
+    chimeIn: chimeInEntry,
   }
 }

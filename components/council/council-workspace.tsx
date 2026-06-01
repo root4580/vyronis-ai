@@ -242,8 +242,10 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         setActiveAgent(result.agent)
         setSelectedAgent(result.agent)
         selectedAgentRef.current = result.agent
-        setTranscript((current) => [...current, result.message])
-        await speakEntries([result.message])
+        const agentMessages =
+          result.messages.length > 0 ? result.messages : [result.message]
+        setTranscript((current) => [...current, ...agentMessages])
+        await speakEntries(agentMessages)
         scrollToBottom()
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not reach the council")
@@ -434,7 +436,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               Your council is standing by.
             </p>
             <p className="mt-1 max-w-sm text-[11px] text-text-muted">
-              Before noon, briefing starts automatically once. Or tap Start briefing anytime.
+              Before noon, briefing starts automatically once. Refresh clears the screen — agents still remember your conversation.
             </p>
           </div>
         ) : (
@@ -528,7 +530,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-text-muted">
           {listenConfigured
-            ? "Tap mic once — speak, pause, and agents reply. Tap mic again to stop."
+            ? "Phase 4 — another council member may chime in. Tap mic once to talk, tap again to stop."
             : "Mic needs OPENAI_API_KEY · spoken replies need ELEVENLABS_API_KEY"}
         </p>
       </form>

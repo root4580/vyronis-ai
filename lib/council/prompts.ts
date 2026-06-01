@@ -127,3 +127,20 @@ export function buildCouncilRespondUserPrompt(input: {
     .filter(Boolean)
     .join("\n\n")
 }
+
+export function buildCouncilChimeInUserPrompt(input: {
+  question: string
+  primaryAgentName: string
+  primaryReply: string
+  chimeAgentName: string
+  reason: string
+}): string {
+  return [
+    `${input.primaryAgentName} just told the trader: "${input.primaryReply}"`,
+    `You are ${input.chimeAgentName}, chiming in because: ${input.reason}`,
+    `Trader question: ${input.question}`,
+    `Add 1–2 short sentences. Start by referencing ${input.primaryAgentName} by name.`,
+    "Add your layer only — risk, discipline, technical confirmation, or trade review.",
+    "Do not repeat what they already said. Do not re-greet the trader.",
+  ].join("\n")
+}
