@@ -44,6 +44,12 @@ export function buildCouncilAgentSystemPrompt(
     `Account snapshot (may be slightly stale — prefer the trader's latest message if they correct it): ${data}`,
   ]
 
+  if (mode === "briefing") {
+    base.push(
+      "Morning council briefing — other agents may have spoken before you. Reference them naturally when relevant.",
+    )
+  }
+
   if (mode === "conversation") {
     base.push(CONVERSATION_RULES)
   }
@@ -69,8 +75,21 @@ export function buildCouncilAgentSystemPrompt(
   return base.join("\n")
 }
 
-export function buildCouncilBriefingUserPrompt(agentId: CouncilAgentId): string {
-  return `Deliver your portion of the morning council briefing. Stay in character as ${getCouncilAgent(agentId).name}.`
+export function buildCouncilBriefingUserPrompt(
+  agentId: CouncilAgentId,
+  previous?: { agentName: string; content: string } | null,
+): string {
+  const agent = getCouncilAgent(agentId)
+  if (!previous) {
+    return `Deliver your portion of the morning council briefing. Stay in character as ${agent.name}. Open the council session for ${agent.name}.`
+  }
+
+  return [
+    `${previous.agentName} just said: "${previous.content}"`,
+    `Now deliver your briefing portion as ${agent.name}.`,
+    `Start with one short sentence that references ${previous.agentName} by name — agree, add nuance, or hand off naturally.`,
+    `Then cover your data. Maximum ${agent.maxSentences} sentences total. Sound like a live council room, not five separate monologues.`,
+  ].join("\n")
 }
 
 export function getLastAgentReplyInTranscript(

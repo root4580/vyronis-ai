@@ -149,14 +149,23 @@ export function WeeklyChapterSystem({
               <h2 className="text-[18px] font-medium text-text-primary">{dashboard.title}</h2>
               <p className="mt-1 text-[12px] text-text-secondary">{dashboard.subtitle}</p>
             </div>
-            {dashboard.chapterStreak >= 3 ? (
-              <div className="rounded-[var(--radius-md)] border border-profit/25 bg-profit/[0.08] px-3 py-2 text-center">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-profit/80">Momentum</p>
-                <p className="text-[13px] font-semibold text-profit">
-                  🔥 {dashboard.chapterStreak} chapters
-                </p>
-              </div>
-            ) : null}
+            <div className="flex flex-col items-end gap-2">
+              {dashboard.chapterStreak >= 3 ? (
+                <div className="rounded-[var(--radius-md)] border border-profit/25 bg-profit/[0.08] px-3 py-2 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-profit/80">Momentum</p>
+                  <p className="text-[13px] font-semibold text-profit">
+                    🔥 {dashboard.chapterStreak} chapters
+                  </p>
+                </div>
+              ) : null}
+              <Link
+                href={getCouncilHref()}
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-violet-400/25 bg-violet-500/[0.08] px-3 text-[11px] font-medium text-violet-100 transition-colors hover:bg-violet-500/[0.12]"
+              >
+                <Sparkles className="size-3.5" />
+                AI Council
+              </Link>
+            </div>
           </div>
         </div>
 

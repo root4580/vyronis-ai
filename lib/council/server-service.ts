@@ -412,11 +412,19 @@ export async function runCouncilMorningBriefing(
   for (const agentId of BRIEFING_AGENT_ORDER) {
     const agent = getCouncilAgent(agentId)
     const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context, "briefing")
+    const previousBriefing =
+      newMessages.length > 0
+        ? {
+            agentName: getCouncilAgent(newMessages[newMessages.length - 1]!.agent as CouncilAgentId).name,
+            content: newMessages[newMessages.length - 1]!.content,
+          }
+        : null
     const content = await generateAgentText({
       agentId,
       systemPrompt,
-      userPrompt: buildCouncilBriefingUserPrompt(agentId),
+      userPrompt: buildCouncilBriefingUserPrompt(agentId, previousBriefing),
       fallback: fallbackAgentLine(agentId, context),
+      temperature: 0.55,
     })
 
     const entry: CouncilTranscriptEntry = {
@@ -518,48 +526,59 @@ export async function runCouncilRespond(
 
   const workingTranscript = [...transcript, userEntry, agentEntry]
   const agentMessages: CouncilTranscriptEntry[] = [agentEntry]
-  let chimeInEntry: CouncilTranscriptEntry | null = null
+  let lastReply = reply
+  let lastSpeaker = agentId
+  const maxChimes = /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
+    trimmed,
+  )
+    ? 2
+    : 1
 
-  const chimeDecision = pickCouncilChimeInAgent({
-    primaryAgent: agentId,
-    question: trimmed,
-    primaryReply: reply,
-    context,
-  })
+  for (let index = 0; index < maxChimes; index += 1) {
+    const chimeDecision = pickCouncilChimeInAgent({
+      primaryAgent: lastSpeaker,
+      question: trimmed,
+      primaryReply: lastReply,
+      context,
+      excludeAgents: agentMessages.map((entry) => entry.agent as CouncilAgentId),
+    })
+    if (!chimeDecision || chimeDecision.agent === lastSpeaker) break
 
-  if (chimeDecision && chimeDecision.agent !== agentId) {
-    const chimeAgentId = chimeDecision.agent
     const chimeReply = await produceCouncilAgentReply({
-      agentId: chimeAgentId,
+      agentId: chimeDecision.agent,
       context,
       userPrompt: buildCouncilChimeInUserPrompt({
         question: trimmed,
-        primaryAgentName: getCouncilAgent(agentId).name,
-        primaryReply: reply,
-        chimeAgentName: getCouncilAgent(chimeAgentId).name,
+        primaryAgentName: getCouncilAgent(lastSpeaker).name,
+        primaryReply: lastReply,
+        chimeAgentName: getCouncilAgent(chimeDecision.agent).name,
         reason: chimeDecision.reason,
       }),
       fallback: buildChimeInFallback({
-        chimeAgent: chimeAgentId,
-        primaryAgent: agentId,
-        primaryReply: reply,
+        chimeAgent: chimeDecision.agent,
+        primaryAgent: lastSpeaker,
+        primaryReply: lastReply,
       }),
       temperature: 0.62,
       maxTokens: 160,
     })
 
-    chimeInEntry = {
+    const chimeInEntry: CouncilTranscriptEntry = {
       id: randomUUID(),
-      agent: chimeAgentId,
+      agent: chimeDecision.agent,
       content: chimeReply,
       createdAt: new Date().toISOString(),
     }
     agentMessages.push(chimeInEntry)
-    await appendAgentMemory(supabase, userId, chimeAgentId, trimmed, chimeReply).catch(() => undefined)
+    lastReply = chimeReply
+    lastSpeaker = chimeDecision.agent
+    await appendAgentMemory(supabase, userId, chimeDecision.agent, trimmed, chimeReply).catch(
+      () => undefined,
+    )
   }
 
   const session = await upsertTodaySession(supabase, userId, accountId, {
-    full_transcript: [...workingTranscript, ...(chimeInEntry ? [chimeInEntry] : [])],
+    full_transcript: [...workingTranscript, ...agentMessages.slice(1)],
     agents_spoken: [
       ...new Set([
         ...(existing?.agents_spoken ?? []),
@@ -575,6 +594,6 @@ export async function runCouncilRespond(
     agent: agentId,
     message: agentEntry,
     messages: agentMessages,
-    chimeIn: chimeInEntry,
+    chimeIn: agentMessages.length > 1 ? agentMessages[agentMessages.length - 1]! : null,
   }
 }

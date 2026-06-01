@@ -29,34 +29,44 @@ function contextNeedsRiskCheck(context: CouncilAgentContext): boolean {
   return /cooldown|limit reached|drawdown|max daily loss|weekly live trade limit/i.test(context.scott)
 }
 
+function isCouncilRoundtableQuestion(question: string): boolean {
+  return /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
+    question,
+  )
+}
+
 export function pickCouncilChimeInAgent(input: {
   primaryAgent: CouncilAgentId
   question: string
   primaryReply: string
   context: CouncilAgentContext
+  excludeAgents?: CouncilAgentId[]
 }): CouncilChimeInDecision | null {
   if (isSimpleGreeting(input.question)) return null
+
+  const exclude = new Set(input.excludeAgents ?? [])
+  exclude.add(input.primaryAgent)
 
   const entryQuestion = isEntryDecisionQuestion(input.question)
   const setupQuestion = isSetupQuestion(input.question)
   const primary = input.primaryAgent
 
+  let decision: CouncilChimeInDecision | null = null
+
   if (primary === "khalid" || primary === "hamza") {
     if (entryQuestion || setupQuestion) {
-      if (contextNeedsRiskCheck(input.context)) {
-        return {
+      if (contextNeedsRiskCheck(input.context) && !exclude.has("scott")) {
+        decision = {
           agent: "scott",
           reason: "Entry was discussed — Scott should confirm risk limits and daily loss budget.",
         }
-      }
-      if (contextNeedsDisciplineCheck(input.context)) {
-        return {
+      } else if (contextNeedsDisciplineCheck(input.context) && !exclude.has("sarah")) {
+        decision = {
           agent: "sarah",
           reason: "Setup looks live — Sarah should check emotional readiness before entry.",
         }
-      }
-      if (entryQuestion) {
-        return {
+      } else if (entryQuestion && !exclude.has("scott")) {
+        decision = {
           agent: "scott",
           reason: "Trader asked about taking a trade — Scott adds the risk layer.",
         }
@@ -64,39 +74,48 @@ export function pickCouncilChimeInAgent(input: {
     }
   }
 
-  if (primary === "scott" && (entryQuestion || setupQuestion)) {
-    return {
+  if (!decision && primary === "scott" && (entryQuestion || setupQuestion) && !exclude.has("khalid")) {
+    decision = {
       agent: "khalid",
       reason: "Risk was cleared — Khalid confirms technical entry validity.",
     }
   }
 
-  if (primary === "adam" && (entryQuestion || setupQuestion)) {
-    return {
+  if (!decision && primary === "adam" && (entryQuestion || setupQuestion) && !exclude.has("sarah")) {
+    decision = {
       agent: "sarah",
       reason: "After trade review, Sarah checks discipline before the next entry.",
     }
   }
 
-  if (primary === "sarah" && setupQuestion && /take|enter|valid|ready|should i/i.test(input.question)) {
-    return {
+  if (
+    !decision &&
+    primary === "sarah" &&
+    setupQuestion &&
+    /take|enter|valid|ready|should i/i.test(input.question) &&
+    !exclude.has("khalid")
+  ) {
+    decision = {
       agent: "khalid",
       reason: "Sarah covered mindset — Khalid adds technical confirmation.",
     }
   }
 
   if (
+    !decision &&
     primary === "khalid" &&
     /valid|confirmed|ready|in the zone|looks good/i.test(input.primaryReply) &&
-    contextNeedsDisciplineCheck(input.context)
+    contextNeedsDisciplineCheck(input.context) &&
+    !exclude.has("sarah")
   ) {
-    return {
+    decision = {
       agent: "sarah",
       reason: "Khalid said setup is valid — Sarah checks if trader should wait for Coach first.",
     }
   }
 
-  return null
+  if (decision && exclude.has(decision.agent)) return null
+  return decision
 }
 
 export function buildChimeInFallback(input: {

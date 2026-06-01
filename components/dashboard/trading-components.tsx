@@ -101,7 +101,7 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { APP_HOME_PATH } from "@/lib/branding"
-import { getDashboardHomeHref, getDashboardTabHref, getPracticeRoomHref, parseTabSearchParam } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref, getDashboardTabHref, getCouncilHref, getPracticeRoomHref, parseTabSearchParam } from "@/lib/dashboard-nav"
 import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
@@ -246,6 +246,7 @@ export function DashboardHeader({
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
   const warRoomActive = pathname.startsWith("/war-room")
   const practiceRoomActive = pathname.startsWith("/practice-room")
+  const councilActive = pathname.startsWith("/council")
   const analyticsActive = pathname.startsWith("/analytics") || activeTab === "analytics"
   const coachActive = dockHighlight === "coach"
   const journalActive = activeTab === "journal" || pathname.startsWith("/journal/")
@@ -355,6 +356,10 @@ export function DashboardHeader({
             >
               <LayoutDashboard className="size-3.5" />
               Dashboard
+            </Link>
+            <Link href={getCouncilHref()} className={vyronisNavLinkClass(councilActive)}>
+              <Sparkles className="size-3.5" />
+              Council
             </Link>
           </div>
 

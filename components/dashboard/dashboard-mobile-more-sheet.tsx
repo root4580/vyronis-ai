@@ -9,9 +9,10 @@ import {
   Crosshair,
   NotebookPen,
   Settings,
+  Sparkles,
   X,
 } from "lucide-react"
-import { getDashboardTabHref, getPracticeRoomHref } from "@/lib/dashboard-nav"
+import { getCouncilHref, getDashboardTabHref, getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type DashboardMobileMoreSheetProps = {
@@ -22,6 +23,7 @@ type DashboardMobileMoreSheetProps = {
 }
 
 const MORE_LINKS = [
+  { href: getCouncilHref(), label: "AI Council", icon: Sparkles },
   { href: "/war-room", label: "War Room", icon: Crosshair },
   { href: getPracticeRoomHref(), label: "Practice Room", icon: NotebookPen },
   { href: getDashboardTabHref("journal"), label: "Journal", icon: BookOpen },
