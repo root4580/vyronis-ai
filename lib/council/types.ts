@@ -1,4 +1,4 @@
-export type CouncilAgentId = "nova" | "zara" | "luna" | "rex" | "cipher"
+export type CouncilAgentId = "jarvis" | "nova" | "zara" | "luna" | "rex" | "cipher"
 
 export type CouncilAgentDefinition = {
   id: CouncilAgentId
@@ -7,6 +7,8 @@ export type CouncilAgentDefinition = {
   personality: string
   maxSentences: number
   accentClass: string
+  /** Master coordinator — opens/closes briefing, routes council traffic. */
+  isCoordinator?: boolean
 }
 
 export type CouncilTranscriptEntry = {
@@ -32,6 +34,7 @@ export type CouncilSessionRecord = {
 export type CouncilSettingsRecord = {
   id: string
   user_id: string
+  jarvis_voice_id: string | null
   nova_voice_id: string | null
   zara_voice_id: string | null
   rex_voice_id: string | null
@@ -44,7 +47,31 @@ export type CouncilSettingsRecord = {
   updated_at: string
 }
 
+export type CouncilChartSnapshot = {
+  pair: string
+  url: string
+  label: string
+}
+
+export type CouncilStatsSnapshot = {
+  balance: number
+  currency: string
+  drawdownPct: number
+  tradesThisWeek: number
+  maxTradesPerWeek: number
+  tradesRemaining: number
+  disciplineScore: number | null
+  chapterLabel: string
+}
+
+export type CouncilVisualContext = {
+  stats: CouncilStatsSnapshot
+  watchlistCharts: CouncilChartSnapshot[]
+  lastTradeChart: CouncilChartSnapshot | null
+}
+
 export type CouncilAgentContext = {
+  jarvis: string
   nova: string
   zara: string
   rex: string
@@ -53,11 +80,28 @@ export type CouncilAgentContext = {
   traderFirstName: string
   chapterNumber: number
   chapterLabel: string
+  preferredSession: string
+  visual: CouncilVisualContext
+}
+
+export type CouncilMemoryHighlight = {
+  agent: CouncilAgentId
+  preview: string
+  reply: string
+}
+
+export type CouncilHistorySession = {
+  id: string
+  sessionDate: string
+  briefingCompleted: boolean
+  messageCount: number
+  keyInsights: string[]
 }
 
 export type CouncilBriefingResponse = {
   sessionId: string
   messages: CouncilTranscriptEntry[]
+  keyInsights?: string[]
   migrationPending?: boolean
 }
 
@@ -77,5 +121,18 @@ export type CouncilSessionResponse = {
   voiceConfigured?: boolean
   listenConfigured?: boolean
   conversationAgent?: CouncilAgentId | null
+  visual?: CouncilVisualContext | null
+  keyInsights?: string[]
+  memoryHighlights?: CouncilMemoryHighlight[]
   migrationPending?: boolean
+}
+
+export type CouncilHistoryResponse = {
+  sessions: CouncilHistorySession[]
+  migrationPending?: boolean
+}
+
+export type CouncilSettingsUpdateInput = {
+  auto_briefing_enabled?: boolean
+  briefing_time?: string
 }

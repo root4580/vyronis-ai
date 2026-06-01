@@ -1,9 +1,14 @@
+import { ElevenLabsClient } from "elevenlabs"
+import type { Readable } from "node:stream"
 import type { CouncilAgentId, CouncilSettingsRecord } from "@/lib/council/types"
 import {
+  COUNCIL_TTS_MODEL,
+  getCouncilVoiceTuning,
   isCouncilVoiceOutputConfigured,
   resolveCouncilVoiceId,
   type CouncilVoiceSettings,
 } from "@/lib/council/voices"
+import { formatCouncilSpeechText } from "@/lib/council/speech-text"
 
 export function councilSettingsToVoiceMap(
   settings: CouncilSettingsRecord | null,
@@ -15,10 +20,9 @@ export function councilSettingsToVoiceMap(
     rex_voice_id: settings.rex_voice_id,
     luna_voice_id: settings.luna_voice_id,
     cipher_voice_id: settings.cipher_voice_id,
+    jarvis_voice_id: settings.jarvis_voice_id,
   }
 }
-
-const ELEVENLABS_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 
 export class CouncilVoiceNotConfiguredError extends Error {
   constructor() {
@@ -27,47 +31,58 @@ export class CouncilVoiceNotConfiguredError extends Error {
   }
 }
 
+let elevenLabsClient: ElevenLabsClient | null = null
+
+function getElevenLabsClient(): ElevenLabsClient {
+  const apiKey = process.env.ELEVENLABS_API_KEY?.trim()
+  if (!apiKey) throw new CouncilVoiceNotConfiguredError()
+
+  if (!elevenLabsClient) {
+    elevenLabsClient = new ElevenLabsClient({ apiKey })
+  }
+
+  return elevenLabsClient
+}
+
+async function readableToArrayBuffer(readable: Readable): Promise<ArrayBuffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of readable) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : Buffer.from(chunk))
+  }
+  const buffer = Buffer.concat(chunks)
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+}
+
 export async function synthesizeCouncilSpeech(input: {
   agentId: CouncilAgentId
   text: string
   settings?: CouncilVoiceSettings | null
 }): Promise<ArrayBuffer> {
-  const apiKey = process.env.ELEVENLABS_API_KEY?.trim()
-  if (!apiKey) throw new CouncilVoiceNotConfiguredError()
+  if (!isCouncilVoiceOutputConfigured()) {
+    throw new CouncilVoiceNotConfiguredError()
+  }
 
-  const text = input.text.trim()
-  if (!text) {
+  const trimmed = input.text.trim()
+  if (!trimmed) {
     throw new Error("Text is required for speech synthesis")
   }
 
+  const speechText = formatCouncilSpeechText(trimmed)
   const voiceId = resolveCouncilVoiceId(input.agentId, input.settings)
-  const modelId = process.env.ELEVENLABS_MODEL_ID?.trim() || "eleven_turbo_v2_5"
+  const voiceSettings = getCouncilVoiceTuning(input.agentId)
+  const modelId = process.env.ELEVENLABS_MODEL_ID?.trim() || COUNCIL_TTS_MODEL
 
-  const response = await fetch(`${ELEVENLABS_TTS_URL}/${voiceId}`, {
-    method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
-      Accept: "audio/mpeg",
+  const elevenlabs = getElevenLabsClient()
+  const audioStream = await elevenlabs.textToSpeech.convert(voiceId, {
+    text: speechText,
+    model_id: modelId,
+    output_format: "mp3_44100_128",
+    voice_settings: {
+      stability: voiceSettings.stability,
+      similarity_boost: voiceSettings.similarity_boost,
+      ...(voiceSettings.speed != null ? { speed: voiceSettings.speed } : {}),
     },
-    body: JSON.stringify({
-      text,
-      model_id: modelId,
-      voice_settings: {
-        stability: 0.45,
-        similarity_boost: 0.75,
-        style: 0.2,
-        use_speaker_boost: true,
-      },
-    }),
   })
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "")
-    throw new Error(
-      detail.trim() || `ElevenLabs TTS failed (${response.status})`,
-    )
-  }
-
-  return response.arrayBuffer()
+  return readableToArrayBuffer(audioStream)
 }

@@ -28,6 +28,15 @@ export function getOpenAiVisionModel(): string {
   return process.env.OPENAI_VISION_MODEL?.trim() || "gpt-4o"
 }
 
+/** Faster/cheaper model for council chat — defaults to gpt-4o-mini. */
+export function getOpenAiCouncilModel(): string {
+  return (
+    process.env.OPENAI_COUNCIL_MODEL?.trim() ||
+    process.env.OPENAI_TEXT_MODEL?.trim() ||
+    "gpt-4o-mini"
+  )
+}
+
 export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim())
 }
@@ -40,7 +49,7 @@ async function completeOpenAiText(input: AiTextCompletionInput): Promise<string>
   if (!openai) throw new Error("OPENAI_API_KEY is not configured")
 
   const completion = await openai.chat.completions.create({
-    model: getOpenAiVisionModel(),
+    model: input.model?.trim() || getOpenAiVisionModel(),
     temperature: input.temperature ?? 0.3,
     max_tokens: input.maxTokens ?? 800,
     response_format: input.jsonMode ? { type: "json_object" } : undefined,

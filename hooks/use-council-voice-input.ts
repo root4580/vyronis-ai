@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { transcribeCouncilAudio } from "@/lib/council/api-client"
+import type { CouncilVoiceSessionController } from "@/lib/council/voice-session"
 
 const SILENCE_THRESHOLD = 0.018
 const SILENCE_MS = 1300
 const MIN_SPEECH_MS = 700
 const MAX_UTTERANCE_MS = 18000
 const POLL_MS = 120
+const LOCK_POLL_MS = 80
 
 function pickRecorderMimeType(): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined
@@ -40,12 +42,25 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
+async function waitUntilMicAllowed(
+  session: CouncilVoiceSessionController | null | undefined,
+  signal: AbortSignal,
+): Promise<boolean> {
+  while (!signal.aborted) {
+    if (!session || session.isMicAllowed()) return true
+    await sleep(LOCK_POLL_MS, signal)
+  }
+  return false
+}
+
 async function waitForSpeechStart(
   analyser: AnalyserNode,
   buffer: Uint8Array,
   signal: AbortSignal,
+  session: CouncilVoiceSessionController | null | undefined,
 ): Promise<boolean> {
   while (!signal.aborted) {
+    if (session && !session.isMicAllowed()) return false
     if (readAudioLevel(analyser, buffer) >= SILENCE_THRESHOLD) {
       return true
     }
@@ -59,6 +74,7 @@ async function recordUtterance(input: {
   analyser: AnalyserNode
   buffer: Uint8Array
   signal: AbortSignal
+  session: CouncilVoiceSessionController | null | undefined
   onRecordingChange: (recording: boolean) => void
 }): Promise<Blob | null> {
   const mimeType = pickRecorderMimeType()
@@ -79,6 +95,10 @@ async function recordUtterance(input: {
   recorder.start(250)
 
   while (!input.signal.aborted) {
+    if (input.session && !input.session.isMicAllowed()) {
+      break
+    }
+
     const level = readAudioLevel(input.analyser, input.buffer)
     const now = Date.now()
 
@@ -105,7 +125,7 @@ async function recordUtterance(input: {
     await sleep(POLL_MS, input.signal)
   }
 
-  if (input.signal.aborted) {
+  if (input.signal.aborted || (input.session && !input.session.isMicAllowed())) {
     if (recorder.state !== "inactive") recorder.stop()
     input.onRecordingChange(false)
     return null
@@ -123,16 +143,35 @@ async function recordUtterance(input: {
   return blob
 }
 
-export function useCouncilVoiceInput(listenConfigured: boolean) {
+type UseCouncilVoiceInputOptions = {
+  session?: CouncilVoiceSessionController | null
+}
+
+export function useCouncilVoiceInput(
+  listenConfigured: boolean,
+  options?: UseCouncilVoiceInputOptions,
+) {
   const [isConversationMode, setIsConversationMode] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [micError, setMicError] = useState<string | null>(null)
+  const [voicePhase, setVoicePhase] = useState(options?.session?.getPhase() ?? "idle")
 
   const conversationAbortRef = useRef<AbortController | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const sessionRef = useRef(options?.session ?? null)
+
+  useEffect(() => {
+    sessionRef.current = options?.session ?? null
+  }, [options?.session])
+
+  useEffect(() => {
+    const session = sessionRef.current
+    if (!session) return
+    return session.subscribePhase(setVoicePhase)
+  }, [options?.session])
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -145,6 +184,7 @@ export function useCouncilVoiceInput(listenConfigured: boolean) {
     conversationAbortRef.current?.abort()
     conversationAbortRef.current = null
     stopStream()
+    sessionRef.current?.reset()
     setIsConversationMode(false)
     setIsListening(false)
     setIsRecording(false)
@@ -166,6 +206,7 @@ export function useCouncilVoiceInput(listenConfigured: boolean) {
       stopConversation()
       setMicError(null)
       setIsConversationMode(true)
+      sessionRef.current?.beginListening()
 
       const controller = new AbortController()
       conversationAbortRef.current = controller
@@ -188,30 +229,55 @@ export function useCouncilVoiceInput(listenConfigured: boolean) {
           const buffer = new Uint8Array(analyser.fftSize)
 
           while (!controller.signal.aborted) {
-            setIsListening(true)
-            const heardSpeech = await waitForSpeechStart(analyser, buffer, controller.signal)
-            if (!heardSpeech || controller.signal.aborted) break
+            const micReady = await waitUntilMicAllowed(sessionRef.current, controller.signal)
+            if (!micReady || controller.signal.aborted) break
 
+            sessionRef.current?.beginListening()
+            setIsListening(true)
+
+            const heardSpeech = await waitForSpeechStart(
+              analyser,
+              buffer,
+              controller.signal,
+              sessionRef.current,
+            )
             setIsListening(false)
+
+            if (!heardSpeech || controller.signal.aborted) {
+              if (sessionRef.current?.isMicAllowed()) {
+                await sleep(LOCK_POLL_MS, controller.signal)
+              }
+              continue
+            }
+
+            if (!sessionRef.current?.isMicAllowed()) continue
+
             const blob = await recordUtterance({
               stream,
               analyser,
               buffer,
               signal: controller.signal,
+              session: sessionRef.current,
               onRecordingChange: setIsRecording,
             })
 
             if (controller.signal.aborted) break
             if (!blob) continue
 
+            sessionRef.current?.beginThinking()
             setIsTranscribing(true)
             try {
               const text = (await transcribeCouncilAudio(blob)).trim()
               if (text) {
                 await onUtterance(text)
+                await sessionRef.current?.waitForTurnComplete(controller.signal)
+                sessionRef.current?.beginListening()
+              } else {
+                sessionRef.current?.beginListening()
               }
             } catch (error) {
               setMicError(error instanceof Error ? error.message : "Could not transcribe audio")
+              sessionRef.current?.beginListening()
               await sleep(1200, controller.signal)
             } finally {
               setIsTranscribing(false)
@@ -230,6 +296,7 @@ export function useCouncilVoiceInput(listenConfigured: boolean) {
           setIsListening(false)
           setIsRecording(false)
           setIsTranscribing(false)
+          sessionRef.current?.reset()
         }
       })()
     },
@@ -248,6 +315,7 @@ export function useCouncilVoiceInput(listenConfigured: boolean) {
     isRecording,
     isTranscribing,
     micError,
+    voicePhase,
     startConversation,
     stopConversation,
     clearMicError: () => setMicError(null),

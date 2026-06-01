@@ -2,6 +2,7 @@ import type { CouncilAgentId } from "@/lib/council/types"
 
 /** ElevenLabs premade voices — override per agent via env or council_settings. */
 export const DEFAULT_COUNCIL_VOICE_IDS: Record<CouncilAgentId, string> = {
+  jarvis: "TxGEqnHWrfWFTfGW9XjX", // Josh — same family as Rex; override via ELEVENLABS_JARVIS_VOICE_ID
   nova: "21m00Tcm4TlvDq8ikWAM", // Rachel — calm female
   zara: "pNInz6obpgDQGcFmaJgB", // Adam — calm male
   rex: "TxGEqnHWrfWFTfGW9XjX", // Josh — confident male
@@ -10,6 +11,7 @@ export const DEFAULT_COUNCIL_VOICE_IDS: Record<CouncilAgentId, string> = {
 }
 
 const ENV_VOICE_KEYS: Record<CouncilAgentId, string> = {
+  jarvis: "ELEVENLABS_JARVIS_VOICE_ID",
   nova: "ELEVENLABS_NOVA_VOICE_ID",
   zara: "ELEVENLABS_ZARA_VOICE_ID",
   rex: "ELEVENLABS_REX_VOICE_ID",
@@ -26,6 +28,7 @@ const LEGACY_ENV_VOICE_KEYS: Partial<Record<CouncilAgentId, string[]>> = {
 }
 
 export type CouncilVoiceSettings = Partial<{
+  jarvis_voice_id: string | null
   nova_voice_id: string | null
   zara_voice_id: string | null
   rex_voice_id: string | null
@@ -60,4 +63,25 @@ export function resolveCouncilVoiceId(
   }
 
   return DEFAULT_COUNCIL_VOICE_IDS[agentId]
+}
+
+export type CouncilVoiceTuning = {
+  stability: number
+  similarity_boost: number
+  speed?: number
+}
+
+export const COUNCIL_TTS_MODEL = "eleven_multilingual_v2"
+
+export const COUNCIL_VOICE_TUNING: Record<CouncilAgentId, CouncilVoiceTuning> = {
+  jarvis: { stability: 0.85, similarity_boost: 0.9, speed: 0.95 },
+  nova: { stability: 0.7, similarity_boost: 0.8 },
+  zara: { stability: 0.4, similarity_boost: 0.9 },
+  luna: { stability: 0.5, similarity_boost: 0.8 },
+  rex: { stability: 0.8, similarity_boost: 0.9 },
+  cipher: { stability: 0.9, similarity_boost: 0.9 },
+}
+
+export function getCouncilVoiceTuning(agentId: CouncilAgentId): CouncilVoiceTuning {
+  return COUNCIL_VOICE_TUNING[agentId]
 }

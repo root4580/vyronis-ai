@@ -2,6 +2,16 @@ import type { CouncilAgentDefinition, CouncilAgentId } from "@/lib/council/types
 
 export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   {
+    id: "jarvis",
+    name: "Jarvis",
+    role: "Master Coordinator",
+    personality: "Calm, precise, British. Never emotional. Always composed.",
+    maxSentences: 2,
+    accentClass:
+      "border-slate-400/40 bg-slate-950/90 text-slate-100 shadow-[0_0_24px_rgba(15,23,42,0.45)]",
+    isCoordinator: true,
+  },
+  {
     id: "nova",
     name: "Nova",
     role: "Weekly Chapter Review",
@@ -43,6 +53,7 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
 ]
 
+/** Specialist briefing order — Jarvis opens/closes around this sequence. */
 export const BRIEFING_AGENT_ORDER: CouncilAgentId[] = [
   "nova",
   "rex",
@@ -50,6 +61,12 @@ export const BRIEFING_AGENT_ORDER: CouncilAgentId[] = [
   "cipher",
   "zara",
 ]
+
+export const COUNCIL_SPECIALIST_IDS: CouncilAgentId[] = BRIEFING_AGENT_ORDER
+
+export function isCouncilSpecialistAgent(agentId: CouncilAgentId): boolean {
+  return agentId !== "jarvis"
+}
 
 export function getCouncilAgent(id: CouncilAgentId): CouncilAgentDefinition {
   return COUNCIL_AGENTS.find((agent) => agent.id === id)!

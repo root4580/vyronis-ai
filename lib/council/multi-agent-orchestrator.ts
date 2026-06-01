@@ -45,6 +45,9 @@ const CROSS_AGENT_HANDOFFS: Array<{
       /^(?:what|how about )?risk\??$/i,
       /\bcheck (?:the )?risk\b/i,
       /\brisk though\b/i,
+      /\b(?:above|below|on|about) (?:the )?risk\b/i,
+      /\bwhy.*\brisk\b/i,
+      /\b(?:the )?risk\b/i,
     ],
     reason: ownerReason("rex", "limits and capital protection"),
   },
@@ -58,22 +61,27 @@ const CROSS_AGENT_HANDOFFS: Array<{
     reason: ownerReason("nova", "discipline and chapter momentum"),
   },
   {
-    targetAgent: "cipher",
+    targetAgent: "luna",
     topic: "setup",
     patterns: [
-      ...handoffTopicPatterns(
-        "setup",
-        "confirmation",
-        "confirm",
-        "entry",
-        "validity",
-        "m15",
-        "htf",
-        "h4",
-        "technical",
-      ),
+      ...handoffTopicPatterns("setup", "setups"),
+      /\bhow(?:'s| is) (?:the |our )?setup(?:s)? (?:coming|looking|going|shaping up)\b/i,
+      /\bhow are (?:the |our )?setups\b/i,
+      /^(?:the )?setups?\??$/i,
+      /\b(?:a|any|the|our|my) setups?\b/i,
+      /\bset\s+up\b/i,
+      /\bhow i'?d have set\b/i,
+      /\bhow (?:i'?d|i have) (?:have )?set\s*up\b/i,
+    ],
+    reason: ownerReason("luna", "watchlist setups and pair opportunities"),
+  },
+  {
+    targetAgent: "cipher",
+    topic: "confirmation",
+    patterns: [
+      ...handoffTopicPatterns("confirmation", "confirm", "entry", "validity", "m15", "htf", "h4", "technical"),
       /\bis it (?:still )?valid\b/i,
-      /^(?:what|how about )?(?:the )?setup\??$/i,
+      /\b(?:still )?confirmed\b/i,
     ],
     reason: ownerReason("cipher", "setup confirmation and entry validity"),
   },
@@ -134,17 +142,28 @@ export function pickCouncilCrossAgentHandoff(input: {
     if (rule.targetAgent === input.primaryAgent) continue
 
     for (const pattern of rule.patterns) {
-      if (pattern.test(trimmed)) {
-        return {
-          targetAgent: rule.targetAgent,
-          topic: rule.topic,
-          reason: rule.reason,
-        }
+      if (!pattern.test(trimmed)) continue
+      if (
+        rule.targetAgent === "luna" &&
+        rule.topic === "setup" &&
+        /\b(?:confirm|valid|m15|htf|h4|technical)\b/i.test(trimmed)
+      ) {
+        continue
+      }
+      return {
+        targetAgent: rule.targetAgent,
+        topic: rule.topic,
+        reason: rule.reason,
       }
     }
   }
 
   return null
+}
+
+function extractWatchlistPairSymbol(watchlistContext: string): string | null {
+  const match = watchlistContext.match(/\b([A-Z]{6,7})\b/)
+  return match?.[1] ?? null
 }
 
 export function buildHandoffAskFallback(input: {
@@ -160,8 +179,9 @@ export function buildHandoffAskFallback(input: {
     case "discipline":
       return `${targetName}, how's my discipline looking this week?`
     case "confirmation":
+      return `${targetName}, is the setup still valid from your read?`
     case "setup":
-      return `${targetName}, how's the setup looking from your read?`
+      return `${targetName}, how is the setup coming?`
     case "watchlist":
       return `${targetName}, what's the best setup on the watchlist right now?`
     case "last trade":
@@ -186,9 +206,21 @@ export function buildHandoffAnswerFallback(input: {
     case "cipher":
       return input.context.cipher.split(".").slice(0, 2).join(".") + "."
     case "luna":
-      return input.context.luna.split(".").slice(0, 2).join(".") + "."
+      if (input.context.luna.includes("No War Room")) {
+        return "Save your War Room watchlist first — then I can call out the best pair."
+      }
+      {
+        const pair = extractWatchlistPairSymbol(input.context.luna)
+        const lead = input.context.luna.split(" · ")[0]?.trim()
+        if (pair) {
+          return `I see a good one on ${pair}${lead ? ` — ${lead.replace(/^([A-Z]{6,7})\s*/, "")}` : "."}`
+        }
+        return input.context.luna.split(".").slice(0, 2).join(".") + "."
+      }
     case "zara":
       return input.context.zara.split(".").slice(0, 2).join(".") + "."
+    case "jarvis":
+      return input.context.jarvis.split(".").slice(0, 2).join(".") + "."
   }
 }
 
@@ -317,5 +349,7 @@ export function buildChimeInFallback(input: {
       return `${primaryName} covered the plan — your best War Room focus is still the top graded pair.`
     case "zara":
       return `Building on ${primaryName} — one fix from your last trades: patience on confirmation.`
+    case "jarvis":
+      return `${primaryName} has covered the specialist read. Proceed with discipline.`
   }
 }

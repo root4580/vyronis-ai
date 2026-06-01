@@ -1,6 +1,13 @@
 import type { CouncilAgentId } from "@/lib/council/types"
 
-export const COUNCIL_AGENT_IDS: CouncilAgentId[] = ["nova", "rex", "luna", "cipher", "zara"]
+export const COUNCIL_AGENT_IDS: CouncilAgentId[] = [
+  "jarvis",
+  "nova",
+  "rex",
+  "luna",
+  "cipher",
+  "zara",
+]
 
 const LEGACY_AGENT_IDS: Record<string, CouncilAgentId> = {
   sarah: "nova",
@@ -12,6 +19,7 @@ const LEGACY_AGENT_IDS: Record<string, CouncilAgentId> = {
 
 /** Legacy display names and aliases still accepted in voice/text routing. */
 export const COUNCIL_AGENT_NAME_ALIASES: Record<CouncilAgentId, string[]> = {
+  jarvis: ["Jarvis", "JARVIS"],
   nova: ["Nova", "Sarah"],
   rex: ["Rex", "Scott"],
   luna: ["Luna", "Hamza", "Layla"],
@@ -44,6 +52,7 @@ export function detectCouncilAgentIdByName(message: string): CouncilAgentId | nu
 }
 
 export const LEGACY_COUNCIL_AGENT_NAME: Record<CouncilAgentId, string> = {
+  jarvis: "jarvis",
   nova: "sarah",
   zara: "adam",
   rex: "scott",
@@ -52,6 +61,7 @@ export const LEGACY_COUNCIL_AGENT_NAME: Record<CouncilAgentId, string> = {
 }
 
 export const LEGACY_COUNCIL_SETTINGS_VOICE_KEYS: Record<CouncilAgentId, string> = {
+  jarvis: "jarvis_voice_id",
   nova: "sarah_voice_id",
   zara: "adam_voice_id",
   rex: "scott_voice_id",

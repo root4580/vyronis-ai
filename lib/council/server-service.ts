@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { randomUUID } from "crypto"
 import { resolveAiProvider } from "@/lib/ai/providers"
+import { getOpenAiCouncilModel } from "@/lib/ai/providers/openai-provider"
 import { BRIEFING_AGENT_ORDER, getCouncilAgent } from "@/lib/council/agents"
 import {
   LEGACY_COUNCIL_AGENT_NAME,
@@ -12,16 +13,28 @@ import {
   isCouncilMorningWindow,
   loadCouncilAgentContext,
 } from "@/lib/council/context-service"
+import { loadCachedCouncilAgentContext } from "@/lib/council/context-cache"
 import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
   buildCouncilChimeInUserPrompt,
   buildCouncilHandoffAnswerUserPrompt,
   buildCouncilHandoffAskUserPrompt,
+  buildCouncilJarvisRespondUserPrompt,
   buildCouncilRespondUserPrompt,
   buildRecentTranscriptLines,
   getLastAgentReplyInTranscript,
 } from "@/lib/council/prompts"
+import {
+  buildJarvisAgentIntro,
+  buildJarvisClosing,
+  buildJarvisConsensus,
+  buildJarvisOpening,
+  buildJarvisRoutingLine,
+  isCouncilConsensusRequest,
+  isGeneralCouncilQuestion,
+  shouldJarvisRoute,
+} from "@/lib/council/jarvis-service"
 import {
   buildChimeInFallback,
   buildHandoffAnswerFallback,
@@ -34,15 +47,21 @@ import {
   getStickyCouncilAgentFromTranscript,
   isCouncilDelegationRequest,
   resolveCouncilAgentForMessage,
+  resolveCouncilAffirmativeHandoff,
   resolveCouncilPronounTarget,
+  routeCouncilQuestion,
 } from "@/lib/council/router"
 import type {
   CouncilAgentId,
   CouncilBriefingResponse,
+  CouncilHistoryResponse,
+  CouncilHistorySession,
+  CouncilMemoryHighlight,
   CouncilRespondResponse,
   CouncilSessionRecord,
   CouncilSessionResponse,
   CouncilSettingsRecord,
+  CouncilSettingsUpdateInput,
   CouncilTranscriptEntry,
 } from "@/lib/council/types"
 import { isCouncilVoiceOutputConfigured } from "@/lib/council/voices"
@@ -101,6 +120,7 @@ function normalizeSettings(row: Record<string, unknown>): CouncilSettingsRecord 
   return {
     id: String(row.id),
     user_id: String(row.user_id),
+    jarvis_voice_id: readCouncilVoiceId(row, "jarvis"),
     nova_voice_id: readCouncilVoiceId(row, "nova"),
     zara_voice_id: readCouncilVoiceId(row, "zara"),
     rex_voice_id: readCouncilVoiceId(row, "rex"),
@@ -147,6 +167,11 @@ function buildConversationFallback(input: {
 
 function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<typeof loadCouncilAgentContext>>): string {
   switch (agentId) {
+    case "jarvis":
+      return buildJarvisOpening({
+        traderFirstName: context.traderFirstName,
+        preferredSession: context.preferredSession,
+      })
     case "nova":
       return `${context.chapterLabel} is underway. You have ${context.nova.includes("remaining") ? "trades to protect" : "room to execute with discipline"}. Last week's lesson still counts — stay patient.`
     case "rex":
@@ -182,6 +207,7 @@ async function generateAgentText(input: {
         userPrompt: input.userPrompt,
         maxTokens: input.maxTokens ?? 180,
         temperature: input.temperature ?? 0.45,
+        model: getOpenAiCouncilModel(),
       })
       if (text.trim()) return text.trim()
     } catch {
@@ -205,7 +231,7 @@ async function produceCouncilAgentReply(input: {
     userPrompt: input.userPrompt,
     fallback: input.fallback,
     temperature: input.temperature ?? 0.68,
-    maxTokens: input.maxTokens ?? 240,
+    maxTokens: input.maxTokens ?? 160,
   })
 }
 
@@ -397,15 +423,141 @@ async function loadAgentMemoryContext(
     .join("\n\n")
 }
 
+function truncatePreview(value: string, max = 72): string {
+  const trimmed = value.trim().replace(/\s+/g, " ")
+  if (trimmed.length <= max) return trimmed
+  return `${trimmed.slice(0, max - 1)}…`
+}
+
+export async function loadCouncilMemoryHighlights(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<CouncilMemoryHighlight[]> {
+  const { data, error } = await supabase
+    .from("agent_memories")
+    .select("agent_name, last_10_conversations")
+    .eq("user_id", userId)
+
+  if (error) {
+    if (isMissingCouncilTable(error.message)) return []
+    throw new Error(error.message)
+  }
+
+  const highlights: CouncilMemoryHighlight[] = []
+
+  for (const row of data ?? []) {
+    const agent = normalizeCouncilAgentId(String(row.agent_name))
+    if (!agent) continue
+
+    const conversations = Array.isArray(row.last_10_conversations)
+      ? (row.last_10_conversations as Array<{ user?: string; agent?: string }>)
+      : []
+    const latest = conversations[0]
+    if (!latest?.user?.trim() && !latest?.agent?.trim()) continue
+
+    highlights.push({
+      agent,
+      preview: truncatePreview(latest.user ?? ""),
+      reply: truncatePreview(latest.agent ?? ""),
+    })
+  }
+
+  return highlights.sort((a, b) => a.agent.localeCompare(b.agent))
+}
+
+export async function listCouncilSessionHistory(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  limit = 14,
+): Promise<CouncilHistorySession[]> {
+  const { data, error } = await supabase
+    .from("council_sessions")
+    .select("id, session_date, briefing_completed, key_insights, full_transcript")
+    .eq("user_id", userId)
+    .eq("account_id", accountId)
+    .order("session_date", { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    if (isMissingCouncilTable(error.message)) return []
+    throw new Error(error.message)
+  }
+
+  return (data ?? []).map((row) => {
+    const transcript = Array.isArray(row.full_transcript)
+      ? (row.full_transcript as CouncilTranscriptEntry[])
+      : []
+    return {
+      id: String(row.id),
+      sessionDate: String(row.session_date).slice(0, 10),
+      briefingCompleted: Boolean(row.briefing_completed),
+      messageCount: transcript.length,
+      keyInsights: Array.isArray(row.key_insights) ? row.key_insights.map(String) : [],
+    }
+  })
+}
+
+export async function updateCouncilSettings(
+  supabase: SupabaseClient,
+  userId: string,
+  patch: CouncilSettingsUpdateInput,
+): Promise<CouncilSettingsRecord> {
+  await getOrCreateCouncilSettings(supabase, userId)
+
+  const payload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (typeof patch.auto_briefing_enabled === "boolean") {
+    payload.auto_briefing_enabled = patch.auto_briefing_enabled
+  }
+  if (patch.briefing_time?.trim()) {
+    payload.briefing_time = patch.briefing_time.trim()
+  }
+
+  const { data, error } = await supabase
+    .from("council_settings")
+    .update(payload)
+    .eq("user_id", userId)
+    .select("*")
+    .single()
+
+  if (error) {
+    if (isMissingCouncilTable(error.message)) throw new CouncilTablesMissingError()
+    throw new Error(error.message)
+  }
+
+  return normalizeSettings(data as Record<string, unknown>)
+}
+
+export async function getCouncilHistoryState(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<CouncilHistoryResponse> {
+  try {
+    const sessions = await listCouncilSessionHistory(supabase, userId, accountId)
+    return { sessions }
+  } catch (error) {
+    if (error instanceof CouncilTablesMissingError) {
+      return { sessions: [], migrationPending: true }
+    }
+    throw error
+  }
+}
+
 export async function getCouncilSessionState(
   supabase: SupabaseClient,
   userId: string,
   accountId: string,
 ): Promise<CouncilSessionResponse> {
   try {
-    const [settings, session] = await Promise.all([
+    const [settings, session, context, memoryHighlights] = await Promise.all([
       getOrCreateCouncilSettings(supabase, userId),
       getTodayCouncilSession(supabase, userId, accountId),
+      loadCachedCouncilAgentContext(supabase, userId, accountId).catch(() => null),
+      loadCouncilMemoryHighlights(supabase, userId).catch(() => []),
     ])
     const conversationAgent = session
       ? getStickyCouncilAgentFromTranscript(session.full_transcript)
@@ -417,6 +569,9 @@ export async function getCouncilSessionState(
       voiceConfigured: isCouncilVoiceOutputConfigured(),
       listenConfigured: isCouncilListenConfigured(),
       conversationAgent,
+      visual: context?.visual ?? null,
+      keyInsights: session?.key_insights ?? [],
+      memoryHighlights,
     }
   } catch (error) {
     if (error instanceof CouncilTablesMissingError) {
@@ -437,7 +592,7 @@ export async function runCouncilMorningBriefing(
   accountId: string,
   options?: { force?: boolean },
 ): Promise<CouncilBriefingResponse> {
-  const context = await loadCouncilAgentContext(supabase, userId, accountId)
+  const context = await loadCachedCouncilAgentContext(supabase, userId, accountId)
   const settings = await getOrCreateCouncilSettings(supabase, userId)
   const existing = await getTodayCouncilSession(supabase, userId, accountId)
 
@@ -452,24 +607,7 @@ export async function runCouncilMorningBriefing(
   const newMessages: CouncilTranscriptEntry[] = []
   const agentsSpoken: string[] = []
 
-  for (const agentId of BRIEFING_AGENT_ORDER) {
-    const agent = getCouncilAgent(agentId)
-    const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context, "briefing")
-    const previousBriefing =
-      newMessages.length > 0
-        ? {
-            agentName: getCouncilAgent(newMessages[newMessages.length - 1]!.agent as CouncilAgentId).name,
-            content: newMessages[newMessages.length - 1]!.content,
-          }
-        : null
-    const content = await generateAgentText({
-      agentId,
-      systemPrompt,
-      userPrompt: buildCouncilBriefingUserPrompt(agentId, previousBriefing),
-      fallback: fallbackAgentLine(agentId, context),
-      temperature: 0.55,
-    })
-
+  const pushMessage = (agentId: CouncilAgentId, content: string) => {
     const entry: CouncilTranscriptEntry = {
       id: randomUUID(),
       agent: agentId,
@@ -477,8 +615,38 @@ export async function runCouncilMorningBriefing(
       createdAt: new Date().toISOString(),
     }
     newMessages.push(entry)
-    agentsSpoken.push(agent.name)
+    agentsSpoken.push(getCouncilAgent(agentId).name)
+    return entry
   }
+
+  pushMessage(
+    "jarvis",
+    buildJarvisOpening({
+      traderFirstName: context.traderFirstName,
+      preferredSession: context.preferredSession,
+    }),
+  )
+
+  let previousSpecialist: { agentName: string; content: string } | null = null
+
+  for (const agentId of BRIEFING_AGENT_ORDER) {
+    pushMessage("jarvis", buildJarvisAgentIntro(agentId))
+
+    const agent = getCouncilAgent(agentId)
+    const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context, "briefing")
+    const content = await generateAgentText({
+      agentId,
+      systemPrompt,
+      userPrompt: buildCouncilBriefingUserPrompt(agentId, previousSpecialist),
+      fallback: fallbackAgentLine(agentId, context),
+      temperature: 0.55,
+    })
+
+    pushMessage(agentId, content)
+    previousSpecialist = { agentName: agent.name, content }
+  }
+
+  pushMessage("jarvis", buildJarvisClosing())
 
   const merged = [...transcript, ...newMessages]
   const session = await upsertTodaySession(supabase, userId, accountId, {
@@ -499,6 +667,7 @@ export async function runCouncilMorningBriefing(
   return {
     sessionId: session.id,
     messages: newMessages,
+    keyInsights: session.key_insights,
   }
 }
 
@@ -517,7 +686,6 @@ export async function runCouncilRespond(
     throw new Error("Message is required")
   }
 
-  const context = await loadCouncilAgentContext(supabase, userId, accountId)
   const existing = await getTodayCouncilSession(supabase, userId, accountId)
   const transcript = existing?.full_transcript ?? []
   const stickyAgent = getStickyCouncilAgentFromTranscript(transcript)
@@ -527,6 +695,19 @@ export async function runCouncilRespond(
     conversationAgent: options?.conversationAgent,
   })
 
+  const lastAgentReply = getLastAgentReplyInTranscript(transcript, agentId)
+
+  const [context, agentMemory] = await Promise.all([
+    loadCachedCouncilAgentContext(supabase, userId, accountId),
+    loadAgentMemoryContext(supabase, userId, agentId, lastAgentReply).catch(() => ""),
+  ])
+
+  const recentTranscript = buildRecentTranscriptLines(
+    transcript,
+    context.traderFirstName,
+    6,
+  )
+
   const userEntry: CouncilTranscriptEntry = {
     id: randomUUID(),
     agent: "user",
@@ -534,53 +715,137 @@ export async function runCouncilRespond(
     createdAt: new Date().toISOString(),
   }
 
-  const lastAgentReply = getLastAgentReplyInTranscript(transcript, agentId)
-  const recentTranscript = buildRecentTranscriptLines(transcript, context.traderFirstName, 6)
-  const agentMemory = await loadAgentMemoryContext(
-    supabase,
-    userId,
-    agentId,
-    lastAgentReply,
-  ).catch(() => "")
+  const namedAgent = detectCouncilAgentByName(trimmed)
+  const delegating = isCouncilDelegationRequest(trimmed)
+
+  if (isCouncilConsensusRequest(trimmed)) {
+    const consensusEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisConsensus(context),
+      createdAt: new Date().toISOString(),
+    }
+    const session = await upsertTodaySession(supabase, userId, accountId, {
+      full_transcript: [...transcript, userEntry, consensusEntry],
+      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis"])],
+    })
+    return {
+      sessionId: session.id,
+      agent: "jarvis",
+      message: consensusEntry,
+      messages: [consensusEntry],
+      chimeIn: null,
+    }
+  }
+
+  if ((namedAgent === "jarvis" || (agentId === "jarvis" && isGeneralCouncilQuestion(trimmed))) && !delegating) {
+    const jarvisReply = await produceCouncilAgentReply({
+      agentId: "jarvis",
+      context,
+      userPrompt: buildCouncilJarvisRespondUserPrompt({
+        question: trimmed,
+        recentTranscript,
+      }),
+      fallback: buildJarvisRoutingLine(routeCouncilQuestion(trimmed)),
+      temperature: 0.35,
+      maxTokens: 100,
+    })
+    const jarvisEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: jarvisReply,
+      createdAt: new Date().toISOString(),
+    }
+    const session = await upsertTodaySession(supabase, userId, accountId, {
+      full_transcript: [...transcript, userEntry, jarvisEntry],
+      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis"])],
+    })
+    return {
+      sessionId: session.id,
+      agent: "jarvis",
+      message: jarvisEntry,
+      messages: [jarvisEntry],
+      chimeIn: null,
+    }
+  }
 
   const pronounTarget = resolveCouncilPronounTarget(trimmed, transcript)
-  const namedAgent = detectCouncilAgentByName(trimmed)
+  const affirmativeTarget = resolveCouncilAffirmativeHandoff(trimmed, transcript)
   const delegationTarget =
-    pronounTarget ?? (namedAgent && isCouncilDelegationRequest(trimmed) ? namedAgent : null)
+    pronounTarget ??
+    affirmativeTarget ??
+    (namedAgent && delegating ? namedAgent : null)
 
-  const handoff = pickCouncilCrossAgentHandoff({
+  let handoff = pickCouncilCrossAgentHandoff({
     question: trimmed,
     primaryAgent: agentId,
     forcedTarget: delegationTarget,
   })
+
+  if (handoff?.topic === "question") {
+    const handoffContext = `${recentTranscript}\n${trimmed}`
+    if (handoff.targetAgent === "luna" && /\bsetup|set\s+up|watchlist\b/i.test(handoffContext)) {
+      handoff = { ...handoff, topic: "setup" }
+    }
+    if (handoff.targetAgent === "rex" && /\brisk\b/i.test(handoffContext)) {
+      handoff = { ...handoff, topic: "risk" }
+    }
+  }
 
   let reply: string
   const agentMessages: CouncilTranscriptEntry[] = []
   let lastReply: string
   let lastSpeaker: CouncilAgentId = agentId
 
+  const jarvisRoutes =
+    !handoff &&
+    shouldJarvisRoute({
+      message: trimmed,
+      resolvedAgent: agentId,
+      preferredAgent: options?.preferredAgent,
+      conversationAgent: options?.conversationAgent,
+      stickyAgent,
+      directAddress: namedAgent,
+    })
+
+  if (jarvisRoutes) {
+    agentMessages.push({
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisRoutingLine(agentId),
+      createdAt: new Date().toISOString(),
+    })
+  }
+
   if (handoff) {
     const primaryName = getCouncilAgent(agentId).name
     const targetName = getCouncilAgent(handoff.targetAgent).name
+    const instantHandoffAsk = handoff.topic !== "question"
 
-    reply = await produceCouncilAgentReply({
-      agentId,
-      context,
-      userPrompt: buildCouncilHandoffAskUserPrompt({
-        primaryAgentName: primaryName,
-        targetAgentName: targetName,
-        topic: handoff.topic,
-        question: trimmed,
-        recentTranscript,
-      }),
-      fallback: buildHandoffAskFallback({
-        primaryAgent: agentId,
-        targetAgent: handoff.targetAgent,
-        topic: handoff.topic,
-      }),
-      temperature: 0.55,
-      maxTokens: 80,
-    })
+    reply = instantHandoffAsk
+      ? buildHandoffAskFallback({
+          primaryAgent: agentId,
+          targetAgent: handoff.targetAgent,
+          topic: handoff.topic,
+        })
+      : await produceCouncilAgentReply({
+          agentId,
+          context,
+          userPrompt: buildCouncilHandoffAskUserPrompt({
+            primaryAgentName: primaryName,
+            targetAgentName: targetName,
+            topic: handoff.topic,
+            question: trimmed,
+            recentTranscript,
+          }),
+          fallback: buildHandoffAskFallback({
+            primaryAgent: agentId,
+            targetAgent: handoff.targetAgent,
+            topic: handoff.topic,
+          }),
+          temperature: 0.55,
+          maxTokens: 80,
+        })
 
     const agentEntry: CouncilTranscriptEntry = {
       id: randomUUID(),
@@ -597,8 +862,15 @@ export async function runCouncilRespond(
         primaryAgentName: primaryName,
         primaryHandoff: reply,
         targetAgentName: targetName,
+        targetAgentId: handoff.targetAgent,
         topic: handoff.topic,
         question: trimmed,
+        contextSnippet:
+          handoff.targetAgent === "luna"
+            ? context.luna
+            : handoff.targetAgent === "rex"
+              ? context.rex
+              : undefined,
       }),
       fallback: buildHandoffAnswerFallback({
         targetAgent: handoff.targetAgent,
@@ -652,15 +924,14 @@ export async function runCouncilRespond(
     lastSpeaker = agentId
   }
 
-  const agentEntry = agentMessages[0]!
-  const workingTranscript = [...transcript, userEntry, agentEntry]
-  const maxChimes = handoff
-    ? 0
-    : /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
-          trimmed,
-        )
-      ? 2
-      : 1
+  const maxChimes =
+    handoff || /^(thanks|thank you|ok|okay|got it|cool|cheers)\b/i.test(trimmed.trim())
+      ? 0
+      : /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
+            trimmed,
+          )
+        ? 2
+        : 1
 
   for (let index = 0; index < maxChimes; index += 1) {
     const chimeDecision = pickCouncilChimeInAgent({
@@ -705,8 +976,20 @@ export async function runCouncilRespond(
     )
   }
 
+  if (
+    maxChimes >= 2 &&
+    agentMessages.filter((entry) => entry.agent !== "jarvis").length >= 2
+  ) {
+    agentMessages.push({
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisConsensus(context),
+      createdAt: new Date().toISOString(),
+    })
+  }
+
   const session = await upsertTodaySession(supabase, userId, accountId, {
-    full_transcript: [...workingTranscript, ...agentMessages.slice(1)],
+    full_transcript: [...transcript, userEntry, ...agentMessages],
     agents_spoken: [
       ...new Set([
         ...(existing?.agents_spoken ?? []),
@@ -715,13 +998,19 @@ export async function runCouncilRespond(
     ],
   })
 
-  await appendAgentMemory(supabase, userId, agentId, trimmed, reply).catch(() => undefined)
+  await appendAgentMemory(supabase, userId, lastSpeaker, trimmed, lastReply).catch(() => undefined)
 
+  const specialistMessages = agentMessages.filter((entry) => entry.agent !== "jarvis")
   return {
     sessionId: session.id,
-    agent: agentId,
-    message: agentEntry,
+    agent: lastSpeaker,
+    message: specialistMessages[specialistMessages.length - 1] ?? agentMessages[agentMessages.length - 1]!,
     messages: agentMessages,
-    chimeIn: agentMessages.length > 1 ? agentMessages[agentMessages.length - 1]! : null,
+    chimeIn:
+      agentMessages.length > 1 && agentMessages[agentMessages.length - 1]?.agent !== "jarvis"
+        ? agentMessages[agentMessages.length - 1]!
+        : agentMessages.length > 2
+          ? agentMessages[agentMessages.length - 2]!
+          : null,
   }
 }

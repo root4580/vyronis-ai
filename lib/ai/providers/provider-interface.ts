@@ -32,6 +32,7 @@ export type AiTextCompletionInput = {
   jsonMode?: boolean
   maxTokens?: number
   temperature?: number
+  model?: string
 }
 
 export type AiCoachTextInput = {

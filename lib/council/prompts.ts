@@ -2,18 +2,30 @@ import type { CouncilAgentId, CouncilAgentContext, CouncilTranscriptEntry } from
 import { getCouncilAgent } from "@/lib/council/agents"
 
 const CONVERSATION_RULES = [
-  "You are in a live council room with Nova, Rex, Luna, Cipher, and Zara — not a solo chatbot.",
+  "You are in a live council room with Jarvis, Nova, Rex, Luna, Cipher, and Zara — not a solo chatbot.",
   "Answer the trader's LATEST message directly. Acknowledge what they just said.",
   "Never repeat your previous reply word-for-word or reopen with the same greeting twice.",
   "Add something new each turn: a next step, a clarification, or a direct yes/no.",
   "If the trader gives an update (e.g. 'it's ready now', 'price hit the zone'), respond to THAT first.",
   "If live snapshot data differs from what the trader says, briefly note both — then guide the next action.",
   "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
+  "Never describe pair setups, watchlist grades, or M15 confirmation yourself — bring Luna or Cipher in.",
+  "Never quote risk limits or drawdown yourself — bring Rex in.",
   "Vary your wording. Sound natural, not like a script.",
+].join("\n")
+
+const JARVIS_RULES = [
+  "You are Jarvis — master coordinator of the Vyronis AI Trading Council.",
+  "Speak in calm, precise British English. Short sentences only. Never emotional.",
+  "Route the trader to the right specialist by name when needed.",
+  "Summarize council consensus when asked. Never analyze setups or risk yourself.",
+  "You are the master of ceremonies — composed, professional, efficient.",
 ].join("\n")
 
 function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): string {
   switch (agentId) {
+    case "jarvis":
+      return context.jarvis
     case "nova":
       return context.nova
     case "zara":
@@ -27,6 +39,23 @@ function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): 
   }
 }
 
+function agentDataLabel(agentId: CouncilAgentId): string {
+  switch (agentId) {
+    case "jarvis":
+      return "Council coordination snapshot (session timing, roster, briefing state)"
+    case "nova":
+      return "Live Supabase data (weekly_summaries, discipline scores, emotional history)"
+    case "zara":
+      return "Live Supabase data (last 3 trades: entry, SL, TP, result, notes)"
+    case "rex":
+      return "Live Supabase data (accounts balance/drawdown, daily & weekly limits, trades this week)"
+    case "luna":
+      return "Live Supabase data (War Room watchlist, setup grades, active opportunities)"
+    case "cipher":
+      return "Live Supabase data (War Room apex filter, H4 zones, M15 confirmation)"
+  }
+}
+
 export function buildCouncilAgentSystemPrompt(
   agentId: CouncilAgentId,
   context: CouncilAgentContext,
@@ -36,18 +65,32 @@ export function buildCouncilAgentSystemPrompt(
   const data = agentDataBlock(agentId, context)
   const trader = context.traderFirstName
 
+  if (agentId === "jarvis") {
+    const base = [
+      `You are Jarvis, ${trader}'s master coordinator at Vyronis HQ.`,
+      `Personality: ${agent.personality}.`,
+      `Maximum ${agent.maxSentences} short sentences. No bullet points. No markdown.`,
+      `${agentDataLabel(agentId)}: ${data}`,
+      JARVIS_RULES,
+    ]
+    if (mode === "briefing") {
+      base.push("You open and close the morning briefing. Introduce each specialist briefly.")
+    }
+    return base.join("\n")
+  }
+
   const base = [
     `You are ${agent.name}, ${trader}'s ${agent.role} at Vyronis HQ.`,
     `Personality: ${agent.personality}.`,
     `Speak directly to ${trader}.`,
     `Maximum ${agent.maxSentences} short sentences. No bullet points. No markdown.`,
     `Never say "skip trade" or use harsh negative language.`,
-    `Account snapshot (may be slightly stale — prefer the trader's latest message if they correct it): ${data}`,
+    `${agentDataLabel(agentId)} (prefer the trader's latest message if they correct it): ${data}`,
   ]
 
   if (mode === "briefing") {
     base.push(
-      "Morning council briefing — other agents may have spoken before you. Reference them naturally when relevant.",
+      "Morning council briefing — Jarvis coordinates the room. Other agents may have spoken before you. Reference them naturally when relevant.",
     )
   }
 
@@ -57,6 +100,7 @@ export function buildCouncilAgentSystemPrompt(
 
   if (agentId === "nova") {
     base.push("Focus on chapter momentum, discipline, and emotional steadiness.")
+    base.push("Do not analyze setups or risk — ask Luna or Rex by name when the trader brings those up.")
   }
   if (agentId === "zara") {
     base.push("Focus on one specific improvement from recent trades.")
@@ -66,6 +110,7 @@ export function buildCouncilAgentSystemPrompt(
   }
   if (agentId === "luna") {
     base.push("Highlight the strongest watchlist setup with encouragement.")
+    base.push("When discussing setups, name the pair symbol first (e.g. AUDUSD) from the watchlist snapshot.")
   }
   if (agentId === "cipher") {
     base.push(
@@ -76,13 +121,27 @@ export function buildCouncilAgentSystemPrompt(
   return base.join("\n")
 }
 
+export function buildCouncilJarvisRespondUserPrompt(input: {
+  question: string
+  recentTranscript: string
+}): string {
+  return [
+    input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
+    `Trader's message: ${input.question}`,
+    "Respond as Jarvis. Route to the right specialist by name, or deliver a brief council consensus summary.",
+    "Maximum 2 short sentences. British tone. Never emotional.",
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+}
+
 export function buildCouncilBriefingUserPrompt(
   agentId: CouncilAgentId,
   previous?: { agentName: string; content: string } | null,
 ): string {
   const agent = getCouncilAgent(agentId)
   if (!previous) {
-    return `Deliver your portion of the morning council briefing. Stay in character as ${agent.name}. Open the council session for ${agent.name}.`
+    return `Deliver your portion of the morning council briefing. Stay in character as ${agent.name}. Jarvis has opened the session — cover your lane only.`
   }
 
   return [
@@ -142,7 +201,7 @@ export function buildCouncilRespondUserPrompt(input: {
     isFollowUp
       ? "This looks like a follow-up. Respond to their update in one or two fresh sentences. Do not re-list every pair unless they asked."
       : "Answer their specific question with one clear takeaway.",
-    "If their question belongs to another council member's lane, say you will bring them in — do not answer outside your role.",
+    "If their question belongs to another council member's lane, Jarvis or the council room will connect them — do not promise to bring someone in later.",
   ]
     .filter(Boolean)
     .join("\n\n")
@@ -166,7 +225,9 @@ export function buildCouncilHandoffAskUserPrompt(input: {
     `In ONE short sentence, turn to ${input.targetAgentName} by name and ask how things look.`,
     input.topic === "question"
       ? `Example tone: "${input.targetAgentName}, how are we doing?" or "${input.targetAgentName}, can you weigh in?"`
-      : `Example tone: "${input.targetAgentName}, how are we looking on ${input.topic}?"`,
+      : input.topic === "setup"
+        ? `Example tone: "${input.targetAgentName}, how is the setup coming?" or "${input.targetAgentName}, how are we looking on setups?"`
+        : `Example tone: "${input.targetAgentName}, how are we looking on ${input.topic}?"`,
     `Do NOT answer the question yourself. Do not say you cannot connect them, facilitate, or speak for them — just ask ${input.targetAgentName} by name.`,
     `Trader's message: ${input.question}`,
   ]
@@ -178,16 +239,35 @@ export function buildCouncilHandoffAnswerUserPrompt(input: {
   primaryAgentName: string
   primaryHandoff: string
   targetAgentName: string
+  targetAgentId?: CouncilAgentId
   topic: string
   question: string
+  contextSnippet?: string
 }): string {
-  return [
+  const lines = [
     `${input.primaryAgentName} just asked you in the council room: "${input.primaryHandoff}"`,
     `The trader's original question was about ${input.topic}: ${input.question}`,
     `Answer as ${input.targetAgentName} in 1–2 short sentences.`,
     `Speak to the trader directly. You may briefly reference ${input.primaryAgentName} handing this to you.`,
-    `Give your real read from the account snapshot — limits, discipline, confirmation, or review as appropriate.`,
-  ].join("\n")
+  ]
+
+  if (
+    input.targetAgentId === "luna" &&
+    (input.topic === "setup" || input.topic === "watchlist")
+  ) {
+    lines.push(
+      "Lead with your best watchlist pair by symbol (e.g. AUDUSD) and say why it looks good.",
+      input.contextSnippet
+        ? `Watchlist snapshot: ${input.contextSnippet}`
+        : "Use the watchlist snapshot in your system prompt.",
+    )
+  } else if (input.targetAgentId === "rex" && input.topic === "risk") {
+    lines.push("Give limits, drawdown, and daily loss budget from the snapshot.")
+  } else {
+    lines.push("Give your real read from the account snapshot — limits, discipline, confirmation, or review as appropriate.")
+  }
+
+  return lines.join("\n")
 }
 
 export function buildCouncilChimeInUserPrompt(input: {

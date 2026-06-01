@@ -1,5 +1,6 @@
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
 import { detectCouncilAgentIdByName } from "@/lib/council/agent-ids"
+import { isGeneralCouncilQuestion } from "@/lib/council/jarvis-service"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 
 /** Direct address — "Hey Rex", "Good morning Nova", "Zara, review my trade". */
@@ -34,6 +35,7 @@ export function isCouncilDelegationRequest(message: string): boolean {
       new RegExp(`\\bask (?:\\w+\\s+){0,2}${name}\\b`, "i"),
       new RegExp(`\\b(?:have|let) ${name} (?:speak|talk|answer|respond)\\b`, "i"),
       new RegExp(`\\bbring (?:in )?${name}\\b`, "i"),
+      new RegExp(`\\b(?:do that|go ahead|yes).*${name}\\b`, "i"),
     ]
 
     if (delegationPatterns.some((delegationPattern) => delegationPattern.test(trimmed))) {
@@ -55,12 +57,67 @@ export function isCouncilDirectAddress(message: string, agentId: CouncilAgentId)
   )
 }
 
-/** Resolve "him/her/them" to the last agent mentioned in recent transcript. */
+/** Resolve "him/her/them" or "bring her in" to the last agent mentioned in recent transcript. */
 export function resolveCouncilPronounTarget(
   message: string,
   transcript: CouncilTranscriptEntry[],
 ): CouncilAgentId | null {
-  if (!/\b(?:him|her|them)\b/i.test(message.trim())) return null
+  const trimmed = message.trim()
+  if (
+    !/\b(?:him|her|them)\b/i.test(trimmed) &&
+    !/\b(?:bring|get) (?:her|him|them)(?: in)?\b/i.test(trimmed)
+  ) {
+    return null
+  }
+
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const mentioned = detectCouncilAgentByName(transcript[index]!.content)
+    if (mentioned) return mentioned
+  }
+
+  return null
+}
+
+function isAffirmativeHandoffReply(message: string): boolean {
+  const trimmed = message.trim()
+  if (!trimmed) return false
+
+  return (
+    /^(?:yes|yeah|yep|yup|sure|ok|okay)(?:[,.!?\s]|$)/i.test(trimmed) ||
+    /\b(?:do that|go ahead|please do|yes please|yes ma'?am)\b/i.test(trimmed) ||
+    /\b(?:bring|get) (?:her|him|them)(?: in)?\b/i.test(trimmed)
+  )
+}
+
+function findOfferedCouncilAgent(transcript: CouncilTranscriptEntry[]): CouncilAgentId | null {
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const entry = transcript[index]!
+    if (entry.agent === "user" || entry.agent === "system") continue
+
+    const mentioned = detectCouncilAgentByName(entry.content)
+    if (!mentioned) continue
+
+    if (
+      /\b(?:bring|get|ask|have|i'll bring|i will bring|let me bring|bring in|review your|help ensure)\b/i.test(
+        entry.content,
+      )
+    ) {
+      return mentioned
+    }
+  }
+
+  return null
+}
+
+/** User said yes / do that after an agent offered to bring a colleague in. */
+export function resolveCouncilAffirmativeHandoff(
+  message: string,
+  transcript: CouncilTranscriptEntry[],
+): CouncilAgentId | null {
+  if (!isAffirmativeHandoffReply(message)) return null
+
+  const offered = findOfferedCouncilAgent(transcript)
+  if (offered) return offered
 
   for (let index = transcript.length - 1; index >= 0; index -= 1) {
     const mentioned = detectCouncilAgentByName(transcript[index]!.content)
@@ -86,7 +143,7 @@ export function getStickyCouncilAgentFromTranscript(
 
   for (let index = transcript.length - 1; index > lastUserIndex; index -= 1) {
     const entry = transcript[index]!
-    if (entry.agent !== "user" && entry.agent !== "system") {
+    if (entry.agent !== "user" && entry.agent !== "system" && entry.agent !== "jarvis") {
       return entry.agent as CouncilAgentId
     }
   }
@@ -200,7 +257,10 @@ export function resolveCouncilAgentForMessage(
 
   const partner =
     options?.conversationAgent ?? options?.preferredAgent ?? options?.stickyAgent ?? null
-  if (partner) return partner
+
+  if (partner && partner !== "jarvis") return partner
+
+  if (partner === "jarvis" && isGeneralCouncilQuestion(message)) return "jarvis"
 
   if (namedAgent && delegating) {
     return routeCouncilQuestion(message)

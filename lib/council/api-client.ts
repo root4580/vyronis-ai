@@ -1,7 +1,10 @@
 import type {
   CouncilBriefingResponse,
+  CouncilHistoryResponse,
   CouncilRespondResponse,
   CouncilSessionResponse,
+  CouncilSettingsRecord,
+  CouncilSettingsUpdateInput,
 } from "@/lib/council/types"
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -102,4 +105,25 @@ export async function transcribeCouncilAudio(blob: Blob): Promise<string> {
   }
 
   return payload.text?.trim() ?? ""
+}
+
+export async function fetchCouncilHistory(
+  accountId: string | null,
+): Promise<CouncilHistoryResponse> {
+  const response = await fetch(withAccountQuery(accountId, "/api/council/history"), {
+    credentials: "include",
+  })
+  return parseJson<CouncilHistoryResponse>(response)
+}
+
+export async function updateCouncilSettings(
+  patch: CouncilSettingsUpdateInput,
+): Promise<{ settings: CouncilSettingsRecord }> {
+  const response = await fetch("/api/council/settings", {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  })
+  return parseJson<{ settings: CouncilSettingsRecord }>(response)
 }

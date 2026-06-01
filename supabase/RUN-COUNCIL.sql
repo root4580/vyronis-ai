@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.agent_memories (
 CREATE TABLE IF NOT EXISTS public.council_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  jarvis_voice_id text,
   nova_voice_id text,
   zara_voice_id text,
   rex_voice_id text,

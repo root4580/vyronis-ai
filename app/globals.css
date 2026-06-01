@@ -1511,6 +1511,37 @@
   animation: float 3s ease-in-out infinite;
 }
 
+.council-speaking-wave-bar {
+  height: 10px;
+  animation: council-speaking-wave 0.9s ease-in-out infinite;
+}
+
+@keyframes council-speaking-wave {
+  0%,
+  100% {
+    height: 4px;
+    opacity: 0.45;
+  }
+  50% {
+    height: 12px;
+    opacity: 1;
+  }
+}
+
+.council-agent-thinking {
+  animation: council-agent-thinking 1.4s ease-in-out infinite;
+}
+
+@keyframes council-agent-thinking {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Chart grid lines */
 .chart-grid {
   background-image:

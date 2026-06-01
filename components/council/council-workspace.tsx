@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Loader2, Mic, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { Crown, Loader2, Mic, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
@@ -10,25 +10,33 @@ import {
   fetchCouncilSession,
   runCouncilBriefing,
 } from "@/lib/council/api-client"
-import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
+import type {
+  CouncilAgentId,
+  CouncilMemoryHighlight,
+  CouncilSettingsRecord,
+  CouncilTranscriptEntry,
+  CouncilVisualContext,
+} from "@/lib/council/types"
 import {
   detectCouncilAgentByName,
   isCouncilDelegationRequest,
+  resolveCouncilAffirmativeHandoff,
   resolveCouncilPronounTarget,
 } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
-import { useCouncilVoicePlayback } from "@/hooks/use-council-voice-playback"
-import { useCouncilVoiceInput } from "@/hooks/use-council-voice-input"
+import { useCouncilVoiceSession } from "@/hooks/use-council-voice-session"
+import { CouncilContextPanel } from "@/components/council/council-context-panel"
+import { CouncilHistoryPanel } from "@/components/council/council-history-panel"
+import { CouncilInsightsCard } from "@/components/council/council-insights-card"
+import { CouncilMemoryStrip } from "@/components/council/council-memory-strip"
+import { CouncilMessageBubble } from "@/components/council/council-message-bubble"
+import { CouncilSettingsPanel } from "@/components/council/council-settings-panel"
+import { CouncilSpeakingWave } from "@/components/council/council-speaking-wave"
+import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-modal"
 
 type CouncilWorkspaceProps = {
   accountId: string | null
   traderFirstName?: string | null
-}
-
-function speakerLabel(entry: CouncilTranscriptEntry): string {
-  if (entry.agent === "user") return "You"
-  if (entry.agent === "system") return "Council"
-  return getCouncilAgent(entry.agent).name
 }
 
 function isAgentEntry(entry: CouncilTranscriptEntry): entry is CouncilTranscriptEntry & {
@@ -52,6 +60,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [isMorningWindow, setIsMorningWindow] = useState(false)
   const [voiceConfigured, setVoiceConfigured] = useState(false)
   const [listenConfigured, setListenConfigured] = useState(false)
+  const [visualContext, setVisualContext] = useState<CouncilVisualContext | null>(null)
+  const [keyInsights, setKeyInsights] = useState<string[]>([])
+  const [memoryHighlights, setMemoryHighlights] = useState<CouncilMemoryHighlight[]>([])
+  const [councilSettings, setCouncilSettings] = useState<CouncilSettingsRecord | null>(null)
+  const [chartViewer, setChartViewer] = useState<{ url: string; title: string } | null>(null)
   const autoBriefingAttempted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const conversationAgentRef = useRef<CouncilAgentId | null>(null)
@@ -62,23 +75,24 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const {
     voiceEnabled,
     setVoiceEnabled,
+    volume,
+    setVolume,
     voiceAvailable,
     speakingAgent,
     isSpeaking,
     speakEntries,
     stopPlayback,
-  } = useCouncilVoicePlayback(voiceConfigured)
-
-  const {
+    session: voiceSession,
     isConversationMode,
     isListening,
     isRecording,
     isTranscribing,
     micError,
+    voicePhase,
     startConversation,
     stopConversation,
     clearMicError,
-  } = useCouncilVoiceInput(listenConfigured)
+  } = useCouncilVoiceSession(voiceConfigured, listenConfigured)
 
   useEffect(() => {
     conversationAgentRef.current = conversationAgent
@@ -114,7 +128,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setIsMorningWindow(state.isMorningWindow)
       setVoiceConfigured(Boolean(state.voiceConfigured))
       setListenConfigured(Boolean(state.listenConfigured))
-      setTranscript([])
+      setVisualContext(state.visual ?? null)
+      setKeyInsights(state.keyInsights ?? state.session?.key_insights ?? [])
+      setMemoryHighlights(state.memoryHighlights ?? [])
+      setCouncilSettings(state.settings ?? null)
+      setTranscript(state.session?.full_transcript ?? [])
       setBriefingDone(Boolean(state.session?.briefing_completed))
       const stickyAgent = state.conversationAgent ?? null
       if (stickyAgent) {
@@ -150,6 +168,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       stopConversation()
       stopPlayback()
       setIsBriefing(true)
+      setActiveAgent("jarvis")
       setError(null)
       try {
         const result = await runCouncilBriefing({ accountId, force })
@@ -162,6 +181,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           return merged
         })
         setBriefingDone(true)
+        if (result.keyInsights?.length) {
+          setKeyInsights(result.keyInsights)
+        }
         if (result.messages.length > 0) {
           const lastMessage = result.messages[result.messages.length - 1]!
           if (isAgentEntry(lastMessage)) {
@@ -180,6 +202,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   )
 
   useEffect(() => {
+    const autoBriefingEnabled = councilSettings?.auto_briefing_enabled !== false
+    const manualOnly = councilSettings?.briefing_time === "manual"
+
     if (
       !accountId ||
       migrationPending ||
@@ -187,6 +212,8 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       isBriefing ||
       briefingDone ||
       !isMorningWindow ||
+      !autoBriefingEnabled ||
+      manualOnly ||
       autoBriefingAttempted.current
     ) {
       return
@@ -200,6 +227,8 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     isBriefing,
     briefingDone,
     isMorningWindow,
+    councilSettings?.auto_briefing_enabled,
+    councilSettings?.briefing_time,
     handleBriefing,
   ])
 
@@ -214,18 +243,20 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
       stopPlayback()
       setIsSending(true)
+      voiceSession.beginThinking()
       setError(null)
       clearMicError()
 
       const namedAgent = detectCouncilAgentByName(trimmed)
       const delegating = isCouncilDelegationRequest(trimmed)
       const pronounTarget = resolveCouncilPronounTarget(trimmed, transcriptRef.current)
+      const affirmativeTarget = resolveCouncilAffirmativeHandoff(trimmed, transcriptRef.current)
       const manualAgent =
         selectedAgentRef.current === "auto" ? null : selectedAgentRef.current
       const activeConversation = conversationAgentRef.current
-      const directSwitch = namedAgent && !delegating && !pronounTarget
+      const directSwitch = namedAgent && !delegating && !pronounTarget && !affirmativeTarget
       const targetAgent =
-        delegating || pronounTarget
+        delegating || pronounTarget || affirmativeTarget
           ? activeConversation ?? manualAgent ?? undefined
           : namedAgent ?? manualAgent ?? activeConversation ?? undefined
 
@@ -264,6 +295,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         scrollToBottom()
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not reach the council")
+        if (isConversationMode) {
+          voiceSession.beginListening()
+        } else {
+          voiceSession.reset()
+        }
       } finally {
         setIsSending(false)
       }
@@ -276,6 +312,8 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       stopPlayback,
       scrollToBottom,
       clearMicError,
+      voiceSession,
+      isConversationMode,
     ],
   )
 
@@ -384,6 +422,14 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         <div className="flex gap-1 overflow-x-auto px-2 py-2">
           {COUNCIL_AGENTS.map((agent) => {
             const isSpeakingAgent = speakingAgent === agent.id
+            const isThinkingAgent =
+              isSending &&
+              (conversationAgent === agent.id ||
+                activeAgent === agent.id ||
+                (agent.id === "jarvis" && voicePhase === "thinking"))
+            const isJarvis = agent.isCoordinator === true
+            const jarvisHighlighted =
+              isJarvis && (isBriefing || isSpeakingAgent || activeAgent === "jarvis")
             return (
               <button
                 key={agent.id}
@@ -396,16 +442,25 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                   setActiveAgent(agent.id)
                 }}
                 className={cn(
-                  "shrink-0 rounded-[var(--radius-md)] border px-3 py-2 text-left transition-colors",
+                  "shrink-0 rounded-[var(--radius-md)] border text-left transition-colors",
+                  isJarvis ? "min-w-[132px] px-4 py-3" : "px-3 py-2",
                   agent.accentClass,
                   selectedAgent === agent.id && "ring-1 ring-white/20",
                   activeAgent === agent.id && "ring-2 ring-cyan-glow/40",
-                  isSpeakingAgent && "animate-pulse ring-2 ring-cyan-glow/60",
+                  isSpeakingAgent && "ring-2 ring-cyan-glow/60 shadow-[0_0_18px_rgba(34,211,238,0.18)]",
+                  isThinkingAgent && "council-agent-thinking ring-2 ring-violet-400/35",
+                  jarvisHighlighted && "ring-2 ring-slate-300/50 shadow-[0_0_28px_rgba(148,163,184,0.25)]",
                 )}
               >
-                <p className="text-[12px] font-semibold">{agent.name}</p>
+                <div className="flex items-center gap-1.5">
+                  {isJarvis ? <Crown className="size-3.5 shrink-0 text-slate-300" /> : null}
+                  <p className={cn("font-semibold", isJarvis ? "text-[13px]" : "text-[12px]")}>
+                    {agent.name}
+                  </p>
+                  {isSpeakingAgent ? <CouncilSpeakingWave className="ml-auto" bars={4} /> : null}
+                </div>
                 <p className="text-[10px] opacity-80">
-                  {isSpeakingAgent ? "Speaking…" : agent.role}
+                  {isSpeakingAgent ? "Speaking…" : isThinkingAgent ? "Thinking…" : agent.role}
                 </p>
               </button>
             )
@@ -422,7 +477,33 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             <p className="text-[10px] text-text-muted">Route question</p>
           </button>
         </div>
+
+        {isSpeaking && speakingAgent ? (
+          <div className="border-t border-cyan-glow/15 bg-cyan-glow/[0.05] px-4 py-2">
+            <div className="flex items-center justify-center gap-2">
+              <CouncilSpeakingWave />
+              <p className="text-[11px] font-medium text-cyan-glow">
+                {getCouncilAgent(speakingAgent).name} speaking…
+              </p>
+            </div>
+          </div>
+        ) : null}
       </header>
+
+      {voiceAvailable ? (
+        <div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] right-3 z-40 flex items-center gap-2 rounded-full border border-white/[0.08] bg-[var(--surface-page)]/95 px-3 py-2 shadow-lg backdrop-blur-md md:bottom-6">
+          <Volume2 className="size-3.5 shrink-0 text-text-muted" />
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(volume * 100)}
+            onChange={(event) => setVolume(Number(event.target.value) / 100)}
+            aria-label="Council voice volume"
+            className="h-1.5 w-24 cursor-pointer accent-cyan-400"
+          />
+        </div>
+      ) : null}
 
       {error || micError ? (
         <div className="rounded-[var(--radius-md)] border border-loss/25 bg-loss/[0.08] px-4 py-3 text-[12px] text-loss">
@@ -432,63 +513,65 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
       {isConversationMode ? (
         <div className="rounded-[var(--radius-md)] border border-cyan-glow/25 bg-cyan-glow/[0.08] px-4 py-3 text-center text-[12px] text-cyan-glow">
-          {isRecording
-            ? "Hearing you… pause when finished and I'll send it."
-            : isTranscribing || isSending
-              ? "Sending to the council…"
-              : isSpeaking
-                ? "Agent is speaking… I'll listen again when they finish."
-                : isListening
-                  ? "Conversation on — speak whenever you're ready."
+          {voicePhase === "speaking" || isSpeaking
+            ? `${speakingAgent ? getCouncilAgent(speakingAgent).name : "Council"} speaking — mic paused to prevent echo.`
+            : voicePhase === "thinking" || isTranscribing || isSending
+              ? "Council thinking… mic paused."
+              : isRecording
+                ? "Hearing you… pause when finished and I'll send it."
+                : voicePhase === "listening" || isListening
+                  ? "Listening — speak whenever you're ready."
                   : "Conversation on — tap mic to stop."}
         </div>
       ) : null}
 
-      <section className="hq-surface-card min-h-[320px] px-4 py-4">
+      <CouncilContextPanel
+        visual={visualContext}
+        onChartClick={(url, title) => setChartViewer({ url, title })}
+      />
+
+      <CouncilInsightsCard insights={keyInsights} />
+      <CouncilMemoryStrip highlights={memoryHighlights} />
+      <CouncilSettingsPanel settings={councilSettings} onSettingsChange={setCouncilSettings} />
+      <CouncilHistoryPanel accountId={accountId} />
+
+      <section className="chart-grid hq-surface-card relative min-h-[320px] overflow-hidden px-4 py-4">
+        <div className="relative space-y-3">
         {transcript.length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
             <p className="text-[13px] text-text-secondary">
               Your council is standing by.
             </p>
             <p className="mt-1 max-w-sm text-[11px] text-text-muted">
-              Before noon, briefing starts automatically once. Refresh clears the screen — agents still remember your conversation.
+              Before noon, briefing starts automatically once. Your conversation persists when you refresh.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {transcript.map((entry) => {
-              const isUser = entry.agent === "user"
-              const agent =
-                entry.agent !== "user" && entry.agent !== "system"
-                  ? getCouncilAgent(entry.agent)
-                  : null
-              const isSpeakingLine = speakingAgent === entry.agent
-              return (
-                <article
-                  key={entry.id}
-                  className={cn(
-                    "rounded-[var(--radius-md)] border px-3 py-2.5 transition-shadow",
-                    isUser
-                      ? "ml-8 border-cyan-glow/20 bg-cyan-glow/[0.06]"
-                      : agent
-                        ? agent.accentClass
-                        : "border-white/[0.08] bg-white/[0.02]",
-                    isSpeakingLine && "shadow-[0_0_20px_rgba(34,211,238,0.15)]",
-                  )}
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
-                    {speakerLabel(entry)}
-                    {isSpeakingLine ? " · speaking" : ""}
-                  </p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-text-primary">
-                    {entry.content}
-                  </p>
-                </article>
-              )
-            })}
+            {transcript.map((entry) => (
+              <CouncilMessageBubble
+                key={entry.id}
+                entry={entry}
+                visual={visualContext}
+                speakingAgent={speakingAgent}
+                onChartClick={(url, title) => setChartViewer({ url, title })}
+              />
+            ))}
+            {isSending ? (
+              <article className="mr-8 rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                  {getCouncilAgent(conversationAgent ?? activeAgent ?? "nova").name}
+                </p>
+                <p className="flex items-center gap-2 text-[12px] text-text-secondary">
+                  <Loader2 className="size-3.5 animate-spin text-cyan-glow/80" />
+                  Thinking…
+                </p>
+              </article>
+            ) : null}
             <div ref={bottomRef} />
           </div>
         )}
+        </div>
       </section>
 
       <form
@@ -527,7 +610,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             placeholder="Ask the council anything…"
             className="min-h-11 flex-1 resize-none text-[13px]"
             rows={1}
-            disabled={isSpeaking || isRecording || isTranscribing || isConversationMode}
+            disabled={isSpeaking || isRecording || isTranscribing || isConversationMode || voicePhase === "thinking"}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault()
@@ -538,7 +621,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           <Button
             type="submit"
             className="size-11 shrink-0 bg-cyan-glow text-[var(--surface-page)] hover:bg-cyan-glow/90"
-            disabled={isSending || !question.trim() || migrationPending || isSpeaking || isRecording || isTranscribing}
+            disabled={isSending || !question.trim() || migrationPending || isSpeaking || isRecording || isTranscribing || voicePhase === "thinking"}
           >
             {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </Button>
@@ -549,6 +632,13 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             : "Mic needs OPENAI_API_KEY · spoken replies need ELEVENLABS_API_KEY"}
         </p>
       </form>
+
+      <ScreenshotViewerModal
+        open={Boolean(chartViewer)}
+        imageUrl={chartViewer?.url ?? null}
+        title={chartViewer?.title ?? "Council chart"}
+        onClose={() => setChartViewer(null)}
+      />
     </div>
   )
 }
