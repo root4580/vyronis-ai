@@ -50,6 +50,11 @@ export function isAPlusSetupGrade(grade: string | null | undefined): boolean {
   return (grade ?? "").replace(/\s+/g, "").toUpperCase() === "A+"
 }
 
+export function paperDraftHasCoachGrade(draft: PaperTradeDraft | null | undefined): boolean {
+  if (!draft) return false
+  return Boolean(draft.coach_session_id?.trim() || draft.setup_grade?.trim())
+}
+
 export const PAPER_COACH_PENDING_KEY = "vyronis:paper-coach-pending"
 export const PAPER_COACH_COMPLETE_EVENT = "vyronis:paper-coach-complete"
 

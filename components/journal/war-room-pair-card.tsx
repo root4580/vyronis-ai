@@ -1,15 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { Search } from "lucide-react"
 import { WarRoomHtfUpload } from "@/components/strategy-brain/war-room-htf-upload"
-import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
+import { WarRoomPairCoachActions } from "@/components/journal/war-room-pair-coach-actions"
 import { updatePairAoiStatus, saveWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import type { AoiStatus, BiasDirection, PairPlanRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
-import { buildWarRoomPaperDraft } from "@/lib/paper-trades/draft-helpers"
 import { AoiStatusPill } from "@/components/strategy-brain/strategy-brain-primitives"
-import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -24,6 +20,7 @@ type Props = {
   expectedScenarios: string
   onUpdated: (plan: WeeklyPlanWithPairs) => void
   onBiasSuggest?: (bias: import("@/lib/strategy-brain/types").MarketBiasInput) => void
+  onCoachEngaged?: () => void
 }
 
 function PairBiasReadonly({ bias }: { bias: BiasDirection }) {
@@ -51,6 +48,7 @@ export function WarRoomPairCard({
   expectedScenarios,
   onUpdated,
   onBiasSuggest,
+  onCoachEngaged,
 }: Props) {
   const { toast } = useToast()
   const [thesis, setThesis] = useState(plan.weekly_thesis)
@@ -121,20 +119,7 @@ export function WarRoomPairCard({
           <PairBiasReadonly bias={plan.directional_bias as BiasDirection} />
           <AoiStatusPill status={plan.aoi_status} />
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-          <Link
-            href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
-            className="inline-flex min-h-10 items-center justify-center gap-1 rounded-[var(--radius-sm)] border border-white/[0.08] px-3 py-2 text-[12px] text-text-accent hover:bg-white/[0.04] sm:min-h-0 sm:px-2 sm:py-1 sm:text-[11px]"
-          >
-            <Search className="size-3.5 shrink-0" />
-            Analyse
-          </Link>
-          <PaperTradeButton
-            className="min-h-10 w-full sm:min-h-0 sm:w-auto"
-            draft={buildWarRoomPaperDraft(plan)}
-            label="📝 Paper Trade"
-          />
-        </div>
+        <WarRoomPairCoachActions plan={plan} onCoachEngaged={onCoachEngaged} />
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">

@@ -34,9 +34,14 @@ export function getDashboardHomeHref(): string {
 export function getWarRoomCoachHref(pairs: string[]): string {
   const normalized = pairs.map((pair) => pair.trim()).filter(Boolean)
   if (normalized.length === 1) {
-    return `${APP_HOME_PATH}?coachPair=${encodeURIComponent(normalized[0])}`
+    return `/war-room?coachPair=${encodeURIComponent(normalized[0])}`
   }
-  return `${APP_HOME_PATH}?openCoach=1`
+  return `/war-room?openCoach=1`
+}
+
+/** Legacy HQ deep link — still supported on dashboard home. */
+export function getHqCoachPairHref(pair: string): string {
+  return `${APP_HOME_PATH}?coachPair=${encodeURIComponent(pair.trim())}`
 }
 
 /** Practice Room — paper trades never touch live P&L. */

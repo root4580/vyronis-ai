@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Swords } from "lucide-react"
+import { getWarRoomCoachHref } from "@/lib/dashboard-nav"
 import {
   isWatchlistComplete,
   WEEKLY_WATCHLIST_MAX,
@@ -68,7 +69,7 @@ export function WeeklyWatchlistStrip({
           showCoachLinks ? (
             <Link
               key={p.id}
-              href={`/?coachPair=${encodeURIComponent(p.pair)}`}
+              href={getWarRoomCoachHref([p.pair])}
               className="rounded-md border border-white/[0.08] bg-black/30 px-2 py-1 text-[11px] font-medium text-foreground/90 hover:border-cyan-glow/30"
             >
               {p.pair}

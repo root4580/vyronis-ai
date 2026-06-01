@@ -8,6 +8,9 @@ import { SundayPlanningPanel } from "@/components/strategy-brain/sunday-planning
 import { WarRoomPairCard } from "@/components/journal/war-room-pair-card"
 import { WarRoomWorkflowStatus } from "@/components/journal/war-room-workflow-status"
 import { getDashboardTabHref, getWarRoomCoachHref } from "@/lib/dashboard-nav"
+import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
+import { openWarRoomCoachForPlan } from "@/lib/paper-trades/war-room-coach-flow"
+import { useOptionalAIContext } from "@/providers/ai-context-provider"
 import { useRouter } from "next/navigation"
 import { WarRoomSurfaceCard } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
@@ -31,9 +34,10 @@ import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 
-export function WeeklyWarRoom() {
+export function WeeklyWarRoom({ onCoachEngaged }: { onCoachEngaged?: () => void } = {}) {
   const { toast } = useToast()
   const router = useRouter()
+  const aiContext = useOptionalAIContext()
   const weekStart = getWeekStartSunday()
   const [marketBias, setMarketBias] = useState<MarketBiasRecord | null>(null)
   const [biasDraft, setBiasDraft] = useState<MarketBiasInput>({
@@ -173,6 +177,36 @@ export function WeeklyWarRoom() {
       return
     }
 
+    if (aiContext?.openPreTradeCoach && pairs.length === 1) {
+      void openWarRoomCoachForPlan(aiContext.openPreTradeCoach, pairs[0]!)
+        .then(() => onCoachEngaged?.())
+        .catch((error) => {
+          toast({
+            title: "Could not open Coach",
+            description: error instanceof Error ? error.message : undefined,
+            variant: "destructive",
+          })
+        })
+      return
+    }
+
+    if (aiContext?.openPreTradeCoach && pairs.length > 1) {
+      void aiContext
+        .openPreTradeCoach({
+          plannedContext: buildEmptyPlannedContext(),
+          plannerCheckIn: true,
+        })
+        .then(() => onCoachEngaged?.())
+        .catch((error) => {
+          toast({
+            title: "Could not open Coach",
+            description: error instanceof Error ? error.message : undefined,
+            variant: "destructive",
+          })
+        })
+      return
+    }
+
     router.push(getWarRoomCoachHref(pairs.map((pair) => pair.pair)))
   }
 
@@ -288,6 +322,7 @@ export function WeeklyWarRoom() {
                     sessionFocus={sessionFocus}
                     expectedScenarios={expectedScenarios}
                     onUpdated={setWeekPlan}
+                    onCoachEngaged={onCoachEngaged}
                     onBiasSuggest={(bias: MarketBiasInput) => {
                       void saveMarketBias(bias)
                         .then((b) => {
