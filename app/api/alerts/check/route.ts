@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
-import { evaluateLossStreakEmailAlert } from "@/lib/alerts/evaluate-alerts"
+import {
+  evaluateLossStreakEmailAlert,
+  evaluateMorningChapterEmailAlert,
+} from "@/lib/alerts/evaluate-alerts"
+import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
 import { mapTradeToRiskHistory } from "@/lib/dashboard-risk-awareness"
 import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import { createClient } from "@/lib/supabase/server"
@@ -15,6 +19,15 @@ export async function POST() {
     if (authError || !user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const accountId = await resolveActiveAccountId(supabase, user.id)
+
+    const morningResult = await evaluateMorningChapterEmailAlert({
+      supabase,
+      userId: user.id,
+      email: user.email,
+      accountId,
+    })
 
     const { data: trades, error: tradesError } = await supabase
       .from("trades")
@@ -40,6 +53,7 @@ export async function POST() {
       ok: true,
       lossStreak: result.streak,
       emailSent: result.sent,
+      morningBriefingSent: morningResult.sent,
     })
   } catch (error) {
     console.error("alerts/check failed:", error)

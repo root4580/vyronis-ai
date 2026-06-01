@@ -14,8 +14,16 @@ type UseTradingAlertsInput = {
   startingBalance: number
 }
 
+function runServerAlertCheck(): void {
+  void fetch("/api/alerts/check", {
+    method: "POST",
+    credentials: "same-origin",
+  }).catch(() => undefined)
+}
+
 export function useTradingAlerts(input: UseTradingAlertsInput): void {
-  const lastServerCheckKeyRef = useRef<string>("")
+  const dailyCheckKeyRef = useRef<string>("")
+  const tradeCheckKeyRef = useRef<string>("")
 
   useEffect(() => {
     if (!input.userId || input.trades.length === 0) return
@@ -31,6 +39,17 @@ export function useTradingAlerts(input: UseTradingAlertsInput): void {
   }, [input.userId, input.trades, input.settings, input.startingBalance])
 
   useEffect(() => {
+    if (!input.userId) return
+
+    const today = new Date().toISOString().slice(0, 10)
+    const dailyKey = `${input.userId}:${today}`
+    if (dailyCheckKeyRef.current === dailyKey) return
+    dailyCheckKeyRef.current = dailyKey
+
+    runServerAlertCheck()
+  }, [input.userId])
+
+  useEffect(() => {
     if (!input.userId || input.trades.length === 0) return
 
     const latestTrade = [...input.trades].sort(
@@ -40,12 +59,9 @@ export function useTradingAlerts(input: UseTradingAlertsInput): void {
     if (!latestTrade) return
 
     const checkKey = `${input.userId}:${latestTrade.id}:${latestTrade.result}:${latestTrade.pnl}`
-    if (lastServerCheckKeyRef.current === checkKey) return
-    lastServerCheckKeyRef.current = checkKey
+    if (tradeCheckKeyRef.current === checkKey) return
+    tradeCheckKeyRef.current = checkKey
 
-    void fetch("/api/alerts/check", {
-      method: "POST",
-      credentials: "same-origin",
-    }).catch(() => undefined)
+    runServerAlertCheck()
   }, [input.userId, input.trades])
 }

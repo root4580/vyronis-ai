@@ -2,8 +2,11 @@ import { getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import { getRecentLossStreak, type TradeRiskGuardHistoryTrade } from "@/lib/trade-risk-guard"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { getTradeTimestamp } from "@/lib/user-settings"
+import { loadCoachChapterContext } from "@/lib/coach-chapters/context-service"
+import { sendMorningChapterEmail } from "@/lib/alerts/morning-chapter-email"
 import { sendLossStreakAlertEmail } from "@/lib/alerts/loss-streak-email"
 import { sendWeeklyDebriefReadyEmail } from "@/lib/alerts/weekly-debrief-email"
+import { toWeekStartISO } from "@/lib/weekly-chapters/week-utils"
 import {
   mergeDashboardPreferences,
   parseDashboardPreferences,
@@ -157,4 +160,73 @@ export async function evaluateWeeklyDebriefEmailAlert(input: {
     .eq("user_id", input.userId)
 
   return { sent: true, tradeCount }
+}
+
+export async function evaluateMorningChapterEmailAlert(input: {
+  supabase: SupabaseClient
+  userId: string
+  email: string
+  accountId: string | null
+  referenceDate?: Date
+}): Promise<{ sent: boolean }> {
+  const referenceDate = input.referenceDate ?? new Date()
+  if (referenceDate.getDay() !== 1) {
+    return { sent: false }
+  }
+
+  if (!input.accountId) {
+    return { sent: false }
+  }
+
+  const weekKey = toWeekStartISO(referenceDate)
+
+  const { data: settingsRow } = await input.supabase
+    .from("user_settings")
+    .select("dashboard_preferences")
+    .eq("user_id", input.userId)
+    .maybeSingle()
+
+  const prefs = parseDashboardPreferences(settingsRow?.dashboard_preferences)
+  if (prefs.alerts?.morningBriefingDateKey === weekKey) {
+    return { sent: false }
+  }
+
+  const chapterContext = await loadCoachChapterContext(
+    input.supabase,
+    input.userId,
+    input.accountId,
+  ).catch(() => null)
+
+  if (!chapterContext) {
+    return { sent: false }
+  }
+
+  const result = await sendMorningChapterEmail({
+    to: input.email,
+    traderFirstName: chapterContext.traderFirstName,
+    chapterNumber: chapterContext.currentChapterNumber,
+    openingMessage: chapterContext.openingMessage,
+    tradesUsedLabel: null,
+  })
+
+  if (!result.sent) {
+    return { sent: false }
+  }
+
+  const nextAlerts: AlertPreferences = {
+    ...prefs.alerts,
+    morningBriefingDateKey: weekKey,
+  }
+
+  await input.supabase
+    .from("user_settings")
+    .update({
+      dashboard_preferences: mergeDashboardPreferences(settingsRow?.dashboard_preferences, {
+        alerts: nextAlerts,
+      }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", input.userId)
+
+  return { sent: true }
 }

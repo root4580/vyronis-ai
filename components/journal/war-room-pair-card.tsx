@@ -114,29 +114,30 @@ export function WarRoomPairCard({
   }
 
   return (
-    <article className="px-4 py-3.5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+    <article className="px-3 py-3 sm:px-4 sm:py-3.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-[13px] font-medium text-text-primary">{plan.pair}</h3>
+          <h3 className="text-[14px] font-medium text-text-primary sm:text-[13px]">{plan.pair}</h3>
           <PairBiasReadonly bias={plan.directional_bias as BiasDirection} />
           <AoiStatusPill status={plan.aoi_status} />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <Link
             href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
-            className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-white/[0.08] px-2 py-1 text-[11px] text-text-accent hover:bg-white/[0.04]"
+            className="inline-flex min-h-10 items-center justify-center gap-1 rounded-[var(--radius-sm)] border border-white/[0.08] px-3 py-2 text-[12px] text-text-accent hover:bg-white/[0.04] sm:min-h-0 sm:px-2 sm:py-1 sm:text-[11px]"
           >
-            <Search className="size-3.5" />
+            <Search className="size-3.5 shrink-0" />
             Analyse
           </Link>
           <PaperTradeButton
+            className="min-h-10 w-full sm:min-h-0 sm:w-auto"
             draft={buildWarRoomPaperDraft(plan)}
-            label="📝 Paper Trade This"
+            label="📝 Paper Trade"
           />
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
         <div>
           <p className="mb-1 text-[10px] text-text-muted">AOI low</p>
           <p className="war-room-input flex h-9 items-center font-mono text-[12px]">
@@ -185,14 +186,14 @@ export function WarRoomPairCard({
 
       <div className="mt-3">
         <p className="mb-1.5 text-[10px] text-text-muted">AOI status</p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5 sm:gap-1">
           {STATUSES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => void setStatus(s)}
               className={cn(
-                "rounded-[var(--radius-sm)] border px-2 py-1 text-[10px] transition-colors",
+                "min-h-9 rounded-[var(--radius-sm)] border px-2.5 py-2 text-[11px] transition-colors sm:min-h-0 sm:py-1 sm:text-[10px]",
                 plan.aoi_status === s
                   ? "border-[var(--color-accent-border)] bg-[var(--color-accent-bg)] text-text-accent"
                   : "border-[var(--border-subtle)] bg-transparent text-text-muted hover:border-[var(--border-default)]",

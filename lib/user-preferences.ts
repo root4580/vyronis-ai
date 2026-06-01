@@ -3,6 +3,8 @@ import type { DashboardTab } from "@/components/dashboard/trading-components"
 export type AlertPreferences = {
   lossStreak5TradeId?: string | null
   weeklyDebriefWeekKey?: string | null
+  /** ISO date (YYYY-MM-DD) when Monday chapter briefing email was sent. */
+  morningBriefingDateKey?: string | null
 }
 
 export type DashboardPreferences = {
@@ -48,6 +50,8 @@ function parseAlertPreferences(value: unknown): AlertPreferences | undefined {
       typeof record.lossStreak5TradeId === "string" ? record.lossStreak5TradeId : undefined,
     weeklyDebriefWeekKey:
       typeof record.weeklyDebriefWeekKey === "string" ? record.weeklyDebriefWeekKey : undefined,
+    morningBriefingDateKey:
+      typeof record.morningBriefingDateKey === "string" ? record.morningBriefingDateKey : undefined,
   }
 }
 
