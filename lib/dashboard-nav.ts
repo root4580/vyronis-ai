@@ -40,6 +40,11 @@ export function getWarRoomHref(): string {
   return "/war-room"
 }
 
+/** AI Trading Council — morning briefing and Q&A. */
+export function getCouncilHref(): string {
+  return "/council"
+}
+
 /** Deep-link from War Room into pre-trade Coach with watchlist context. */
 export function getWarRoomCoachHref(pairs: string[]): string {
   const normalized = pairs.map((pair) => pair.trim()).filter(Boolean)

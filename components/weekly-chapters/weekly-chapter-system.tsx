@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   BookOpen,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   FileEdit,
   Flame,
@@ -21,7 +22,7 @@ import {
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
-import { getChapterReviewHref } from "@/lib/dashboard-nav"
+import { getChapterReviewHref, getCouncilHref } from "@/lib/dashboard-nav"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 import type { PlanDisciplineGrade } from "@/lib/trade-planner/deviation-engine"
@@ -358,7 +359,16 @@ function MondayBanner({ message }: { message: string }) {
     <div className="rounded-[var(--radius-md)] border border-cyan-glow/25 bg-cyan-glow/[0.06] px-4 py-3">
       <div className="flex gap-2">
         <Sun className="mt-0.5 size-4 shrink-0 text-cyan-glow" />
-        <p className="text-[12px] leading-relaxed text-text-primary">{message}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] leading-relaxed text-text-primary">{message}</p>
+          <Link
+            href={getCouncilHref()}
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-glow hover:underline"
+          >
+            Open morning briefing
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   )

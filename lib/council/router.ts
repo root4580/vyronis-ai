@@ -1,0 +1,90 @@
+import type { CouncilAgentId } from "@/lib/council/types"
+
+const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
+  {
+    agent: "scott",
+    patterns: [
+      /\brisk\b/i,
+      /\bbalance\b/i,
+      /\bdrawdown\b/i,
+      /\blimit\b/i,
+      /\bcooldown\b/i,
+      /\bslot\b/i,
+      /\blose today\b/i,
+      /\bcapital\b/i,
+    ],
+  },
+  {
+    agent: "adam",
+    patterns: [
+      /\blast trade\b/i,
+      /\bmy trade\b/i,
+      /\bmistake\b/i,
+      /\bloss\b/i,
+      /\bwin\b/i,
+      /\bentry\b/i,
+      /\bexit\b/i,
+      /\bwhat went wrong\b/i,
+    ],
+  },
+  {
+    agent: "hamza",
+    patterns: [
+      /\bwatchlist\b/i,
+      /\bwar room\b/i,
+      /\bsetup\b/i,
+      /\bgrade\b/i,
+      /\bopportunit/i,
+      /\bbest pair\b/i,
+      /\ba\+\b/i,
+    ],
+  },
+  {
+    agent: "khalid",
+    patterns: [
+      /\bconfirm\b/i,
+      /\bapex\b/i,
+      /\bfilter\b/i,
+      /\bhtf\b/i,
+      /\bvalid\b/i,
+      /\benter\b/i,
+      /\bentry\b/i,
+      /\bm15\b/i,
+      /\bh4\b/i,
+      /\bshould i take\b/i,
+    ],
+  },
+  {
+    agent: "sarah",
+    patterns: [
+      /\bchapter\b/i,
+      /\bweek\b/i,
+      /\bdiscipline\b/i,
+      /\bemotion/i,
+      /\bgrowth\b/i,
+      /\bmorning\b/i,
+      /\bhow am i\b/i,
+    ],
+  },
+]
+
+export function routeCouncilQuestion(message: string): CouncilAgentId {
+  const trimmed = message.trim()
+  if (!trimmed) return "sarah"
+
+  let best: CouncilAgentId = "sarah"
+  let bestScore = 0
+
+  for (const rule of ROUTING) {
+    let score = 0
+    for (const pattern of rule.patterns) {
+      if (pattern.test(trimmed)) score += 1
+    }
+    if (score > bestScore) {
+      bestScore = score
+      best = rule.agent
+    }
+  }
+
+  return best
+}
