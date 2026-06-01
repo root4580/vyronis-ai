@@ -21,6 +21,10 @@ export type PaperTradeRecord = {
   source: PaperTradeSource
   source_ref: string | null
   setup_grade: string | null
+  chart_image_url: string | null
+  ai_confidence: string | null
+  coach_session_id: string | null
+  coach_feedback: string | null
   entry_at: string
   created_at: string
   closed_at: string | null
@@ -36,13 +40,21 @@ export type PaperTradeInput = {
   source?: PaperTradeSource
   source_ref?: string | null
   setup_grade?: string | null
+  chart_image_url?: string | null
+  ai_confidence?: string | null
+  coach_session_id?: string | null
+  coach_feedback?: string | null
   account_id?: string | null
 }
+
+export type PaperTradeAiField = "symbol" | "direction" | "entry" | "sl" | "tp" | "notes"
 
 /** Partial input for opening the paper trade modal from War Room / alerts. */
 export type PaperTradeDraft = Partial<PaperTradeInput> & {
   symbol: string
   direction: string
+  /** Transient UI hint — not persisted on its own. */
+  ai_filled_fields?: PaperTradeAiField[]
 }
 
 export type ClosePaperTradeInput = {

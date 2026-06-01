@@ -133,6 +133,38 @@ Want to paper trade it instead and watch how it develops?`,
   )
 }
 
+export function buildPaperTradeGradeMessage(input: {
+  grade: CoachGradeBand
+  missingReasons?: string[]
+}): string {
+  const missing =
+    input.missingReasons?.length && input.missingReasons.length > 0
+      ? input.missingReasons.slice(0, 2).join(", ")
+      : "confirmation on your entry timeframe"
+
+  switch (input.grade) {
+    case "A+":
+      return sanitizeCoachLanguage(
+        "This is a beautiful setup. All filters aligned perfectly. Paper trade it and trust your analysis. This is exactly what you look for.",
+      )
+    case "A":
+      return sanitizeCoachLanguage(
+        "Solid setup with good structure. One or two filters need watching. Great learning opportunity — paper trade it and take notes.",
+      )
+    case "B":
+      return sanitizeCoachLanguage(
+        `This setup has potential but isn't quite ready yet. Here's what's missing: ${missing}. Perfect for paper trading to learn what confirmation looks like.`,
+      )
+    case "C":
+    case "D":
+    case "low":
+    default:
+      return sanitizeCoachLanguage(
+        "This one needs more development. Not ready yet — but paper trading it will show you exactly why. Watch how it plays out and learn.",
+      )
+  }
+}
+
 export function buildWeeklyCoachReviewMessage(input: {
   firstName: string
   chapterNumber: number

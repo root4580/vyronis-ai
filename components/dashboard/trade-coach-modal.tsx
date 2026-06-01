@@ -79,12 +79,19 @@ import { resolveTradeQualityFromSession } from "@/lib/trade-coach/trade-quality-
 import { fetchCoachChapterContext } from "@/lib/coach-chapters/api-client"
 import {
   buildPreTradeGradeMessage,
+  buildPaperTradeGradeMessage,
   mapSetupGradeToBand,
   sanitizeCoachLanguage,
   shouldTakeTradeGrowthLabel,
 } from "@/lib/coach-chapters/personality"
 import type { CoachChapterContext } from "@/lib/coach-chapters/types"
 import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
+import {
+  clearPaperCoachPending,
+  PAPER_COACH_COMPLETE_EVENT,
+  readPaperCoachPending,
+  type PaperCoachCompleteDetail,
+} from "@/lib/paper-trades/draft-helpers"
 import { getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { TRADE_QUALITY_BLOCK_THRESHOLD } from "@/lib/trade-coach/trade-quality-engine"
@@ -212,6 +219,7 @@ export function TradeCoachPanel({
   const previousSessionStatusRef = useRef<string | null>(null)
   const tradePlannerAutoMtfRef = useRef(false)
   const warRoomChartsSyncRef = useRef<string | null>(null)
+  const paperCoachDispatchedRef = useRef<string | null>(null)
   const onSessionChangeRef = useRef(onSessionChange)
   const onSessionLoadedRef = useRef(onSessionLoaded)
   const plannedContextRef = useRef(plannedContext)
@@ -772,6 +780,63 @@ export function TradeCoachPanel({
     workflowPhase,
     activeQuestion?.key,
   ])
+
+  useEffect(() => {
+    if (workflowPhase !== "complete" || !session) return
+    const pending = readPaperCoachPending()
+    if (!pending) return
+    if (paperCoachDispatchedRef.current === session.id) return
+
+    const grade =
+      tradeQuality?.grade ??
+      session.planned_context?.tradingview_setup_grade ??
+      mtfAnalysis?.playbookMatch?.setupGrade ??
+      null
+    const gradeBand = mapSetupGradeToBand(grade)
+    const feedback = buildPaperTradeGradeMessage({
+      grade: gradeBand,
+      missingReasons: tradeQuality?.warnings,
+    })
+
+    paperCoachDispatchedRef.current = session.id
+    clearPaperCoachPending()
+
+    const detail: PaperCoachCompleteDetail = {
+      ...pending,
+      symbol: pending.symbol || session.planned_context?.pair || "EURUSD",
+      direction:
+        pending.direction ||
+        (session.planned_context?.direction?.toUpperCase().includes("SELL") ? "SELL" : "BUY"),
+      entry:
+        pending.entry ??
+        (session.planned_context?.entry_price
+          ? parseFloat(session.planned_context.entry_price)
+          : null),
+      sl:
+        pending.sl ??
+        (session.planned_context?.stop_loss
+          ? parseFloat(session.planned_context.stop_loss)
+          : null),
+      tp:
+        pending.tp ??
+        (session.planned_context?.take_profit
+          ? parseFloat(session.planned_context.take_profit)
+          : null),
+      notes: pending.notes || session.planned_context?.setup || "",
+      chart_image_url:
+        pending.chart_image_url ??
+        session.chart_url ??
+        session.screenshot_url ??
+        null,
+      setup_grade: grade,
+      coach_feedback: feedback,
+      coach_session_id: session.id,
+    }
+
+    window.dispatchEvent(
+      new CustomEvent<PaperCoachCompleteDetail>(PAPER_COACH_COMPLETE_EVENT, { detail }),
+    )
+  }, [workflowPhase, session, tradeQuality, mtfAnalysis?.playbookMatch?.setupGrade])
 
   if (!active) return null
 

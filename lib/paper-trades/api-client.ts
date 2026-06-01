@@ -1,3 +1,4 @@
+import type { PaperChartAutofillResult } from "@/lib/paper-trades/chart-autofill"
 import type {
   ClosePaperTradeInput,
   PaperTradeInput,
@@ -5,6 +6,7 @@ import type {
   PaperTradeStats,
   PaperVsLiveStats,
 } from "@/lib/paper-trades/types"
+import type { TradePlanDirection } from "@/lib/trade-planner/types"
 
 const EMPTY_PAPER_STATS: PaperTradeStats = {
   total: 0,
@@ -75,4 +77,17 @@ export async function fetchPaperVsLiveStats(
   const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : ""
   const response = await fetch(`/api/paper-trades/stats${query}`, { cache: "no-store" })
   return parseJson<PaperVsLiveStats>(response)
+}
+
+export async function analyzePaperChartAutofill(input: {
+  imageUrl: string
+  symbolHint?: string
+  directionHint?: TradePlanDirection
+}): Promise<PaperChartAutofillResult> {
+  const response = await fetch("/api/paper-trades/chart-autofill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  return parseJson<PaperChartAutofillResult>(response)
 }
