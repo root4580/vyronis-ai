@@ -21,9 +21,15 @@ import { buildChapterEmotionSummary } from "@/lib/weekly-chapters/chapter-emotio
 import { generateChapterReviewAiNarrative } from "@/lib/weekly-chapters/chapter-review-ai"
 import {
   mergeChapterReviewAiCache,
+  mergeChapterReviewPatternActionCache,
   readChapterReviewAiCache,
+  readChapterReviewPatternActionCache,
 } from "@/lib/weekly-chapters/chapter-review-cache"
 import { buildChapterTradeReviewNotes } from "@/lib/weekly-chapters/trade-review-notes"
+import {
+  generateChapterPatternAction,
+  patternIdsKey,
+} from "@/lib/weekly-chapters/chapter-pattern-action"
 import type { PaperTradeRecord } from "@/lib/paper-trades/types"
 import {
   fetchChapterPaperTrades,
@@ -429,6 +435,92 @@ async function resolveChapterReviewAiNarrative(input: {
   }
 }
 
+async function resolveChapterReviewPatternAction(input: {
+  supabase: SupabaseClient
+  userId: string
+  accountId: string
+  summary: WeeklySummaryRecord
+  isClosed: boolean
+  patterns: ChapterReviewPayload["patterns"]
+  carryForwardLesson: string
+}): Promise<{
+  summary: WeeklySummaryRecord
+  patternAction: string | null
+  patternActionProvider: string | null
+}> {
+  if (input.patterns.length === 0) {
+    return {
+      summary: input.summary,
+      patternAction: null,
+      patternActionProvider: null,
+    }
+  }
+
+  const idsKey = patternIdsKey(input.patterns)
+  const cached = readChapterReviewPatternActionCache(input.summary.summary_payload, idsKey)
+  if (cached && input.isClosed) {
+    return {
+      summary: input.summary,
+      patternAction: cached.action,
+      patternActionProvider: cached.provider,
+    }
+  }
+
+  const { action, provider } = await generateChapterPatternAction({
+    summary: input.summary,
+    patterns: input.patterns,
+    carryForwardLesson: input.carryForwardLesson,
+  })
+
+  if (
+    !input.isClosed ||
+    !action?.trim() ||
+    !provider ||
+    !isPersistedWeeklySummary(input.summary)
+  ) {
+    return {
+      summary: input.summary,
+      patternAction: action,
+      patternActionProvider: provider,
+    }
+  }
+
+  try {
+    const updatedSummary = await upsertWeeklySummary(input.supabase, input.userId, input.accountId, {
+      week_start: input.summary.week_start,
+      trades_taken: input.summary.trades_taken,
+      wins: input.summary.wins,
+      losses: input.summary.losses,
+      win_rate: input.summary.win_rate,
+      pnl: input.summary.pnl,
+      discipline_score: input.summary.discipline_score,
+      discipline_grade: input.summary.discipline_grade,
+      key_lesson: input.summary.key_lesson,
+      chapter_number: input.summary.chapter_number,
+      is_winning_chapter: input.summary.is_winning_chapter,
+      max_trades_allowed: input.summary.max_trades_allowed,
+      summary_payload: mergeChapterReviewPatternActionCache(input.summary.summary_payload, {
+        action: action.trim(),
+        provider,
+        generatedAt: new Date().toISOString(),
+        patternIds: idsKey,
+      }),
+    })
+
+    return {
+      summary: updatedSummary,
+      patternAction: action.trim(),
+      patternActionProvider: provider,
+    }
+  } catch {
+    return {
+      summary: input.summary,
+      patternAction: action,
+      patternActionProvider: provider,
+    }
+  }
+}
+
 export async function getChapterReview(
   supabase: SupabaseClient,
   userId: string,
@@ -526,6 +618,19 @@ export async function getChapterReview(
   const aiNarrative = aiResult.aiNarrative
   const aiProvider = aiResult.aiProvider
 
+  const patternActionResult = await resolveChapterReviewPatternAction({
+    supabase,
+    userId,
+    accountId,
+    summary,
+    isClosed,
+    patterns,
+    carryForwardLesson,
+  })
+  summary = patternActionResult.summary
+  const patternAction = patternActionResult.patternAction
+  const patternActionProvider = patternActionResult.patternActionProvider
+
   const disciplineScore = summary.discipline_score
   if (disciplineScore != null && !summary.discipline_grade) {
     summary = {
@@ -542,6 +647,8 @@ export async function getChapterReview(
     paperTrades: paperTradesForWeek,
     carryForwardLesson,
     patterns,
+    patternAction,
+    patternActionProvider,
     aiNarrative,
     aiProvider,
     emotionSummary,

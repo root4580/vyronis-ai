@@ -145,6 +145,8 @@ export type ChapterReviewPayload = {
   paperTrades: ChapterReviewPaperTrade[]
   carryForwardLesson: string
   patterns: ChapterReviewPattern[]
+  patternAction: string | null
+  patternActionProvider: string | null
   aiNarrative: string | null
   aiProvider: string | null
   emotionSummary: ChapterEmotionSummary | null

@@ -184,19 +184,36 @@ export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewPro
         ) : null}
       </header>
 
-      {review.patterns.length > 0 ? (
+      {review.patterns.length > 0 || review.patternAction ? (
         <section className="hq-surface-card px-4 py-4">
           <h2 className="text-[13px] font-medium text-text-primary">🔍 Patterns noticed</h2>
-          <ul className="mt-3 space-y-2">
-            {review.patterns.map((pattern) => (
-              <li
-                key={pattern.id}
-                className="rounded-[var(--radius-md)] border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[12px] leading-relaxed text-text-secondary"
-              >
-                {pattern.message}
-              </li>
-            ))}
-          </ul>
+          {review.patternAction ? (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-200/90">
+                🎯 One thing to fix next chapter
+              </p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-text-primary">
+                {review.patternAction}
+              </p>
+              {review.patternActionProvider && review.patternActionProvider !== "rule-based" ? (
+                <p className="mt-1 text-[10px] text-text-muted">
+                  Coach action · {review.patternActionProvider}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {review.patterns.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {review.patterns.map((pattern) => (
+                <li
+                  key={pattern.id}
+                  className="rounded-[var(--radius-md)] border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[12px] leading-relaxed text-text-secondary"
+                >
+                  {pattern.message}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
 

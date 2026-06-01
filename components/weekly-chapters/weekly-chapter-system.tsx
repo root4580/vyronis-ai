@@ -12,6 +12,7 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react"
+import { PaperGraduationBanner } from "@/components/paper-trades/paper-graduation-banner"
 import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import type { WeeklyChapterDashboard, WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
@@ -112,6 +113,13 @@ export function WeeklyChapterSystem({
         <SundayCompleteCard
           summary={dashboard.sundayCompletePreview}
           onDismiss={() => setDismissedSunday(true)}
+        />
+      ) : null}
+
+      {dashboard.thisWeekPaper?.readyForLive ? (
+        <PaperGraduationBanner
+          winStreak={dashboard.thisWeekPaper.winStreak}
+          variant="hq"
         />
       ) : null}
 

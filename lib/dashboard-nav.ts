@@ -35,6 +35,11 @@ export function getChapterReviewHref(weekStart: string): string {
   return `/chapters/${encodeURIComponent(weekStart.trim())}`
 }
 
+/** Weekly War Room mission control. */
+export function getWarRoomHref(): string {
+  return "/war-room"
+}
+
 /** Deep-link from War Room into pre-trade Coach with watchlist context. */
 export function getWarRoomCoachHref(pairs: string[]): string {
   const normalized = pairs.map((pair) => pair.trim()).filter(Boolean)

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { GraduationCap, Loader2, NotebookPen } from "lucide-react"
+import { Loader2, NotebookPen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { PaperGraduationBanner } from "@/components/paper-trades/paper-graduation-banner"
 import { PaperVsLivePanel } from "@/components/analytics/paper-vs-live-panel"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
@@ -164,20 +165,7 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
       ) : null}
 
       {stats?.readyForLive ? (
-        <DashboardInsetPanel className="border-profit/30 bg-profit/[0.08]">
-          <div className="flex items-start gap-2">
-            <GraduationCap className="mt-0.5 size-5 shrink-0 text-profit" />
-            <div>
-              <p className="text-[14px] font-semibold text-profit">
-                🎓 Setup proven. Ready to go live?
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
-                {stats.winStreak} winning paper trades in a row on this account. Your process held up on
-                paper — when live rules allow, take the same discipline to the journal.
-              </p>
-            </div>
-          </div>
-        </DashboardInsetPanel>
+        <PaperGraduationBanner winStreak={stats.winStreak} variant="practice" />
       ) : stats?.graduationMessage ? (
         <DashboardInsetPanel className="border-white/[0.08] bg-white/[0.02]">
           <p className="text-[12px] text-text-secondary">{stats.graduationMessage}</p>
