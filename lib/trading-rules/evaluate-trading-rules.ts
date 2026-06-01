@@ -25,19 +25,32 @@ function isTradeInCurrentWeek(
   return date >= start && date < end
 }
 
+/** Live trades that count toward this week's rules (Monday 00:00 → next Monday). */
+export function filterTradesForRulesWeek(
+  trades: TradingRulesTradeRow[],
+  referenceDate = new Date(),
+): TradingRulesTradeRow[] {
+  return trades.filter((trade) => isTradeInCurrentWeek(trade, referenceDate))
+}
+
 export function countTradesThisWeek(
   trades: TradingRulesTradeRow[],
   now = new Date(),
 ): number {
-  return trades.filter((trade) => isTradeInCurrentWeek(trade, now)).length
+  return filterTradesForRulesWeek(trades, now).length
 }
 
-export function getRecentLossStreakForRules(trades: TradingRulesTradeRow[]): number {
-  const sorted = [...trades].sort((a, b) => {
+function sortTradesNewestFirst(trades: TradingRulesTradeRow[]): TradingRulesTradeRow[] {
+  return [...trades].sort((a, b) => {
     const da = a.trade_date ?? a.created_at ?? ""
     const db = b.trade_date ?? b.created_at ?? ""
     return db.localeCompare(da)
   })
+}
+
+/** Consecutive losses from most recent trade backward (caller should pass week-scoped trades). */
+export function getRecentLossStreakForRules(trades: TradingRulesTradeRow[]): number {
+  const sorted = sortTradesNewestFirst(trades)
   let streak = 0
   for (const trade of sorted) {
     const signed = getSignedPnL(trade.pnl, trade.result)
@@ -51,6 +64,13 @@ export function getRecentLossStreakForRules(trades: TradingRulesTradeRow[]): num
   return streak
 }
 
+export function getCurrentWeekLossStreak(
+  trades: TradingRulesTradeRow[],
+  referenceDate = new Date(),
+): number {
+  return getRecentLossStreakForRules(filterTradesForRulesWeek(trades, referenceDate))
+}
+
 export function isWinningTrade(trade: TradingRulesTradeRow): boolean {
   const signed = getSignedPnL(trade.pnl, trade.result)
   if (signed > 0) return true
@@ -62,6 +82,24 @@ export function shouldTriggerCooldown(
   rules: AccountTradingRules,
 ): boolean {
   return lossStreak >= rules.loss_streak_limit
+}
+
+export function isCooldownBlocking(input: {
+  streakHitsLimit: boolean
+  cooldown: AccountCooldownState
+}): boolean {
+  if (!input.streakHitsLimit) return false
+
+  const { cooldown } = input
+  if (
+    cooldown.last_coach_unlock_at &&
+    cooldown.cooldown_triggered_at &&
+    new Date(cooldown.last_coach_unlock_at) >= new Date(cooldown.cooldown_triggered_at)
+  ) {
+    return false
+  }
+
+  return cooldown.cooldown_active || input.streakHitsLimit
 }
 
 export function evaluateTradingRules(input: {
@@ -83,15 +121,19 @@ export function evaluateTradingRules(input: {
   }
 
   const referenceDate = input.referenceDate ?? new Date()
-  const lossStreak = getRecentLossStreakForRules(input.trades)
-  const tradesThisWeek = countTradesThisWeek(input.trades, referenceDate)
+  const weekTrades = filterTradesForRulesWeek(input.trades, referenceDate)
+  const lossStreak = getRecentLossStreakForRules(weekTrades)
+  const tradesThisWeek = weekTrades.length
   const weeklyLimitReached = tradesThisWeek >= rules.max_trades_per_week
-  const cooldownRequired =
-    cooldown.cooldown_active || shouldTriggerCooldown(lossStreak, rules)
+  const streakHitsLimit = shouldTriggerCooldown(lossStreak, rules)
+  const cooldownRequired = isCooldownBlocking({ streakHitsLimit, cooldown })
 
   let blockReason: string | null = null
   if (cooldownRequired) {
-    blockReason = `${rules.loss_streak_limit} losses in a row — complete Cooldown Coach before your next trade.`
+    blockReason =
+      lossStreak >= rules.loss_streak_limit
+        ? `${lossStreak} consecutive losses this week — complete Cooldown Coach before your next live trade.`
+        : `${rules.loss_streak_limit} losses in a row — complete Cooldown Coach before your next live trade.`
   } else if (weeklyLimitReached) {
     blockReason = "Weekly trade limit reached. Come back next week."
   }
@@ -124,15 +166,26 @@ export function resolveCooldownAfterTrade(input: {
   rules: AccountTradingRules
   tradesAfterInsert: TradingRulesTradeRow[]
   latestTrade: TradingRulesTradeRow
+  referenceDate?: Date
 }): { cooldownActive: boolean; triggeredAt: string | null } {
+  const referenceDate = input.referenceDate ?? new Date()
+
   if (isWinningTrade(input.latestTrade)) {
     return { cooldownActive: false, triggeredAt: null }
   }
 
-  const lossStreak = getRecentLossStreakForRules(input.tradesAfterInsert)
+  const weekTrades = filterTradesForRulesWeek(input.tradesAfterInsert, referenceDate)
+  const lossStreak = getRecentLossStreakForRules(weekTrades)
   if (shouldTriggerCooldown(lossStreak, input.rules)) {
     return { cooldownActive: true, triggeredAt: new Date().toISOString() }
   }
 
   return { cooldownActive: false, triggeredAt: null }
+}
+
+export function shouldClearStaleCooldown(input: {
+  snapshot: TradingRulesSnapshot
+  accountCooldownActive: boolean
+}): boolean {
+  return input.accountCooldownActive && !input.snapshot.cooldownRequired
 }

@@ -15,6 +15,7 @@ import { loadCoachChapterContext } from "@/lib/coach-chapters/context-service"
 import {
   evaluateTradingRules,
   resolveCooldownAfterTrade,
+  shouldClearStaleCooldown,
   type TradingRulesTradeRow,
 } from "@/lib/trading-rules/evaluate-trading-rules"
 import type { CooldownUnlockResult, TradingRulesSnapshot } from "@/lib/trading-rules/types"
@@ -79,6 +80,27 @@ export async function fetchAccountTradesForRules(
   return (data ?? []) as TradingRulesTradeRow[]
 }
 
+async function clearStaleAccountCooldown(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<void> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from("accounts")
+    .update({
+      cooldown_active: false,
+      cooldown_triggered_at: null,
+      updated_at: now,
+    })
+    .eq("user_id", userId)
+    .eq("id", accountId)
+
+  if (error && !isMissingColumnError(error.message)) {
+    throw new Error(error.message)
+  }
+}
+
 export async function getTradingRulesSnapshot(
   supabase: SupabaseClient,
   userId: string,
@@ -95,12 +117,25 @@ export async function getTradingRulesSnapshot(
     legacyAccountId,
   )
 
-  return evaluateTradingRules({
+  const snapshot = evaluateTradingRules({
     accountId,
     rules: rulesFromAccount(account),
     cooldown: cooldownFromAccount(account),
     trades,
   })
+
+  if (
+    shouldClearStaleCooldown({
+      snapshot,
+      accountCooldownActive: account.cooldown_active ?? false,
+    })
+  ) {
+    await clearStaleAccountCooldown(supabase, userId, accountId)
+    snapshot.cooldown.cooldown_active = false
+    snapshot.cooldown.cooldown_triggered_at = null
+  }
+
+  return snapshot
 }
 
 export async function syncTradingRulesCooldown(

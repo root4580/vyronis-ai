@@ -32,7 +32,9 @@ export function TradingRulesBanner({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-[12px] font-medium leading-snug text-loss">
-              Real trading locked — {snapshot.rules.loss_streak_limit} losses in a row triggered cooldown.
+              Real trading locked — {snapshot.lossStreak} consecutive loss
+              {snapshot.lossStreak === 1 ? "" : "es"} this week. Run Cooldown Coach to unlock live
+              trading.
             </p>
             <p className="mt-0.5 text-[11px] text-loss/85">
               Practice your setups here instead. Paper trading stays available during cooldown.

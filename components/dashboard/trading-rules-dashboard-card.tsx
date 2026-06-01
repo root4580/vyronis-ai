@@ -62,7 +62,7 @@ export function TradingRulesDashboardCard({
             {snapshot.cooldownStatusLabel}
           </p>
           <p className="mt-1 text-[10px] text-text-muted">
-            Loss streak: {snapshot.lossStreak}/{snapshot.rules.loss_streak_limit}
+            Loss streak this week: {snapshot.lossStreak}/{snapshot.rules.loss_streak_limit}
           </p>
         </div>
 
