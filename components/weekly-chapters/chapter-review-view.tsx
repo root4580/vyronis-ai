@@ -8,25 +8,32 @@ import {
   ArrowRight,
   BookOpen,
   ChevronLeft,
+  ImageIcon,
   Loader2,
 } from "lucide-react"
+import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { Button } from "@/components/ui/button"
 import { fetchChapterReview } from "@/lib/weekly-chapters/api-client"
 import type { ChapterReviewPayload, ChapterReviewTrade } from "@/lib/weekly-chapters/types"
-import {
-  formatChapterTitle,
-} from "@/lib/weekly-chapters/week-utils"
+import { formatChapterTitle } from "@/lib/weekly-chapters/week-utils"
 import {
   getChapterReviewHref,
   getDashboardHomeHref,
   getTradeReplayHref,
 } from "@/lib/dashboard-nav"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
+import type { SetupGrade } from "@/lib/strategy-brain/types"
 import { cn } from "@/lib/utils"
 
 type ChapterReviewViewProps = {
   weekStart: string
   accountId: string | null
+}
+
+function isSetupGrade(value: string | null | undefined): value is SetupGrade {
+  if (!value?.trim()) return false
+  const normalized = value.replace(/\s+/g, "").toUpperCase()
+  return normalized === "A+" || ["A", "B", "C", "D"].includes(normalized)
 }
 
 export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewProps) {
@@ -138,6 +145,22 @@ export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewPro
         ) : null}
       </header>
 
+      {review.patterns.length > 0 ? (
+        <section className="hq-surface-card px-4 py-4">
+          <h2 className="text-[13px] font-medium text-text-primary">🔍 Patterns noticed</h2>
+          <ul className="mt-3 space-y-2">
+            {review.patterns.map((pattern) => (
+              <li
+                key={pattern.id}
+                className="rounded-[var(--radius-md)] border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[12px] leading-relaxed text-text-secondary"
+              >
+                {pattern.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="hq-surface-card px-4 py-4">
         <h2 className="text-[13px] font-medium text-text-primary">
           📚 What Chapter {summary.chapter_number} taught you
@@ -156,6 +179,31 @@ export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewPro
             </li>
           ))}
         </ul>
+
+        {review.emotionTimeline.length > 0 ? (
+          <div className="mt-4 border-t border-[var(--border-subtle)] pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+              Emotions this chapter
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {review.emotionTimeline.map((entry, index) => (
+                <span
+                  key={`${entry.pair}-${entry.emotion}-${index}`}
+                  className={cn(
+                    "rounded-[var(--radius-sm)] border px-2 py-1 text-[10px]",
+                    entry.result.toUpperCase() === "WIN"
+                      ? "border-profit/25 bg-profit/[0.08] text-profit"
+                      : entry.result.toUpperCase() === "LOSS"
+                        ? "border-loss/25 bg-loss/[0.08] text-loss"
+                        : "border-white/[0.08] bg-white/[0.03] text-text-muted",
+                  )}
+                >
+                  {entry.pair} · {entry.emotion}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="hq-surface-card px-4 py-4">
@@ -232,62 +280,98 @@ function ChapterReviewTradeCard({ trade }: { trade: ChapterReviewTrade }) {
   const resultUpper = trade.result.toUpperCase()
   const isWin = resultUpper === "WIN"
   const isLoss = resultUpper === "LOSS"
+  const chartUrl = trade.chart_url
 
   return (
-    <article className="hq-surface-card px-4 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-[14px] font-medium text-text-primary">
-            {trade.pair}{" "}
-            <span className="text-[12px] font-normal text-text-muted">{trade.direction}</span>
-          </p>
-          <p className="mt-0.5 text-[11px] text-text-muted">
-            {[trade.session, trade.emotion].filter(Boolean).join(" · ") || "No session tagged"}
-          </p>
+    <article className="hq-surface-card overflow-hidden">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row">
+        <div className="shrink-0">
+          {chartUrl ? (
+            <a
+              href={chartUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-[var(--radius-md)] border border-white/[0.08] bg-black/30"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={chartUrl}
+                alt={`${trade.pair} chart`}
+                className="size-[88px] object-cover sm:size-[104px]"
+              />
+            </a>
+          ) : (
+            <div className="flex size-[88px] items-center justify-center rounded-[var(--radius-md)] border border-dashed border-white/[0.1] bg-white/[0.02] sm:size-[104px]">
+              <ImageIcon className="size-5 text-text-muted/50" />
+            </div>
+          )}
         </div>
-        <div className="text-right">
-          <span
-            className={cn(
-              "rounded-[var(--radius-sm)] px-2 py-0.5 text-[10px] font-semibold uppercase",
-              isWin && "bg-profit/15 text-profit",
-              isLoss && "bg-loss/15 text-loss",
-              !isWin && !isLoss && "bg-white/[0.06] text-text-muted",
-            )}
-          >
-            {trade.result}
-          </span>
-          <p
-            className={cn(
-              "mt-1 text-[13px] font-semibold tabular-nums",
-              getPnLTextClass(trade.pnl, isWin ? "WIN" : isLoss ? "LOSS" : "BREAKEVEN"),
-            )}
-          >
-            {formatPnL(trade.pnl, isWin ? "WIN" : isLoss ? "LOSS" : "BREAKEVEN")}
-          </p>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[14px] font-medium text-text-primary">
+                  {trade.pair}{" "}
+                  <span className="text-[12px] font-normal text-text-muted">{trade.direction}</span>
+                </p>
+                {isSetupGrade(trade.coach_grade) ? (
+                  <SetupGradeBadge grade={trade.coach_grade} label="Coach" size="sm" />
+                ) : null}
+              </div>
+              <p className="mt-0.5 text-[11px] text-text-muted">
+                {[trade.session, trade.emotion].filter(Boolean).join(" · ") || "No session tagged"}
+              </p>
+            </div>
+            <div className="text-right">
+              <span
+                className={cn(
+                  "rounded-[var(--radius-sm)] px-2 py-0.5 text-[10px] font-semibold uppercase",
+                  isWin && "bg-profit/15 text-profit",
+                  isLoss && "bg-loss/15 text-loss",
+                  !isWin && !isLoss && "bg-white/[0.06] text-text-muted",
+                )}
+              >
+                {trade.result}
+              </span>
+              <p
+                className={cn(
+                  "mt-1 text-[13px] font-semibold tabular-nums",
+                  getPnLTextClass(trade.pnl, isWin ? "WIN" : isLoss ? "LOSS" : "BREAKEVEN"),
+                )}
+              >
+                {formatPnL(trade.pnl, isWin ? "WIN" : isLoss ? "LOSS" : "BREAKEVEN")}
+              </p>
+            </div>
+          </div>
+
+          {(trade.entry_price != null || trade.stop_loss != null || trade.take_profit != null) && (
+            <p className="mt-2 font-mono text-[10px] text-text-muted">
+              {trade.entry_price != null ? `Entry ${trade.entry_price}` : null}
+              {trade.stop_loss != null ? ` · SL ${trade.stop_loss}` : null}
+              {trade.take_profit != null ? ` · TP ${trade.take_profit}` : null}
+            </p>
+          )}
+
+          {trade.what_went_right ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-profit/90">
+              ✓ {trade.what_went_right}
+            </p>
+          ) : null}
+          {trade.what_went_wrong ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-loss/90">✗ {trade.what_went_wrong}</p>
+          ) : null}
+
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Link
+              href={getTradeReplayHref(trade.id)}
+              className="inline-flex text-[11px] font-medium text-cyan-glow hover:underline"
+            >
+              View trade replay →
+            </Link>
+          </div>
         </div>
       </div>
-
-      {(trade.entry_price != null || trade.stop_loss != null || trade.take_profit != null) && (
-        <p className="mt-2 font-mono text-[10px] text-text-muted">
-          {trade.entry_price != null ? `Entry ${trade.entry_price}` : null}
-          {trade.stop_loss != null ? ` · SL ${trade.stop_loss}` : null}
-          {trade.take_profit != null ? ` · TP ${trade.take_profit}` : null}
-        </p>
-      )}
-
-      {trade.coach_grade ? (
-        <p className="mt-2 text-[11px] text-cyan-glow/90">Coach grade: {trade.coach_grade}</p>
-      ) : null}
-      {trade.coach_insight ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">{trade.coach_insight}</p>
-      ) : null}
-
-      <Link
-        href={getTradeReplayHref(trade.id)}
-        className="mt-3 inline-flex text-[11px] font-medium text-cyan-glow hover:underline"
-      >
-        View trade replay →
-      </Link>
     </article>
   )
 }

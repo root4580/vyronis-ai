@@ -86,9 +86,27 @@ export type ChapterReviewTrade = {
   stop_loss: number | null
   take_profit: number | null
   screenshot_url: string | null
+  chart_url: string | null
   trade_date: string | null
+  rule_followed: boolean | null
+  mistake_tags: string | null
   coach_grade: string | null
   coach_insight: string | null
+  coach_session_id: string | null
+  what_went_right: string | null
+  what_went_wrong: string | null
+}
+
+export type ChapterReviewEmotionEntry = {
+  pair: string
+  emotion: string
+  result: string
+  trade_date: string | null
+}
+
+export type ChapterReviewPattern = {
+  id: string
+  message: string
 }
 
 export type ChapterReviewPayload = {
@@ -97,6 +115,8 @@ export type ChapterReviewPayload = {
   coachInsights: string[]
   paperLine: string | null
   carryForwardLesson: string
+  patterns: ChapterReviewPattern[]
+  emotionTimeline: ChapterReviewEmotionEntry[]
   isClosed: boolean
   navigation: {
     previousWeekStart: string | null

@@ -15,6 +15,8 @@ import {
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
+import { detectChapterReviewPatterns } from "@/lib/weekly-chapters/chapter-patterns"
+import { buildChapterTradeReviewNotes } from "@/lib/weekly-chapters/trade-review-notes"
 import {
   fetchChapterPaperTrades,
   fetchChapterTrades,
@@ -41,12 +43,20 @@ export function isValidWeekStartParam(value: string): boolean {
 }
 
 type CoachSessionRow = {
+  id: string
   trade_id: string | null
   quality_grade: string | null
   key_insight: string | null
+  chart_url: string | null
+  screenshot_url: string | null
+  warnings: string[] | null
+  strengths: string[] | null
   updated_at: string | null
   created_at: string | null
-  planned_context?: { tradingview_setup_grade?: string | null } | null
+  planned_context?: {
+    tradingview_setup_grade?: string | null
+    coach_analysis?: { tradeQuality?: { grade?: string | null } } | null
+  } | null
 }
 
 async function fetchCoachSessionsForAccount(
@@ -56,7 +66,9 @@ async function fetchCoachSessionsForAccount(
 ): Promise<CoachSessionRow[]> {
   const { data, error } = await supabase
     .from("trade_coach_sessions")
-    .select("trade_id, quality_grade, key_insight, updated_at, created_at, planned_context")
+    .select(
+      "id, trade_id, quality_grade, key_insight, chart_url, screenshot_url, warnings, strengths, updated_at, created_at, planned_context",
+    )
     .eq("user_id", userId)
     .eq("account_id", accountId)
     .limit(300)
@@ -138,8 +150,27 @@ function mapReviewTrades(
       const coach = coachByTradeId.get(id)
       const grade =
         coach?.quality_grade?.trim() ||
+        coach?.planned_context?.coach_analysis?.tradeQuality?.grade?.trim() ||
         coach?.planned_context?.tradingview_setup_grade?.trim() ||
         null
+
+      const screenshotUrl = row.screenshot_url != null ? String(row.screenshot_url) : null
+      const chartUrl =
+        screenshotUrl || coach?.chart_url?.trim() || coach?.screenshot_url?.trim() || null
+
+      const reviewNotes = buildChapterTradeReviewNotes({
+        result: String(row.result ?? "—"),
+        pnl: getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? "")),
+        emotion: row.emotion != null ? String(row.emotion) : null,
+        rule_followed: row.rule_followed === null || row.rule_followed === undefined
+          ? null
+          : Boolean(row.rule_followed),
+        mistake_tags: row.mistake_tags != null ? String(row.mistake_tags) : null,
+        coach_grade: grade,
+        coach_insight: coach?.key_insight?.trim() || null,
+        coach_strengths: coach?.strengths ?? [],
+        coach_warnings: coach?.warnings ?? [],
+      })
 
       return {
         id,
@@ -152,10 +183,19 @@ function mapReviewTrades(
         entry_price: row.entry_price != null ? Number(row.entry_price) : null,
         stop_loss: row.stop_loss != null ? Number(row.stop_loss) : null,
         take_profit: row.take_profit != null ? Number(row.take_profit) : null,
-        screenshot_url: row.screenshot_url != null ? String(row.screenshot_url) : null,
+        screenshot_url: screenshotUrl,
+        chart_url: chartUrl,
         trade_date: row.trade_date != null ? String(row.trade_date) : null,
+        rule_followed:
+          row.rule_followed === null || row.rule_followed === undefined
+            ? null
+            : Boolean(row.rule_followed),
+        mistake_tags: row.mistake_tags != null ? String(row.mistake_tags) : null,
         coach_grade: grade,
         coach_insight: coach?.key_insight?.trim() || null,
+        coach_session_id: coach?.id ?? null,
+        what_went_right: reviewNotes.whatWentRight,
+        what_went_wrong: reviewNotes.whatWentWrong,
       }
     })
     .sort((a, b) => {
@@ -174,7 +214,7 @@ async function fetchChapterReviewTradeRows(
   let query = supabase
     .from("trades")
     .select(
-      "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source",
+      "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source, rule_followed, mistake_tags",
     )
     .eq("user_id", userId)
     .order("trade_date", { ascending: false })
@@ -191,7 +231,7 @@ async function fetchChapterReviewTradeRows(
       const fallback = await supabase
         .from("trades")
         .select(
-          "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source",
+          "id, pair, direction, result, pnl, session, emotion, entry_price, stop_loss, take_profit, screenshot_url, trade_date, created_at, import_source, rule_followed, mistake_tags",
         )
         .eq("user_id", userId)
         .limit(400)
@@ -293,6 +333,15 @@ export async function getChapterReview(
 
   const weekCoachSessions = coachSessionsInWeek(coachSessions, weekStart)
   const trades = mapReviewTrades(tradeRows, weekStart, coachByTradeId)
+  const patterns = detectChapterReviewPatterns(trades)
+  const emotionTimeline = trades
+    .filter((trade) => Boolean(trade.emotion?.trim()))
+    .map((trade) => ({
+      pair: trade.pair,
+      emotion: trade.emotion!.trim(),
+      result: trade.result,
+      trade_date: trade.trade_date,
+    }))
   const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(summary))
   const currentWeekStart = toWeekStartISO(new Date())
   const navigation = resolveNavigation(summaries, weekStart)
@@ -311,6 +360,8 @@ export async function getChapterReview(
     coachInsights: collectCoachInsights(summary, weekCoachSessions),
     paperLine,
     carryForwardLesson: summary.key_lesson?.trim() || "Protect process over outcome.",
+    patterns,
+    emotionTimeline,
     isClosed: weekStart < currentWeekStart,
     navigation,
   }
