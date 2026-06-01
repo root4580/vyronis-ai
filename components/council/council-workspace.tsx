@@ -184,7 +184,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     let cancelled = false
     setIsContextLoading(true)
 
-    void fetchCouncilVisualContext(accountId)
+    void fetchCouncilVisualContext(accountId, { refresh: true })
       .then((payload) => {
         if (!cancelled) setVisualContext(payload.visual ?? null)
       })
@@ -389,6 +389,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         setTranscript((current) => [...current, ...agentMessages])
         await speakEntries(agentMessages)
         scrollToBottom()
+        void fetchCouncilVisualContext(accountId, { refresh: true })
+          .then((payload) => setVisualContext(payload.visual ?? null))
+          .catch(() => undefined)
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not reach the council")
         if (isConversationMode) {

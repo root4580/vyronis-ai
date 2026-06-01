@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { formatAccountMoney } from "@/lib/accounts/profit-target"
 import type { CouncilChartSnapshot, CouncilVisualContext } from "@/lib/council/types"
 import { getWarRoomCoachHref, getWarRoomHref } from "@/lib/dashboard-nav"
+import { formatPnL } from "@/lib/trade-utils"
 import { cn } from "@/lib/utils"
 
 type CouncilContextPanelProps = {
@@ -19,15 +20,24 @@ function StatTile({
   label,
   value,
   detail,
+  valueClassName,
 }: {
   label: string
   value: string
   detail?: string
+  valueClassName?: string
 }) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-white/[0.06] bg-black/25 px-2.5 py-2">
       <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</p>
-      <p className="mt-0.5 text-[14px] font-medium tabular-nums text-text-primary">{value}</p>
+      <p
+        className={cn(
+          "mt-0.5 text-[14px] font-medium tabular-nums text-text-primary",
+          valueClassName,
+        )}
+      >
+        {value}
+      </p>
       {detail ? <p className="mt-0.5 text-[10px] text-text-muted">{detail}</p> : null}
     </div>
   )
@@ -100,6 +110,9 @@ export function CouncilContextPanel({ visual, onChartClick, className }: Council
   if (!visual) return null
 
   const { stats } = visual
+  const money = (value: number) => formatAccountMoney(value, stats.currency)
+  const pnlClass =
+    stats.totalPnL > 0 ? "text-profit" : stats.totalPnL < 0 ? "text-loss" : undefined
   const primaryPair = visual.watchlistCharts[0]?.pair ?? null
   const coachHref = primaryPair
     ? getWarRoomCoachHref([primaryPair])
@@ -113,17 +126,38 @@ export function CouncilContextPanel({ visual, onChartClick, className }: Council
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/85">
               Live stats
             </p>
-            <span className="truncate text-[10px] text-text-muted">{stats.chapterLabel}</span>
+            <span className="truncate text-[10px] text-text-muted">
+              {stats.accountName} · {stats.chapterLabel}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <StatTile
+              label="Starting"
+              value={money(stats.startingBalance)}
+              detail="Account baseline in Vyronis"
+            />
+            <StatTile
+              label="Journal P&L"
+              value={formatPnL(Math.abs(stats.totalPnL), stats.totalPnL >= 0 ? "WIN" : "LOSS")}
+              detail="From logged trades"
+              valueClassName={pnlClass}
+            />
+            <StatTile
               label="Balance"
-              value={formatAccountMoney(stats.balance, stats.currency)}
+              value={money(stats.balance)}
+              detail="Starting + journal P&L"
             />
             <StatTile
               label="Drawdown"
               value={`${stats.drawdownPct.toFixed(1)}%`}
-              detail="From peak equity"
+              detail="From starting balance"
+              valueClassName={stats.drawdownPct > 0 ? "text-loss" : undefined}
+            />
+            <StatTile
+              label="Loss today"
+              value={`${stats.dailyLossPct.toFixed(1)}%`}
+              detail="Of daily limit used"
+              valueClassName={stats.dailyLossPct > 0 ? "text-loss" : undefined}
             />
             <StatTile
               label="Trades this week"
@@ -134,8 +168,15 @@ export function CouncilContextPanel({ visual, onChartClick, className }: Council
               label="Discipline"
               value={stats.disciplineScore != null ? `${Math.round(stats.disciplineScore)}/100` : "—"}
               detail={stats.disciplineScore != null ? "Chapter score" : "Not enough data"}
+              valueClassName={stats.disciplineScore != null ? undefined : undefined}
             />
           </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-text-muted">{stats.todayJournalLine}</p>
+          {stats.dataNote ? (
+            <p className="mt-1.5 rounded-[var(--radius-sm)] border border-warning/20 bg-warning/[0.08] px-2 py-1.5 text-[10px] leading-relaxed text-warning-muted">
+              {stats.dataNote}
+            </p>
+          ) : null}
         </div>
 
         {charts.length > 0 ? (

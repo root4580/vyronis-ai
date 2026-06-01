@@ -32,8 +32,13 @@ export async function fetchCouncilSession(
 
 export async function fetchCouncilVisualContext(
   accountId: string | null,
+  options?: { refresh?: boolean },
 ): Promise<{ visual: CouncilSessionResponse["visual"] }> {
-  const response = await fetch(withAccountQuery(accountId, "/api/council/context"), {
+  let path = withAccountQuery(accountId, "/api/council/context")
+  if (options?.refresh) {
+    path += path.includes("?") ? "&refresh=1" : "?refresh=1"
+  }
+  const response = await fetch(path, {
     credentials: "include",
   })
   return parseJson<{ visual: CouncilSessionResponse["visual"] }>(response)

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { evaluateAccountStatus } from "@/lib/account-status"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import {
   accountScopeOrFilter,
@@ -17,14 +18,17 @@ import type {
   WeeklyPlanWithPairs,
 } from "@/lib/strategy-brain/types"
 import { getTradingRulesSnapshot } from "@/lib/trading-rules/trading-rules-service"
-import { getSignedPnL } from "@/lib/trade-utils"
 import { buildJarvisContextSnapshot } from "@/lib/council/jarvis-service"
 import {
   buildRiskSnapshot,
+  getLocalDateKey,
+  getTradeDateKey,
   normalizePreferredSession,
   normalizeUserSettings,
+  resolveTradingDayTimeZone,
   type SettingsTrade,
 } from "@/lib/user-settings"
+import { formatPnL, getSignedPnL } from "@/lib/trade-utils"
 import { buildChapterEmotionSummary } from "@/lib/weekly-chapters/chapter-emotion-scores"
 import { detectChapterReviewPatterns } from "@/lib/weekly-chapters/chapter-patterns"
 import { warRoomWeekStartCandidates } from "@/lib/weekly-chapters/chapter-war-room-recap"
@@ -89,16 +93,111 @@ type EmotionCheckRow = {
   created_at: string
 }
 
-async function loadTraderFirstName(
+async function loadTraderProfile(
   supabase: SupabaseClient,
   userId: string,
-): Promise<string> {
+): Promise<{ firstName: string; timeZone: string }> {
   const { data } = await supabase
     .from("user_profiles")
-    .select("first_name")
+    .select("first_name, timezone")
     .eq("user_id", userId)
     .maybeSingle()
-  return data?.first_name?.trim() || "Trader"
+  return {
+    firstName: data?.first_name?.trim() || "Trader",
+    timeZone: resolveTradingDayTimeZone(data?.timezone),
+  }
+}
+
+function mapTradeRowsToSettingsTrades(
+  tradeRows: TradeRow[],
+  startingBalance: number,
+): SettingsTrade[] {
+  return tradeRows.map((row) => {
+    const result = String(row.result ?? "")
+    let pnl = Number(row.pnl ?? 0)
+    if (
+      result === "LOSS" &&
+      getSignedPnL(pnl, result) === 0 &&
+      (row.risk_percent ?? 0) > 0 &&
+      startingBalance > 0
+    ) {
+      pnl = (startingBalance * (row.risk_percent ?? 0)) / 100
+    }
+    return {
+      risk_percent: row.risk_percent,
+      rule_followed: row.rule_followed,
+      emotion: row.emotion ?? "",
+      stop_loss: row.stop_loss,
+      trade_date: row.trade_date,
+      created_at: row.created_at ?? new Date().toISOString(),
+      result,
+      pnl,
+    }
+  })
+}
+
+function buildCouncilDataNote(tradeRows: TradeRow[]): string | null {
+  const missingPnlLosses = tradeRows.filter(
+    (row) =>
+      String(row.result ?? "") === "LOSS" &&
+      getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? "")) === 0,
+  ).length
+  if (missingPnlLosses > 0) {
+    return `${missingPnlLosses} loss${missingPnlLosses === 1 ? "" : "es"} missing dollar P&L — balance uses risk % estimate until you edit the trade.`
+  }
+  return null
+}
+
+function buildTodayRexJournalLine(
+  tradeRows: TradeRow[],
+  timeZone: string,
+  currency: string,
+  startingBalance: number,
+): string {
+  const todayKey = getLocalDateKey(new Date(), timeZone)
+  const todayRows = tradeRows.filter((row) =>
+    getTradeDateKey({
+      trade_date: row.trade_date,
+      created_at: row.created_at ?? new Date().toISOString(),
+    }) === todayKey,
+  )
+
+  if (todayRows.length === 0) {
+    return `Journal today (${todayKey}): no trades logged for this account in Vyronis.`
+  }
+
+  const entries = todayRows.map((row) => {
+    const result = String(row.result ?? "")
+    let pnl = Number(row.pnl ?? 0)
+    if (
+      result === "LOSS" &&
+      getSignedPnL(pnl, result) === 0 &&
+      (row.risk_percent ?? 0) > 0
+    ) {
+      pnl = ((startingBalance * (row.risk_percent ?? 0)) / 100)
+    }
+    const signed = getSignedPnL(pnl, result)
+    const pair = row.pair ?? "Unknown pair"
+    if (result === "LOSS" && Number(row.pnl ?? 0) === 0 && signed < 0) {
+      return `${pair} LOSS ~${formatPnL(Math.abs(signed), "WIN")} (estimated from ${row.risk_percent}% risk)`
+    }
+    return `${pair} ${result} ${formatPnL(Number(row.pnl ?? 0), result)}`
+  })
+
+  const netPnL = todayRows.reduce((sum, row) => {
+    const result = String(row.result ?? "")
+    let pnl = Number(row.pnl ?? 0)
+    if (
+      result === "LOSS" &&
+      getSignedPnL(pnl, result) === 0 &&
+      (row.risk_percent ?? 0) > 0
+    ) {
+      pnl = (startingBalance * (row.risk_percent ?? 0)) / 100
+    }
+    return sum + getSignedPnL(pnl, result)
+  }, 0)
+
+  return `Journal today (${todayKey}): ${todayRows.length} trade(s), net ${formatMoney(netPnL, currency)} — ${entries.join("; ")}.`
 }
 
 async function loadDisciplineScoresByTradeId(
@@ -418,6 +517,7 @@ function buildRexContext(input: {
   dailyLossLimitPct: number
   todayLossPct: number
   maxLossToday: number
+  todayJournalLine: string
   maxTradesPerWeek: number
   tradesThisWeek: number
   tradesRemaining: number
@@ -436,6 +536,7 @@ function buildRexContext(input: {
   return [
     `Account "${input.accountName}": balance ${formatMoney(input.balance, input.currency)} (starting ${formatMoney(input.startingBalance, input.currency)}).`,
     `Drawdown ${input.drawdownPct.toFixed(1)}% (max allowed ${input.maxDrawdownLimit}%).`,
+    input.todayJournalLine,
     `Daily loss limit ${input.dailyLossLimitPct}% — ${input.todayLossPct.toFixed(1)}% used today (~${formatMoney(input.maxLossToday, input.currency)} budget).`,
     `Weekly trade limit ${input.maxTradesPerWeek} — ${input.tradesThisWeek} taken, ${input.tradesRemaining} remaining.`,
     `Loss streak ${input.lossStreak}/${input.lossStreakLimit} this week.`,
@@ -541,7 +642,7 @@ export async function loadCouncilAgentContext(
   const weekStart = toWeekStartISO(new Date())
 
   const [
-    firstName,
+    traderProfile,
     account,
     rulesSnapshot,
     settingsRow,
@@ -552,7 +653,7 @@ export async function loadCouncilAgentContext(
     setupEvaluations,
     recentEmotionChecks,
   ] = await Promise.all([
-    loadTraderFirstName(supabase, userId),
+    loadTraderProfile(supabase, userId),
     getTradingAccount(supabase, userId, accountId),
     getTradingRulesSnapshot(supabase, userId, accountId),
       supabase
@@ -582,6 +683,8 @@ export async function loadCouncilAgentContext(
   ])
 
   const settings = normalizeUserSettings(settingsRow.data)
+  const firstName = traderProfile.firstName
+  const timeZone = traderProfile.timeZone
   const preferredSession = normalizePreferredSession(settings.preferred_session)
   const startingBalance = account?.starting_balance ?? settings.starting_balance
   const currency = account?.currency ?? "USD"
@@ -608,24 +711,32 @@ export async function loadCouncilAgentContext(
     tradeRows.slice(0, 12).map((row) => String(row.id)),
   )
 
-  const totalPnl = tradeRows.reduce(
-    (sum, row) => sum + getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? "")),
-    0,
-  )
-  const balance = startingBalance + totalPnl
-  let peak = startingBalance
-  let running = startingBalance
-  for (const row of [...tradeRows].reverse()) {
-    running += getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? ""))
-    peak = Math.max(peak, running)
-  }
-  const drawdownPct = peak > 0 ? ((peak - balance) / peak) * 100 : 0
+  const settingsTrades = mapTradeRowsToSettingsTrades(tradeRows, startingBalance)
+  const dataNote = buildCouncilDataNote(tradeRows)
+
+  const accountStatus = evaluateAccountStatus({
+    trades: settingsTrades,
+    account: account ?? {
+      name: "Trading account",
+      starting_balance: startingBalance,
+      max_drawdown_pct: 10,
+      currency,
+      max_trades_per_week: 2,
+    },
+    settings,
+    timeZone,
+  })
+
+  const balance = accountStatus.accountBalance
+  const drawdownPct = accountStatus.drawdownPercent
   const maxLossToday = (startingBalance * settings.daily_drawdown_limit) / 100
+  const todayJournalLine = buildTodayRexJournalLine(tradeRows, timeZone, currency, startingBalance)
 
   const riskSnapshot = buildRiskSnapshot(
     settings,
-    tradeRows as SettingsTrade[],
+    settingsTrades,
     startingBalance,
+    timeZone,
   )
 
   const maxTrades =
@@ -681,8 +792,8 @@ export async function loadCouncilAgentContext(
       })
     : null
 
-  const tradesRemaining = rulesSnapshot?.tradesRemainingThisWeek ?? 0
-  const tradesThisWeek = rulesSnapshot?.tradesThisWeek ?? weekTrades.length
+  const tradesRemaining = rulesSnapshot?.tradesRemainingThisWeek ?? Math.max(0, maxTrades - weekTrades.length)
+  const tradesThisWeek = weekTrades.length
 
   const nova = buildNovaContext({
     chapterLabel,
@@ -709,6 +820,7 @@ export async function loadCouncilAgentContext(
     dailyLossLimitPct: settings.daily_drawdown_limit,
     todayLossPct: riskSnapshot.todayLossPercent,
     maxLossToday,
+    todayJournalLine,
     maxTradesPerWeek: maxTrades,
     tradesThisWeek,
     tradesRemaining,
@@ -762,8 +874,11 @@ export async function loadCouncilAgentContext(
   const visual = {
     stats: {
       balance,
+      startingBalance,
+      totalPnL: accountStatus.totalPnL,
       currency,
       drawdownPct,
+      dailyLossPct: riskSnapshot.todayLossPercent,
       tradesThisWeek,
       maxTradesPerWeek: maxTrades,
       tradesRemaining,
@@ -772,6 +887,9 @@ export async function loadCouncilAgentContext(
         dashboard?.thisWeek.disciplineScore ??
         null,
       chapterLabel,
+      accountName: account?.name ?? "Trading account",
+      todayJournalLine,
+      dataNote,
     },
     watchlistCharts,
     lastTradeChart,

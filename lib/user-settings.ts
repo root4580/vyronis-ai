@@ -1,5 +1,7 @@
+import { getLocalDateKey as getLocalDateKeyInTimeZone } from "@/lib/intelligence/greeting-engine"
 import { getCalendarDateKey } from "@/lib/journal/trade-date-parser"
 import { getSignedPnL } from "@/lib/trade-utils"
+import { DEFAULT_USER_PROFILE } from "@/lib/user-profile"
 import type { DashboardPreferences } from "@/lib/user-preferences"
 
 export type UserSettingsRecord = {
@@ -103,11 +105,17 @@ export function getTradeDateKey(trade: Pick<SettingsTrade, "trade_date" | "creat
   return `${year}-${month}-${day}`
 }
 
-export function getLocalDateKey(date: Date): string {
+export function getLocalDateKey(date: Date, timeZone?: string): string {
+  if (timeZone) return getLocalDateKeyInTimeZone(date, timeZone)
+
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const day = String(date.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+export function resolveTradingDayTimeZone(timeZone?: string | null): string {
+  return timeZone?.trim() || DEFAULT_USER_PROFILE.timezone
 }
 
 export function getTradeTimestamp(trade: Pick<SettingsTrade, "trade_date" | "created_at">): number {
@@ -121,15 +129,20 @@ export function getTradeWeekday(trade: Pick<SettingsTrade, "trade_date" | "creat
 export function getTodayTrades<T extends Pick<SettingsTrade, "trade_date" | "created_at">>(
   trades: T[],
   referenceDate = new Date(),
+  timeZone?: string,
 ): T[] {
-  const todayKey = getLocalDateKey(referenceDate)
+  const todayKey = getLocalDateKey(referenceDate, resolveTradingDayTimeZone(timeZone))
   return trades.filter((trade) => getTradeDateKey(trade) === todayKey)
 }
 
-export function getTodayLossPercent(trades: SettingsTrade[], startingBalance: number): number {
+export function getTodayLossPercent(
+  trades: SettingsTrade[],
+  startingBalance: number,
+  timeZone?: string,
+): number {
   if (startingBalance <= 0) return 0
 
-  const todayTrades = getTodayTrades(trades)
+  const todayTrades = getTodayTrades(trades, new Date(), timeZone)
   const todayLossAmount = todayTrades.reduce((sum, trade) => {
     const signed = getSignedPnL(trade.pnl, trade.result)
     return signed < 0 ? sum + Math.abs(signed) : sum
@@ -142,8 +155,9 @@ export function buildRiskSnapshot(
   settings: UserSettingsForm,
   trades: SettingsTrade[],
   startingBalance: number,
+  timeZone?: string,
 ): RiskSnapshot {
-  const todayTrades = getTodayTrades(trades)
+  const todayTrades = getTodayTrades(trades, new Date(), timeZone)
   const todayRiskUsed = todayTrades.reduce((sum, trade) => sum + (trade.risk_percent ?? 0), 0)
   const avgRiskPerTrade =
     trades.length > 0
@@ -153,7 +167,7 @@ export function buildRiskSnapshot(
   return {
     maxRiskPerTrade: settings.max_risk_per_trade,
     dailyLossLimit: settings.daily_drawdown_limit,
-    todayLossPercent: getTodayLossPercent(trades, startingBalance),
+    todayLossPercent: getTodayLossPercent(trades, startingBalance, timeZone),
     todayRiskUsed,
     avgRiskPerTrade,
     highRiskTradeCount: trades.filter(

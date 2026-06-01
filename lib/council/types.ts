@@ -55,13 +55,19 @@ export type CouncilChartSnapshot = {
 
 export type CouncilStatsSnapshot = {
   balance: number
+  startingBalance: number
+  totalPnL: number
   currency: string
   drawdownPct: number
+  dailyLossPct: number
   tradesThisWeek: number
   maxTradesPerWeek: number
   tradesRemaining: number
   disciplineScore: number | null
   chapterLabel: string
+  accountName: string
+  todayJournalLine: string
+  dataNote?: string | null
 }
 
 export type CouncilVisualContext = {

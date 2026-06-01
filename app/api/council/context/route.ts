@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
-import { loadCachedCouncilVisualContext } from "@/lib/council/context-cache"
+import { invalidateCouncilContextCache, loadCachedCouncilVisualContext } from "@/lib/council/context-cache"
 import { CouncilTablesMissingError } from "@/lib/council/server-service"
 
 export async function GET(request: Request) {
@@ -19,6 +19,11 @@ export async function GET(request: Request) {
     const accountId = await resolveActiveAccountId(supabase, user.id, request)
     if (!accountId) {
       return NextResponse.json({ error: "No active account" }, { status: 400 })
+    }
+
+    const refresh = new URL(request.url).searchParams.get("refresh") === "1"
+    if (refresh) {
+      invalidateCouncilContextCache(user.id, accountId)
     }
 
     const visual = await loadCachedCouncilVisualContext(supabase, user.id, accountId)

@@ -189,6 +189,7 @@ export function evaluateAccountStatus(input: {
   >
   settings?: UserSettingsForm | null
   referenceDate?: Date
+  timeZone?: string
 }): AccountStatusSnapshot {
   const settings = normalizeUserSettings(input.settings ?? DEFAULT_USER_SETTINGS)
   const startingBalance = input.account.starting_balance
@@ -205,9 +206,13 @@ export function evaluateAccountStatus(input: {
     settings.profit_target,
   )
 
-  const dailyLossPercent = getTodayLossPercent(input.trades, startingBalance)
+  const dailyLossPercent = getTodayLossPercent(
+    input.trades,
+    startingBalance,
+    input.timeZone,
+  )
   const weeklyLossPercent = getWeekLossPercent(input.trades, startingBalance, referenceDate)
-  const tradesToday = getTodayTrades(input.trades, referenceDate).length
+  const tradesToday = getTodayTrades(input.trades, referenceDate, input.timeZone).length
   const tradesThisWeek = getWeekTrades(input.trades, referenceDate).length
 
   const dailyLossLimitPercent = settings.daily_drawdown_limit

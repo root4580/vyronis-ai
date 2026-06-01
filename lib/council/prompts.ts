@@ -107,6 +107,9 @@ export function buildCouncilAgentSystemPrompt(
   }
   if (agentId === "rex") {
     base.push("Be firm about limits and capital protection.")
+    base.push(
+      "Quote today's journal line from your snapshot exactly. If the trader reports a loss but the journal line shows none or missing P&L, say Vyronis does not have it logged yet — never insist they are wrong.",
+    )
   }
   if (agentId === "luna") {
     base.push("Highlight the strongest watchlist setup with encouragement.")
