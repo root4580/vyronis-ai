@@ -253,6 +253,8 @@ export function WeeklyWarRoom({
 
       <WarRoomNewsBanner calendar={calendar} />
 
+      <WarRoomCalendarPanel calendar={calendar} loading={calendarLoading} />
+
       {loading && !setupError ? (
         <p className="text-center text-[12px] text-text-muted animate-pulse">Loading War Room…</p>
       ) : null}
