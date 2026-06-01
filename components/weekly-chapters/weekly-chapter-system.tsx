@@ -190,6 +190,18 @@ export function WeeklyChapterSystem({
         ) : null}
       </div>
 
+      {dashboard.previousChapter && !dashboard.carryForwardMessage ? (
+        <div className="rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+          <PreviousChapterLine summary={dashboard.previousChapter} compact />
+          <Link
+            href={getChapterReviewHref(dashboard.previousChapter.week_start)}
+            className="mt-2.5 inline-flex min-h-10 w-full items-center justify-center rounded-[var(--radius-md)] border border-white/[0.1] bg-white/[0.03] px-3 text-[12px] font-medium text-text-secondary transition-colors hover:bg-white/[0.05] hover:text-text-primary"
+          >
+            📖 Review Chapter {dashboard.previousChapter.chapter_number}
+          </Link>
+        </div>
+      ) : null}
+
       {dashboard.carryForwardMessage && dashboard.previousChapter ? (
         <div className="rounded-[var(--radius-md)] border border-warning/25 bg-warning/[0.06]">
           <button
@@ -398,10 +410,16 @@ function SundayCompleteCard({
         <p className="text-[10px] text-text-muted">
           Saved to your chapter history — past chapters are remembered, not erased.
         </p>
+        <Link
+          href={getChapterReviewHref(summary.week_start)}
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-[var(--radius-md)] border border-cyan-glow/35 bg-cyan-glow/[0.1] px-3 text-[12px] font-medium text-cyan-glow transition-colors hover:bg-cyan-glow/[0.14]"
+        >
+          📖 Review Chapter {summary.chapter_number}
+        </Link>
         <button
           type="button"
           onClick={onDismiss}
-          className="text-[11px] text-cyan-glow hover:underline"
+          className="w-full text-center text-[11px] text-text-muted hover:text-cyan-glow"
         >
           Dismiss for tonight
         </button>
