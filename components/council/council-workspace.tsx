@@ -14,6 +14,9 @@ import {
 } from "@/lib/council/api-client"
 import { findChartForMessage } from "@/lib/council/pair-chart-match"
 import { readFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
+import {
+  readFullCouncilParticipation,
+} from "@/lib/council/full-council-preference"
 import type {
   CouncilAgentId,
   CouncilMemoryHighlight,
@@ -69,6 +72,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [memoryHighlights, setMemoryHighlights] = useState<CouncilMemoryHighlight[]>([])
   const [councilSettings, setCouncilSettings] = useState<CouncilSettingsRecord | null>(null)
   const [freshChatOnOpen, setFreshChatOnOpen] = useState(true)
+  const [fullCouncilParticipation, setFullCouncilParticipation] = useState(true)
   const [chartViewer, setChartViewer] = useState<{ url: string; title: string } | null>(null)
   const autoBriefingAttempted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -119,6 +123,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
   useEffect(() => {
     setFreshChatOnOpen(readFreshChatOnOpen())
+    setFullCouncilParticipation(readFullCouncilParticipation())
   }, [])
 
   const loadSession = useCallback(async () => {
@@ -368,12 +373,17 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           message: trimmed,
           agent: targetAgent,
           conversationAgent: activeConversation ?? undefined,
+          fullCouncilParticipation,
         })
-        setConversationAgent(result.agent)
-        conversationAgentRef.current = result.agent
-        setActiveAgent(result.agent)
-        setSelectedAgent(result.agent)
-        selectedAgentRef.current = result.agent
+        if (!result.roundtable) {
+          setConversationAgent(result.agent)
+          conversationAgentRef.current = result.agent
+          setActiveAgent(result.agent)
+          setSelectedAgent(result.agent)
+          selectedAgentRef.current = result.agent
+        } else {
+          setActiveAgent(null)
+        }
         const agentMessages =
           result.messages.length > 0 ? result.messages : [result.message]
         setTranscript((current) => [...current, ...agentMessages])
@@ -400,6 +410,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       clearMicError,
       voiceSession,
       isConversationMode,
+      fullCouncilParticipation,
     ],
   )
 
@@ -624,6 +635,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         settings={councilSettings}
         onSettingsChange={setCouncilSettings}
         onFreshChatChange={setFreshChatOnOpen}
+        onFullCouncilChange={setFullCouncilParticipation}
       />
       <CouncilHistoryPanel accountId={accountId} />
 
@@ -672,9 +684,11 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               {freshChatOnOpen ? "Clean slate — agents still remember you." : "Your council is standing by."}
             </p>
             <p className="mt-1 max-w-sm text-[11px] text-text-muted">
-              {freshChatOnOpen
-                ? "Ask about your trades, mindset, or setups. Memory and stats stay in the background until you need them."
-                : "Before noon, briefing starts automatically once. Your conversation persists when you refresh."}
+              {fullCouncilParticipation && selectedAgent === "auto"
+                ? "Auto routes open questions to every specialist — Nova, Rex, Luna, Cipher, and Zara — then Jarvis wraps up."
+                : freshChatOnOpen
+                  ? "Ask about your trades, mindset, or setups. Memory and stats stay in the background until you need them."
+                  : "Before noon, briefing starts automatically once. Your conversation persists when you refresh."}
             </p>
           </div>
         ) : (
@@ -692,7 +706,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             {isSending ? (
               <article className="mr-8 rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-                  {getCouncilAgent(conversationAgent ?? activeAgent ?? "nova").name}
+                  {fullCouncilParticipation && selectedAgent === "auto" && !conversationAgent
+                    ? "Council"
+                    : getCouncilAgent(conversationAgent ?? activeAgent ?? "nova").name}
                 </p>
                 <p className="flex items-center gap-2 text-[12px] text-text-secondary">
                   <Loader2 className="size-3.5 animate-spin text-cyan-glow/80" />

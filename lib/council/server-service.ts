@@ -22,6 +22,7 @@ import {
   buildCouncilHandoffAskUserPrompt,
   buildCouncilJarvisRespondUserPrompt,
   buildCouncilRespondUserPrompt,
+  buildCouncilRoundtableUserPrompt,
   buildRecentTranscriptLines,
   getLastAgentReplyInTranscript,
 } from "@/lib/council/prompts"
@@ -34,6 +35,7 @@ import {
   isCouncilConsensusRequest,
   isGeneralCouncilQuestion,
   shouldJarvisRoute,
+  shouldUseCouncilRoundtable,
 } from "@/lib/council/jarvis-service"
 import {
   buildChimeInFallback,
@@ -699,6 +701,95 @@ export async function runCouncilMorningBriefing(
   }
 }
 
+async function runCouncilRoundtableTurn(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  trimmed: string,
+  transcript: CouncilTranscriptEntry[],
+  userEntry: CouncilTranscriptEntry,
+  existing: CouncilSessionRecord | null,
+  context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
+  recentTranscript: string,
+): Promise<CouncilRespondResponse> {
+  const agentMessages: CouncilTranscriptEntry[] = [
+    {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: "Bringing the full council in on that.",
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  let previousSpecialist: { agentName: string; content: string } | null = null
+  let lastReply = ""
+  let lastSpeaker: CouncilAgentId = "nova"
+
+  for (const agentId of BRIEFING_AGENT_ORDER) {
+    const agent = getCouncilAgent(agentId)
+    const reply = await produceCouncilAgentReply({
+      agentId,
+      context,
+      userPrompt: buildCouncilRoundtableUserPrompt({
+        question: trimmed,
+        agentName: agent.name,
+        recentTranscript,
+        previousSpecialist,
+      }),
+      fallback: buildConversationFallback({
+        agentId,
+        context,
+        question: trimmed,
+        lastReply: getLastAgentReplyInTranscript(transcript, agentId),
+      }),
+      temperature: 0.58,
+      maxTokens: 140,
+    })
+
+    const entry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: agentId,
+      content: reply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(entry)
+    previousSpecialist = { agentName: agent.name, content: reply }
+    lastReply = reply
+    lastSpeaker = agentId
+
+    await appendAgentMemory(supabase, userId, agentId, trimmed, reply).catch(() => undefined)
+  }
+
+  const consensusEntry: CouncilTranscriptEntry = {
+    id: randomUUID(),
+    agent: "jarvis",
+    content: buildJarvisConsensus(context),
+    createdAt: new Date().toISOString(),
+  }
+  agentMessages.push(consensusEntry)
+
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, userEntry, ...agentMessages],
+    agents_spoken: [
+      ...new Set([
+        ...(existing?.agents_spoken ?? []),
+        ...agentMessages.map((entry) => getCouncilAgent(entry.agent as CouncilAgentId).name),
+      ]),
+    ],
+  })
+
+  const specialistMessages = agentMessages.filter((entry) => entry.agent !== "jarvis")
+
+  return {
+    sessionId: session.id,
+    agent: lastSpeaker,
+    message: specialistMessages[specialistMessages.length - 1] ?? consensusEntry,
+    messages: agentMessages,
+    chimeIn: null,
+    roundtable: true,
+  }
+}
+
 export async function runCouncilRespond(
   supabase: SupabaseClient,
   userId: string,
@@ -707,6 +798,7 @@ export async function runCouncilRespond(
   options?: {
     preferredAgent?: CouncilAgentId
     conversationAgent?: CouncilAgentId
+    fullCouncilParticipation?: boolean
   },
 ): Promise<CouncilRespondResponse> {
   const trimmed = message.trim()
@@ -745,6 +837,26 @@ export async function runCouncilRespond(
 
   const namedAgent = detectCouncilAgentByName(trimmed)
   const delegating = isCouncilDelegationRequest(trimmed)
+
+  const useRoundtable = shouldUseCouncilRoundtable({
+    message: trimmed,
+    preferredAgent: options?.preferredAgent,
+    fullCouncilEnabled: options?.fullCouncilParticipation !== false,
+  })
+
+  if (useRoundtable) {
+    return runCouncilRoundtableTurn(
+      supabase,
+      userId,
+      accountId,
+      trimmed,
+      transcript,
+      userEntry,
+      existing,
+      context,
+      recentTranscript,
+    )
+  }
 
   if (isCouncilConsensusRequest(trimmed)) {
     const consensusEntry: CouncilTranscriptEntry = {

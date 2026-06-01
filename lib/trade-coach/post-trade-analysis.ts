@@ -262,6 +262,7 @@ function buildDisciplineAnalysis(
 function buildCoachingInsights(input: PostTradeCoachInput): CoachInsightLabel[] {
   const insights: CoachInsightLabel[] = []
   const { trade, preTradeResponses, plannedContext } = input
+  const actualRisk = trade.risk_percent ?? 1
   const redFlags = detectCoachRedFlags(
     plannedContext,
     preTradeResponses,
@@ -288,7 +289,6 @@ function buildCoachingInsights(input: PostTradeCoachInput): CoachInsightLabel[] 
     insights.push("FOMO detected")
   }
 
-  const actualRisk = trade.risk_percent ?? 1
   if (actualRisk <= input.maxRiskPerTrade && !redFlags.some((flag) => flag.id === "over_risking")) {
     insights.push("Risk managed well")
   }

@@ -111,6 +111,7 @@ export type CouncilRespondResponse = {
   message: CouncilTranscriptEntry
   messages: CouncilTranscriptEntry[]
   chimeIn?: CouncilTranscriptEntry | null
+  roundtable?: boolean
   migrationPending?: boolean
 }
 

@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       accountId?: string | null
       agent?: string
       conversationAgent?: string
+      fullCouncilParticipation?: boolean
     }
 
     const accountId =
@@ -50,7 +51,11 @@ export async function POST(request: Request) {
       user.id,
       accountId,
       body.message ?? "",
-      { preferredAgent, conversationAgent },
+      {
+        preferredAgent,
+        conversationAgent,
+        fullCouncilParticipation: body.fullCouncilParticipation,
+      },
     )
     return NextResponse.json(result)
   } catch (error) {

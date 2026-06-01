@@ -135,6 +135,33 @@ export function buildCouncilJarvisRespondUserPrompt(input: {
     .join("\n\n")
 }
 
+export function buildCouncilRoundtableUserPrompt(input: {
+  question: string
+  agentName: string
+  recentTranscript: string
+  previousSpecialist?: { agentName: string; content: string } | null
+}): string {
+  const lines = [
+    input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
+    `The trader asked the full council: ${input.question}`,
+    `You are ${input.agentName}. Give your lane only — discipline, risk, setups, confirmation, or trade review.`,
+  ]
+
+  if (input.previousSpecialist) {
+    lines.push(
+      `${input.previousSpecialist.agentName} just said: "${input.previousSpecialist.content}"`,
+      `Start with one short sentence that references ${input.previousSpecialist.agentName} by name — agree, add nuance, or hand off naturally.`,
+    )
+  }
+
+  lines.push(
+    "Maximum 2 short sentences. Sound like a live roundtable, not a solo monologue.",
+    "Do not repeat what another council member already covered.",
+  )
+
+  return lines.filter(Boolean).join("\n\n")
+}
+
 export function buildCouncilBriefingUserPrompt(
   agentId: CouncilAgentId,
   previous?: { agentName: string; content: string } | null,

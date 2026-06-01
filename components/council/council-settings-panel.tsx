@@ -5,6 +5,10 @@ import { ChevronDown, ChevronUp, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { updateCouncilSettings } from "@/lib/council/api-client"
 import { readFreshChatOnOpen, writeFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
+import {
+  readFullCouncilParticipation,
+  writeFullCouncilParticipation,
+} from "@/lib/council/full-council-preference"
 import type { CouncilSettingsRecord } from "@/lib/council/types"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +16,7 @@ type CouncilSettingsPanelProps = {
   settings: CouncilSettingsRecord | null
   onSettingsChange: (settings: CouncilSettingsRecord) => void
   onFreshChatChange?: (enabled: boolean) => void
+  onFullCouncilChange?: (enabled: boolean) => void
   className?: string
 }
 
@@ -19,17 +24,22 @@ export function CouncilSettingsPanel({
   settings,
   onSettingsChange,
   onFreshChatChange,
+  onFullCouncilChange,
   className,
 }: CouncilSettingsPanelProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [freshChatOnOpen, setFreshChatOnOpen] = useState(true)
+  const [fullCouncilParticipation, setFullCouncilParticipation] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const enabled = readFreshChatOnOpen()
     setFreshChatOnOpen(enabled)
     onFreshChatChange?.(enabled)
+    const fullCouncil = readFullCouncilParticipation()
+    setFullCouncilParticipation(fullCouncil)
+    onFullCouncilChange?.(fullCouncil)
   }, [settings?.id])
 
   if (!settings) return null
@@ -52,6 +62,13 @@ export function CouncilSettingsPanel({
     writeFreshChatOnOpen(next)
     setFreshChatOnOpen(next)
     onFreshChatChange?.(next)
+  }
+
+  function toggleFullCouncil() {
+    const next = !fullCouncilParticipation
+    writeFullCouncilParticipation(next)
+    setFullCouncilParticipation(next)
+    onFullCouncilChange?.(next)
   }
 
   return (
@@ -83,6 +100,23 @@ export function CouncilSettingsPanel({
               onClick={toggleFreshChat}
             >
               {freshChatOnOpen ? "On" : "Off"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[12px] font-medium text-text-primary">Full council replies</p>
+              <p className="text-[10px] text-text-muted">
+                With Auto selected, every specialist responds in turn — then Jarvis summarizes.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={fullCouncilParticipation ? "default" : "outline"}
+              onClick={toggleFullCouncil}
+            >
+              {fullCouncilParticipation ? "On" : "Off"}
             </Button>
           </div>
 

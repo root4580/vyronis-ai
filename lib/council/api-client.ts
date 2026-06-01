@@ -75,6 +75,7 @@ export async function askCouncil(input: {
   message: string
   agent?: string
   conversationAgent?: string
+  fullCouncilParticipation?: boolean
 }): Promise<CouncilRespondResponse> {
   const response = await fetch("/api/council/respond", {
     method: "POST",
@@ -85,6 +86,7 @@ export async function askCouncil(input: {
       message: input.message,
       agent: input.agent,
       conversationAgent: input.conversationAgent,
+      fullCouncilParticipation: input.fullCouncilParticipation,
     }),
   })
   return parseJson<CouncilRespondResponse>(response)

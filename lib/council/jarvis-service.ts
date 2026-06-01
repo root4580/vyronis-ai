@@ -1,5 +1,9 @@
 import { getCouncilAgent, BRIEFING_AGENT_ORDER } from "@/lib/council/agents"
-import { routeCouncilQuestion } from "@/lib/council/router"
+import {
+  detectCouncilAgentByName,
+  isCouncilDelegationRequest,
+  routeCouncilQuestion,
+} from "@/lib/council/router"
 import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 import { getSessionClock } from "@/lib/trading/session-timing"
 
@@ -98,9 +102,31 @@ export function buildJarvisConsensus(context: CouncilAgentContext): string {
 }
 
 export function isCouncilConsensusRequest(message: string): boolean {
-  return /\b(council consensus|whole council|all agents|everyone think|what(?:'s| is) the plan|summarize the council|full council)\b/i.test(
+  return /\b(council consensus|whole council|all agents|everyone think|what(?:'s| is) the plan|summarize the council|full council|roundtable|all of you)\b/i.test(
     message.trim(),
   )
+}
+
+export function shouldUseCouncilRoundtable(input: {
+  message: string
+  preferredAgent?: CouncilAgentId
+  fullCouncilEnabled?: boolean
+}): boolean {
+  if (input.fullCouncilEnabled === false) return false
+
+  const trimmed = input.message.trim()
+  if (!trimmed) return false
+
+  if (/^(thanks|thank you|ok|okay|got it|cool|cheers)\b/i.test(trimmed)) return false
+
+  if (input.preferredAgent) return false
+
+  if (isCouncilDelegationRequest(trimmed)) return false
+
+  const named = detectCouncilAgentByName(trimmed)
+  if (named) return false
+
+  return true
 }
 
 export function isGeneralCouncilQuestion(message: string): boolean {
