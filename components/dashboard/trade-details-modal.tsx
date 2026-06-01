@@ -11,6 +11,7 @@ import {
   Pencil,
   TrendingDown,
   TrendingUp,
+  Upload,
   X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +65,7 @@ export type TradeDetails = {
   take_profit?: number | null
   risk_reward?: number | null
   screenshot_url?: string | null
+  reflection_chart_url?: string | null
   setup_score?: number | null
   setup_classification?: string | null
   setup_score_breakdown?: SetupScoreBreakdown | VyronisScoreBreakdown | null
@@ -85,6 +87,9 @@ type TradeDetailsModalProps = {
   onClose: () => void
   onEdit?: (trade: TradeDetails) => void
   onScreenshotClick?: (trade: TradeDetails) => void
+  onReflectionChartClick?: (trade: TradeDetails) => void
+  onReflectionChartUpload?: (trade: TradeDetails, file: File) => void
+  isReflectionUploading?: boolean
   isScreenshotOpen?: boolean
 }
 
@@ -148,6 +153,9 @@ export function TradeDetailsModal({
   onClose,
   onEdit,
   onScreenshotClick,
+  onReflectionChartClick,
+  onReflectionChartUpload,
+  isReflectionUploading = false,
   isScreenshotOpen = false,
 }: TradeDetailsModalProps) {
   const open = !!trade
@@ -483,39 +491,114 @@ export function TradeDetailsModal({
                 <ExecutionReplayPanel tradeId={trade.id} refreshKey={coachFeedbackRefreshKey} />
               )}
 
-              <DashboardInsetPanel className="glass overflow-hidden p-0">
-                {trade.screenshot_url ? (
-                  <button
-                    type="button"
-                    onClick={() => onScreenshotClick?.(trade)}
-                    className="group relative block w-full text-left"
-                    aria-label="Open screenshot zoom"
-                  >
-                    <img
-                      src={trade.screenshot_url}
-                      alt={`${trade.pair} chart screenshot`}
-                      className="trade-detail-screenshot max-h-[280px] w-full object-cover sm:max-h-[360px] md:max-h-[420px]"
-                    />
-                    <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent p-4 opacity-90 transition-opacity group-hover:opacity-100">
-                      <div>
-                        <p className="section-label text-white/70">Chart preview</p>
-                        <p className="text-sm font-medium text-white">Click to zoom</p>
-                      </div>
-                      <div className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-black/35 backdrop-blur-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DashboardInsetPanel className="glass overflow-hidden p-0">
+                  <p className="section-label border-b border-white/[0.06] px-3 py-2 text-[10px]">
+                    MT5 execution
+                  </p>
+                  {trade.screenshot_url ? (
+                    <button
+                      type="button"
+                      onClick={() => onScreenshotClick?.(trade)}
+                      className="group relative block w-full text-left"
+                      aria-label="Open MT5 screenshot"
+                    >
+                      <img
+                        src={trade.screenshot_url}
+                        alt={`${trade.pair} MT5 screenshot`}
+                        className="trade-detail-screenshot max-h-[220px] w-full object-cover sm:max-h-[280px]"
+                      />
+                      <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent p-3 opacity-90 transition-opacity group-hover:opacity-100">
+                        <div>
+                          <p className="text-[10px] font-medium text-white/80">Click to zoom</p>
+                        </div>
                         <Maximize2 className="size-4 text-cyan-glow" />
                       </div>
+                    </button>
+                  ) : (
+                    <div className="flex min-h-[140px] flex-col items-center justify-center px-3 py-6 text-center">
+                      <ImageIcon className="mb-2 size-5 text-muted-foreground/35" />
+                      <p className="text-[12px] text-foreground/80">No MT5 screenshot</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground/70">Edit trade to add execution proof.</p>
                     </div>
-                  </button>
-                ) : (
-                  <div className="flex min-h-[180px] flex-col items-center justify-center px-4 py-8 text-center">
-                    <div className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+                  )}
+                </DashboardInsetPanel>
+
+                <DashboardInsetPanel className="glass overflow-hidden p-0">
+                  <p className="section-label border-b border-white/[0.06] px-3 py-2 text-[10px]">
+                    TradingView reflection
+                  </p>
+                  {trade.reflection_chart_url ? (
+                    <button
+                      type="button"
+                      onClick={() => onReflectionChartClick?.(trade)}
+                      className="group relative block w-full text-left"
+                      aria-label="Open TradingView reflection chart"
+                    >
+                      <img
+                        src={trade.reflection_chart_url}
+                        alt={`${trade.pair} TradingView reflection chart`}
+                        className="trade-detail-screenshot max-h-[220px] w-full object-cover sm:max-h-[280px]"
+                      />
+                      <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent p-3 opacity-90 transition-opacity group-hover:opacity-100">
+                        <div>
+                          <p className="text-[10px] font-medium text-white/80">Click to zoom</p>
+                        </div>
+                        <Maximize2 className="size-4 text-violet-300" />
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="flex min-h-[140px] flex-col items-center justify-center gap-3 px-3 py-6 text-center">
                       <ImageIcon className="size-5 text-muted-foreground/35" />
+                      <div>
+                        <p className="text-[12px] text-foreground/80">No reflection chart</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground/70">
+                          Add your TradingView post-trade chart for review.
+                        </p>
+                      </div>
+                      {onReflectionChartUpload ? (
+                        <label
+                          className={cn(
+                            "flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-3 transition-colors",
+                            isReflectionUploading
+                              ? "pointer-events-none border-violet-400/15 bg-violet-500/[0.03] opacity-70"
+                              : "border-violet-400/25 bg-violet-500/[0.05] hover:border-violet-400/40 hover:bg-violet-500/[0.08]",
+                          )}
+                        >
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            className="hidden"
+                            disabled={isReflectionUploading}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0]
+                              event.target.value = ""
+                              if (file && trade) onReflectionChartUpload(trade, file)
+                            }}
+                          />
+                          <Upload className="size-4 text-violet-300/80" />
+                          <span className="mt-1.5 text-[11px] font-medium text-violet-100/90">
+                            {isReflectionUploading ? "Uploading…" : "Upload TradingView chart"}
+                          </span>
+                          <span className="mt-0.5 text-[10px] text-muted-foreground/60">
+                            PNG, JPG, WebP up to 10MB
+                          </span>
+                        </label>
+                      ) : onEdit ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-violet-400/25 bg-violet-500/[0.06] text-[11px] text-violet-100/90"
+                          onClick={() => onEdit(trade)}
+                        >
+                          Add via Edit Trade
+                        </Button>
+                      ) : null}
                     </div>
-                    <p className="text-sm font-medium text-foreground/85">No screenshot attached</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground/70">Edit this trade to upload a chart screenshot.</p>
-                  </div>
-                )}
-              </DashboardInsetPanel>
+                  )}
+                </DashboardInsetPanel>
+              </div>
 
               <DashboardInsetPanel className="glass">
                 <p className="section-label">Notes</p>
@@ -534,7 +617,11 @@ export function TradeDetailsModal({
                 tradeId={trade.id}
                 refreshKey={coachFeedbackRefreshKey}
                 onScreenshotClick={
-                  trade.screenshot_url ? () => onScreenshotClick?.(trade) : undefined
+                  trade.reflection_chart_url
+                    ? () => onReflectionChartClick?.(trade)
+                    : trade.screenshot_url
+                      ? () => onScreenshotClick?.(trade)
+                      : undefined
                 }
               />
 

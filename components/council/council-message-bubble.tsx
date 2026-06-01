@@ -2,12 +2,13 @@
 
 import { getCouncilAgent } from "@/lib/council/agents"
 import { findChartForMessage } from "@/lib/council/pair-chart-match"
-import type { CouncilAgentId, CouncilTranscriptEntry, CouncilVisualContext } from "@/lib/council/types"
+import type { CouncilAgentId, CouncilChartSnapshot, CouncilTranscriptEntry, CouncilVisualContext } from "@/lib/council/types"
 import { cn } from "@/lib/utils"
 
 type CouncilMessageBubbleProps = {
   entry: CouncilTranscriptEntry
   visual: CouncilVisualContext | null
+  inlineChart?: CouncilChartSnapshot | null
   speakingAgent: CouncilAgentId | null
   onChartClick?: (url: string, title: string) => void
 }
@@ -21,6 +22,7 @@ function speakerLabel(entry: CouncilTranscriptEntry): string {
 export function CouncilMessageBubble({
   entry,
   visual,
+  inlineChart: inlineChartOverride,
   speakingAgent,
   onChartClick,
 }: CouncilMessageBubbleProps) {
@@ -29,9 +31,11 @@ export function CouncilMessageBubble({
     entry.agent !== "user" && entry.agent !== "system" ? getCouncilAgent(entry.agent) : null
   const isSpeakingLine = speakingAgent === entry.agent
   const inlineChart =
-    entry.agent !== "user" && entry.agent !== "system"
-      ? findChartForMessage(entry.agent, entry.content, visual)
-      : null
+    inlineChartOverride !== undefined
+      ? inlineChartOverride
+      : entry.agent !== "user" && entry.agent !== "system"
+        ? findChartForMessage(entry.agent, entry.content, visual)
+        : null
 
   return (
     <article

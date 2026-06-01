@@ -70,6 +70,7 @@ export function computePlanDisciplineForTrade(
       entryPrice: trade.entry_price ?? null,
       stopLoss: trade.stop_loss ?? null,
       takeProfit: trade.take_profit ?? null,
+      lots: plan.recommendedLots,
       riskPercent: trade.risk_percent ?? null,
       riskReward: trade.risk_reward ?? null,
       accountSizeForRisk: plan.accountSize,

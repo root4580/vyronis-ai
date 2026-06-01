@@ -1,15 +1,19 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Crown, Loader2, Mic, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Crown, Loader2, Mic, RotateCcw, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
 import {
   askCouncil,
+  clearCouncilSession,
   fetchCouncilSession,
+  fetchCouncilVisualContext,
   runCouncilBriefing,
 } from "@/lib/council/api-client"
+import { findChartForMessage } from "@/lib/council/pair-chart-match"
+import { readFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
 import type {
   CouncilAgentId,
   CouncilMemoryHighlight,
@@ -25,10 +29,8 @@ import {
 } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
 import { useCouncilVoiceSession } from "@/hooks/use-council-voice-session"
-import { CouncilContextPanel } from "@/components/council/council-context-panel"
+import { CouncilBriefingContext } from "@/components/council/council-briefing-context"
 import { CouncilHistoryPanel } from "@/components/council/council-history-panel"
-import { CouncilInsightsCard } from "@/components/council/council-insights-card"
-import { CouncilMemoryStrip } from "@/components/council/council-memory-strip"
 import { CouncilMessageBubble } from "@/components/council/council-message-bubble"
 import { CouncilSettingsPanel } from "@/components/council/council-settings-panel"
 import { CouncilSpeakingWave } from "@/components/council/council-speaking-wave"
@@ -52,8 +54,10 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [selectedAgent, setSelectedAgent] = useState<CouncilAgentId | "auto">("auto")
   const [question, setQuestion] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isContextLoading, setIsContextLoading] = useState(false)
   const [isBriefing, setIsBriefing] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [migrationPending, setMigrationPending] = useState(false)
   const [briefingDone, setBriefingDone] = useState(false)
@@ -64,6 +68,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [keyInsights, setKeyInsights] = useState<string[]>([])
   const [memoryHighlights, setMemoryHighlights] = useState<CouncilMemoryHighlight[]>([])
   const [councilSettings, setCouncilSettings] = useState<CouncilSettingsRecord | null>(null)
+  const [freshChatOnOpen, setFreshChatOnOpen] = useState(true)
   const [chartViewer, setChartViewer] = useState<{ url: string; title: string } | null>(null)
   const autoBriefingAttempted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -112,6 +117,10 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [])
 
+  useEffect(() => {
+    setFreshChatOnOpen(readFreshChatOnOpen())
+  }, [])
+
   const loadSession = useCallback(async () => {
     if (!accountId) {
       setTranscript([])
@@ -132,7 +141,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setKeyInsights(state.keyInsights ?? state.session?.key_insights ?? [])
       setMemoryHighlights(state.memoryHighlights ?? [])
       setCouncilSettings(state.settings ?? null)
-      setTranscript(state.session?.full_transcript ?? [])
+      const useFreshChat = readFreshChatOnOpen()
+      setFreshChatOnOpen(useFreshChat)
+      setTranscript(useFreshChat ? [] : (state.session?.full_transcript ?? []))
       setBriefingDone(Boolean(state.session?.briefing_completed))
       const stickyAgent = state.conversationAgent ?? null
       if (stickyAgent) {
@@ -162,6 +173,28 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     void loadSession()
   }, [loadSession])
 
+  useEffect(() => {
+    if (!accountId || migrationPending || isLoading) return
+
+    let cancelled = false
+    setIsContextLoading(true)
+
+    void fetchCouncilVisualContext(accountId)
+      .then((payload) => {
+        if (!cancelled) setVisualContext(payload.visual ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setVisualContext(null)
+      })
+      .finally(() => {
+        if (!cancelled) setIsContextLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [accountId, migrationPending, isLoading])
+
   const handleBriefing = useCallback(
     async (force = false) => {
       if (!accountId || migrationPending) return
@@ -172,14 +205,17 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setError(null)
       try {
         const result = await runCouncilBriefing({ accountId, force })
-        setTranscript((current) => {
-          const ids = new Set(current.map((entry) => entry.id))
-          const merged = [...current]
-          for (const message of result.messages) {
-            if (!ids.has(message.id)) merged.push(message)
-          }
-          return merged
-        })
+        const showBriefingInUi = !freshChatOnOpen || force
+        if (showBriefingInUi) {
+          setTranscript((current) => {
+            const ids = new Set(current.map((entry) => entry.id))
+            const merged = [...current]
+            for (const message of result.messages) {
+              if (!ids.has(message.id)) merged.push(message)
+            }
+            return merged
+          })
+        }
         setBriefingDone(true)
         if (result.keyInsights?.length) {
           setKeyInsights(result.keyInsights)
@@ -189,16 +225,20 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           if (isAgentEntry(lastMessage)) {
             setActiveAgent(lastMessage.agent)
           }
-          void speakEntries(result.messages)
+          if (showBriefingInUi && voiceEnabled) {
+            void speakEntries(result.messages)
+          }
         }
-        scrollToBottom()
+        if (showBriefingInUi) {
+          scrollToBottom()
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Briefing failed")
       } finally {
         setIsBriefing(false)
       }
     },
-    [accountId, migrationPending, scrollToBottom, speakEntries, stopPlayback, stopConversation],
+    [accountId, migrationPending, freshChatOnOpen, scrollToBottom, speakEntries, stopPlayback, stopConversation, voiceEnabled],
   )
 
   useEffect(() => {
@@ -235,6 +275,52 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   useEffect(() => {
     scrollToBottom()
   }, [transcript, scrollToBottom])
+
+  const transcriptRows = useMemo(() => {
+    const shownChartUrls = new Set<string>()
+    return transcript.map((entry) => {
+      let inlineChart = null
+      if (entry.agent !== "user" && entry.agent !== "system") {
+        const chart = findChartForMessage(entry.agent, entry.content, visualContext)
+        if (chart && !shownChartUrls.has(chart.url)) {
+          shownChartUrls.add(chart.url)
+          inlineChart = chart
+        }
+      }
+      return { entry, inlineChart }
+    })
+  }, [transcript, visualContext])
+
+  const handleClearScreen = useCallback(() => {
+    stopConversation()
+    stopPlayback()
+    setTranscript([])
+    setError(null)
+  }, [stopConversation, stopPlayback])
+
+  const handleClearConversation = useCallback(async () => {
+    if (!accountId || migrationPending || isClearing) return
+    stopConversation()
+    stopPlayback()
+    setIsClearing(true)
+    setError(null)
+    try {
+      const state = await clearCouncilSession(accountId)
+      setTranscript([])
+      setBriefingDone(false)
+      setKeyInsights(state.keyInsights ?? state.session?.key_insights ?? [])
+      setConversationAgent(null)
+      conversationAgentRef.current = null
+      setActiveAgent(null)
+      setSelectedAgent("auto")
+      selectedAgentRef.current = "auto"
+      autoBriefingAttempted.current = false
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not clear conversation")
+    } finally {
+      setIsClearing(false)
+    }
+  }, [accountId, migrationPending, isClearing, stopConversation, stopPlayback])
 
   const submitQuestion = useCallback(
     async (message: string) => {
@@ -525,34 +611,80 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
       ) : null}
 
-      <CouncilContextPanel
+      <CouncilBriefingContext
         visual={visualContext}
+        insights={keyInsights}
+        memoryHighlights={memoryHighlights}
+        transcriptLength={transcript.length}
+        isLoading={isContextLoading}
         onChartClick={(url, title) => setChartViewer({ url, title })}
       />
 
-      <CouncilInsightsCard insights={keyInsights} />
-      <CouncilMemoryStrip highlights={memoryHighlights} />
-      <CouncilSettingsPanel settings={councilSettings} onSettingsChange={setCouncilSettings} />
+      <CouncilSettingsPanel
+        settings={councilSettings}
+        onSettingsChange={setCouncilSettings}
+        onFreshChatChange={setFreshChatOnOpen}
+      />
       <CouncilHistoryPanel accountId={accountId} />
 
       <section className="chart-grid hq-surface-card relative min-h-[320px] overflow-hidden px-4 py-4">
+        {transcript.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+            <div>
+              <p className="text-[11px] font-medium text-text-primary">Today&apos;s conversation</p>
+              <p className="text-[10px] text-text-muted">
+                {transcript.length} message{transcript.length === 1 ? "" : "s"} · scroll up for earlier lines
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-9 text-[11px]"
+                disabled={isClearing || isBriefing || isSending}
+                onClick={handleClearScreen}
+              >
+                Clear screen
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-9 text-[11px]"
+                disabled={isClearing || isBriefing || isSending || migrationPending}
+                onClick={() => void handleClearConversation()}
+              >
+                {isClearing ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="mr-1.5 size-3.5" />
+                )}
+                Reset today
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <div className="relative space-y-3">
         {transcript.length === 0 ? (
           <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
             <p className="text-[13px] text-text-secondary">
-              Your council is standing by.
+              {freshChatOnOpen ? "Clean slate — agents still remember you." : "Your council is standing by."}
             </p>
             <p className="mt-1 max-w-sm text-[11px] text-text-muted">
-              Before noon, briefing starts automatically once. Your conversation persists when you refresh.
+              {freshChatOnOpen
+                ? "Ask about your trades, mindset, or setups. Memory and stats stay in the background until you need them."
+                : "Before noon, briefing starts automatically once. Your conversation persists when you refresh."}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {transcript.map((entry) => (
+            {transcriptRows.map(({ entry, inlineChart }) => (
               <CouncilMessageBubble
                 key={entry.id}
                 entry={entry}
                 visual={visualContext}
+                inlineChart={inlineChart}
                 speakingAgent={speakingAgent}
                 onChartClick={(url, title) => setChartViewer({ url, title })}
               />

@@ -98,6 +98,9 @@ type AddTradeModalProps = {
   onScreenshotUpload: (file: File) => void
   onScreenshotRemove: () => void
   onScreenshotPreview: () => void
+  onReflectionChartUpload: (file: File) => void
+  onReflectionChartRemove: () => void
+  onReflectionChartPreview: () => void
   onOpenCoach?: () => void
   hasCoachSession?: boolean
   canRepeatLast?: boolean
@@ -234,6 +237,9 @@ export function AddTradeModal({
   onScreenshotUpload,
   onScreenshotRemove,
   onScreenshotPreview,
+  onReflectionChartUpload,
+  onReflectionChartRemove,
+  onReflectionChartPreview,
   onOpenCoach,
   hasCoachSession = false,
   canRepeatLast = false,
@@ -997,6 +1003,84 @@ export function AddTradeModal({
                       <p className="mt-1 text-[10px] text-muted-foreground/50">PNG, JPG, WebP up to 10MB</p>
                     </>
                   )}
+                </label>
+              )}
+            </section>
+
+            <section className="add-trade-section space-y-2">
+              <FieldLabel>TradingView reflection chart</FieldLabel>
+              {form.reflection_chart_url ? (
+                <>
+                  <div className="sm:hidden">
+                    <ChartUploadThumbnailStrip
+                      items={[
+                        {
+                          id: "reflection",
+                          url: form.reflection_chart_url,
+                          label: "Reflection",
+                          alt: "TradingView reflection chart",
+                        },
+                      ]}
+                      countLabel="1 reflection chart"
+                      onRemove={() => onReflectionChartRemove()}
+                      onPreview={() => onReflectionChartPreview()}
+                      disabled={isUploading}
+                      canAdd={false}
+                    />
+                  </div>
+                  <div className="relative hidden overflow-hidden rounded-xl border border-violet-400/20 bg-black/20 sm:block">
+                    <img
+                      src={form.reflection_chart_url}
+                      alt="TradingView reflection chart"
+                      className="max-h-48 w-full object-cover"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent p-3">
+                      <p className="text-[11px] text-violet-100/90">TradingView reflection</p>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-white/15 bg-black/40 text-[11px]"
+                          onClick={onReflectionChartPreview}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-white/15 bg-black/40 text-[11px]"
+                          onClick={onReflectionChartRemove}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <label
+                  className={cn(
+                    "flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-6 transition-all",
+                    "border-violet-400/20 bg-violet-500/[0.04] hover:border-violet-400/35 hover:bg-violet-500/[0.07]",
+                  )}
+                >
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) onReflectionChartUpload(file)
+                    }}
+                    disabled={isUploading}
+                  />
+                  <Upload className="size-6 text-violet-300/70" />
+                  <p className="mt-2 text-center text-[12px] text-muted-foreground/85">
+                    TradingView reflection — post-trade chart for journal review
+                  </p>
+                  <p className="mt-1 text-[10px] text-muted-foreground/50">PNG, JPG, WebP up to 10MB</p>
                 </label>
               )}
             </section>

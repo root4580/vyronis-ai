@@ -12,6 +12,7 @@ export type TradeFormState = {
   trade_date: string
   session: string
   screenshot_url: string
+  reflection_chart_url: string
   entry_price: string
   stop_loss: string
   take_profit: string
@@ -155,6 +156,7 @@ export function createInitialTradeForm(overrides?: Partial<TradeFormState>): Tra
     trade_date: new Date().toISOString().split("T")[0],
     session: "",
     screenshot_url: "",
+    reflection_chart_url: "",
     entry_price: "",
     stop_loss: "",
     take_profit: "",

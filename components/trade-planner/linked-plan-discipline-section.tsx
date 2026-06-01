@@ -66,6 +66,7 @@ export function LinkedPlanDisciplineSection({ trade, className }: LinkedPlanDisc
         entryPrice: trade.entry_price ?? null,
         stopLoss: trade.stop_loss ?? null,
         takeProfit: trade.take_profit ?? null,
+        lots: linkedPlan.recommendedLots,
         riskPercent: trade.risk_percent ?? null,
         riskReward: trade.risk_reward ?? riskReward,
         accountSizeForRisk: linkedPlan.accountSize,

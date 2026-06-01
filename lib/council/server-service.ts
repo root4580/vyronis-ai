@@ -339,6 +339,35 @@ async function upsertTodaySession(
   return normalizeSession(data as Record<string, unknown>)
 }
 
+export async function clearTodayCouncilSession(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<CouncilSessionRecord | null> {
+  const existing = await getTodayCouncilSession(supabase, userId, accountId)
+  if (!existing) return null
+
+  const { data, error } = await supabase
+    .from("council_sessions")
+    .update({
+      full_transcript: [],
+      agents_spoken: [],
+      key_insights: [],
+      briefing_completed: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", existing.id)
+    .select("*")
+    .single()
+
+  if (error) {
+    if (isMissingCouncilTable(error.message)) throw new CouncilTablesMissingError()
+    throw new Error(error.message)
+  }
+
+  return normalizeSession(data as Record<string, unknown>)
+}
+
 async function appendAgentMemory(
   supabase: SupabaseClient,
   userId: string,
@@ -553,10 +582,9 @@ export async function getCouncilSessionState(
   accountId: string,
 ): Promise<CouncilSessionResponse> {
   try {
-    const [settings, session, context, memoryHighlights] = await Promise.all([
+    const [settings, session, memoryHighlights] = await Promise.all([
       getOrCreateCouncilSettings(supabase, userId),
       getTodayCouncilSession(supabase, userId, accountId),
-      loadCachedCouncilAgentContext(supabase, userId, accountId).catch(() => null),
       loadCouncilMemoryHighlights(supabase, userId).catch(() => []),
     ])
     const conversationAgent = session
@@ -569,7 +597,7 @@ export async function getCouncilSessionState(
       voiceConfigured: isCouncilVoiceOutputConfigured(),
       listenConfigured: isCouncilListenConfigured(),
       conversationAgent,
-      visual: context?.visual ?? null,
+      visual: null,
       keyInsights: session?.key_insights ?? [],
       memoryHighlights,
     }

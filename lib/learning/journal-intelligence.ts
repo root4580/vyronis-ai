@@ -17,6 +17,15 @@ import type {
 
 const IMPULSIVE = new Set(["FOMO", "Revenge", "Euphoric", "Anxious", "Fearful"])
 
+function isPlanComparisonMisaligned(row: {
+  aligned?: boolean
+  match?: boolean
+}): boolean {
+  if (typeof row.aligned === "boolean") return !row.aligned
+  if (typeof row.match === "boolean") return !row.match
+  return false
+}
+
 export function generateJournalIntelligence(input: {
   trade: LearningTradeRow
   history: LearningTradeRow[]
@@ -84,11 +93,22 @@ export function generateJournalIntelligence(input: {
   if (trade.result === "WIN" && discipline >= 70 && detectedMistakes.length === 0) verdict = "strong"
   if (trade.result === "LOSS" && (detectedMistakes.length >= 2 || discipline < 50)) verdict = "weak"
 
+  const planGaps =
+    feedback?.planned_vs_actual?.filter((row) => isPlanComparisonMisaligned(row)) ?? []
+  const executionLabel = detectedMistakes.length
+    ? `with ${detectedMistakes.slice(0, 2).join(", ")}`
+    : planGaps.length > 0
+      ? `with ${planGaps
+          .slice(0, 2)
+          .map((row) => row.field.toLowerCase())
+          .join(", ")} gaps vs plan`
+      : "with clean execution"
+
   const summaryParts = [
     `${trade.pair} ${trade.direction} ${trade.result}`,
     trade.setup ? `via ${trade.setup}` : null,
     trade.emotion ? `feeling ${trade.emotion}` : null,
-    detectedMistakes.length ? `with ${detectedMistakes.slice(0, 2).join(", ")}` : "with clean execution",
+    executionLabel,
   ].filter(Boolean)
 
   return {

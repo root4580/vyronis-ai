@@ -280,7 +280,7 @@ export function TradeIntelligencePanel({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Camera className="size-4 text-cyan-glow" />
-            <p className="text-[11px] font-semibold">Screenshot</p>
+            <p className="text-[11px] font-semibold">{bundle.screenshot.label}</p>
           </div>
           {bundle.screenshot.attached && onScreenshotClick && (
             <Button type="button" size="sm" variant="ghost" className="h-7 text-[10px]" onClick={onScreenshotClick}>

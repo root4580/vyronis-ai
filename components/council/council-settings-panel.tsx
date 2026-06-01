@@ -1,26 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronDown, ChevronUp, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { updateCouncilSettings } from "@/lib/council/api-client"
+import { readFreshChatOnOpen, writeFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
 import type { CouncilSettingsRecord } from "@/lib/council/types"
 import { cn } from "@/lib/utils"
 
 type CouncilSettingsPanelProps = {
   settings: CouncilSettingsRecord | null
   onSettingsChange: (settings: CouncilSettingsRecord) => void
+  onFreshChatChange?: (enabled: boolean) => void
   className?: string
 }
 
 export function CouncilSettingsPanel({
   settings,
   onSettingsChange,
+  onFreshChatChange,
   className,
 }: CouncilSettingsPanelProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [freshChatOnOpen, setFreshChatOnOpen] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const enabled = readFreshChatOnOpen()
+    setFreshChatOnOpen(enabled)
+    onFreshChatChange?.(enabled)
+  }, [settings?.id])
 
   if (!settings) return null
 
@@ -35,6 +45,13 @@ export function CouncilSettingsPanel({
     } finally {
       setSaving(false)
     }
+  }
+
+  function toggleFreshChat() {
+    const next = !freshChatOnOpen
+    writeFreshChatOnOpen(next)
+    setFreshChatOnOpen(next)
+    onFreshChatChange?.(next)
   }
 
   return (
@@ -52,6 +69,23 @@ export function CouncilSettingsPanel({
       </button>
       {open ? (
         <div className="space-y-3 border-t border-white/[0.06] px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[12px] font-medium text-text-primary">Fresh chat on open</p>
+              <p className="text-[10px] text-text-muted">
+                Start with a clean screen each visit. Agents still remember your trades and past replies.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={freshChatOnOpen ? "default" : "outline"}
+              onClick={toggleFreshChat}
+            >
+              {freshChatOnOpen ? "On" : "Off"}
+            </Button>
+          </div>
+
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[12px] font-medium text-text-primary">Auto morning briefing</p>

@@ -24,7 +24,7 @@ function isMissingTableError(error: { message?: string; code?: string } | null) 
 }
 
 const TRADE_SELECT =
-  "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url, entry_timeframe, higher_timeframe, confirmation_timeframe, risk_reward, trade_notes, entry_price, stop_loss, take_profit, setup_score, setup_classification, setup_score_breakdown, setup_coaching_insights, import_source"
+  "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url, reflection_chart_url, entry_timeframe, higher_timeframe, confirmation_timeframe, risk_reward, trade_notes, entry_price, stop_loss, take_profit, setup_score, setup_classification, setup_score_breakdown, setup_coaching_insights, import_source"
 
 async function loadIntelligenceTrades(
   supabase: SupabaseClient,

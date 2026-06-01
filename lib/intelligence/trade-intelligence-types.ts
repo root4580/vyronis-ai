@@ -34,6 +34,7 @@ export type ScreenshotIntelligence = {
   url: string | null
   attached: boolean
   visionAvailable: boolean
+  label: string
   message: string
 }
 

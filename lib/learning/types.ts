@@ -19,6 +19,7 @@ export type LearningTradeRow = {
   trade_date?: string | null
   created_at: string
   screenshot_url?: string | null
+  reflection_chart_url?: string | null
   entry_timeframe?: string | null
   higher_timeframe?: string | null
   confirmation_timeframe?: string | null

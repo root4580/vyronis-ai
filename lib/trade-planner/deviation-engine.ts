@@ -1,5 +1,7 @@
 import { calculateRiskReward } from "@/lib/trade-form-utils"
+import { getPipValuePerStandardLot } from "@/lib/trade-planner/forex-pairs"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
+import { calculatePips } from "@/lib/trade-planner/trade-plan-engine"
 
 export type DeviationSeverity = "green" | "amber" | "red" | "na"
 
@@ -128,6 +130,22 @@ function gradeFromScore(score: number): PlanDisciplineGrade {
   return "D"
 }
 
+function computePositionRiskAmount(input: {
+  pair: string
+  entryPrice: number | null
+  stopLoss: number | null
+  lots: number | null
+}): number | null {
+  const { pair, entryPrice, stopLoss, lots } = input
+  if (entryPrice == null || stopLoss == null || lots == null || lots <= 0) return null
+
+  const slPips = calculatePips(pair, entryPrice, stopLoss)
+  const pipValue = getPipValuePerStandardLot(pair, entryPrice)
+  if (slPips <= 0 || pipValue <= 0) return null
+
+  return Number((slPips * pipValue * lots).toFixed(2))
+}
+
 export function buildTradeActualForDeviation(input: {
   pair: string
   direction: string
@@ -142,13 +160,21 @@ export function buildTradeActualForDeviation(input: {
 }): TradeActualForDeviation {
   const riskPercent = input.riskPercent ?? null
   const balanceForRisk = input.accountSizeForRisk ?? input.startingBalance ?? null
-  const riskAmount =
+  const lots = input.lots ?? null
+  const positionRiskAmount = computePositionRiskAmount({
+    pair: input.pair,
+    entryPrice: input.entryPrice,
+    stopLoss: input.stopLoss,
+    lots,
+  })
+  const percentRiskAmount =
     riskPercent != null &&
     balanceForRisk != null &&
     Number.isFinite(balanceForRisk) &&
     Number.isFinite(riskPercent)
       ? (balanceForRisk * riskPercent) / 100
       : null
+  const riskAmount = positionRiskAmount ?? percentRiskAmount
 
   const derivedRr =
     input.riskReward ??
@@ -165,7 +191,7 @@ export function buildTradeActualForDeviation(input: {
     entryPrice: input.entryPrice,
     stopLoss: input.stopLoss,
     takeProfit: input.takeProfit,
-    lots: input.lots ?? null,
+    lots,
     riskPercent,
     riskReward: derivedRr,
     riskAmount,

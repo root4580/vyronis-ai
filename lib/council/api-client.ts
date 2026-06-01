@@ -30,6 +30,30 @@ export async function fetchCouncilSession(
   return parseJson<CouncilSessionResponse>(response)
 }
 
+export async function fetchCouncilVisualContext(
+  accountId: string | null,
+): Promise<{ visual: CouncilSessionResponse["visual"] }> {
+  const response = await fetch(withAccountQuery(accountId, "/api/council/context"), {
+    credentials: "include",
+  })
+  return parseJson<{ visual: CouncilSessionResponse["visual"] }>(response)
+}
+
+export async function clearCouncilSession(
+  accountId: string | null,
+): Promise<CouncilSessionResponse> {
+  const response = await fetch("/api/council/session", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accountId,
+      action: "clear",
+    }),
+  })
+  return parseJson<CouncilSessionResponse>(response)
+}
+
 export async function runCouncilBriefing(input: {
   accountId: string | null
   force?: boolean

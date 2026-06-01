@@ -169,15 +169,21 @@ function buildComparisons(input: PostTradeCoachInput): PlannedVsActualComparison
         : "No")
   const actualRules =
     trade.rule_followed === null ? "—" : trade.rule_followed ? "Yes" : "No"
-  comparisons.push(
-    compareField(
-      "Rules followed",
-      plannedRules,
-      actualRules,
-      "Rule adherence matched your pre-trade commitment.",
-      "Rule adherence differed from your pre-trade commitment.",
-    ),
+  const riskRuleBroken = actualRiskNum > input.maxRiskPerTrade
+  const rulesCompare = compareField(
+    "Rules followed",
+    plannedRules,
+    actualRules,
+    "Rule adherence matched your pre-trade commitment.",
+    "Rule adherence differed from your pre-trade commitment.",
   )
+  comparisons.push({
+    ...rulesCompare,
+    aligned: rulesCompare.aligned && !riskRuleBroken,
+    note: riskRuleBroken
+      ? `Risk exceeded your max ${input.maxRiskPerTrade}% rule — process rules were not fully followed.`
+      : rulesCompare.note,
+  })
 
   return comparisons
 }
@@ -209,12 +215,23 @@ function buildDisciplineAnalysis(
     if (insight.type === "warning") weaknesses.push(insight.message)
   }
 
+  const riskRuleBroken = (input.trade.risk_percent ?? 0) > input.maxRiskPerTrade
+  const rulesCompare = comparisons.find((item) => item.field === "Rules followed")
+  const hasRuleGap =
+    riskRuleBroken ||
+    rulesCompare?.aligned === false ||
+    input.trade.rule_followed === false
+
   const ruleAdherence =
-    tradeAnalysis.disciplineScore >= 75
-      ? "strong"
-      : tradeAnalysis.disciplineScore >= 50
+    hasRuleGap
+      ? tradeAnalysis.disciplineScore >= 55
         ? "mixed"
         : "weak"
+      : tradeAnalysis.disciplineScore >= 75
+        ? "strong"
+        : tradeAnalysis.disciplineScore >= 50
+          ? "mixed"
+          : "weak"
 
   const riskyEmotions = new Set(["FOMO", "Revenge", "Euphoric", "Anxious", "Fearful"])
   const emotionalControl = riskyEmotions.has(input.trade.emotion)
@@ -251,7 +268,11 @@ function buildCoachingInsights(input: PostTradeCoachInput): CoachInsightLabel[] 
     input.maxRiskPerTrade,
   )
 
-  if (trade.rule_followed === false || preTradeResponses.rule_check?.toLowerCase() === "no") {
+  if (
+    trade.rule_followed === false ||
+    preTradeResponses.rule_check?.toLowerCase() === "no" ||
+    actualRisk > input.maxRiskPerTrade
+  ) {
     insights.push("You broke your rules")
   }
 

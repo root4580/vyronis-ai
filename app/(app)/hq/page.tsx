@@ -160,6 +160,7 @@ import {
 } from "@/lib/trade-risk-guard"
 import {
   DASHBOARD_TRADE_SELECT,
+  DASHBOARD_TRADE_SELECT_WITHOUT_REFLECTION,
   DASHBOARD_TRADES_LIMIT,
 } from "@/lib/trades/dashboard-trade-query"
 
@@ -183,6 +184,7 @@ type Trade = {
   confirmation_signal: string | null
   session: string | null
   screenshot_url: string | null
+  reflection_chart_url?: string | null
   entry_price?: number | null
   stop_loss?: number | null
   take_profit?: number | null
@@ -487,7 +489,7 @@ function Home() {
     return null
   }
   
-  async function handleScreenshotUpload(file: File) {
+  async function uploadTradeImage(file: File): Promise<string | null> {
     const validationError = validateFile(file)
     if (validationError) {
       toast({
@@ -495,15 +497,14 @@ function Home() {
         description: validationError,
         variant: "destructive",
       })
-      return
+      return null
     }
-    
+
     setIsUploading(true)
     setUploadProgress(0)
-    
-    // Simulate progress for better UX (actual upload doesn't support progress)
+
     const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
+      setUploadProgress((prev) => {
         if (prev >= 90) {
           clearInterval(progressInterval)
           return 90
@@ -511,46 +512,108 @@ function Home() {
         return prev + 10
       })
     }, 150)
-    
+
     try {
       const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      formData.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
         body: formData,
-        credentials: 'same-origin',
+        credentials: "same-origin",
       })
-      
+
       clearInterval(progressInterval)
-      
+
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Upload failed')
+        throw new Error(error.error || "Upload failed")
       }
-      
+
       setUploadProgress(100)
       const { url } = await response.json()
-      setForm((prev) => ({ ...prev, screenshot_url: url }))
-      if (!editingTrade) {
-        void applyMt5ScreenshotAutofill(url, form.pair || undefined)
-      } else {
-        toast({
-          title: "Screenshot uploaded",
-          description: "Tap Autofill from MT5 to update fields from the screenshot.",
-        })
-      }
+      return url as string
     } catch (error) {
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "Failed to upload screenshot",
         variant: "destructive",
       })
+      return null
     } finally {
       clearInterval(progressInterval)
       setIsUploading(false)
       setTimeout(() => setUploadProgress(0), 500)
     }
+  }
+
+  async function handleScreenshotUpload(file: File) {
+    const url = await uploadTradeImage(file)
+    if (!url) return
+
+    setForm((prev) => ({ ...prev, screenshot_url: url }))
+    if (!editingTrade) {
+      void applyMt5ScreenshotAutofill(url, form.pair || undefined)
+    } else {
+      toast({
+        title: "Screenshot uploaded",
+        description: "Tap Autofill from MT5 to update fields from the screenshot.",
+      })
+    }
+  }
+
+  async function handleReflectionChartUpload(file: File) {
+    const url = await uploadTradeImage(file)
+    if (!url) return
+
+    setForm((prev) => ({ ...prev, reflection_chart_url: url }))
+    toast({
+      title: "Reflection chart uploaded",
+      description: "Save the trade to keep this chart on the review.",
+    })
+  }
+
+  async function handleReflectionChartUploadForTrade(trade: Trade, file: File) {
+    const url = await uploadTradeImage(file)
+    if (!url) return
+
+    if (!user?.id) {
+      toast({
+        title: "Not authenticated",
+        description: "You must be logged in to save charts.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const { error } = await supabase
+      .from("trades")
+      .update({ reflection_chart_url: url })
+      .eq("id", trade.id)
+      .eq("user_id", user.id)
+
+    if (error) {
+      const needsMigration = /reflection_chart|column .* does not exist/i.test(error.message)
+      toast({
+        title: needsMigration ? "Database migration needed" : "Could not save chart",
+        description: needsMigration
+          ? "Run supabase/038-trade-reflection-chart.sql in the Supabase SQL Editor, then try again."
+          : error.message,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setTrades((prev) =>
+      prev.map((row) => (row.id === trade.id ? { ...row, reflection_chart_url: url } : row)),
+    )
+    setSelectedTrade((prev) =>
+      prev?.id === trade.id ? { ...prev, reflection_chart_url: url } : prev,
+    )
+    toast({
+      title: "Reflection chart saved",
+      description: "TradingView chart attached to this trade.",
+    })
   }
 
   async function applyMt5ScreenshotAutofill(imageUrl: string, pairHint?: string) {
@@ -872,13 +935,16 @@ function Home() {
         "trades.select",
       )
 
-      if (error && /import_source|column .* does not exist/i.test(error.message)) {
-        const fallbackSelect = DASHBOARD_TRADE_SELECT.replace(", account_id", "")
+      if (error && /import_source|reflection_chart|column .* does not exist/i.test(error.message)) {
+        const fallbackSelect = error.message.includes("reflection_chart")
+          ? DASHBOARD_TRADE_SELECT_WITHOUT_REFLECTION
+          : DASHBOARD_TRADE_SELECT.replace(", account_id", "")
         const fallback = await withTimeout(
           supabase
             .from("trades")
             .select(fallbackSelect)
             .eq("user_id", uid)
+            .or(journalTradesOrFilter())
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_TRADES_LIMIT) as Promise<{
             data: Trade[] | null
@@ -1699,6 +1765,7 @@ function Home() {
       confirmation_timeframe: form.confirmation_timeframe || null,
       session: form.session || null,
       screenshot_url: form.screenshot_url || null,
+      reflection_chart_url: form.reflection_chart_url || null,
       ...vyronisFields,
       ...extendedTradeData,
     }
@@ -1721,6 +1788,7 @@ function Home() {
     let result = await persistTrade(tradeData)
     let error = result.error
     let usedFallbackSave = false
+    let reflectionChartSaveSkipped = false
 
     if (error && /column|schema cache/i.test(error.message)) {
       const {
@@ -1747,6 +1815,20 @@ function Home() {
       result = await persistTrade(coreTradeData as typeof tradeData)
       error = result.error
       usedFallbackSave = !error
+
+      if (
+        error &&
+        tradeData.reflection_chart_url &&
+        /reflection_chart|column .* does not exist/i.test(error.message)
+      ) {
+        const { reflection_chart_url, ...withoutReflection } = coreTradeData as typeof tradeData & {
+          reflection_chart_url?: string | null
+        }
+        result = await persistTrade(withoutReflection as typeof tradeData)
+        error = result.error
+        reflectionChartSaveSkipped = !error
+        usedFallbackSave = usedFallbackSave || reflectionChartSaveSkipped
+      }
     }
 
     if (error) {
@@ -1785,6 +1867,7 @@ function Home() {
                 entryPrice: parseOptionalNumber(savedFormSnapshot.entry_price),
                 stopLoss: parseOptionalNumber(savedFormSnapshot.stop_loss),
                 takeProfit: parseOptionalNumber(savedFormSnapshot.take_profit),
+                lots: planToLink.recommendedLots,
                 riskPercent: savedFormSnapshot.risk_percent
                   ? parseFloat(savedFormSnapshot.risk_percent)
                   : 1,
@@ -1797,6 +1880,15 @@ function Home() {
         } catch (linkError) {
           console.error("Plan link error:", linkError)
         }
+      }
+
+      if (reflectionChartSaveSkipped) {
+        toast({
+          title: "Reflection chart not saved",
+          description:
+            "Run supabase/038-trade-reflection-chart.sql in Supabase SQL Editor, then re-upload your TradingView chart.",
+          variant: "destructive",
+        })
       }
 
       toast({
@@ -1934,6 +2026,7 @@ function Home() {
       confirmation_signal: trade.confirmation_signal || "",
       session: trade.session || "",
       screenshot_url: trade.screenshot_url || "",
+      reflection_chart_url: trade.reflection_chart_url || "",
       entry_price: trade.entry_price?.toString() || "",
       stop_loss: trade.stop_loss?.toString() || "",
       take_profit: trade.take_profit?.toString() || "",
@@ -2482,7 +2575,15 @@ function Home() {
         onScreenshotUpload={handleScreenshotUpload}
         onScreenshotRemove={() => setForm((prev) => ({ ...prev, screenshot_url: "" }))}
         onScreenshotPreview={() =>
-          setScreenshotViewer({ url: form.screenshot_url, label: form.pair || "Trade chart" })
+          setScreenshotViewer({ url: form.screenshot_url, label: `${form.pair || "Trade"} · MT5` })
+        }
+        onReflectionChartUpload={(file) => void handleReflectionChartUpload(file)}
+        onReflectionChartRemove={() => setForm((prev) => ({ ...prev, reflection_chart_url: "" }))}
+        onReflectionChartPreview={() =>
+          setScreenshotViewer({
+            url: form.reflection_chart_url,
+            label: `${form.pair || "Trade"} · TradingView reflection`,
+          })
         }
         onMt5Autofill={() => void handleMt5ScreenshotAutofill()}
         isMt5Autofilling={isMt5Autofilling}
@@ -2670,8 +2771,18 @@ function Home() {
         onEdit={(trade) => handleEditTrade(trade as Trade)}
         isScreenshotOpen={!!screenshotViewer}
         onScreenshotClick={(trade) =>
-          setScreenshotViewer({ url: trade.screenshot_url ?? null, label: trade.pair })
+          setScreenshotViewer({ url: trade.screenshot_url ?? null, label: `${trade.pair} · MT5` })
         }
+        onReflectionChartClick={(trade) =>
+          setScreenshotViewer({
+            url: trade.reflection_chart_url ?? null,
+            label: `${trade.pair} · TradingView reflection`,
+          })
+        }
+        onReflectionChartUpload={(trade, file) =>
+          void handleReflectionChartUploadForTrade(trade as Trade, file)
+        }
+        isReflectionUploading={isUploading}
       />
 
       <VyronisScoreResultModal

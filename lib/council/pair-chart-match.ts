@@ -55,13 +55,5 @@ export function findChartForMessage(
     if (match) return match
   }
 
-  if (agent === "luna" || agent === "cipher") {
-    return charts[0] ?? null
-  }
-
-  if (agent === "zara" && visual.lastTradeChart) {
-    return visual.lastTradeChart
-  }
-
   return null
 }

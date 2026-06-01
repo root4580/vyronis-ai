@@ -31,6 +31,15 @@ export async function loadCachedCouncilAgentContext(
   return value
 }
 
+export async function loadCachedCouncilVisualContext(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+) {
+  const context = await loadCachedCouncilAgentContext(supabase, userId, accountId)
+  return context.visual ?? null
+}
+
 export function invalidateCouncilContextCache(userId: string, accountId: string): void {
   contextCache.delete(cacheKey(userId, accountId))
 }

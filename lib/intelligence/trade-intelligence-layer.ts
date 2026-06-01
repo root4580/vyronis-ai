@@ -287,6 +287,11 @@ export function buildTradeIntelligenceBundle(input: {
   const beforeEmotion = getEmotionDisplay(trade.emotion)
   const afterEmotion = trade.emotion_after ? getEmotionDisplay(trade.emotion_after) : null
 
+  const reflectionUrl = trade.reflection_chart_url?.trim() || null
+  const mt5Url = trade.screenshot_url?.trim() || null
+  const chartUrl = reflectionUrl ?? mt5Url
+  const isTradingView = Boolean(reflectionUrl)
+
   return {
     tradeId: String(trade.id),
     importSource: trade.import_source ?? null,
@@ -311,12 +316,15 @@ export function buildTradeIntelligenceBundle(input: {
       insight: buildEmotionInsight(trade, trends),
     },
     screenshot: {
-      url: trade.screenshot_url ?? null,
-      attached: Boolean(trade.screenshot_url?.trim()),
-      visionAvailable: Boolean(trade.screenshot_url?.trim()),
-      message: trade.screenshot_url?.trim()
-        ? "Screenshot attached — open Command Center chart review for vision analysis."
-        : "No screenshot — add one when editing to unlock chart-based coaching.",
+      url: chartUrl,
+      attached: Boolean(chartUrl),
+      visionAvailable: Boolean(chartUrl),
+      label: isTradingView ? "TradingView chart" : "Screenshot",
+      message: chartUrl
+        ? isTradingView
+          ? "TradingView reflection attached — tap Open to review your post-trade chart."
+          : "Screenshot attached — open Command Center chart review for vision analysis."
+        : "No TradingView reflection — add one when editing to unlock chart review.",
     },
     analysis,
     tradeInsights: buildTradeDetailInsights(toDetailTrade(trade), maxRisk),

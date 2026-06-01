@@ -164,6 +164,7 @@ export type DashboardTradeRow = {
   confirmation_signal: string | null
   session: string | null
   screenshot_url: string | null
+  reflection_chart_url?: string | null
   entry_price?: number | null
   stop_loss?: number | null
   take_profit?: number | null
