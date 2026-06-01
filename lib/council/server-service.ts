@@ -10,6 +10,8 @@ import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
   buildCouncilRespondUserPrompt,
+  buildRecentTranscriptLines,
+  getLastAgentReplyInTranscript,
 } from "@/lib/council/prompts"
 import { getStickyCouncilAgentFromTranscript, resolveCouncilAgentForMessage } from "@/lib/council/router"
 import type {
@@ -78,6 +80,36 @@ function normalizeSettings(row: Record<string, unknown>): CouncilSettingsRecord 
   }
 }
 
+function buildConversationFallback(input: {
+  agentId: CouncilAgentId
+  context: Awaited<ReturnType<typeof loadCouncilAgentContext>>
+  question: string
+  lastReply: string | null
+}): string {
+  const trimmed = input.question.trim()
+
+  if (/ready|in the zone|hit the zone|at aoi|confirmed/i.test(trimmed)) {
+    if (input.agentId === "khalid") {
+      return "Good — if price is in your AOI, wait for the M15 close in your direction before entry. Keep invalidation clear and do not chase the wick."
+    }
+    if (input.agentId === "hamza") {
+      return "Nice — if the zone is live, run Coach on the setup before you commit size."
+    }
+  }
+
+  if (/how are we|how am i|how'?s it going/i.test(trimmed)) {
+    if (input.agentId === "scott") {
+      return input.context.scott.split(".").slice(0, 2).join(".") + "."
+    }
+  }
+
+  if (input.lastReply) {
+    return `Got it. Building on what I said — ${input.lastReply.split(".").slice(0, 1).join(".")}. What's the one thing you want to clarify next?`
+  }
+
+  return fallbackAgentLine(input.agentId, input.context)
+}
+
 function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<typeof loadCouncilAgentContext>>): string {
   switch (agentId) {
     case "sarah":
@@ -104,6 +136,8 @@ async function generateAgentText(input: {
   systemPrompt: string
   userPrompt: string
   fallback: string
+  temperature?: number
+  maxTokens?: number
 }): Promise<string> {
   const provider = resolveAiProvider()
   if (provider?.completeText) {
@@ -111,8 +145,8 @@ async function generateAgentText(input: {
       const text = await provider.completeText({
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt,
-        maxTokens: 180,
-        temperature: 0.45,
+        maxTokens: input.maxTokens ?? 180,
+        temperature: input.temperature ?? 0.45,
       })
       if (text.trim()) return text.trim()
     } catch {
@@ -266,6 +300,7 @@ async function loadAgentMemoryContext(
   supabase: SupabaseClient,
   userId: string,
   agentId: CouncilAgentId,
+  excludeReply?: string | null,
 ): Promise<string> {
   const { data } = await supabase
     .from("agent_memories")
@@ -280,9 +315,15 @@ async function loadAgentMemoryContext(
 
   if (conversations.length === 0) return ""
 
+  const normalizedExclude = excludeReply?.trim().toLowerCase()
+
   return [...conversations]
     .reverse()
     .slice(-5)
+    .filter((turn) => {
+      if (!normalizedExclude) return true
+      return turn.agent.trim().toLowerCase() !== normalizedExclude
+    })
     .map(
       (turn) =>
         `Trader: ${turn.user}\n${getCouncilAgent(agentId).name}: ${turn.agent}`,
@@ -347,7 +388,7 @@ export async function runCouncilMorningBriefing(
 
   for (const agentId of BRIEFING_AGENT_ORDER) {
     const agent = getCouncilAgent(agentId)
-    const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context)
+    const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context, "briefing")
     const content = await generateAgentText({
       agentId,
       systemPrompt,
@@ -418,26 +459,33 @@ export async function runCouncilRespond(
     createdAt: new Date().toISOString(),
   }
 
-  const recentTranscript = transcript
-    .slice(-8)
-    .map((entry) => {
-      const speaker =
-        entry.agent === "user" ? context.traderFirstName : getCouncilAgent(entry.agent as CouncilAgentId).name
-      return `${speaker}: ${entry.content}`
-    })
-    .join("\n")
-
-  const agentMemory = await loadAgentMemoryContext(supabase, userId, agentId).catch(() => "")
+  const lastAgentReply = getLastAgentReplyInTranscript(transcript, agentId)
+  const recentTranscript = buildRecentTranscriptLines(transcript, context.traderFirstName, 6)
+  const agentMemory = await loadAgentMemoryContext(
+    supabase,
+    userId,
+    agentId,
+    lastAgentReply,
+  ).catch(() => "")
 
   const reply = await generateAgentText({
     agentId,
-    systemPrompt: buildCouncilAgentSystemPrompt(agentId, context),
+    systemPrompt: buildCouncilAgentSystemPrompt(agentId, context, "conversation"),
     userPrompt: buildCouncilRespondUserPrompt({
       question: trimmed,
       recentTranscript,
       agentMemory,
+      lastAgentReply,
+      agentName: getCouncilAgent(agentId).name,
     }),
-    fallback: fallbackAgentLine(agentId, context),
+    fallback: buildConversationFallback({
+      agentId,
+      context,
+      question: trimmed,
+      lastReply: lastAgentReply,
+    }),
+    temperature: 0.68,
+    maxTokens: 240,
   })
 
   const agentEntry: CouncilTranscriptEntry = {
