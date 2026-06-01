@@ -9,6 +9,8 @@ import {
 } from "@/lib/council/elevenlabs-service"
 import { getOrCreateCouncilSettings } from "@/lib/council/server-service"
 
+export const dynamic = "force-dynamic"
+
 const AGENTS = new Set<CouncilAgentId>(COUNCIL_AGENT_IDS)
 
 export async function POST(request: Request) {

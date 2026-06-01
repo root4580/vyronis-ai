@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 import { fetchCouncilSpeech } from "@/lib/council/api-client"
+import { unlockCouncilAudio } from "@/lib/council/audio-unlock"
 import type { RefObject } from "react"
 import {
   AsyncSpeechQueue,
@@ -18,6 +19,7 @@ import {
 type UseCouncilVoicePlaybackOptions = {
   session?: CouncilVoiceSessionController | null
   conversationActiveRef?: RefObject<boolean>
+  onVoiceError?: (message: string | null) => void
 }
 
 export function useCouncilVoicePlayback(
@@ -32,6 +34,7 @@ export function useCouncilVoicePlayback(
   const volumeRef = useRef(1)
   const sessionRef = useRef(options?.session ?? null)
   const conversationActiveRef = useRef(options?.conversationActiveRef ?? null)
+  const onVoiceErrorRef = useRef(options?.onVoiceError ?? null)
 
   useEffect(() => {
     sessionRef.current = options?.session ?? null
@@ -40,6 +43,14 @@ export function useCouncilVoicePlayback(
   useEffect(() => {
     conversationActiveRef.current = options?.conversationActiveRef ?? null
   }, [options?.conversationActiveRef])
+
+  useEffect(() => {
+    onVoiceErrorRef.current = options?.onVoiceError ?? null
+  }, [options?.onVoiceError])
+
+  const reportVoiceError = useCallback((message: string | null) => {
+    onVoiceErrorRef.current?.(message)
+  }, [])
 
   useEffect(() => {
     setVoiceEnabledState(readCouncilVoiceEnabledPreference())
@@ -73,6 +84,26 @@ export function useCouncilVoicePlayback(
     setIsSpeaking(false)
   }, [])
 
+  const playAgentClip = useCallback(
+    async (
+      entry: CouncilTranscriptEntry & { agent: CouncilAgentId },
+      controller: AbortController,
+      objectUrls: string[],
+    ) => {
+      const blob = await fetchCouncilSpeech({
+        agent: entry.agent,
+        text: entry.content,
+      })
+      if (controller.signal.aborted) return
+
+      const objectUrl = URL.createObjectURL(blob)
+      objectUrls.push(objectUrl)
+      setSpeakingAgent(entry.agent)
+      await playAudioUrl(objectUrl, controller.signal, volumeRef.current)
+    },
+    [],
+  )
+
   const speakEntries = useCallback(
     async (entries: CouncilTranscriptEntry[]) => {
       const session = sessionRef.current
@@ -81,12 +112,25 @@ export function useCouncilVoicePlayback(
           entry.agent !== "user" && entry.agent !== "system" && Boolean(entry.content.trim()),
       )
 
-      if (!voiceConfigured || !voiceEnabled || agentEntries.length === 0) {
+      if (!voiceConfigured) {
+        reportVoiceError(
+          "Spoken replies need ELEVENLABS_API_KEY on the server. Add it in your hosting env and redeploy.",
+        )
         if (conversationActiveRef.current?.current) {
           session?.beginListening()
         }
         return
       }
+
+      if (!voiceEnabled || agentEntries.length === 0) {
+        if (conversationActiveRef.current?.current) {
+          session?.beginListening()
+        }
+        return
+      }
+
+      unlockCouncilAudio()
+      reportVoiceError(null)
 
       abortRef.current?.abort()
       const controller = new AbortController()
@@ -96,6 +140,7 @@ export function useCouncilVoicePlayback(
 
       const audioQueue = new AsyncSpeechQueue()
       const objectUrls: string[] = []
+      let playbackError: string | null = null
 
       const producer = async () => {
         try {
@@ -110,6 +155,11 @@ export function useCouncilVoicePlayback(
             objectUrls.push(objectUrl)
             audioQueue.push({ agent: entry.agent, objectUrl })
           }
+        } catch (error) {
+          playbackError =
+            error instanceof Error
+              ? error.message
+              : "Could not load agent voice. Check ELEVENLABS_API_KEY and voice IDs."
         } finally {
           audioQueue.close()
         }
@@ -128,7 +178,13 @@ export function useCouncilVoicePlayback(
           try {
             setSpeakingAgent(clip.agent)
             await playAudioUrl(clip.objectUrl, controller.signal, volumeRef.current)
-          } catch {
+          } catch (error) {
+            playbackError =
+              error instanceof Error
+                ? error.message.includes("NotAllowedError") || error.message.includes("user didn't interact")
+                  ? "Browser blocked audio — tap a message speaker icon or send a reply to enable voice."
+                  : error.message
+                : "Audio playback failed. Check your device volume and browser permissions."
             break
           }
         }
@@ -145,6 +201,9 @@ export function useCouncilVoicePlayback(
         }
         setSpeakingAgent(null)
         setIsSpeaking(false)
+        if (playbackError && !controller.signal.aborted) {
+          reportVoiceError(playbackError)
+        }
         if (controller.signal.aborted) {
           session?.reset()
         } else if (conversationActiveRef.current?.current) {
@@ -154,7 +213,63 @@ export function useCouncilVoicePlayback(
         }
       }
     },
-    [voiceConfigured, voiceEnabled],
+    [voiceConfigured, voiceEnabled, reportVoiceError],
+  )
+
+  const speakEntry = useCallback(
+    async (entry: CouncilTranscriptEntry) => {
+      if (
+        entry.agent === "user" ||
+        entry.agent === "system" ||
+        !entry.content.trim() ||
+        !voiceConfigured ||
+        !voiceEnabled
+      ) {
+        if (!voiceConfigured) {
+          reportVoiceError(
+            "Spoken replies need ELEVENLABS_API_KEY on the server. Add it in your hosting env and redeploy.",
+          )
+        }
+        return
+      }
+
+      unlockCouncilAudio()
+      reportVoiceError(null)
+      stopPlayback()
+
+      const controller = new AbortController()
+      abortRef.current = controller
+      setIsSpeaking(true)
+      sessionRef.current?.beginSpeaking()
+
+      const objectUrls: string[] = []
+      try {
+        await playAgentClip(
+          entry as CouncilTranscriptEntry & { agent: CouncilAgentId },
+          controller,
+          objectUrls,
+        )
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message.includes("NotAllowedError")
+              ? "Browser blocked audio — try again after interacting with the page."
+              : error.message
+            : "Could not play agent voice."
+        reportVoiceError(message)
+      } finally {
+        for (const url of objectUrls) {
+          URL.revokeObjectURL(url)
+        }
+        if (abortRef.current === controller) {
+          abortRef.current = null
+        }
+        setSpeakingAgent(null)
+        setIsSpeaking(false)
+        sessionRef.current?.setPhase("idle")
+      }
+    },
+    [playAgentClip, reportVoiceError, stopPlayback, voiceConfigured, voiceEnabled],
   )
 
   useEffect(() => {
@@ -172,7 +287,9 @@ export function useCouncilVoicePlayback(
     speakingAgent,
     isSpeaking,
     speakEntries,
+    speakEntry,
     stopPlayback,
+    unlockAudio: unlockCouncilAudio,
   }
 }
 
@@ -207,8 +324,13 @@ function playAudioUrl(url: string, signal: AbortSignal, volume: number): Promise
     audio.addEventListener("error", onError)
     signal.addEventListener("abort", onAbort)
 
-    void audio.play().catch((error) => {
+    void audio.play().catch((error: unknown) => {
       cleanup()
+      const name = error instanceof DOMException ? error.name : ""
+      if (name === "NotAllowedError") {
+        reject(new Error("NotAllowedError: browser blocked autoplay"))
+        return
+      }
       reject(error instanceof Error ? error : new Error("Could not start audio"))
     })
   })

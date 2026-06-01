@@ -12,6 +12,7 @@ import {
   fetchCouncilVisualContext,
   runCouncilBriefing,
   runCouncilOpen,
+  fetchCouncilVoiceCheck,
 } from "@/lib/council/api-client"
 import { findChartForMessage } from "@/lib/council/pair-chart-match"
 import { readFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
@@ -65,6 +66,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [isSending, setIsSending] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const [migrationPending, setMigrationPending] = useState(false)
   const [briefingDone, setBriefingDone] = useState(false)
   const [isMorningWindow, setIsMorningWindow] = useState(false)
@@ -94,7 +96,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     speakingAgent,
     isSpeaking,
     speakEntries,
+    speakEntry,
     stopPlayback,
+    unlockAudio,
     session: voiceSession,
     isConversationMode,
     isListening,
@@ -105,7 +109,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     startConversation,
     stopConversation,
     clearMicError,
-  } = useCouncilVoiceSession(voiceConfigured, listenConfigured)
+  } = useCouncilVoiceSession(voiceConfigured, listenConfigured, {
+    onVoiceError: setVoiceError,
+  })
 
   useEffect(() => {
     conversationAgentRef.current = conversationAgent
@@ -146,6 +152,23 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setIsMorningWindow(state.isMorningWindow)
       setVoiceConfigured(Boolean(state.voiceConfigured))
       setListenConfigured(Boolean(state.listenConfigured))
+      if (state.voiceConfigured) {
+        void fetchCouncilVoiceCheck()
+          .then((check) => {
+            if (!check.ok) {
+              setVoiceConfigured(false)
+              setVoiceError(
+                check.error ??
+                  "Voice check failed on the server. Confirm ELEVENLABS_API_KEY in Vercel Production and redeploy.",
+              )
+            }
+          })
+          .catch(() => undefined)
+      } else {
+        setVoiceError(
+          "Spoken replies need ELEVENLABS_API_KEY on the server (Vercel → Environment Variables → Production). Redeploy after saving.",
+        )
+      }
       setVisualContext(state.visual ?? null)
       setKeyInsights(state.keyInsights ?? state.session?.key_insights ?? [])
       setMemoryHighlights(state.memoryHighlights ?? [])
@@ -207,6 +230,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const handleBriefing = useCallback(
     async (force = false) => {
       if (!accountId || migrationPending) return
+      unlockAudio()
       stopConversation()
       stopPlayback()
       setIsBriefing(true)
@@ -234,7 +258,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           if (isAgentEntry(lastMessage)) {
             setActiveAgent(lastMessage.agent)
           }
-          if (showBriefingInUi && voiceEnabled) {
+          if (voiceEnabled) {
             void speakEntries(result.messages)
           }
         }
@@ -247,7 +271,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         setIsBriefing(false)
       }
     },
-    [accountId, migrationPending, freshChatOnOpen, scrollToBottom, speakEntries, stopPlayback, stopConversation, voiceEnabled],
+    [accountId, migrationPending, freshChatOnOpen, scrollToBottom, speakEntries, stopPlayback, stopConversation, unlockAudio, voiceEnabled],
   )
 
   useEffect(() => {
@@ -383,6 +407,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       const trimmed = message.trim()
       if (!trimmed || !accountId || isSending || migrationPending) return
 
+      unlockAudio()
       stopPlayback()
       setIsSending(true)
       voiceSession.beginThinking()
@@ -468,6 +493,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       stopPlayback,
       scrollToBottom,
       clearMicError,
+      unlockAudio,
       voiceSession,
       isConversationMode,
       fullCouncilParticipation,
@@ -488,6 +514,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
   function handleMicToggle() {
     if (migrationPending || !listenConfigured) return
+    unlockAudio()
 
     if (isConversationMode) {
       stopConversation()
@@ -702,9 +729,17 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
       ) : null}
 
-      {error || micError ? (
+      {error || micError || voiceError ? (
         <div className="rounded-[var(--radius-md)] border border-loss/25 bg-loss/[0.08] px-4 py-3 text-[12px] text-loss">
-          {error || micError}
+          {error || micError || voiceError}
+        </div>
+      ) : null}
+
+      {!voiceAvailable && !isLoading ? (
+        <div className="rounded-[var(--radius-md)] border border-amber-400/25 bg-amber-500/[0.08] px-4 py-3 text-[12px] text-amber-100/90">
+          Voice is off until <code className="text-[11px]">ELEVENLABS_API_KEY</code> is set on the server
+          (Vercel/hosting env) and the app is redeployed. Text replies work now — tap the speaker icon on any
+          agent message once voice is enabled.
         </div>
       ) : null}
 
@@ -807,6 +842,15 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                 visual={visualContext}
                 inlineChart={inlineChart}
                 speakingAgent={speakingAgent}
+                voiceAvailable={voiceAvailable && voiceEnabled}
+                onReplay={
+                  voiceAvailable && voiceEnabled
+                    ? () => {
+                        unlockAudio()
+                        void speakEntry(entry)
+                      }
+                    : undefined
+                }
                 onChartClick={(url, title) => setChartViewer({ url, title })}
               />
             ))}

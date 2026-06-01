@@ -27,6 +27,7 @@ export async function fetchCouncilSession(
 ): Promise<CouncilSessionResponse> {
   const response = await fetch(withAccountQuery(accountId, "/api/council/session"), {
     credentials: "include",
+    cache: "no-store",
   })
   return parseJson<CouncilSessionResponse>(response)
 }
@@ -112,6 +113,30 @@ export async function askCouncil(input: {
   return parseJson<CouncilRespondResponse>(response)
 }
 
+export async function fetchCouncilVoiceCheck(): Promise<{
+  voiceConfigured: boolean
+  ok: boolean
+  error?: string
+  sampleBytes?: number
+}> {
+  const response = await fetch("/api/council/voice-check", {
+    credentials: "include",
+    cache: "no-store",
+  })
+  const payload = (await response.json()) as {
+    voiceConfigured?: boolean
+    ok?: boolean
+    error?: string
+    sampleBytes?: number
+  }
+  return {
+    voiceConfigured: Boolean(payload.voiceConfigured),
+    ok: Boolean(payload.ok),
+    error: payload.error,
+    sampleBytes: payload.sampleBytes,
+  }
+}
+
 export async function fetchCouncilSpeech(input: {
   agent: string
   text: string
@@ -119,6 +144,7 @@ export async function fetchCouncilSpeech(input: {
   const response = await fetch("/api/council/speak", {
     method: "POST",
     credentials: "include",
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       agent: input.agent,
@@ -126,12 +152,24 @@ export async function fetchCouncilSpeech(input: {
     }),
   })
 
+  const contentType = response.headers.get("content-type") ?? ""
+
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: string }
-    throw new Error(payload.error || "Could not load agent voice")
+    throw new Error(payload.error || `Could not load agent voice (${response.status})`)
   }
 
-  return response.blob()
+  if (!contentType.includes("audio")) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new Error(payload.error || "Voice server returned non-audio response")
+  }
+
+  const blob = await response.blob()
+  if (blob.size < 128) {
+    throw new Error("Voice server returned empty audio")
+  }
+
+  return blob
 }
 
 export async function transcribeCouncilAudio(blob: Blob): Promise<string> {

@@ -1,5 +1,6 @@
 "use client"
 
+import { Loader2, Volume2 } from "lucide-react"
 import { getCouncilAgent } from "@/lib/council/agents"
 import { findChartForMessage } from "@/lib/council/pair-chart-match"
 import type { CouncilAgentId, CouncilChartSnapshot, CouncilTranscriptEntry, CouncilVisualContext } from "@/lib/council/types"
@@ -10,6 +11,8 @@ type CouncilMessageBubbleProps = {
   visual: CouncilVisualContext | null
   inlineChart?: CouncilChartSnapshot | null
   speakingAgent: CouncilAgentId | null
+  voiceAvailable?: boolean
+  onReplay?: () => void
   onChartClick?: (url: string, title: string) => void
 }
 
@@ -24,6 +27,8 @@ export function CouncilMessageBubble({
   visual,
   inlineChart: inlineChartOverride,
   speakingAgent,
+  voiceAvailable = false,
+  onReplay,
   onChartClick,
 }: CouncilMessageBubbleProps) {
   const isUser = entry.agent === "user"
@@ -49,10 +54,27 @@ export function CouncilMessageBubble({
         isSpeakingLine && "shadow-[0_0_20px_rgba(34,211,238,0.15)]",
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
-        {speakerLabel(entry)}
-        {isSpeakingLine ? " · speaking" : ""}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
+          {speakerLabel(entry)}
+          {isSpeakingLine ? " · speaking" : ""}
+        </p>
+        {voiceAvailable && onReplay && !isUser && entry.agent !== "system" ? (
+          <button
+            type="button"
+            onClick={onReplay}
+            className="shrink-0 rounded-md border border-white/10 p-1 text-text-muted transition-colors hover:border-cyan-glow/30 hover:text-cyan-glow"
+            aria-label={`Hear ${speakerLabel(entry)}`}
+            title={`Hear ${speakerLabel(entry)}`}
+          >
+            {isSpeakingLine ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Volume2 className="size-3.5" />
+            )}
+          </button>
+        ) : null}
+      </div>
       <p className="mt-1 text-[13px] leading-relaxed text-text-primary">{entry.content}</p>
       {inlineChart ? (
         <button
