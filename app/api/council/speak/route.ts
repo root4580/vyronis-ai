@@ -10,6 +10,7 @@ import {
 import { getOrCreateCouncilSettings } from "@/lib/council/server-service"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 const AGENTS = new Set<CouncilAgentId>(COUNCIL_AGENT_IDS)
 

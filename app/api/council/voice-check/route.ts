@@ -7,6 +7,7 @@ import {
 import { isCouncilVoiceOutputConfigured } from "@/lib/council/voices"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function GET() {
   try {

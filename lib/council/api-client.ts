@@ -123,6 +123,24 @@ export async function fetchCouncilVoiceCheck(): Promise<{
     credentials: "include",
     cache: "no-store",
   })
+
+  if (response.status === 404) {
+    return {
+      voiceConfigured: false,
+      ok: false,
+      error: "Voice update not deployed yet — redeploy vyronis-ai from latest main on Vercel.",
+    }
+  }
+
+  const contentType = response.headers.get("content-type") ?? ""
+  if (!contentType.includes("json")) {
+    return {
+      voiceConfigured: false,
+      ok: false,
+      error: `Voice check failed (${response.status}). Redeploy vyronis-ai on Vercel.`,
+    }
+  }
+
   const payload = (await response.json()) as {
     voiceConfigured?: boolean
     ok?: boolean

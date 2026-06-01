@@ -504,6 +504,18 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     submitQuestionRef.current = submitQuestion
   }, [submitQuestion])
 
+  const handleTestVoice = useCallback(async () => {
+    unlockAudio()
+    setVoiceError(null)
+    stopPlayback()
+    await speakEntry({
+      id: `voice-test-${Date.now()}`,
+      agent: "marcus",
+      content: `${greetingName}, this is a council voice test.`,
+      createdAt: new Date().toISOString(),
+    })
+  }, [greetingName, speakEntry, stopPlayback, unlockAudio])
+
   async function handleAsk(event?: React.FormEvent) {
     event?.preventDefault()
     const trimmed = question.trim()
@@ -585,6 +597,21 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                   {voiceEnabled ? "Voice on" : "Voice off"}
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-10"
+                disabled={isSpeaking || migrationPending}
+                onClick={() => void handleTestVoice()}
+              >
+                {isSpeaking ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Volume2 className="mr-2 size-4" />
+                )}
+                Test voice
+              </Button>
               <Button
                 type="button"
                 size="sm"
