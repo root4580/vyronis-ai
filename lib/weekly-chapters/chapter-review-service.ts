@@ -12,17 +12,22 @@ import {
 } from "@/lib/weekly-chapters/key-lesson"
 import {
   computeWeeklyChapterPaperStats,
+  filterPaperTradesForWeek,
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
 import { detectChapterReviewPatterns } from "@/lib/weekly-chapters/chapter-patterns"
+import { buildChapterEmotionSummary } from "@/lib/weekly-chapters/chapter-emotion-scores"
+import { generateChapterReviewAiNarrative } from "@/lib/weekly-chapters/chapter-review-ai"
 import { buildChapterTradeReviewNotes } from "@/lib/weekly-chapters/trade-review-notes"
+import type { PaperTradeRecord } from "@/lib/paper-trades/types"
 import {
   fetchChapterPaperTrades,
   fetchChapterTrades,
   listWeeklySummaries,
 } from "@/lib/weekly-chapters/server-service"
 import type {
+  ChapterReviewPaperTrade,
   ChapterReviewPayload,
   ChapterReviewTrade,
   WeeklySummaryRecord,
@@ -281,6 +286,54 @@ function collectCoachInsights(
   return insights
 }
 
+async function loadDisciplineScoresByTradeId(
+  supabase: SupabaseClient,
+  userId: string,
+  tradeIds: string[],
+): Promise<Map<string, number>> {
+  if (tradeIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from("trade_coach_feedback")
+    .select("trade_id, discipline_score")
+    .eq("user_id", userId)
+    .in("trade_id", tradeIds)
+
+  if (error) {
+    if (/trade_coach_feedback|relation .* does not exist|schema cache/i.test(error.message)) {
+      return new Map()
+    }
+    throw new Error(error.message)
+  }
+
+  const map = new Map<string, number>()
+  for (const row of data ?? []) {
+    if (row.trade_id != null && row.discipline_score != null) {
+      map.set(String(row.trade_id), Number(row.discipline_score))
+    }
+  }
+  return map
+}
+
+function mapChapterReviewPaperTrades(
+  paperTrades: PaperTradeRecord[],
+  weekStart: string,
+): ChapterReviewPaperTrade[] {
+  return filterPaperTradesForWeek(paperTrades, weekStart)
+    .map((trade) => ({
+      id: trade.id,
+      symbol: trade.symbol,
+      direction: trade.direction,
+      result: trade.result,
+      pnl: trade.pnl,
+      setup_grade: trade.setup_grade,
+      chart_image_url: trade.chart_image_url,
+      coach_feedback: trade.coach_feedback,
+      source: trade.source,
+    }))
+    .sort((a, b) => b.id.localeCompare(a.id))
+}
+
 export async function getChapterReview(
   supabase: SupabaseClient,
   userId: string,
@@ -334,6 +387,19 @@ export async function getChapterReview(
   const weekCoachSessions = coachSessionsInWeek(coachSessions, weekStart)
   const trades = mapReviewTrades(tradeRows, weekStart, coachByTradeId)
   const patterns = detectChapterReviewPatterns(trades)
+  const paperTradesForWeek = mapChapterReviewPaperTrades(paperTrades, weekStart)
+  const disciplineByTradeId = await loadDisciplineScoresByTradeId(
+    supabase,
+    userId,
+    trades.map((trade) => trade.id),
+  )
+  const emotionSummary = buildChapterEmotionSummary({
+    trades,
+    disciplineByTradeId,
+    summaryDisciplineScore: summary.discipline_score,
+  })
+  const coachInsights = collectCoachInsights(summary, weekCoachSessions)
+  const carryForwardLesson = summary.key_lesson?.trim() || "Protect process over outcome."
   const emotionTimeline = trades
     .filter((trade) => Boolean(trade.emotion?.trim()))
     .map((trade) => ({
@@ -346,6 +412,17 @@ export async function getChapterReview(
   const currentWeekStart = toWeekStartISO(new Date())
   const navigation = resolveNavigation(summaries, weekStart)
 
+  const { narrative: aiNarrative, provider: aiProvider } = await generateChapterReviewAiNarrative({
+    summary,
+    patterns,
+    trades,
+    paperLine,
+    paperTrades: paperTradesForWeek,
+    emotionSummary,
+    coachInsights,
+    carryForwardLesson,
+  })
+
   const disciplineScore = summary.discipline_score
   if (disciplineScore != null && !summary.discipline_grade) {
     summary = {
@@ -357,10 +434,14 @@ export async function getChapterReview(
   return {
     summary,
     trades,
-    coachInsights: collectCoachInsights(summary, weekCoachSessions),
+    coachInsights,
     paperLine,
-    carryForwardLesson: summary.key_lesson?.trim() || "Protect process over outcome.",
+    paperTrades: paperTradesForWeek,
+    carryForwardLesson,
     patterns,
+    aiNarrative,
+    aiProvider,
+    emotionSummary,
     emotionTimeline,
     isClosed: weekStart < currentWeekStart,
     navigation,
