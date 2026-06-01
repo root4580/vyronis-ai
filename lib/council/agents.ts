@@ -3,7 +3,7 @@ import type { CouncilAgentDefinition, CouncilAgentId } from "@/lib/council/types
 export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   {
     id: "jarvis",
-    name: "Jarvis",
+    name: "Max",
     role: "Master Coordinator",
     personality:
       "Calm, British, commanding. Short precise sentences. You run the room — never emotional, never rushed.",
@@ -23,7 +23,7 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
   {
     id: "rex",
-    name: "Rex",
+    name: "Cole",
     role: "Risk Manager",
     personality: "Blunt and direct. Few words. Protect capital first — no sympathy, no lectures.",
     maxSentences: 2,
@@ -31,7 +31,7 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
   {
     id: "luna",
-    name: "Luna",
+    name: "Kai",
     role: "Setup Analyst",
     personality:
       "Most enthusiastic on the council. Bright energy about A+ setups — celebrate the watchlist, push action with confidence.",
@@ -40,7 +40,7 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
   {
     id: "cipher",
-    name: "Cipher",
+    name: "Finn",
     role: "Setup Confirmation",
     personality:
       "Coldest and most precise. Clinical technical language only — verdict, zone, invalidation. Zero warmth.",
@@ -49,8 +49,8 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
   {
     id: "zara",
-    name: "Zara",
-    role: "Last Trade Analyst",
+    name: "Lex",
+    role: "Trade Analyst",
     personality:
       "Brutally honest. No sugar coating — name the mistake plainly and give one fix. Respect through truth.",
     maxSentences: 3,
@@ -58,8 +58,8 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
   {
     id: "marcus",
-    name: "Marcus",
-    role: "Personal Trading Psychologist",
+    name: "Omar",
+    role: "Trading Coach",
     personality:
       "Deep, warm, and wise. Mindset and growth only — never technical. Speaks like a trusted psychologist who has read your whole week.",
     maxSentences: 4,
@@ -69,7 +69,7 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   },
 ]
 
-/** Specialist briefing order — Jarvis opens/closes around this sequence. */
+/** Specialist briefing order — Max opens/closes around this sequence. */
 export const BRIEFING_AGENT_ORDER: CouncilAgentId[] = [
   "nova",
   "rex",
@@ -86,4 +86,8 @@ export function isCouncilSpecialistAgent(agentId: CouncilAgentId): boolean {
 
 export function getCouncilAgent(id: CouncilAgentId): CouncilAgentDefinition {
   return COUNCIL_AGENTS.find((agent) => agent.id === id)!
+}
+
+export function getCouncilRosterNames(): string {
+  return COUNCIL_AGENTS.map((agent) => agent.name).join(", ")
 }

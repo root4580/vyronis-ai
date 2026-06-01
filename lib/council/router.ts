@@ -3,7 +3,7 @@ import { detectCouncilAgentIdByName } from "@/lib/council/agent-ids"
 import { isGeneralCouncilQuestion } from "@/lib/council/jarvis-service"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 
-/** Direct address — "Hey Rex", "Good morning Nova", "Zara, review my trade". */
+/** Direct address — "Hey Cole", "Good morning Nova", "Lex, review my trade". */
 export function detectCouncilAgentByName(message: string): CouncilAgentId | null {
   return detectCouncilAgentIdByName(message)
 }
@@ -46,7 +46,7 @@ export function isCouncilDelegationRequest(message: string): boolean {
   return false
 }
 
-/** Direct address to an agent — "Cipher, is it valid?" not "can you ask Cipher". */
+/** Direct address to an agent — "Finn, is it valid?" not "can you ask Finn". */
 export function isCouncilDirectAddress(message: string, agentId: CouncilAgentId): boolean {
   const trimmed = message.trim()
   const name = getCouncilAgent(agentId).name

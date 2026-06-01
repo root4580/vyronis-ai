@@ -750,7 +750,7 @@ export async function runCouncilOpenRitual(
   const openMessages = buildCouncilOpenMessages(context)
   const session = await upsertTodaySession(supabase, userId, accountId, {
     full_transcript: [...transcript, ...openMessages],
-    agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis", "Nova"])],
+    agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), getCouncilAgent("jarvis").name, getCouncilAgent("nova").name])],
   })
 
   return {
@@ -776,8 +776,8 @@ async function runCouncilEmotionCheckTurn(
     agents_spoken: [
       ...new Set([
         ...(existing?.agents_spoken ?? []),
-        "Nova",
-        ...(score < 7 ? ["Rex"] : []),
+        getCouncilAgent("nova").name,
+        ...(score < 7 ? [getCouncilAgent("rex").name] : []),
       ]),
     ],
   })
@@ -971,7 +971,7 @@ async function runCouncilStatusTurn(
     agents_spoken: [
       ...new Set([
         ...(existing?.agents_spoken ?? []),
-        "Jarvis",
+        getCouncilAgent("jarvis").name,
         ...statusAgents.map((id) => getCouncilAgent(id).name),
       ]),
     ],
@@ -1059,7 +1059,7 @@ async function runCouncilJournalTodayTurn(
   const session = await upsertTodaySession(supabase, userId, accountId, {
     full_transcript: [...transcript, userEntry, ...agentMessages],
     agents_spoken: [
-      ...new Set([...(existing?.agents_spoken ?? []), "Jarvis", "Zara", "Rex"]),
+      ...new Set([...(existing?.agents_spoken ?? []), getCouncilAgent("jarvis").name, getCouncilAgent("zara").name, getCouncilAgent("rex").name]),
     ],
   })
 
@@ -1286,7 +1286,7 @@ export async function runCouncilRespond(
     }
     const session = await upsertTodaySession(supabase, userId, accountId, {
       full_transcript: [...transcript, userEntry, consensusEntry],
-      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis"])],
+      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), getCouncilAgent("jarvis").name])],
     })
     return {
       sessionId: session.id,
@@ -1320,7 +1320,7 @@ export async function runCouncilRespond(
     }
     const session = await upsertTodaySession(supabase, userId, accountId, {
       full_transcript: [...transcript, userEntry, jarvisEntry],
-      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis"])],
+      agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), getCouncilAgent("jarvis").name])],
     })
     return {
       sessionId: session.id,

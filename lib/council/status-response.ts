@@ -1,4 +1,5 @@
 import { formatAccountMoney } from "@/lib/accounts/profit-target"
+import { getCouncilAgent } from "@/lib/council/agents"
 import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 
 export function isCouncilJournalTodayQuestion(message: string): boolean {
@@ -30,7 +31,7 @@ export function buildCouncilJournalTodayUserPrompt(input: {
     input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
     `${input.traderFirstName} asked about today's journal thread: ${input.question}`,
     "Answer from your live trade review snapshot and today's journal line. Quote pair, result, and P&L when available.",
-    "Maximum 2 short sentences. Do not redirect to Luna or another agent.",
+    `Maximum 2 short sentences. Do not redirect to ${getCouncilAgent("luna").name} or another agent.`,
   ]
     .filter(Boolean)
     .join("\n\n")

@@ -33,6 +33,7 @@ import {
   resolveCouncilPronounTarget,
 } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
+import { buildCouncilTimeGreeting } from "@/lib/council/time-of-day"
 import { useCouncilVoiceSession } from "@/hooks/use-council-voice-session"
 import { CouncilBriefingContext } from "@/components/council/council-briefing-context"
 import { CouncilInlineStatsCard } from "@/components/council/council-inline-stats-card"
@@ -126,6 +127,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   }, [transcript])
 
   const greetingName = traderFirstName?.trim() || "Trader"
+  const timeGreeting = buildCouncilTimeGreeting()
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -575,7 +577,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                 AI Trading Council
               </p>
               <h1 className="text-[20px] font-medium text-text-primary">
-                Good morning, {greetingName}
+                {timeGreeting}, {greetingName}
               </h1>
               <p className="mt-1 text-[12px] text-text-muted">{headerLine}</p>
             </div>
@@ -853,7 +855,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             </p>
             <p className="mt-1 max-w-sm text-[11px] text-text-muted">
               {fullCouncilParticipation && selectedAgent === "auto"
-                ? "Auto routes open questions to every specialist — Nova, Rex, Luna, Cipher, and Zara — then Jarvis wraps up."
+                ? "Auto routes open questions to every specialist — Nova, Cole, Kai, Finn, and Lex — then Max wraps up."
                 : freshChatOnOpen
                   ? "Ask about your trades, mindset, or setups. Live stats stay pinned above while agents reply."
                   : "Before noon, briefing starts automatically once. Your conversation persists when you refresh."}

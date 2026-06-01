@@ -285,7 +285,7 @@ export async function loadCouncilCoachLiveData(
         ? `Last verdict: ${formatVerdict(completedSessions[0].planned_context)} · Grade ${formatGrade(completedSessions[0])}`
         : "Last verdict: none",
     rexFlags.length > 0 ? `Coach flags: ${rexFlags.join("; ")}` : "Coach flags: none flagged",
-    "Rule: no live size until Coach clears the setup unless Rex confirms room.",
+    "Rule: no live size until Coach clears the setup unless Cole confirms room.",
   ].join("\n")
 
   const novaSection = [

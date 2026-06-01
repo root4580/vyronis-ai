@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { getCouncilAgent } from "@/lib/council/agents"
 import { filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import { getTodayCouncilEmotionCheck } from "@/lib/council/opening-service"
@@ -339,7 +340,7 @@ export function buildMarcusFallbackReply(input: {
     case "cooldown_active":
       return `${name}, cooldown is active — this is observation mode, not punishment. Protect the account. Process first. Trade second.`
     case "low_emotion":
-      return `${name}, your emotional score is below where we want it. Slow down. Paper or observe today unless Rex and Coach both clear you.`
+      return `${name}, your emotional score is below where we want it. Slow down. Paper or observe today unless ${getCouncilAgent("rex").name} and Coach both clear you.`
   }
 }
 
@@ -356,7 +357,7 @@ export function buildMarcusUserPrompt(input: {
     lines.push(`Trader message: ${input.question.trim()}`)
   }
   lines.push(
-    "Respond as Marcus — personal trading psychologist. Mindset and growth only. No technical analysis.",
+    `Respond as ${getCouncilAgent("marcus").name} — personal trading psychologist. Mindset and growth only. No technical analysis.`,
   )
   return lines.join("\n")
 }

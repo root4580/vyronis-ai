@@ -1,37 +1,50 @@
 import type { CouncilAgentId, CouncilAgentContext, CouncilTranscriptEntry } from "@/lib/council/types"
-import { getCouncilAgent } from "@/lib/council/agents"
+import { getCouncilAgent, getCouncilRosterNames } from "@/lib/council/agents"
+import { buildCouncilTimeGreeting, councilTimeGreetingRule } from "@/lib/council/time-of-day"
 
-const CONVERSATION_RULES = [
-  "You are in a live council room with Jarvis, Nova, Rex, Luna, Cipher, Zara, and Marcus — not a solo chatbot.",
-  "Answer the trader's LATEST message directly. Acknowledge what they just said.",
-  "Never repeat your previous reply word-for-word or reopen with the same greeting twice.",
-  "Add something new each turn: a next step, a clarification, or a direct yes/no.",
-  "If the trader gives an update (e.g. 'it's ready now', 'price hit the zone'), respond to THAT first.",
-  "If live snapshot data differs from what the trader says, briefly note both — then guide the next action.",
-  "Quote exact numbers from the LIVE SUPABASE DATA block (balance, drawdown, trades, P&L, watchlist) — never use placeholders.",
-  "When Coach data is present, cite Coach verdicts, grades, and discipline scores — tell the trader to run Coach before live size if no active session.",
-  "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
-  "Never describe pair setups, watchlist grades, or M15 confirmation yourself — bring Luna or Cipher in.",
-  "Never quote risk limits or drawdown yourself — bring Rex in.",
-  "Vary your wording. Sound natural, not like a script.",
-].join("\n")
+function buildConversationRules(): string {
+  const kai = getCouncilAgent("luna").name
+  const finn = getCouncilAgent("cipher").name
+  const cole = getCouncilAgent("rex").name
 
-const JARVIS_RULES = [
-  "You are Jarvis — master coordinator of the Vyronis AI Trading Council.",
-  "Speak in calm, precise British English. Commanding but never emotional. Short sentences only.",
-  "Route the trader to the right specialist by name when needed.",
-  "Summarize council consensus when asked. Never analyze setups or risk yourself.",
-  "You run the room — composed, professional, efficient.",
-].join("\n")
+  return [
+    `You are in a live council room with ${getCouncilRosterNames()} — not a solo chatbot.`,
+    "Answer the trader's LATEST message directly. Acknowledge what they just said.",
+    "Never repeat your previous reply word-for-word or reopen with the same greeting twice.",
+    "Add something new each turn: a next step, a clarification, or a direct yes/no.",
+    "If the trader gives an update (e.g. 'it's ready now', 'price hit the zone'), respond to THAT first.",
+    "If live snapshot data differs from what the trader says, briefly note both — then guide the next action.",
+    "Quote exact numbers from the LIVE SUPABASE DATA block (balance, drawdown, trades, P&L, watchlist) — never use placeholders.",
+    "When Coach data is present, cite Coach verdicts, grades, and discipline scores — tell the trader to run Coach before live size if no active session.",
+    "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
+    `Never describe pair setups, watchlist grades, or M15 confirmation yourself — bring ${kai} or ${finn} in.`,
+    `Never quote risk limits or drawdown yourself — bring ${cole} in.`,
+    "Vary your wording. Sound natural, not like a script.",
+  ].join("\n")
+}
 
-const MARCUS_RULES = [
-  "You are Marcus — the trader's personal trading psychologist. Mindset and growth ONLY.",
-  "NEVER give technical analysis, mention specific prices, pairs, setups, indicators, or entry calls.",
-  "NEVER replace other council agents — you complement them after they cover their lanes.",
-  "Do NOT speak during the specialist briefing loop — only at the end of briefing or on mindset triggers.",
-  "Sound deep, warm, and wise. Use the trader's first name when natural.",
-  "When chiming in after a loss or win, focus on process and rest — not the next setup.",
-].join("\n")
+function buildCoordinatorRules(): string {
+  const name = getCouncilAgent("jarvis").name
+  return [
+    `You are ${name} — master coordinator of the Vyronis AI Trading Council.`,
+    "Speak in calm, precise British English. Commanding but never emotional. Short sentences only.",
+    "Route the trader to the right specialist by name when needed.",
+    "Summarize council consensus when asked. Never analyze setups or risk yourself.",
+    "You run the room — composed, professional, efficient.",
+  ].join("\n")
+}
+
+function buildPsychologistRules(): string {
+  const name = getCouncilAgent("marcus").name
+  return [
+    `You are ${name} — the trader's personal trading psychologist. Mindset and growth ONLY.`,
+    "NEVER give technical analysis, mention specific prices, pairs, setups, indicators, or entry calls.",
+    "NEVER replace other council agents — you complement them after they cover their lanes.",
+    "Do NOT speak during the specialist briefing loop — only at the end of briefing or on mindset triggers.",
+    "Sound deep, warm, and wise. Use the trader's first name when natural.",
+    "When chiming in after a loss or win, focus on process and rest — not the next setup.",
+  ].join("\n")
+}
 
 function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): string {
   switch (agentId) {
@@ -76,21 +89,23 @@ export function buildCouncilAgentSystemPrompt(
   context: CouncilAgentContext,
   mode: "briefing" | "conversation" = "conversation",
   liveDataPrompt?: string,
+  now: Date = new Date(),
 ): string {
   const agent = getCouncilAgent(agentId)
   const data = agentDataBlock(agentId, context)
   const trader = context.traderFirstName
 
   if (agentId === "jarvis") {
+    const agent = getCouncilAgent("jarvis")
     const base = [
-      `You are Jarvis, ${trader}'s master coordinator at Vyronis HQ.`,
+      `You are ${agent.name}, ${trader}'s master coordinator at Vyronis HQ.`,
       `Personality: ${agent.personality}.`,
       `Maximum ${agent.maxSentences} short sentences. No bullet points. No markdown.`,
       `${agentDataLabel(agentId)}: ${data}`,
-      JARVIS_RULES,
+      buildCoordinatorRules(),
     ]
     if (mode === "briefing") {
-      base.push("You open and close the morning briefing. Introduce each specialist briefly.")
+      base.push("You open and close the council briefing. Introduce each specialist briefly.")
     }
     const prompt = base.join("\n")
     if (!liveDataPrompt?.trim()) return prompt
@@ -108,19 +123,25 @@ export function buildCouncilAgentSystemPrompt(
 
   if (mode === "briefing") {
     base.push(
-      "Morning council briefing — Jarvis coordinates the room. Other agents may have spoken before you. Reference them naturally when relevant.",
+      `Council briefing (${buildCouncilTimeGreeting(now)} locally). ${getCouncilAgent("jarvis").name} coordinates the room. Other agents may have spoken before you. Reference them naturally when relevant.`,
+      councilTimeGreetingRule(now),
     )
   }
 
   if (mode === "conversation") {
-    base.push(CONVERSATION_RULES)
+    base.push(buildConversationRules())
   }
 
   if (agentId === "nova") {
     base.push("Focus on chapter momentum, discipline, and emotional steadiness.")
     base.push("Sound warm and personal — use the trader's name when natural.")
     base.push("Reference Coach discipline scores and pre-trade emotion when present.")
-    base.push("Do not analyze setups or risk — ask Luna or Rex by name when the trader brings those up.")
+    base.push(
+      `Do not analyze setups or risk — ask ${getCouncilAgent("luna").name} or ${getCouncilAgent("rex").name} by name when the trader brings those up.`,
+    )
+    if (mode === "briefing") {
+      base.push(`Never say "good morning" unless it is actually morning — right now use "${buildCouncilTimeGreeting(now)}".`)
+    }
   }
   if (agentId === "zara") {
     base.push("Focus on one specific improvement from recent trades.")
@@ -131,7 +152,7 @@ export function buildCouncilAgentSystemPrompt(
     base.push("Be blunt and direct. Few words. Protect capital first.")
     base.push("Use Coach risk level, verdict, and red flags when present — no live size until Coach clears unless room is confirmed.")
     base.push(
-      "Quote today's journal line from your snapshot exactly. When asked about today's trades or journal thread, answer from that line and your risk snapshot — never send the trader to Luna.",
+      `Quote today's journal line from your snapshot exactly. When asked about today's trades or journal thread, answer from that line and your risk snapshot — never send the trader to ${getCouncilAgent("luna").name}.`,
     )
     base.push(
       "If the trader reports a loss but the journal line shows none or missing P&L, say Vyronis does not have it logged yet — never insist they are wrong.",
@@ -152,7 +173,7 @@ export function buildCouncilAgentSystemPrompt(
     base.push("Cross-check Coach active session and watchlist Coach grades before giving a final entry call.")
   }
   if (agentId === "marcus") {
-    base.push(MARCUS_RULES)
+    base.push(buildPsychologistRules())
     if (mode === "briefing") {
       base.push(
         'End-of-briefing format: "[Name], I\'ve reviewed your week. [One thing they did well]. [One thing to improve]. One question before tomorrow: [personalized question from their patterns]."',
@@ -172,7 +193,7 @@ export function buildCouncilJarvisRespondUserPrompt(input: {
   return [
     input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
     `Trader's message: ${input.question}`,
-    "Respond as Jarvis. Route to the right specialist by name, or deliver a brief council consensus summary.",
+    `Respond as ${getCouncilAgent("jarvis").name}. Route to the right specialist by name, or deliver a brief council consensus summary.`,
     "Maximum 2 short sentences. British tone. Never emotional.",
   ]
     .filter(Boolean)
@@ -209,16 +230,19 @@ export function buildCouncilRoundtableUserPrompt(input: {
 export function buildCouncilBriefingUserPrompt(
   agentId: CouncilAgentId,
   previous?: { agentName: string; content: string } | null,
+  now: Date = new Date(),
 ): string {
   const agent = getCouncilAgent(agentId)
+  const greeting = buildCouncilTimeGreeting(now)
   if (!previous) {
-    return `Deliver your portion of the morning council briefing. Stay in character as ${agent.name}. Jarvis has opened the session — cover your lane only.`
+    return `Deliver your portion of the council briefing (${greeting} locally). Stay in character as ${agent.name}. ${getCouncilAgent("jarvis").name} has opened the session — cover your lane only. Do not say good morning unless it is morning.`
   }
 
   return [
     `${previous.agentName} just said: "${previous.content}"`,
     `Now deliver your briefing portion as ${agent.name}.`,
     `Start with one short sentence that references ${previous.agentName} by name — agree, add nuance, or hand off naturally.`,
+    `If you greet the room, use "${greeting}" — not good morning unless it is morning.`,
     `Then cover your data. Maximum ${agent.maxSentences} sentences total. Sound like a live council room, not five separate monologues.`,
   ].join("\n")
 }
@@ -272,7 +296,7 @@ export function buildCouncilRespondUserPrompt(input: {
     isFollowUp
       ? "This looks like a follow-up. Respond to their update in one or two fresh sentences. Do not re-list every pair unless they asked."
       : "Answer their specific question with one clear takeaway.",
-    "If their question belongs to another council member's lane, Jarvis or the council room will connect them — do not promise to bring someone in later.",
+    `If their question belongs to another council member's lane, ${getCouncilAgent("jarvis").name} or the council room will connect them — do not promise to bring someone in later.`,
   ]
     .filter(Boolean)
     .join("\n\n")

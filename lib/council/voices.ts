@@ -4,11 +4,11 @@ import type { CouncilAgentId } from "@/lib/council/types"
 export const DEFAULT_COUNCIL_VOICE_IDS: Record<CouncilAgentId, string> = {
   jarvis: "TxGEqnHWrfWFTfGW9XjX", // Josh — same family as Rex; override via ELEVENLABS_JARVIS_VOICE_ID
   nova: "21m00Tcm4TlvDq8ikWAM", // Rachel — calm female
-  zara: "pNInz6obpgDQGcFmaJgB", // Adam — calm male
-  rex: "TxGEqnHWrfWFTfGW9XjX", // Josh — confident male
-  luna: "ErXwobaYiN019PkySvjV", // Antoni — friendly male
-  cipher: "2EiwWnXFnvU5JabPnv8n", // Clyde — direct male
-  marcus: "nPczCjzI2devNBz1zQrb", // Brian — deep warm American male; override via ELEVENLABS_MARCUS_VOICE_ID
+  zara: "pNInz6obpgDQGcFmaJgB", // Adam — Lex voice; override via ELEVENLABS_ZARA_VOICE_ID
+  rex: "TxGEqnHWrfWFTfGW9XjX", // Josh — Cole voice; override via ELEVENLABS_REX_VOICE_ID
+  luna: "ErXwobaYiN019PkySvjV", // Antoni — Kai voice; override via ELEVENLABS_LUNA_VOICE_ID
+  cipher: "2EiwWnXFnvU5JabPnv8n", // Clyde — Finn voice
+  marcus: "nPczCjzI2devNBz1zQrb", // Brian — Omar voice; override via ELEVENLABS_MARCUS_VOICE_ID
 }
 
 const ENV_VOICE_KEYS: Record<CouncilAgentId, string> = {
@@ -88,4 +88,21 @@ export const COUNCIL_VOICE_TUNING: Record<CouncilAgentId, CouncilVoiceTuning> = 
 
 export function getCouncilVoiceTuning(agentId: CouncilAgentId): CouncilVoiceTuning {
   return COUNCIL_VOICE_TUNING[agentId]
+}
+
+/** Returns agent pairs that accidentally share the same resolved ElevenLabs voice ID. */
+export function findCouncilVoiceCollisions(
+  settings?: CouncilVoiceSettings | null,
+): Array<{ agents: CouncilAgentId[]; voiceId: string }> {
+  const byVoice = new Map<string, CouncilAgentId[]>()
+  for (const agentId of Object.keys(DEFAULT_COUNCIL_VOICE_IDS) as CouncilAgentId[]) {
+    const voiceId = resolveCouncilVoiceId(agentId, settings)
+    const list = byVoice.get(voiceId) ?? []
+    list.push(agentId)
+    byVoice.set(voiceId, list)
+  }
+
+  return [...byVoice.entries()]
+    .filter(([, agents]) => agents.length > 1)
+    .map(([voiceId, agents]) => ({ agents, voiceId }))
 }

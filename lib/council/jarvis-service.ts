@@ -9,6 +9,7 @@ import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 import { getSessionClock } from "@/lib/trading/session-timing"
 import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
 import { buildJarvisCalendarLine } from "@/lib/economic-calendar/briefing-lines"
+import { getCouncilTimeOfDay } from "@/lib/council/time-of-day"
 
 const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
   rex: "risk assessment",
@@ -21,10 +22,7 @@ const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
 }
 
 function timeOfDayLabel(now: Date): "morning" | "afternoon" | "evening" {
-  const hour = now.getHours()
-  if (hour < 12) return "morning"
-  if (hour < 17) return "afternoon"
-  return "evening"
+  return getCouncilTimeOfDay(now)
 }
 
 function sessionStatusLabel(preferredSession: string, now = new Date()): {

@@ -14,19 +14,30 @@ const LEGACY_AGENT_IDS: Record<string, CouncilAgentId> = {
   sarah: "nova",
   scott: "rex",
   hamza: "luna",
+  antoni: "luna",
+  kai: "luna",
+  zoe: "luna",
   khalid: "cipher",
+  finn: "cipher",
   adam: "zara",
+  lex: "zara",
+  max: "jarvis",
+  jarvis: "jarvis",
+  cole: "rex",
+  rex: "rex",
+  omar: "marcus",
+  marcus: "marcus",
 }
 
 /** Legacy display names and aliases still accepted in voice/text routing. */
 export const COUNCIL_AGENT_NAME_ALIASES: Record<CouncilAgentId, string[]> = {
-  jarvis: ["Jarvis", "JARVIS"],
+  jarvis: ["Max", "Jarvis", "JARVIS"],
   nova: ["Nova", "Sarah"],
-  rex: ["Rex", "Scott"],
-  luna: ["Luna", "Hamza", "Layla"],
-  cipher: ["Cipher", "Khalid"],
-  zara: ["Zara", "Adam", "Emma"],
-  marcus: ["Marcus", "Coach Marcus"],
+  rex: ["Cole", "Rex", "Scott"],
+  luna: ["Kai", "Zoe", "Antoni", "Luna", "Hamza", "Layla"],
+  cipher: ["Finn", "Cipher", "Khalid"],
+  zara: ["Lex", "Adam", "Zara", "Emma"],
+  marcus: ["Omar", "Marcus", "Coach Omar", "Coach Marcus"],
 }
 
 export function isCouncilAgentId(value: string): value is CouncilAgentId {
@@ -75,12 +86,21 @@ export const LEGACY_COUNCIL_SETTINGS_VOICE_KEYS: Record<CouncilAgentId, string> 
 
 const LEGACY_DISPLAY_NAMES: Record<string, string> = {
   Sarah: "Nova",
-  Scott: "Rex",
-  Hamza: "Luna",
-  Khalid: "Cipher",
-  Adam: "Zara",
-  Emma: "Zara",
-  Layla: "Luna",
+  Scott: "Cole",
+  Hamza: "Kai",
+  Khalid: "Finn",
+  Adam: "Lex",
+  Emma: "Lex",
+  Layla: "Kai",
+  Luna: "Kai",
+  Zara: "Lex",
+  Antoni: "Kai",
+  Zoe: "Kai",
+  Jarvis: "Max",
+  JARVIS: "Max",
+  Rex: "Cole",
+  Cipher: "Finn",
+  Marcus: "Omar",
 }
 
 export function normalizeCouncilDisplayName(name: string): string {

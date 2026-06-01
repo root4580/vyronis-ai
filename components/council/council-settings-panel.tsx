@@ -107,7 +107,7 @@ export function CouncilSettingsPanel({
             <div>
               <p className="text-[12px] font-medium text-text-primary">Full council replies</p>
               <p className="text-[10px] text-text-muted">
-                With Auto selected, every specialist responds in turn — then Jarvis summarizes.
+                With Auto selected, every specialist responds in turn — then Max summarizes.
               </p>
             </div>
             <Button
