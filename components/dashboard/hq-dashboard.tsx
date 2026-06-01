@@ -218,6 +218,14 @@ export function HqDashboard({
 
   return (
     <div className={cn("space-y-5", className)}>
+      <AccountStatusCard
+        trades={trades}
+        account={activeAccount}
+        settings={settings}
+        onOpenSettings={onOpenSettings}
+        className="md:hidden"
+      />
+
       <WeeklyChapterSystem
         accountId={activeAccount.id}
         traderFirstName={traderFirstName}
@@ -267,6 +275,7 @@ export function HqDashboard({
           account={activeAccount}
           settings={settings}
           onOpenSettings={onOpenSettings}
+          className="hidden md:flex"
         />
       </div>
 

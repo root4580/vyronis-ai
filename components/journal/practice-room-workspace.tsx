@@ -184,7 +184,7 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
         </DashboardInsetPanel>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
         <StatCard label="Paper win rate" value={`${stats?.winRate ?? 0}%`} />
         <StatCard label="Paper P&L" value={`${(stats?.totalPnL ?? 0) >= 0 ? "+" : ""}${(stats?.totalPnL ?? 0).toFixed(1)}R`} />
         <StatCard label="Avg R:R" value={stats?.avgRR != null ? `${stats.avgRR.toFixed(2)}R` : "—"} />

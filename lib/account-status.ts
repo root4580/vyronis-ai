@@ -33,6 +33,8 @@ export type AccountStatusSnapshot = {
   amountToTarget: number
   targetProgressPercent: number
   targetReached: boolean
+  /** Starting balance + profit goal (e.g. $10k start → $11k target at 10%). */
+  targetBalance: number
   dailyLossPercent: number
   dailyLossLimitPercent: number
   weeklyLossPercent: number
@@ -104,8 +106,13 @@ export function computeBalanceFromTradeLog(
   }
 }
 
-function hasRecentLossStreak(trades: SettingsTrade[], count = 3): boolean {
-  const sorted = [...trades].sort((a, b) => {
+function hasRecentLossStreak(
+  trades: SettingsTrade[],
+  count = 3,
+  now = new Date(),
+): boolean {
+  const weekTrades = getWeekTrades(trades, now)
+  const sorted = [...weekTrades].sort((a, b) => {
     const da = a.trade_date ?? a.created_at ?? ""
     const db = b.trade_date ?? b.created_at ?? ""
     return db.localeCompare(da)
@@ -236,6 +243,7 @@ export function evaluateAccountStatus(input: {
     amountToTarget: target.amountToTarget,
     targetProgressPercent: target.progressPercent,
     targetReached: target.targetReached,
+    targetBalance: startingBalance + target.profitGoalAmount,
     dailyLossPercent,
     dailyLossLimitPercent,
     weeklyLossPercent,
@@ -247,7 +255,7 @@ export function evaluateAccountStatus(input: {
     ruleStatus: rule.status,
     ruleLabel: rule.label,
     ruleMessage: rule.message,
-    hasLossStreak: hasRecentLossStreak(input.trades, 3),
+    hasLossStreak: hasRecentLossStreak(input.trades, 3, referenceDate),
     limitUsages,
   }
 }

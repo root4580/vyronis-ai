@@ -142,7 +142,8 @@ export function AccountStatusCard({
         <div className="mb-3 flex items-start gap-2 rounded-[var(--radius-sm)] border border-warning/25 bg-warning/[0.08] px-2.5 py-2">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning-muted/90" />
           <p className="text-[11px] leading-relaxed text-warning-muted/95">
-            <span className="font-medium">Three losses in a row.</span> Step back before the next entry.
+            <span className="font-medium">Three losses in a row this week.</span> Step back before the
+            next live entry.
           </p>
         </div>
       ) : null}
@@ -159,7 +160,30 @@ export function AccountStatusCard({
         </p>
       </div>
 
-      <div className="space-y-2 text-[11px]">
+      <div className="mb-3 rounded-[var(--radius-sm)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+        <p className="text-[10px] uppercase tracking-[0.1em] text-text-muted">Balance snapshot</p>
+        <p className="mt-1.5 text-[15px] font-semibold tabular-nums leading-tight text-text-primary sm:text-[17px]">
+          {money(status.accountBalance)}
+          <span className="mx-1.5 text-[13px] font-normal text-text-muted">/</span>
+          <span className="text-[13px] font-medium text-profit sm:text-[15px]">
+            Target {money(status.targetBalance)}
+          </span>
+        </p>
+        <p className="mt-1 text-[10px] text-text-muted">
+          Drawdown floor {money(status.minBalance)} · Starting {money(status.startingBalance)} (locked)
+        </p>
+      </div>
+
+      <div className="space-y-2 text-[11px] sm:hidden">
+        <div className="flex justify-between gap-2">
+          <span className="text-text-muted">Still needed</span>
+          <span className="font-medium tabular-nums text-text-primary">
+            {status.targetReached ? "Goal hit" : money(status.amountToTarget)}
+          </span>
+        </div>
+      </div>
+
+      <div className="hidden space-y-2 text-[11px] sm:block">
         <div className="flex justify-between gap-2">
           <span className="text-text-muted">💰 Current</span>
           <span
@@ -194,8 +218,8 @@ export function AccountStatusCard({
         </div>
         <p className="mt-1.5 text-[10px] text-text-muted">
           {status.targetReached
-            ? `${status.profitGoalPercent}% profit goal reached on ${money(status.startingBalance)} account.`
-            : `${money(status.amountToTarget)} profit still needed (${status.profitGoalPercent}% of ${money(status.startingBalance)})`}
+            ? `${status.profitGoalPercent}% profit goal reached — target ${money(status.targetBalance)}.`
+            : `${money(status.amountToTarget)} to reach ${money(status.targetBalance)} (${status.profitGoalPercent}% on ${money(status.startingBalance)})`}
         </p>
       </div>
 
