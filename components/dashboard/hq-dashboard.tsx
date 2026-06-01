@@ -18,7 +18,6 @@ import {
   disciplineGradeBoxClass,
 } from "@/lib/trade-planner/plan-streak"
 import { getForexSessionHeaderState } from "@/lib/trading/forex-sessions"
-import { formatTimeUntilSessionOpen } from "@/lib/trading/session-timing"
 import {
   computeAvgRiskReward,
   computeWeekPnL,
@@ -203,7 +202,6 @@ export function HqDashboard({
 
   const headerAccent = forexHeader.accent
   const headerBackground = `rgb(from ${headerAccent} r g b / 0.08)`
-  const headerBorder = `rgb(from ${headerAccent} r g b / 0.28)`
   const headerMuted = `rgb(from ${headerAccent} r g b / 0.62)`
 
   return (
@@ -325,47 +323,7 @@ export function HqDashboard({
               War Room →
             </Link>
           </div>
-          <div
-            className="mx-3 mt-3 rounded-[var(--radius-sm)] border px-3 py-2.5"
-            style={{
-              background: headerBackground,
-              borderColor: headerBorder,
-            }}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="size-1.5 shrink-0 rounded-full"
-                    style={{
-                      background: headerAccent,
-                      boxShadow: forexHeader.isLive ? `0 0 0 2px ${headerBackground}` : undefined,
-                    }}
-                    aria-hidden="true"
-                  />
-                  <p className="text-xs font-medium" style={{ color: headerAccent }}>
-                    {forexHeader.primaryLabel}
-                  </p>
-                </div>
-                <p className="mt-0.5 text-[10px]" style={{ color: headerMuted }}>
-                  {forexHeader.secondaryLabel}
-                </p>
-              </div>
-              {forexHeader.msUntilOpen != null ? (
-                <p
-                  className="shrink-0 text-right text-lg font-medium tabular-nums"
-                  style={{ color: headerAccent }}
-                >
-                  {formatTimeUntilSessionOpen(forexHeader.msUntilOpen)}
-                </p>
-              ) : forexHeader.isLive ? (
-                <p className="section-label shrink-0 text-right" style={{ color: headerAccent }}>
-                  Live
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <div className="mx-3 mb-3">
+          <div className="mx-3 mb-3 mt-3">
             <ForexSessionsWidget />
           </div>
           <div className="divide-y divide-[var(--border-subtle)] px-3 py-1">

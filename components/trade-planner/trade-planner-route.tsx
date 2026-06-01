@@ -11,9 +11,10 @@ import { CommandCenterLauncher } from "@/components/command-center/command-cente
 import { VyronisCommandCenter } from "@/components/command-center/vyronis-command-center"
 import { useAccountSettingsModal } from "@/hooks/use-account-settings-modal"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { APP_HOME_PATH } from "@/lib/branding"
 import { getDashboardHomeHref } from "@/lib/dashboard-nav"
+import { TRADE_PLANNER_PAIRS } from "@/lib/trade-planner/forex-pairs"
 import {
   fetchUserStartingBalance,
   fetchUserTradesForAnalytics,
@@ -24,6 +25,12 @@ import { AIContextProvider } from "@/providers/ai-context-provider"
 
 export function TradePlannerRoute() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialPair = useMemo(() => {
+    const raw = searchParams.get("pair")?.trim().toUpperCase()
+    if (!raw) return undefined
+    return (TRADE_PLANNER_PAIRS as readonly string[]).includes(raw) ? raw : undefined
+  }, [searchParams])
   const chrome = useDashboardChrome({ loginNextPath: "/trade-planner" })
   const settings = useAccountSettingsModal(chrome.supabase, chrome.user?.id)
   const openCommandCenterRef = useRef<() => void>(() => {})
@@ -108,6 +115,7 @@ export function TradePlannerRoute() {
             </p>
           </div>
           <TradePlannerWorkspace
+            initialPair={initialPair}
             defaultAccountSize={balanceLoaded ? currentAccountBalance : settings.form.starting_balance}
             defaultRiskPercent={settings.form.max_risk_per_trade}
             maxRiskPerTrade={settings.form.max_risk_per_trade}

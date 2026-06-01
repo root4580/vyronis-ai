@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { TradePlannerRoute } from "@/components/trade-planner/trade-planner-route"
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function TradePlannerPage() {
-  return <TradePlannerRoute />
+  return (
+    <Suspense fallback={null}>
+      <TradePlannerRoute />
+    </Suspense>
+  )
 }

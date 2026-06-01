@@ -26,8 +26,8 @@ export const FOREX_SESSIONS: ForexSessionDefinition[] = [
     id: "tokyo",
     label: "Tokyo",
     timeZone: "Asia/Tokyo",
-    localOpenMinutes: 20 * 60,
-    localCloseMinutes: 4 * 60,
+    localOpenMinutes: 19 * 60,
+    localCloseMinutes: 5 * 60,
     accent: "#c084fc",
   },
   {
@@ -55,11 +55,17 @@ export type SessionBarSegment = {
 
 export type ForexSessionSnapshot = ForexSessionDefinition & {
   localTimeLabel: string
+  /** FF-style row label, e.g. "London 9:33am local". */
+  barLabel: string
   isOpen: boolean
   barSegments: SessionBarSegment[]
   msUntilOpen: number | null
+  msUntilClose: number | null
   opensAtLocalLabel: string | null
+  closesAtLocalLabel: string | null
   countdownLabel: string | null
+  /** Hover copy for open sessions, e.g. "Ends in 26min (5:00am your time)". */
+  hoverLabel: string | null
 }
 
 export type ForexSessionHeaderState = {
@@ -189,6 +195,32 @@ function formatOpensAtLocalTime(openInstant: Date): string {
       hour12: true,
     })
     .toLowerCase()
+    .replace(/\s(am|pm)/, "$1")
+}
+
+/** Compact FF-style countdown, e.g. "26min" or "1h 15min". */
+export function formatForexCountdownShort(msRemaining: number): string {
+  const totalMinutes = Math.max(0, Math.ceil(msRemaining / 60_000))
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`
+  }
+  return `${totalMinutes}min`
+}
+
+function formatForexSessionBarLabel(label: string, timeZone: string, now = new Date()): string {
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+    .format(now)
+    .toLowerCase()
+    .replace(/\s(am|pm)/, "$1")
+
+  return `${label} ${time} local`
 }
 
 function isSessionWindowOpen(
@@ -231,6 +263,25 @@ export function getMsUntilForexSessionOpens(
     const openInstant = localWallClockToInstant(now, dayOffset, session.localOpenMinutes)
     if (openInstant.getTime() > now.getTime()) {
       return openInstant.getTime() - now.getTime()
+    }
+  }
+
+  return null
+}
+
+export function getMsUntilForexSessionCloses(
+  session: ForexSessionDefinition,
+  now = new Date(),
+): number | null {
+  const local = getLocalClock(now)
+  if (!isForexSessionOpen(session.localOpenMinutes, session.localCloseMinutes, local)) {
+    return null
+  }
+
+  for (let dayOffset = 0; dayOffset < 2; dayOffset += 1) {
+    const closeInstant = localWallClockToInstant(now, dayOffset, session.localCloseMinutes)
+    if (closeInstant.getTime() > now.getTime()) {
+      return closeInstant.getTime() - now.getTime()
     }
   }
 
@@ -408,23 +459,34 @@ export function getForexSessionSnapshots(now = new Date()): ForexSessionSnapshot
       local,
     )
     const msUntilOpen = isOpen ? null : getMsUntilForexSessionOpens(session, now)
+    const msUntilClose = isOpen ? getMsUntilForexSessionCloses(session, now) : null
     const openInstant =
       msUntilOpen != null && msUntilOpen > 0 ? new Date(now.getTime() + msUntilOpen) : null
+    const closeInstant =
+      msUntilClose != null && msUntilClose > 0 ? new Date(now.getTime() + msUntilClose) : null
+    const closesAtLocalLabel = closeInstant ? formatOpensAtLocalTime(closeInstant) : null
 
     return {
       ...session,
       localTimeLabel: formatForexLocalTime(session.timeZone, now),
+      barLabel: formatForexSessionBarLabel(session.label, session.timeZone, now),
       isOpen,
       barSegments: buildSessionBarSegments(session.localOpenMinutes, session.localCloseMinutes),
       msUntilOpen,
+      msUntilClose,
       opensAtLocalLabel: openInstant ? formatOpensAtLocalTime(openInstant) : null,
+      closesAtLocalLabel,
       countdownLabel:
         msUntilOpen != null && msUntilOpen > 0
-          ? `Begins in ${formatTimeUntilSessionOpen(msUntilOpen)}${
+          ? `Begins in ${formatForexCountdownShort(msUntilOpen)}${
               openInstant ? ` (${formatOpensAtLocalTime(openInstant)} your time)` : ""
             }`
-          : isOpen
-            ? "Open now"
+          : null,
+      hoverLabel:
+        isOpen && msUntilClose != null && closesAtLocalLabel
+          ? `Ends in ${formatForexCountdownShort(msUntilClose)} (${closesAtLocalLabel} your time)`
+          : msUntilOpen != null && msUntilOpen > 0 && openInstant
+            ? `Begins in ${formatForexCountdownShort(msUntilOpen)} (${formatOpensAtLocalTime(openInstant)} your time)`
             : null,
     }
   })
