@@ -173,6 +173,7 @@ function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<
       return buildJarvisOpening({
         traderFirstName: context.traderFirstName,
         preferredSession: context.preferredSession,
+        economicCalendar: context.economicCalendar,
       })
     case "nova":
       return `${context.chapterLabel} is underway. You have ${context.nova.includes("remaining") ? "trades to protect" : "room to execute with discipline"}. Last week's lesson still counts — stay patient.`
@@ -654,6 +655,7 @@ export async function runCouncilMorningBriefing(
     buildJarvisOpening({
       traderFirstName: context.traderFirstName,
       preferredSession: context.preferredSession,
+      economicCalendar: context.economicCalendar,
     }),
   )
 

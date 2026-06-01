@@ -34,6 +34,9 @@ import {
 import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
+import { WarRoomNewsBanner } from "@/components/economic-calendar/war-room-news-banner"
+import { WarRoomCalendarPanel } from "@/components/economic-calendar/war-room-calendar-panel"
+import { useEconomicCalendar } from "@/hooks/use-economic-calendar"
 
 export function WeeklyWarRoom({
   onCoachEngaged,
@@ -60,6 +63,7 @@ export function WeeklyWarRoom({
   const watchlistComplete = isWatchlistComplete(weekPlan)
   const [setupError, setSetupError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const { calendar, loading: calendarLoading } = useEconomicCalendar()
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -246,6 +250,8 @@ export function WeeklyWarRoom({
       </header>
 
       {setupError ? <StrategyBrainSetupBanner onRetry={() => void refresh()} /> : null}
+
+      <WarRoomNewsBanner calendar={calendar} />
 
       {loading && !setupError ? (
         <p className="text-center text-[12px] text-text-muted animate-pulse">Loading War Room…</p>

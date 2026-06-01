@@ -6,6 +6,8 @@ import {
 } from "@/lib/council/router"
 import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 import { getSessionClock } from "@/lib/trading/session-timing"
+import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
+import { buildJarvisCalendarLine } from "@/lib/economic-calendar/briefing-lines"
 
 const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
   rex: "risk assessment",
@@ -50,21 +52,26 @@ export function buildJarvisOpening(input: {
   traderFirstName: string
   preferredSession: string
   now?: Date
+  economicCalendar?: TodayCalendarResponse | null
 }): string {
   const { dayName, dateLabel } = formatBriefingDate(input.now)
   const session = sessionOpenMinutes(input.preferredSession, input.now)
   const greeting = `Good morning ${input.traderFirstName}.`
   const dateLine = `It is ${dayName} ${dateLabel}.`
+  const newsLine = buildJarvisCalendarLine(input.economicCalendar)
+
+  const parts = [greeting, dateLine]
+  if (newsLine) parts.push(newsLine)
 
   if (session.isLive) {
-    return `${greeting} ${dateLine} ${session.sessionLabel} is live. Connecting your council now.`
+    parts.push(`${session.sessionLabel} is live. Connecting your council now.`)
+  } else if (session.minutesUntilOpen != null) {
+    parts.push(`${session.sessionLabel} opens in ${session.minutesUntilOpen} minutes. Connecting your council now.`)
+  } else {
+    parts.push("Connecting your council now.")
   }
 
-  if (session.minutesUntilOpen != null) {
-    return `${greeting} ${dateLine} ${session.sessionLabel} opens in ${session.minutesUntilOpen} minutes. Connecting your council now.`
-  }
-
-  return `${greeting} ${dateLine} Connecting your council now.`
+  return parts.join(" ")
 }
 
 export function buildJarvisClosing(): string {

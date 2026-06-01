@@ -18,6 +18,8 @@ import type {
 } from "@/lib/strategy-brain/types"
 import { getTradingRulesSnapshot } from "@/lib/trading-rules/trading-rules-service"
 import { buildJarvisContextSnapshot } from "@/lib/council/jarvis-service"
+import { buildRexCalendarLine } from "@/lib/economic-calendar/briefing-lines"
+import { getTodayCalendarSnapshot } from "@/lib/economic-calendar/service"
 import {
   buildRiskSnapshot,
   getLocalDateKey,
@@ -642,6 +644,7 @@ function buildRexContext(input: {
   lossStreak: number
   lossStreakLimit: number
   rulesSnapshot: Awaited<ReturnType<typeof getTradingRulesSnapshot>>
+  calendarRexLine?: string | null
 }): string {
   const status = input.rulesSnapshot?.cooldownRequired
     ? "Cooldown active — paper only until Coach unlock."
@@ -660,6 +663,7 @@ function buildRexContext(input: {
     `Loss streak ${input.lossStreak}/${input.lossStreakLimit} this week.`,
     status,
     input.rulesSnapshot?.blockReason,
+    input.calendarRexLine,
   ]
     .filter(Boolean)
     .join(" ")
@@ -919,6 +923,9 @@ export async function loadCouncilAgentContext(
   const tradesRemaining = rulesSnapshot?.tradesRemainingThisWeek ?? Math.max(0, maxTrades - weekTrades.length)
   const tradesThisWeek = weekTrades.length
 
+  const economicCalendar = await getTodayCalendarSnapshot().catch(() => null)
+  const calendarRexLine = buildRexCalendarLine(economicCalendar)
+
   const nova = buildNovaContext({
     chapterLabel,
     currentSummary,
@@ -951,6 +958,7 @@ export async function loadCouncilAgentContext(
     lossStreak: rulesSnapshot?.lossStreak ?? 0,
     lossStreakLimit: rulesSnapshot?.rules.loss_streak_limit ?? account?.loss_streak_limit ?? 3,
     rulesSnapshot,
+    calendarRexLine,
   })
   const luna = buildLunaContext({ warPlan, evaluationsByPair, evaluationsByPlanId })
   const cipher = buildCipherContext({
@@ -1031,6 +1039,7 @@ export async function loadCouncilAgentContext(
     chapterLabel,
     preferredSession,
     visual,
+    economicCalendar,
   }
 }
 

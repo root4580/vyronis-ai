@@ -1,3 +1,5 @@
+import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
+
 export type CouncilAgentId = "jarvis" | "nova" | "zara" | "luna" | "rex" | "cipher"
 
 export type CouncilAgentDefinition = {
@@ -88,6 +90,7 @@ export type CouncilAgentContext = {
   chapterLabel: string
   preferredSession: string
   visual: CouncilVisualContext
+  economicCalendar: TodayCalendarResponse | null
 }
 
 export type CouncilMemoryHighlight = {

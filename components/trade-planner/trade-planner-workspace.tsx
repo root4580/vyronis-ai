@@ -42,6 +42,8 @@ import {
 import type { TradingViewPlannerHandoff } from "@/lib/tradingview/signal-planner-handoff"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { useEconomicCalendar } from "@/hooks/use-economic-calendar"
+import { applyCalendarGateToPlan, isPlannerNewsBlocked } from "@/lib/economic-calendar/planner-gate"
 
 type SavedPlanRow = {
   id: string
@@ -100,6 +102,7 @@ export function TradePlannerWorkspace({
 }: TradePlannerWorkspaceProps) {
   const { openPreTradeCoach } = useAIContext()
   const { toast } = useToast()
+  const { calendar } = useEconomicCalendar()
   const [pair, setPair] = useState<string>("EURUSD")
   const [direction, setDirection] = useState<TradePlanDirection>("BUY")
   const [accountSize, setAccountSize] = useState("")
@@ -260,7 +263,7 @@ export function TradePlannerWorkspace({
     draftHydrated,
   ])
 
-  const plan = useMemo(() => {
+  const basePlan = useMemo(() => {
     return buildTradePlanCalculation({
       pair,
       direction,
@@ -271,6 +274,8 @@ export function TradePlannerWorkspace({
       takeProfit: parseTradePlanNumber(takeProfit),
     })
   }, [pair, direction, accountSize, riskPercent, entryPrice, stopLoss, takeProfit])
+
+  const plan = useMemo(() => applyCalendarGateToPlan(basePlan, calendar), [basePlan, calendar])
 
   const displayPointers = useMemo(() => {
     const entry = parseTradePlanNumber(entryPrice)
@@ -490,7 +495,11 @@ export function TradePlannerWorkspace({
   }
 
   const canCoach =
-    plan.entryPrice > 0 && plan.stopLoss > 0 && plan.takeProfit > 0 && plan.pair.length > 0
+    plan.entryPrice > 0 &&
+    plan.stopLoss > 0 &&
+    plan.takeProfit > 0 &&
+    plan.pair.length > 0 &&
+    !isPlannerNewsBlocked(plan.warnings)
 
   const canSave = canCoach && !saveUnavailable
 
