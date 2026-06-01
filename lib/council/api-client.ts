@@ -60,3 +60,25 @@ export async function askCouncil(input: {
   })
   return parseJson<CouncilRespondResponse>(response)
 }
+
+export async function fetchCouncilSpeech(input: {
+  agent: string
+  text: string
+}): Promise<Blob> {
+  const response = await fetch("/api/council/speak", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      agent: input.agent,
+      text: input.text,
+    }),
+  })
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new Error(payload.error || "Could not load agent voice")
+  }
+
+  return response.blob()
+}

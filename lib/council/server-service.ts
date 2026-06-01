@@ -21,6 +21,7 @@ import type {
   CouncilSettingsRecord,
   CouncilTranscriptEntry,
 } from "@/lib/council/types"
+import { isCouncilVoiceOutputConfigured } from "@/lib/council/voices"
 
 export class CouncilTablesMissingError extends Error {
   constructor() {
@@ -62,6 +63,11 @@ function normalizeSettings(row: Record<string, unknown>): CouncilSettingsRecord 
   return {
     id: String(row.id),
     user_id: String(row.user_id),
+    sarah_voice_id: row.sarah_voice_id != null ? String(row.sarah_voice_id) : null,
+    adam_voice_id: row.adam_voice_id != null ? String(row.adam_voice_id) : null,
+    scott_voice_id: row.scott_voice_id != null ? String(row.scott_voice_id) : null,
+    hamza_voice_id: row.hamza_voice_id != null ? String(row.hamza_voice_id) : null,
+    khalid_voice_id: row.khalid_voice_id != null ? String(row.khalid_voice_id) : null,
     auto_briefing_enabled: row.auto_briefing_enabled !== false,
     briefing_time: String(row.briefing_time ?? "on_login"),
     language_preference: String(row.language_preference ?? "en"),
@@ -269,6 +275,7 @@ export async function getCouncilSessionState(
       session,
       settings,
       isMorningWindow: isCouncilMorningWindow(),
+      voiceConfigured: isCouncilVoiceOutputConfigured(),
     }
   } catch (error) {
     if (error instanceof CouncilTablesMissingError) {

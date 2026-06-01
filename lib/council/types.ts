@@ -32,6 +32,11 @@ export type CouncilSessionRecord = {
 export type CouncilSettingsRecord = {
   id: string
   user_id: string
+  sarah_voice_id: string | null
+  adam_voice_id: string | null
+  scott_voice_id: string | null
+  hamza_voice_id: string | null
+  khalid_voice_id: string | null
   auto_briefing_enabled: boolean
   briefing_time: string
   language_preference: string
@@ -67,5 +72,6 @@ export type CouncilSessionResponse = {
   session: CouncilSessionRecord | null
   settings: CouncilSettingsRecord | null
   isMorningWindow: boolean
+  voiceConfigured?: boolean
   migrationPending?: boolean
 }
