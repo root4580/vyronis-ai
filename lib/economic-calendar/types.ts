@@ -1,4 +1,4 @@
-export type CalendarImpact = "high" | "medium"
+export type CalendarImpact = "high"
 
 export type EconomicCalendarEvent = {
   time: string
@@ -17,7 +17,10 @@ export type CalendarNextHighImpact = {
   currency: string
   event: string
   dateUtc: string
+  impact: CalendarImpact
 }
+
+export type CalendarNextEvent = CalendarNextHighImpact
 
 export type TodayCalendarResponse = {
   connected: boolean
@@ -25,5 +28,6 @@ export type TodayCalendarResponse = {
   setupMessage?: string | null
   events: EconomicCalendarEvent[]
   nextHighImpact: CalendarNextHighImpact | null
+  nextEvent: CalendarNextEvent | null
   safeToPairs: string[]
 }

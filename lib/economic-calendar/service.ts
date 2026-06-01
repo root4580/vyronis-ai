@@ -1,9 +1,5 @@
-import { isFxStreetConfigured } from "@/lib/economic-calendar/fxstreet-auth"
-import { fetchFxStreetEventDates } from "@/lib/economic-calendar/fxstreet-client"
-import {
-  formatCalendarDateEt,
-  normalizeFxStreetEvents,
-} from "@/lib/economic-calendar/normalize"
+import { fetchForexFactoryCalendarWeek } from "@/lib/economic-calendar/faireconomy-client"
+import { normalizeForexFactoryEvents } from "@/lib/economic-calendar/normalize"
 import { refreshCalendarMinutes } from "@/lib/economic-calendar/refresh-snapshot"
 import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
 
@@ -24,6 +20,7 @@ function emptyResponse(setupMessage: string | null): TodayCalendarResponse {
     setupMessage,
     events: [],
     nextHighImpact: null,
+    nextEvent: null,
     safeToPairs: [],
   }
 }
@@ -33,14 +30,9 @@ export async function getTodayCalendarSnapshot(now = new Date()): Promise<TodayC
     return refreshCalendarMinutes(calendarCache.payload, now)
   }
 
-  if (!isFxStreetConfigured()) {
-    return emptyResponse("FXStreet calendar credentials are not configured.")
-  }
-
   try {
-    const date = formatCalendarDateEt(now)
-    const rawEvents = await fetchFxStreetEventDates({ startDate: date, endDate: date })
-    const events = normalizeFxStreetEvents(rawEvents, now)
+    const rawEvents = await fetchForexFactoryCalendarWeek()
+    const events = normalizeForexFactoryEvents(rawEvents, now)
     const payload = refreshCalendarMinutes(
       {
         connected: true,
@@ -48,6 +40,7 @@ export async function getTodayCalendarSnapshot(now = new Date()): Promise<TodayC
         setupMessage: null,
         events,
         nextHighImpact: null,
+        nextEvent: null,
         safeToPairs: [],
       },
       now,

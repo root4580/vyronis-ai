@@ -11,6 +11,7 @@ const EMPTY_CALENDAR: TodayCalendarResponse = {
   setupMessage: null,
   events: [],
   nextHighImpact: null,
+  nextEvent: null,
   safeToPairs: [],
 }
 
