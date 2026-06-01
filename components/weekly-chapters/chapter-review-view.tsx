@@ -299,6 +299,12 @@ export function ChapterReviewView({ weekStart, accountId }: ChapterReviewViewPro
         <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
           {review.carryForwardLesson}
         </p>
+        <Link
+          href="/analytics"
+          className="mt-3 inline-flex text-[11px] font-medium text-cyan-glow hover:underline"
+        >
+          See full metrics in Analytics →
+        </Link>
       </section>
 
       <section className="space-y-2">

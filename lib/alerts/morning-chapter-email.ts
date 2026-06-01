@@ -1,5 +1,5 @@
 import { getAppBaseUrl } from "@/lib/env"
-import { getPracticeRoomHref } from "@/lib/dashboard-nav"
+import { getChapterReviewHref, getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { sendResendEmail } from "@/lib/alerts/resend-config"
 
 export type MorningChapterEmailInput = {
@@ -8,6 +8,8 @@ export type MorningChapterEmailInput = {
   chapterNumber: number
   openingMessage: string
   tradesUsedLabel?: string | null
+  previousChapterNumber?: number | null
+  previousChapterWeekStart?: string | null
 }
 
 export async function sendMorningChapterEmail(
@@ -16,6 +18,11 @@ export async function sendMorningChapterEmail(
   const base = getAppBaseUrl()
   const hqUrl = `${base}/hq`
   const practiceUrl = `${base}${getPracticeRoomHref()}`
+  const previousWeekStart = input.previousChapterWeekStart?.trim()
+  const reviewUrl =
+    previousWeekStart && input.previousChapterNumber
+      ? `${base}${getChapterReviewHref(previousWeekStart)}`
+      : null
   const name = input.traderFirstName.trim() || "Trader"
 
   const subject = `Good morning ${name} — Chapter ${input.chapterNumber} begins today`
@@ -32,7 +39,12 @@ export async function sendMorningChapterEmail(
       }
       <p style="margin:0 0 8px;font-size:11px;color:#64748b;">Your edge is intact. The market is ready.</p>
       <a href="${hqUrl}" style="display:inline-block;margin-top:8px;margin-right:8px;padding:10px 18px;background:#22d3ee;color:#0a0f14;font-weight:600;font-size:13px;text-decoration:none;border-radius:8px;">Open HQ</a>
-      <a href="${practiceUrl}" style="display:inline-block;margin-top:8px;padding:10px 18px;background:#7c3aed;color:#fff;font-weight:600;font-size:13px;text-decoration:none;border-radius:8px;">Practice Room</a>
+      <a href="${practiceUrl}" style="display:inline-block;margin-top:8px;margin-right:8px;padding:10px 18px;background:#7c3aed;color:#fff;font-weight:600;font-size:13px;text-decoration:none;border-radius:8px;">Practice Room</a>
+      ${
+        reviewUrl
+          ? `<a href="${reviewUrl}" style="display:inline-block;margin-top:8px;padding:10px 18px;background:transparent;border:1px solid #475569;color:#e2e8f0;font-weight:600;font-size:13px;text-decoration:none;border-radius:8px;">Review Chapter ${input.previousChapterNumber}</a>`
+          : ""
+      }
     </div>
   `.trim()
 

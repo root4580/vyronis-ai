@@ -207,6 +207,8 @@ export async function evaluateMorningChapterEmailAlert(input: {
     chapterNumber: chapterContext.currentChapterNumber,
     openingMessage: chapterContext.openingMessage,
     tradesUsedLabel: null,
+    previousChapterNumber: chapterContext.recentChapters[0]?.chapter_number ?? null,
+    previousChapterWeekStart: chapterContext.recentChapters[0]?.week_start ?? null,
   })
 
   if (!result.sent) {

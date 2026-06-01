@@ -19,12 +19,17 @@ import {
 import { detectChapterReviewPatterns } from "@/lib/weekly-chapters/chapter-patterns"
 import { buildChapterEmotionSummary } from "@/lib/weekly-chapters/chapter-emotion-scores"
 import { generateChapterReviewAiNarrative } from "@/lib/weekly-chapters/chapter-review-ai"
+import {
+  mergeChapterReviewAiCache,
+  readChapterReviewAiCache,
+} from "@/lib/weekly-chapters/chapter-review-cache"
 import { buildChapterTradeReviewNotes } from "@/lib/weekly-chapters/trade-review-notes"
 import type { PaperTradeRecord } from "@/lib/paper-trades/types"
 import {
   fetchChapterPaperTrades,
   fetchChapterTrades,
   listWeeklySummaries,
+  upsertWeeklySummary,
 } from "@/lib/weekly-chapters/server-service"
 import type {
   ChapterReviewPaperTrade,
@@ -334,6 +339,96 @@ function mapChapterReviewPaperTrades(
     .sort((a, b) => b.id.localeCompare(a.id))
 }
 
+function isPersistedWeeklySummary(summary: WeeklySummaryRecord): boolean {
+  return !summary.id.startsWith("ephemeral-")
+}
+
+async function resolveChapterReviewAiNarrative(input: {
+  supabase: SupabaseClient
+  userId: string
+  accountId: string
+  summary: WeeklySummaryRecord
+  isClosed: boolean
+  patterns: ChapterReviewPayload["patterns"]
+  trades: ChapterReviewTrade[]
+  paperLine: string | null
+  paperTrades: ChapterReviewPaperTrade[]
+  emotionSummary: ChapterReviewPayload["emotionSummary"]
+  coachInsights: string[]
+  carryForwardLesson: string
+}): Promise<{
+  summary: WeeklySummaryRecord
+  aiNarrative: string | null
+  aiProvider: string | null
+}> {
+  const cached = readChapterReviewAiCache(input.summary.summary_payload)
+  if (cached && input.isClosed) {
+    return {
+      summary: input.summary,
+      aiNarrative: cached.narrative,
+      aiProvider: cached.provider,
+    }
+  }
+
+  const { narrative, provider } = await generateChapterReviewAiNarrative({
+    summary: input.summary,
+    patterns: input.patterns,
+    trades: input.trades,
+    paperLine: input.paperLine,
+    paperTrades: input.paperTrades,
+    emotionSummary: input.emotionSummary,
+    coachInsights: input.coachInsights,
+    carryForwardLesson: input.carryForwardLesson,
+  })
+
+  if (
+    !input.isClosed ||
+    !narrative?.trim() ||
+    !provider ||
+    !isPersistedWeeklySummary(input.summary)
+  ) {
+    return {
+      summary: input.summary,
+      aiNarrative: narrative,
+      aiProvider: provider,
+    }
+  }
+
+  try {
+    const updatedSummary = await upsertWeeklySummary(input.supabase, input.userId, input.accountId, {
+      week_start: input.summary.week_start,
+      trades_taken: input.summary.trades_taken,
+      wins: input.summary.wins,
+      losses: input.summary.losses,
+      win_rate: input.summary.win_rate,
+      pnl: input.summary.pnl,
+      discipline_score: input.summary.discipline_score,
+      discipline_grade: input.summary.discipline_grade,
+      key_lesson: input.summary.key_lesson,
+      chapter_number: input.summary.chapter_number,
+      is_winning_chapter: input.summary.is_winning_chapter,
+      max_trades_allowed: input.summary.max_trades_allowed,
+      summary_payload: mergeChapterReviewAiCache(input.summary.summary_payload, {
+        narrative: narrative.trim(),
+        provider,
+        generatedAt: new Date().toISOString(),
+      }),
+    })
+
+    return {
+      summary: updatedSummary,
+      aiNarrative: narrative.trim(),
+      aiProvider: provider,
+    }
+  } catch {
+    return {
+      summary: input.summary,
+      aiNarrative: narrative,
+      aiProvider: provider,
+    }
+  }
+}
+
 export async function getChapterReview(
   supabase: SupabaseClient,
   userId: string,
@@ -410,10 +505,15 @@ export async function getChapterReview(
     }))
   const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(summary))
   const currentWeekStart = toWeekStartISO(new Date())
+  const isClosed = weekStart < currentWeekStart
   const navigation = resolveNavigation(summaries, weekStart)
 
-  const { narrative: aiNarrative, provider: aiProvider } = await generateChapterReviewAiNarrative({
+  const aiResult = await resolveChapterReviewAiNarrative({
+    supabase,
+    userId,
+    accountId,
     summary,
+    isClosed,
     patterns,
     trades,
     paperLine,
@@ -422,6 +522,9 @@ export async function getChapterReview(
     coachInsights,
     carryForwardLesson,
   })
+  summary = aiResult.summary
+  const aiNarrative = aiResult.aiNarrative
+  const aiProvider = aiResult.aiProvider
 
   const disciplineScore = summary.discipline_score
   if (disciplineScore != null && !summary.discipline_grade) {
@@ -443,7 +546,7 @@ export async function getChapterReview(
     aiProvider,
     emotionSummary,
     emotionTimeline,
-    isClosed: weekStart < currentWeekStart,
+    isClosed,
     navigation,
   }
 }
