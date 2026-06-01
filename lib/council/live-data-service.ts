@@ -4,6 +4,7 @@ import { filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/account
 import { formatAccountMoney } from "@/lib/accounts/profit-target"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
 import type { CouncilAgentId } from "@/lib/council/types"
+import { loadCouncilCoachLiveData } from "@/lib/council/coach-live-data"
 import { fetchUserStartingBalance, fetchUserTradesForAnalytics } from "@/lib/analytics/fetch-trades"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import { formatPairForSpeech } from "@/lib/economic-calendar/pair-impact"
@@ -65,6 +66,13 @@ export type CouncilLiveDataBundle = {
   lastChapters: string
   novaChapters: string
   rexRisk: string
+  coachShared: string
+  coachNova: string
+  coachZara: string
+  coachRex: string
+  coachLuna: string
+  coachCipher: string
+  coachJarvis: string
   jarvisFull: string
 }
 
@@ -467,6 +475,19 @@ export async function loadCouncilLiveDataBundle(
     `Daily loss used today: ${accountStatus.dailyLossPercent.toFixed(1)}% / ${accountStatus.dailyLossLimitPercent}%`,
   ].join("\n")
 
+  const coachData = await loadCouncilCoachLiveData(
+    supabase,
+    userId,
+    accountId,
+    recentTrades.map((row) => ({
+      id: row.id,
+      pair: row.pair,
+      direction: row.direction,
+      result: row.result,
+    })),
+    pairs.map((pair) => pair.pair),
+  )
+
   const jarvisFull = [
     shared,
     newsSection,
@@ -475,6 +496,7 @@ export async function loadCouncilLiveDataBundle(
     lastChapterSection,
     watchlistCipherSection,
     rexRiskSection,
+    coachData.jarvis,
   ].join("\n\n")
 
   return {
@@ -486,6 +508,13 @@ export async function loadCouncilLiveDataBundle(
     lastChapters: lastChapterSection,
     novaChapters: novaChaptersSection,
     rexRisk: rexRiskSection,
+    coachShared: coachData.shared,
+    coachNova: coachData.nova,
+    coachZara: coachData.zara,
+    coachRex: coachData.rex,
+    coachLuna: coachData.luna,
+    coachCipher: coachData.cipher,
+    coachJarvis: coachData.jarvis,
     jarvisFull,
   }
 }
@@ -497,26 +526,33 @@ export function buildCouncilAgentLivePrompt(
   const header =
     "LIVE SUPABASE DATA — quote these exact numbers in your reply. Never invent placeholders."
 
-  const sections = [header, bundle.shared]
+  const sections = [header, bundle.shared, bundle.coachShared]
 
   switch (agentId) {
     case "jarvis":
-      sections.push(bundle.watchlist, bundle.lastTrades, bundle.novaChapters, bundle.watchlistCipher, bundle.rexRisk)
+      sections.push(
+        bundle.watchlist,
+        bundle.lastTrades,
+        bundle.novaChapters,
+        bundle.watchlistCipher,
+        bundle.rexRisk,
+        bundle.coachJarvis,
+      )
       break
     case "nova":
-      sections.push(bundle.novaChapters)
+      sections.push(bundle.novaChapters, bundle.coachNova)
       break
     case "zara":
-      sections.push(bundle.lastTrades)
+      sections.push(bundle.lastTrades, bundle.coachZara)
       break
     case "luna":
-      sections.push(bundle.watchlist)
+      sections.push(bundle.watchlist, bundle.coachLuna)
       break
     case "cipher":
-      sections.push(bundle.watchlistCipher)
+      sections.push(bundle.watchlistCipher, bundle.coachCipher)
       break
     case "rex":
-      sections.push(bundle.rexRisk)
+      sections.push(bundle.rexRisk, bundle.coachRex)
       break
   }
 

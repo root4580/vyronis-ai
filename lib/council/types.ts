@@ -58,6 +58,8 @@ export type CouncilChartSnapshot = {
 export type CouncilStatsSnapshot = {
   balance: number
   startingBalance: number
+  targetBalance: number
+  targetProgressPercent: number
   totalPnL: number
   currency: string
   drawdownPct: number
@@ -66,6 +68,7 @@ export type CouncilStatsSnapshot = {
   maxTradesPerWeek: number
   tradesRemaining: number
   disciplineScore: number | null
+  disciplineGrade: string | null
   chapterLabel: string
   accountName: string
   todayJournalLine: string
@@ -121,6 +124,13 @@ export type CouncilRespondResponse = {
   messages: CouncilTranscriptEntry[]
   chimeIn?: CouncilTranscriptEntry | null
   roundtable?: boolean
+  migrationPending?: boolean
+}
+
+export type CouncilOpenResponse = {
+  sessionId: string
+  messages: CouncilTranscriptEntry[]
+  awaitingEmotionCheck: boolean
   migrationPending?: boolean
 }
 

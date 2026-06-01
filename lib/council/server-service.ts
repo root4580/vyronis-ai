@@ -18,6 +18,16 @@ import {
   buildCouncilAgentLivePrompt,
   loadCouncilLiveDataBundle,
 } from "@/lib/council/live-data-service"
+import { buildNovaEmotionCheckQuestion } from "@/lib/council/emotion-check"
+import {
+  buildCouncilOpenMessages,
+  buildEmotionCheckFollowUpMessages,
+  getTodayCouncilEmotionCheck,
+  isAwaitingEmotionCheckResponse,
+  parseCouncilEmotionScore,
+  saveCouncilEmotionCheck,
+  shouldRunCouncilOpenRitual,
+} from "@/lib/council/opening-service"
 import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
@@ -74,6 +84,7 @@ import type {
   CouncilHistoryResponse,
   CouncilHistorySession,
   CouncilMemoryHighlight,
+  CouncilOpenResponse,
   CouncilRespondResponse,
   CouncilSessionRecord,
   CouncilSessionResponse,
@@ -191,6 +202,10 @@ function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<
       return buildJarvisOpening({
         traderFirstName: context.traderFirstName,
         preferredSession: context.preferredSession,
+        balance: context.visual.stats.balance,
+        currency: context.visual.stats.currency,
+        drawdownPct: context.visual.stats.drawdownPct,
+        watchlistCount: context.visual.watchlistCharts.length,
         economicCalendar: context.economicCalendar,
       })
     case "nova":
@@ -646,6 +661,72 @@ export async function getCouncilSessionState(
   }
 }
 
+export async function runCouncilOpenRitual(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<CouncilOpenResponse> {
+  const context = await loadCachedCouncilAgentContext(supabase, userId, accountId)
+  const existing = await getTodayCouncilSession(supabase, userId, accountId)
+  const transcript = existing?.full_transcript ?? []
+
+  if (!(await shouldRunCouncilOpenRitual(supabase, userId, accountId, transcript))) {
+    return {
+      sessionId: existing?.id ?? "",
+      messages: [],
+      awaitingEmotionCheck: isAwaitingEmotionCheckResponse(transcript),
+    }
+  }
+
+  const openMessages = buildCouncilOpenMessages(context)
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, ...openMessages],
+    agents_spoken: [...new Set([...(existing?.agents_spoken ?? []), "Jarvis", "Nova"])],
+  })
+
+  return {
+    sessionId: session.id,
+    messages: openMessages,
+    awaitingEmotionCheck: true,
+  }
+}
+
+async function runCouncilEmotionCheckTurn(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  trimmed: string,
+  transcript: CouncilTranscriptEntry[],
+  userEntry: CouncilTranscriptEntry,
+  existing: CouncilSessionRecord | null,
+  score: number,
+): Promise<CouncilRespondResponse> {
+  const followUp = buildEmotionCheckFollowUpMessages(score)
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, userEntry, ...followUp],
+    agents_spoken: [
+      ...new Set([
+        ...(existing?.agents_spoken ?? []),
+        "Nova",
+        ...(score < 7 ? ["Rex"] : []),
+      ]),
+    ],
+  })
+
+  await saveCouncilEmotionCheck(supabase, userId, accountId, session.id, score).catch(
+    () => undefined,
+  )
+
+  const primary = followUp[followUp.length - 1]!
+  return {
+    sessionId: session.id,
+    agent: primary.agent as CouncilAgentId,
+    message: primary,
+    messages: followUp,
+    chimeIn: null,
+  }
+}
+
 export async function runCouncilMorningBriefing(
   supabase: SupabaseClient,
   userId: string,
@@ -684,9 +765,18 @@ export async function runCouncilMorningBriefing(
     buildJarvisOpening({
       traderFirstName: context.traderFirstName,
       preferredSession: context.preferredSession,
+      balance: context.visual.stats.balance,
+      currency: context.visual.stats.currency,
+      drawdownPct: context.visual.stats.drawdownPct,
+      watchlistCount: context.visual.watchlistCharts.length,
       economicCalendar: context.economicCalendar,
     }),
   )
+
+  const emotionScoreToday = await getTodayCouncilEmotionCheck(supabase, userId, accountId)
+  if (emotionScoreToday == null) {
+    pushMessage("nova", buildNovaEmotionCheckQuestion(context.traderFirstName))
+  }
 
   let previousSpecialist: { agentName: string; content: string } | null = null
 
@@ -1030,6 +1120,22 @@ export async function runCouncilRespond(
     agent: "user",
     content: trimmed,
     createdAt: new Date().toISOString(),
+  }
+
+  if (isAwaitingEmotionCheckResponse(transcript)) {
+    const score = parseCouncilEmotionScore(trimmed)
+    if (score != null) {
+      return runCouncilEmotionCheckTurn(
+        supabase,
+        userId,
+        accountId,
+        trimmed,
+        transcript,
+        userEntry,
+        existing,
+        score,
+      )
+    }
   }
 
   if (isCouncilStatusQuestion(trimmed)) {

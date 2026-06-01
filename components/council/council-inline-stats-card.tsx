@@ -34,6 +34,12 @@ export function CouncilInlineStatsCard({
           <span className="font-medium tabular-nums text-text-primary">{money(stats.balance)}</span>
         </p>
         <p>
+          <span className="text-text-muted">Target </span>
+          <span className="font-medium tabular-nums text-text-primary">
+            {money(stats.targetBalance)}
+          </span>
+        </p>
+        <p>
           <span className="text-text-muted">Drawdown </span>
           <span className="font-medium tabular-nums text-loss">{stats.drawdownPct.toFixed(1)}%</span>
         </p>
@@ -46,7 +52,11 @@ export function CouncilInlineStatsCard({
         <p>
           <span className="text-text-muted">Discipline </span>
           <span className="font-medium tabular-nums text-text-primary">
-            {stats.disciplineScore != null ? `${Math.round(stats.disciplineScore)}/100` : "—"}
+            {stats.disciplineScore != null
+              ? stats.disciplineGrade
+                ? `${stats.disciplineGrade} (${Math.round(stats.disciplineScore)})`
+                : `${Math.round(stats.disciplineScore)}/100`
+              : "—"}
           </span>
         </p>
         <p className="col-span-2 sm:col-span-2">

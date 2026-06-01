@@ -37,6 +37,12 @@ export function buildWeeklyChapterDashboard(input: {
   const now = input.referenceDate ?? new Date()
   const weekStart = input.currentWeekStart ?? toWeekStartISO(now)
   const chapterNumber = computeChapterNumber(input.originWeekStart, weekStart)
+  const currentWeekSummary = input.summaries.find((summary) => summary.week_start === weekStart)
+  const disciplineScore =
+    input.disciplineScore ?? currentWeekSummary?.discipline_score ?? null
+  const disciplineGrade =
+    input.disciplineGrade ?? currentWeekSummary?.discipline_grade ?? null
+
   const weekStats = computeWeekTradeStats(input.trades, weekStart)
   const thisWeekPaper =
     input.paperTrades != null
@@ -101,8 +107,8 @@ export function buildWeeklyChapterDashboard(input: {
       losses: weekStats.losses,
       winRate: weekStats.winRate,
       pnl: weekStats.pnl,
-      disciplineScore: input.disciplineScore ?? null,
-      disciplineGrade: input.disciplineGrade ?? null,
+      disciplineScore,
+      disciplineGrade,
     },
     thisWeekPaper: thisWeekPaper && thisWeekPaper.total > 0 ? thisWeekPaper : null,
     previousChapter,

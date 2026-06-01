@@ -1,6 +1,7 @@
 import type {
   CouncilBriefingResponse,
   CouncilHistoryResponse,
+  CouncilOpenResponse,
   CouncilRespondResponse,
   CouncilSessionResponse,
   CouncilSettingsRecord,
@@ -57,6 +58,20 @@ export async function clearCouncilSession(
     }),
   })
   return parseJson<CouncilSessionResponse>(response)
+}
+
+export async function runCouncilOpen(input: {
+  accountId: string | null
+}): Promise<CouncilOpenResponse> {
+  const response = await fetch("/api/council/open", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accountId: input.accountId,
+    }),
+  })
+  return parseJson<CouncilOpenResponse>(response)
 }
 
 export async function runCouncilBriefing(input: {

@@ -13,10 +13,8 @@ import type { WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
 import type { PlanDisciplineAggregate } from "@/lib/trade-planner/plan-discipline-aggregate"
 import type { MatchableTradePlan } from "@/lib/trade-planner/plan-match"
-import {
-  computePlanStreak,
-  disciplineGradeBoxClass,
-} from "@/lib/trade-planner/plan-streak"
+import type { PlanDisciplineGrade } from "@/lib/trade-planner/deviation-engine"
+import { computePlanStreak, disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 import { getForexSessionHeaderState } from "@/lib/trading/forex-sessions"
 import {
   computeAvgRiskReward,
@@ -28,6 +26,7 @@ import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 import { AccountStatusCard } from "@/components/dashboard/account-status-card"
 import { TradingRulesDashboardCard } from "@/components/dashboard/trading-rules-dashboard-card"
+import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import { WeeklyChapterSystem } from "@/components/weekly-chapters/weekly-chapter-system"
 import { ForexSessionsWidget } from "@/components/dashboard/forex-sessions-widget"
 import type { TradingAccountRecord } from "@/lib/accounts/types"
@@ -110,12 +109,36 @@ export function HqDashboard({
 }: HqDashboardProps) {
   const [weekPlan, setWeekPlan] = useState<WeeklyPlanWithPairs | null>(null)
   const [discipline, setDiscipline] = useState<PlanDisciplineAggregate | null>(null)
+  const [chapterDisciplineScore, setChapterDisciplineScore] = useState<number | null>(null)
+  const [chapterDisciplineGrade, setChapterDisciplineGrade] = useState<string | null>(null)
   const [plansById, setPlansById] = useState<Map<string, MatchableTradePlan>>(new Map())
   const [coachNudgeDismissed, setCoachNudgeDismissed] = useState(false)
 
   useEffect(() => {
     void fetchWeeklyPlan().then(setWeekPlan).catch(() => setWeekPlan(null))
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchWeeklyChapterDashboard({
+      accountId: activeAccount.id,
+      traderFirstName,
+    })
+      .then((dashboard) => {
+        if (cancelled) return
+        setChapterDisciplineScore(dashboard.thisWeek.disciplineScore)
+        setChapterDisciplineGrade(dashboard.thisWeek.disciplineGrade)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChapterDisciplineScore(null)
+          setChapterDisciplineGrade(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeAccount.id, traderFirstName])
 
   useEffect(() => {
     let cancelled = false
@@ -209,8 +232,8 @@ export function HqDashboard({
       .slice(0, 6)
   }, [trades])
 
-  const disciplineScore = discipline?.weekAverageScore
-  const disciplineGrade = discipline?.weekGrade
+  const disciplineScore = chapterDisciplineScore ?? discipline?.weekAverageScore
+  const disciplineGrade = chapterDisciplineGrade ?? discipline?.weekGrade
 
   const headerAccent = forexHeader.accent
   const headerBackground = `rgb(from ${headerAccent} r g b / 0.08)`
@@ -376,7 +399,7 @@ export function HqDashboard({
               <div
                 className={cn(
                   "flex size-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border text-lg font-semibold",
-                  disciplineGradeBoxClass(disciplineGrade ?? null),
+                  disciplineGradeBoxClass((disciplineGrade as PlanDisciplineGrade | null) ?? null),
                 )}
               >
                 {disciplineGrade ?? "—"}

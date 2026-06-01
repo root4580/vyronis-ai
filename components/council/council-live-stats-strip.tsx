@@ -71,8 +71,13 @@ export function CouncilLiveStatsStrip({
           {stats.accountName} · {stats.chapterLabel}
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <Metric label="Balance" value={money(stats.balance)} detail="Starting + journal P&L" />
+        <Metric
+          label="Target"
+          value={money(stats.targetBalance)}
+          detail={`${Math.round(stats.targetProgressPercent)}% toward goal`}
+        />
         <Metric
           label="Journal P&L"
           value={formatPnL(Math.abs(stats.totalPnL), stats.totalPnL >= 0 ? "WIN" : "LOSS")}
@@ -92,7 +97,13 @@ export function CouncilLiveStatsStrip({
         />
         <Metric
           label="Discipline"
-          value={stats.disciplineScore != null ? `${Math.round(stats.disciplineScore)}/100` : "—"}
+          value={
+            stats.disciplineScore != null
+              ? stats.disciplineGrade
+                ? `${stats.disciplineGrade} (${Math.round(stats.disciplineScore)})`
+                : `${Math.round(stats.disciplineScore)}/100`
+              : "—"
+          }
           detail="Chapter score"
         />
         <Metric

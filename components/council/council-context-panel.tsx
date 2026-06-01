@@ -161,6 +161,11 @@ export function CouncilContextPanel({
                 detail="Starting + journal P&L"
               />
               <StatTile
+                label="Target"
+                value={money(stats.targetBalance)}
+                detail={`${Math.round(stats.targetProgressPercent)}% toward goal`}
+              />
+              <StatTile
                 label="Drawdown"
                 value={`${stats.drawdownPct.toFixed(1)}%`}
                 detail="From starting balance"
@@ -179,9 +184,14 @@ export function CouncilContextPanel({
               />
               <StatTile
                 label="Discipline"
-                value={stats.disciplineScore != null ? `${Math.round(stats.disciplineScore)}/100` : "—"}
+                value={
+                  stats.disciplineScore != null
+                    ? stats.disciplineGrade
+                      ? `${stats.disciplineGrade} (${Math.round(stats.disciplineScore)})`
+                      : `${Math.round(stats.disciplineScore)}/100`
+                    : "—"
+                }
                 detail={stats.disciplineScore != null ? "Chapter score" : "Not enough data"}
-                valueClassName={stats.disciplineScore != null ? undefined : undefined}
               />
             </div>
             <p className="mt-2 text-[10px] leading-relaxed text-text-muted">{stats.todayJournalLine}</p>

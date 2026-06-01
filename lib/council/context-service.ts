@@ -31,6 +31,7 @@ import {
 } from "@/lib/user-settings"
 import { formatPnL, getSignedPnL } from "@/lib/trade-utils"
 import { buildChapterEmotionSummary } from "@/lib/weekly-chapters/chapter-emotion-scores"
+import { resolveCurrentWeekDiscipline } from "@/lib/weekly-chapters/discipline-resolver"
 import { detectChapterReviewPatterns } from "@/lib/weekly-chapters/chapter-patterns"
 import { warRoomWeekStartCandidates } from "@/lib/weekly-chapters/chapter-war-room-recap"
 import { buildChapterTradeReviewNotes } from "@/lib/weekly-chapters/trade-review-notes"
@@ -895,10 +896,22 @@ export async function loadCouncilAgentContext(
         } satisfies WeeklySummaryRecord)
       : null)
 
+  const resolvedDiscipline = resolveCurrentWeekDiscipline(weeklySummaries, weekStart)
+  const disciplineScore =
+    currentSummary?.discipline_score ??
+    resolvedDiscipline.score ??
+    dashboard?.thisWeek.disciplineScore ??
+    null
+  const disciplineGrade =
+    currentSummary?.discipline_grade ??
+    resolvedDiscipline.grade ??
+    dashboard?.thisWeek.disciplineGrade ??
+    null
+
   const emotionSummary = buildChapterEmotionSummary({
     trades: weekTrades.map(mapTradeForPatterns),
     disciplineByTradeId,
-    summaryDisciplineScore: currentSummary?.discipline_score ?? null,
+    summaryDisciplineScore: disciplineScore,
   })
 
   const evaluationsByPair = latestEvaluationsByPair(setupEvaluations)
@@ -928,9 +941,16 @@ export async function loadCouncilAgentContext(
 
   const nova = buildNovaContext({
     chapterLabel,
-    currentSummary,
-    dashboardDisciplineScore: dashboard?.thisWeek.disciplineScore ?? null,
-    dashboardDisciplineGrade: dashboard?.thisWeek.disciplineGrade ?? null,
+    currentSummary:
+      currentSummary != null
+        ? {
+            ...currentSummary,
+            discipline_score: disciplineScore,
+            discipline_grade: disciplineGrade,
+          }
+        : null,
+    dashboardDisciplineScore: disciplineScore,
+    dashboardDisciplineGrade: disciplineGrade,
     weekTrades,
     maxTrades,
     tradesRemaining,
@@ -1007,6 +1027,8 @@ export async function loadCouncilAgentContext(
     stats: {
       balance,
       startingBalance,
+      targetBalance: accountStatus.targetBalance,
+      targetProgressPercent: accountStatus.targetProgressPercent,
       totalPnL: accountStatus.totalPnL,
       currency,
       drawdownPct,
@@ -1014,10 +1036,8 @@ export async function loadCouncilAgentContext(
       tradesThisWeek,
       maxTradesPerWeek: maxTrades,
       tradesRemaining,
-      disciplineScore:
-        currentSummary?.discipline_score ??
-        dashboard?.thisWeek.disciplineScore ??
-        null,
+      disciplineScore,
+      disciplineGrade,
       chapterLabel,
       accountName: account?.name ?? "Trading account",
       todayJournalLine,

@@ -1,3 +1,4 @@
+import { formatAccountMoney } from "@/lib/accounts/profit-target"
 import { getCouncilAgent, BRIEFING_AGENT_ORDER } from "@/lib/council/agents"
 import {
   detectCouncilAgentByName,
@@ -18,58 +19,53 @@ const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
   jarvis: "council coordination",
 }
 
-function formatBriefingDate(now = new Date()): { dayName: string; dateLabel: string } {
-  return {
-    dayName: now.toLocaleDateString("en-GB", { weekday: "long" }),
-    dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
-  }
+function timeOfDayLabel(now: Date): "morning" | "afternoon" | "evening" {
+  const hour = now.getHours()
+  if (hour < 12) return "morning"
+  if (hour < 17) return "afternoon"
+  return "evening"
 }
 
-function sessionOpenMinutes(preferredSession: string, now = new Date()): {
+function sessionStatusLabel(preferredSession: string, now = new Date()): {
   sessionLabel: string
-  minutesUntilOpen: number | null
-  isLive: boolean
+  status: "open" | "closed"
 } {
   const clock = getSessionClock(now)
-  const sessionLabel = preferredSession || clock.nextSessionName || clock.name
-
+  const sessionLabel = preferredSession || clock.name || "Session"
   if (clock.isActive) {
-    return { sessionLabel, minutesUntilOpen: null, isLive: true }
+    return { sessionLabel, status: "open" }
   }
-
-  if (clock.msUntilNextSession != null) {
-    return {
-      sessionLabel: clock.nextSessionName ?? sessionLabel,
-      minutesUntilOpen: Math.max(1, Math.ceil(clock.msUntilNextSession / 60_000)),
-      isLive: false,
-    }
-  }
-
-  return { sessionLabel, minutesUntilOpen: null, isLive: false }
+  return { sessionLabel, status: "closed" }
 }
 
 export function buildJarvisOpening(input: {
   traderFirstName: string
   preferredSession: string
+  balance: number
+  currency: string
+  drawdownPct: number
+  watchlistCount: number
   now?: Date
   economicCalendar?: TodayCalendarResponse | null
 }): string {
-  const { dayName, dateLabel } = formatBriefingDate(input.now)
-  const session = sessionOpenMinutes(input.preferredSession, input.now)
-  const greeting = `Good morning ${input.traderFirstName}.`
-  const dateLine = `It is ${dayName} ${dateLabel}.`
+  const now = input.now ?? new Date()
+  const timeOfDay = timeOfDayLabel(now)
+  const session = sessionStatusLabel(input.preferredSession, now)
+  const balance = formatAccountMoney(input.balance, input.currency)
+  const drawdown = `${input.drawdownPct.toFixed(1)}%`
+  const setups =
+    input.watchlistCount === 1
+      ? "1 setup"
+      : `${input.watchlistCount} setups`
+
+  const parts = [
+    `Good ${timeOfDay} ${input.traderFirstName}. ${session.sessionLabel} is ${session.status}.`,
+    `Balance ${balance}. Drawdown ${drawdown}.`,
+    `${setups} on watch. Council ready.`,
+  ]
+
   const newsLine = buildJarvisCalendarLine(input.economicCalendar)
-
-  const parts = [greeting, dateLine]
-  if (newsLine) parts.push(newsLine)
-
-  if (session.isLive) {
-    parts.push(`${session.sessionLabel} is live. Connecting your council now.`)
-  } else if (session.minutesUntilOpen != null) {
-    parts.push(`${session.sessionLabel} opens in ${session.minutesUntilOpen} minutes. Connecting your council now.`)
-  } else {
-    parts.push("Connecting your council now.")
-  }
+  if (newsLine) parts.splice(2, 0, newsLine)
 
   return parts.join(" ")
 }
@@ -176,12 +172,8 @@ export function buildJarvisContextSnapshot(input: {
   preferredSession: string
   chapterLabel: string
 }): string {
-  const session = sessionOpenMinutes(input.preferredSession)
-  const sessionLine = session.isLive
-    ? `${session.sessionLabel} is live.`
-    : session.minutesUntilOpen != null
-      ? `${session.sessionLabel} opens in ${session.minutesUntilOpen} minutes.`
-      : `${session.sessionLabel}.`
+  const session = sessionStatusLabel(input.preferredSession)
+  const sessionLine = `${session.sessionLabel} is ${session.status}.`
 
   return `${input.chapterLabel} for ${input.traderFirstName}. ${sessionLine} Coordinating ${BRIEFING_AGENT_ORDER.map((id) => getCouncilAgent(id).name).join(", ")}.`
 }

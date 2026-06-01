@@ -11,6 +11,7 @@ import {
   fetchCouncilSession,
   fetchCouncilVisualContext,
   runCouncilBriefing,
+  runCouncilOpen,
 } from "@/lib/council/api-client"
 import { findChartForMessage } from "@/lib/council/pair-chart-match"
 import { readFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
@@ -77,6 +78,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const [fullCouncilParticipation, setFullCouncilParticipation] = useState(true)
   const [chartViewer, setChartViewer] = useState<{ url: string; title: string } | null>(null)
   const autoBriefingAttempted = useRef(false)
+  const openRitualAttempted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const conversationAgentRef = useRef<CouncilAgentId | null>(null)
   const selectedAgentRef = useRef<CouncilAgentId | "auto">("auto")
@@ -251,6 +253,52 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   useEffect(() => {
     const autoBriefingEnabled = councilSettings?.auto_briefing_enabled !== false
     const manualOnly = councilSettings?.briefing_time === "manual"
+    const willAutoBrief =
+      isMorningWindow && autoBriefingEnabled && !manualOnly && !briefingDone
+
+    if (
+      !accountId ||
+      migrationPending ||
+      isLoading ||
+      isBriefing ||
+      openRitualAttempted.current ||
+      willAutoBrief
+    ) {
+      return
+    }
+
+    openRitualAttempted.current = true
+    void runCouncilOpen({ accountId })
+      .then((result) => {
+        if (result.messages.length === 0) return
+        setTranscript((current) => {
+          if (current.length > 0) return current
+          return result.messages
+        })
+        setActiveAgent("nova")
+        if (voiceEnabled) {
+          void speakEntries(result.messages)
+        }
+        scrollToBottom()
+      })
+      .catch(() => undefined)
+  }, [
+    accountId,
+    migrationPending,
+    isLoading,
+    isBriefing,
+    scrollToBottom,
+    speakEntries,
+    voiceEnabled,
+    isMorningWindow,
+    councilSettings?.auto_briefing_enabled,
+    councilSettings?.briefing_time,
+    briefingDone,
+  ])
+
+  useEffect(() => {
+    const autoBriefingEnabled = councilSettings?.auto_briefing_enabled !== false
+    const manualOnly = councilSettings?.briefing_time === "manual"
 
     if (
       !accountId ||
@@ -322,6 +370,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setSelectedAgent("auto")
       selectedAgentRef.current = "auto"
       autoBriefingAttempted.current = false
+      openRitualAttempted.current = false
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not clear conversation")
     } finally {
