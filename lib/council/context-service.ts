@@ -1,10 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { evaluateAccountStatus } from "@/lib/account-status"
-import { isJournalTrade } from "@/lib/analytics/trade-scope"
-import {
-  accountScopeOrFilter,
-  resolveLegacyTradeAccountId,
-} from "@/lib/accounts/server-active-account"
+import { belongsToAccount, filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
+import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
 import type { CouncilAgentContext } from "@/lib/council/types"
 import { evaluateMarketBias } from "@/lib/strategy-brain/market-bias-engine"
@@ -73,6 +70,7 @@ type TradeRow = {
   risk_percent: number | null
   screenshot_url: string | null
   chart_url: string | null
+  account_id: string | null
 }
 
 type SetupEvaluationRow = {
@@ -136,7 +134,20 @@ function mapTradeRowsToSettingsTrades(
   })
 }
 
-function buildCouncilDataNote(tradeRows: TradeRow[]): string | null {
+function buildCouncilDataNote(
+  tradeRows: TradeRow[],
+  allJournalRows: TradeRow[],
+  accountId: string,
+  legacyAccountId: string | null,
+): string | null {
+  const otherAccountCount = allJournalRows.filter(
+    (row) => !belongsToAccount(row, accountId, legacyAccountId),
+  ).length
+
+  if (tradeRows.length === 0 && otherAccountCount > 0) {
+    return `${otherAccountCount} journal trade${otherAccountCount === 1 ? "" : "s"} are on another account — use the account switcher at the top.`
+  }
+
   const missingPnlLosses = tradeRows.filter(
     (row) =>
       String(row.result ?? "") === "LOSS" &&
@@ -163,6 +174,24 @@ function buildTodayRexJournalLine(
   )
 
   if (todayRows.length === 0) {
+    const latest = tradeRows[0]
+    if (latest) {
+      const result = String(latest.result ?? "")
+      let pnl = Number(latest.pnl ?? 0)
+      if (
+        result === "LOSS" &&
+        getSignedPnL(pnl, result) === 0 &&
+        (latest.risk_percent ?? 0) > 0
+      ) {
+        pnl = (startingBalance * (latest.risk_percent ?? 0)) / 100
+      }
+      const latestDate =
+        latest.trade_date?.slice(0, 10) ??
+        latest.created_at?.slice(0, 10) ??
+        "unknown date"
+      const pair = latest.pair ?? "Unknown pair"
+      return `Journal today (${todayKey}): no trades today. Latest on this account: ${latestDate} — ${pair} ${result} ${formatPnL(pnl, result)}.`
+    }
     return `Journal today (${todayKey}): no trades logged for this account in Vyronis.`
   }
 
@@ -638,8 +667,13 @@ export async function loadCouncilAgentContext(
   userId: string,
   accountId: string,
 ): Promise<CouncilAgentContext> {
-  const legacyAccountId = await resolveLegacyTradeAccountId(supabase, userId)
   const weekStart = toWeekStartISO(new Date())
+
+  const { data: accountRows } = await supabase
+    .from("accounts")
+    .select("id, created_at")
+    .eq("user_id", userId)
+  const legacyAccountId = resolveLegacyTradeAccountId(accountRows ?? [])
 
   const [
     traderProfile,
@@ -666,10 +700,10 @@ export async function loadCouncilAgentContext(
     supabase
       .from("trades")
       .select(
-        "id, pair, direction, result, pnl, emotion, emotion_after, session, rule_followed, mistake_tags, trade_date, created_at, import_source, entry_price, stop_loss, take_profit, trade_notes, setup_classification, confirmation_signal, confirmation_timeframe, risk_percent, screenshot_url, chart_url",
+        "id, pair, direction, result, pnl, emotion, emotion_after, session, rule_followed, mistake_tags, trade_date, created_at, import_source, entry_price, stop_loss, take_profit, trade_notes, setup_classification, confirmation_signal, confirmation_timeframe, risk_percent, screenshot_url, chart_url, account_id",
       )
       .eq("user_id", userId)
-      .or(accountScopeOrFilter(accountId, legacyAccountId))
+      .or(journalTradesOrFilter())
       .order("trade_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(120),
@@ -691,9 +725,8 @@ export async function loadCouncilAgentContext(
   const chapterNumber = dashboard?.chapterNumber ?? 1
   const chapterLabel = formatChapterTitle(chapterNumber, weekStart)
 
-  const tradeRows = ((tradesResult.data ?? []) as TradeRow[]).filter((row) =>
-    isJournalTrade({ import_source: row.import_source }),
-  )
+  const allJournalRows = (tradesResult.data ?? []) as TradeRow[]
+  const tradeRows = filterRowsForAccount(allJournalRows, accountId, legacyAccountId)
 
   const weekTrades = tradeRows.filter((row) =>
     isTradeInWeekStart(
@@ -712,7 +745,7 @@ export async function loadCouncilAgentContext(
   )
 
   const settingsTrades = mapTradeRowsToSettingsTrades(tradeRows, startingBalance)
-  const dataNote = buildCouncilDataNote(tradeRows)
+  const dataNote = buildCouncilDataNote(tradeRows, allJournalRows, accountId, legacyAccountId)
 
   const accountStatus = evaluateAccountStatus({
     trades: settingsTrades,
