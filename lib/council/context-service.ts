@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { evaluateAccountStatus } from "@/lib/account-status"
+import { fetchUserStartingBalance, fetchUserTradesForAnalytics } from "@/lib/analytics/fetch-trades"
+import type { AnalyticsTradeRow } from "@/lib/analytics/types"
+import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import { belongsToAccount, filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
-import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
 import type { CouncilAgentContext } from "@/lib/council/types"
 import { evaluateMarketBias } from "@/lib/strategy-brain/market-bias-engine"
@@ -134,12 +136,99 @@ function mapTradeRowsToSettingsTrades(
   })
 }
 
+function mapAnalyticsTradeToTradeRow(
+  trade: AnalyticsTradeRow & {
+    screenshot_url?: string | null
+    chart_url?: string | null
+    trade_notes?: string | null
+    setup_classification?: string | null
+  },
+): TradeRow {
+  return {
+    id: trade.id,
+    pair: trade.pair ?? null,
+    direction: trade.direction ?? null,
+    result: trade.result ?? null,
+    pnl: trade.pnl ?? null,
+    emotion: trade.emotion ?? null,
+    emotion_after: trade.emotion_after ?? null,
+    session: trade.session ?? null,
+    rule_followed: trade.rule_followed,
+    mistake_tags: trade.mistake_tags ?? null,
+    trade_date: trade.trade_date,
+    created_at: trade.created_at,
+    import_source: trade.import_source ?? null,
+    entry_price: trade.entry_price ?? null,
+    stop_loss: trade.stop_loss ?? null,
+    take_profit: trade.take_profit ?? null,
+    trade_notes: trade.trade_notes ?? null,
+    setup_classification: trade.setup_classification ?? null,
+    confirmation_signal: trade.confirmation_signal ?? null,
+    confirmation_timeframe: trade.confirmation_timeframe ?? null,
+    risk_percent: trade.risk_percent,
+    screenshot_url: trade.screenshot_url ?? null,
+    chart_url: trade.chart_url ?? null,
+    account_id: trade.account_id ?? null,
+  }
+}
+
+async function loadCouncilJournalTrades(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  legacyAccountId: string | null,
+): Promise<{ allJournalRows: TradeRow[]; tradeRows: TradeRow[]; loadError: string | null }> {
+  const [allResult, scopedResult] = await Promise.all([
+    fetchUserTradesForAnalytics(supabase, userId, "manual"),
+    fetchUserTradesForAnalytics(supabase, userId, "manual", {
+      accountId,
+      legacyAccountId,
+    }),
+  ])
+
+  let allJournalRows = allResult.trades.map(mapAnalyticsTradeToTradeRow)
+  let tradeRows = scopedResult.trades.map(mapAnalyticsTradeToTradeRow)
+  let loadError = allResult.error ?? scopedResult.error
+
+  if (allJournalRows.length === 0) {
+    const raw = await supabase
+      .from("trades")
+      .select(
+        "id, pair, direction, result, pnl, emotion, emotion_after, session, rule_followed, mistake_tags, trade_date, created_at, import_source, entry_price, stop_loss, take_profit, trade_notes, setup_classification, confirmation_signal, confirmation_timeframe, risk_percent, screenshot_url, chart_url, account_id",
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(120)
+
+    if (!raw.error && raw.data?.length) {
+      allJournalRows = (raw.data as TradeRow[]).filter((row) =>
+        isJournalTrade({ import_source: row.import_source }),
+      )
+      tradeRows = filterRowsForAccount(allJournalRows, accountId, legacyAccountId)
+      loadError = null
+    } else if (raw.error && !loadError) {
+      loadError = raw.error.message
+    }
+  }
+
+  return { allJournalRows, tradeRows, loadError }
+}
+
 function buildCouncilDataNote(
   tradeRows: TradeRow[],
   allJournalRows: TradeRow[],
   accountId: string,
   legacyAccountId: string | null,
+  loadError: string | null,
 ): string | null {
+  if (loadError) {
+    return `Journal could not load (${loadError}). Refresh the page — stats use the same Vyronis journal as HQ Log.`
+  }
+
+  if (tradeRows.length === 0 && allJournalRows.length === 0) {
+    return "No trades in your Vyronis journal yet — tap Log on HQ to record a trade. Council does not read your live broker balance."
+  }
+
   const otherAccountCount = allJournalRows.filter(
     (row) => !belongsToAccount(row, accountId, legacyAccountId),
   ).length
@@ -680,12 +769,12 @@ export async function loadCouncilAgentContext(
     account,
     rulesSnapshot,
     settingsRow,
-    tradesResult,
     dashboard,
     marketBias,
     weeklySummaries,
     setupEvaluations,
     recentEmotionChecks,
+    startingBalanceFromAccount,
   ] = await Promise.all([
     loadTraderProfile(supabase, userId),
     getTradingAccount(supabase, userId, accountId),
@@ -697,16 +786,6 @@ export async function loadCouncilAgentContext(
         )
         .eq("user_id", userId)
         .maybeSingle(),
-    supabase
-      .from("trades")
-      .select(
-        "id, pair, direction, result, pnl, emotion, emotion_after, session, rule_followed, mistake_tags, trade_date, created_at, import_source, entry_price, stop_loss, take_profit, trade_notes, setup_classification, confirmation_signal, confirmation_timeframe, risk_percent, screenshot_url, chart_url, account_id",
-      )
-      .eq("user_id", userId)
-      .or(journalTradesOrFilter())
-      .order("trade_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(120),
     getWeeklyChapterDashboard(supabase, userId, accountId, {
       traderFirstName: undefined,
     }).catch(() => null),
@@ -714,19 +793,25 @@ export async function loadCouncilAgentContext(
     listWeeklySummaries(supabase, userId, accountId, legacyAccountId, 8).catch(() => []),
     loadSetupEvaluations(supabase, userId),
     loadRecentEmotionChecks(supabase, userId),
+    fetchUserStartingBalance(supabase, userId, accountId),
   ])
+
+  const { allJournalRows, tradeRows, loadError } = await loadCouncilJournalTrades(
+    supabase,
+    userId,
+    accountId,
+    legacyAccountId,
+  )
 
   const settings = normalizeUserSettings(settingsRow.data)
   const firstName = traderProfile.firstName
   const timeZone = traderProfile.timeZone
   const preferredSession = normalizePreferredSession(settings.preferred_session)
-  const startingBalance = account?.starting_balance ?? settings.starting_balance
+  const startingBalance =
+    account?.starting_balance ?? startingBalanceFromAccount ?? settings.starting_balance
   const currency = account?.currency ?? "USD"
   const chapterNumber = dashboard?.chapterNumber ?? 1
   const chapterLabel = formatChapterTitle(chapterNumber, weekStart)
-
-  const allJournalRows = (tradesResult.data ?? []) as TradeRow[]
-  const tradeRows = filterRowsForAccount(allJournalRows, accountId, legacyAccountId)
 
   const weekTrades = tradeRows.filter((row) =>
     isTradeInWeekStart(
@@ -745,7 +830,13 @@ export async function loadCouncilAgentContext(
   )
 
   const settingsTrades = mapTradeRowsToSettingsTrades(tradeRows, startingBalance)
-  const dataNote = buildCouncilDataNote(tradeRows, allJournalRows, accountId, legacyAccountId)
+  const dataNote = buildCouncilDataNote(
+    tradeRows,
+    allJournalRows,
+    accountId,
+    legacyAccountId,
+    loadError,
+  )
 
   const accountStatus = evaluateAccountStatus({
     trades: settingsTrades,
