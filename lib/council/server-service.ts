@@ -22,6 +22,7 @@ import type {
   CouncilTranscriptEntry,
 } from "@/lib/council/types"
 import { isCouncilVoiceOutputConfigured } from "@/lib/council/voices"
+import { isCouncilListenConfigured } from "@/lib/council/whisper-service"
 
 export class CouncilTablesMissingError extends Error {
   constructor() {
@@ -276,6 +277,7 @@ export async function getCouncilSessionState(
       settings,
       isMorningWindow: isCouncilMorningWindow(),
       voiceConfigured: isCouncilVoiceOutputConfigured(),
+      listenConfigured: isCouncilListenConfigured(),
     }
   } catch (error) {
     if (error instanceof CouncilTablesMissingError) {

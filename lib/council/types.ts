@@ -73,5 +73,6 @@ export type CouncilSessionResponse = {
   settings: CouncilSettingsRecord | null
   isMorningWindow: boolean
   voiceConfigured?: boolean
+  listenConfigured?: boolean
   migrationPending?: boolean
 }

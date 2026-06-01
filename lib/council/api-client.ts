@@ -82,3 +82,22 @@ export async function fetchCouncilSpeech(input: {
 
   return response.blob()
 }
+
+export async function transcribeCouncilAudio(blob: Blob): Promise<string> {
+  const formData = new FormData()
+  const extension = blob.type.includes("mp4") ? "recording.m4a" : "recording.webm"
+  formData.append("audio", blob, extension)
+
+  const response = await fetch("/api/council/listen", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  })
+
+  const payload = (await response.json()) as { text?: string; error?: string }
+  if (!response.ok) {
+    throw new Error(payload.error || "Could not transcribe audio")
+  }
+
+  return payload.text?.trim() ?? ""
+}
