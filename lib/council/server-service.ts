@@ -10,13 +10,18 @@ import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
   buildCouncilChimeInUserPrompt,
+  buildCouncilHandoffAnswerUserPrompt,
+  buildCouncilHandoffAskUserPrompt,
   buildCouncilRespondUserPrompt,
   buildRecentTranscriptLines,
   getLastAgentReplyInTranscript,
 } from "@/lib/council/prompts"
 import {
   buildChimeInFallback,
+  buildHandoffAnswerFallback,
+  buildHandoffAskFallback,
   pickCouncilChimeInAgent,
+  pickCouncilCrossAgentHandoff,
 } from "@/lib/council/multi-agent-orchestrator"
 import { getStickyCouncilAgentFromTranscript, resolveCouncilAgentForMessage } from "@/lib/council/router"
 import type {
@@ -499,40 +504,118 @@ export async function runCouncilRespond(
     lastAgentReply,
   ).catch(() => "")
 
-  const reply = await produceCouncilAgentReply({
-    agentId,
-    context,
-    userPrompt: buildCouncilRespondUserPrompt({
-      question: trimmed,
-      recentTranscript,
-      agentMemory,
-      lastAgentReply,
-      agentName: getCouncilAgent(agentId).name,
-    }),
-    fallback: buildConversationFallback({
-      agentId,
-      context,
-      question: trimmed,
-      lastReply: lastAgentReply,
-    }),
+  const handoff = pickCouncilCrossAgentHandoff({
+    question: trimmed,
+    primaryAgent: agentId,
   })
 
-  const agentEntry: CouncilTranscriptEntry = {
-    id: randomUUID(),
-    agent: agentId,
-    content: reply,
-    createdAt: new Date().toISOString(),
+  let reply: string
+  const agentMessages: CouncilTranscriptEntry[] = []
+  let lastReply: string
+  let lastSpeaker: CouncilAgentId = agentId
+
+  if (handoff) {
+    const primaryName = getCouncilAgent(agentId).name
+    const targetName = getCouncilAgent(handoff.targetAgent).name
+
+    reply = await produceCouncilAgentReply({
+      agentId,
+      context,
+      userPrompt: buildCouncilHandoffAskUserPrompt({
+        primaryAgentName: primaryName,
+        targetAgentName: targetName,
+        topic: handoff.topic,
+        question: trimmed,
+        recentTranscript,
+      }),
+      fallback: buildHandoffAskFallback({
+        primaryAgent: agentId,
+        targetAgent: handoff.targetAgent,
+        topic: handoff.topic,
+      }),
+      temperature: 0.55,
+      maxTokens: 80,
+    })
+
+    const agentEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: agentId,
+      content: reply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(agentEntry)
+
+    const targetReply = await produceCouncilAgentReply({
+      agentId: handoff.targetAgent,
+      context,
+      userPrompt: buildCouncilHandoffAnswerUserPrompt({
+        primaryAgentName: primaryName,
+        primaryHandoff: reply,
+        targetAgentName: targetName,
+        topic: handoff.topic,
+        question: trimmed,
+      }),
+      fallback: buildHandoffAnswerFallback({
+        targetAgent: handoff.targetAgent,
+        topic: handoff.topic,
+        context,
+      }),
+      temperature: 0.62,
+      maxTokens: 160,
+    })
+
+    const targetEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: handoff.targetAgent,
+      content: targetReply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(targetEntry)
+    lastReply = targetReply
+    lastSpeaker = handoff.targetAgent
+
+    await appendAgentMemory(supabase, userId, handoff.targetAgent, trimmed, targetReply).catch(
+      () => undefined,
+    )
+  } else {
+    reply = await produceCouncilAgentReply({
+      agentId,
+      context,
+      userPrompt: buildCouncilRespondUserPrompt({
+        question: trimmed,
+        recentTranscript,
+        agentMemory,
+        lastAgentReply,
+        agentName: getCouncilAgent(agentId).name,
+      }),
+      fallback: buildConversationFallback({
+        agentId,
+        context,
+        question: trimmed,
+        lastReply: lastAgentReply,
+      }),
+    })
+
+    const agentEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: agentId,
+      content: reply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(agentEntry)
+    lastReply = reply
+    lastSpeaker = agentId
   }
 
+  const agentEntry = agentMessages[0]!
   const workingTranscript = [...transcript, userEntry, agentEntry]
-  const agentMessages: CouncilTranscriptEntry[] = [agentEntry]
-  let lastReply = reply
-  let lastSpeaker = agentId
-  const maxChimes = /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
-    trimmed,
-  )
-    ? 2
-    : 1
+  const maxChimes = handoff
+    ? 0
+    : /what does the council|what do you all|everyone think|whole council|all of you|council think|ask the council|full council/i.test(
+          trimmed,
+        )
+      ? 2
+      : 1
 
   for (let index = 0; index < maxChimes; index += 1) {
     const chimeDecision = pickCouncilChimeInAgent({

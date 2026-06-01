@@ -147,6 +147,42 @@ export function buildCouncilRespondUserPrompt(input: {
     .join("\n\n")
 }
 
+export function buildCouncilHandoffAskUserPrompt(input: {
+  primaryAgentName: string
+  targetAgentName: string
+  topic: string
+  question: string
+  recentTranscript: string
+}): string {
+  return [
+    input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
+    `The trader asked about ${input.topic} while talking to you (${input.primaryAgentName}).`,
+    `You are NOT the ${input.topic} expert — ${input.targetAgentName} is.`,
+    `In ONE short sentence, turn to ${input.targetAgentName} by name and ask how things look.`,
+    `Example tone: "${input.targetAgentName}, how are we looking on ${input.topic}?"`,
+    `Do NOT answer ${input.topic} yourself. Do not give limits, numbers, or verdicts — only ask ${input.targetAgentName}.`,
+    `Trader's message: ${input.question}`,
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function buildCouncilHandoffAnswerUserPrompt(input: {
+  primaryAgentName: string
+  primaryHandoff: string
+  targetAgentName: string
+  topic: string
+  question: string
+}): string {
+  return [
+    `${input.primaryAgentName} just asked you in the council room: "${input.primaryHandoff}"`,
+    `The trader's original question was about ${input.topic}: ${input.question}`,
+    `Answer as ${input.targetAgentName} in 1–2 short sentences.`,
+    `Speak to the trader directly. You may briefly reference ${input.primaryAgentName} handing this to you.`,
+    `Give your real read from the account snapshot — limits, discipline, confirmation, or review as appropriate.`,
+  ].join("\n")
+}
+
 export function buildCouncilChimeInUserPrompt(input: {
   question: string
   primaryAgentName: string

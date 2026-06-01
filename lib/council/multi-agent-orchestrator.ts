@@ -1,9 +1,162 @@
 import { getCouncilAgent } from "@/lib/council/agents"
+import { detectCouncilAgentByName } from "@/lib/council/router"
 import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 
 export type CouncilChimeInDecision = {
   agent: CouncilAgentId
   reason: string
+}
+
+export type CouncilCrossAgentHandoff = {
+  targetAgent: CouncilAgentId
+  topic: string
+  reason: string
+}
+
+function handoffTopicPatterns(...topics: string[]): RegExp[] {
+  const topicGroup = topics.map((topic) => topic.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")
+  return [
+    new RegExp(`\\b(?:what|how) about (?:the |my )?(?:${topicGroup})\\b`, "i"),
+    new RegExp(`\\bhow are we (?:looking|doing) (?:on |at )?(?:the |my )?(?:${topicGroup})\\b`, "i"),
+    new RegExp(`\\b(?:and |but )(?:the |my )?(?:${topicGroup})\\b`, "i"),
+    new RegExp(`^(?:what|how) about (?:the |my )?(?:${topicGroup})\\??$`, "i"),
+  ]
+}
+
+const CROSS_AGENT_HANDOFFS: Array<{
+  targetAgent: CouncilAgentId
+  topic: string
+  patterns: RegExp[]
+  reason: string
+}> = [
+  {
+    targetAgent: "scott",
+    topic: "risk",
+    patterns: [
+      ...handoffTopicPatterns("risk", "balance", "drawdown", "limit", "slot", "capital", "cooldown"),
+      /\bhow(?:'s| is) (?:our |the )?risk\b/i,
+      /^(?:what|how about )?risk\??$/i,
+      /\bcheck (?:the )?risk\b/i,
+      /\brisk though\b/i,
+    ],
+    reason: "Trader asked about risk — Scott owns limits and capital protection.",
+  },
+  {
+    targetAgent: "sarah",
+    topic: "discipline",
+    patterns: [
+      ...handoffTopicPatterns("discipline", "mindset", "emotion", "patience", "chapter"),
+      /\bhow(?:'s| am) i (?:doing )?(?:emotionally|mentally)\b/i,
+    ],
+    reason: "Trader asked about mindset — Sarah owns discipline and chapter momentum.",
+  },
+  {
+    targetAgent: "khalid",
+    topic: "setup",
+    patterns: [
+      ...handoffTopicPatterns(
+        "setup",
+        "confirmation",
+        "confirm",
+        "entry",
+        "validity",
+        "m15",
+        "htf",
+        "h4",
+        "technical",
+      ),
+      /\bis it (?:still )?valid\b/i,
+      /^(?:what|how about )?(?:the )?setup\??$/i,
+    ],
+    reason: "Trader asked about setup confirmation — Khalid owns entry validity.",
+  },
+  {
+    targetAgent: "hamza",
+    topic: "watchlist",
+    patterns: [
+      ...handoffTopicPatterns("watchlist", "war room", "best pair", "setup grade", "opportunity", "opportunities"),
+      /\bwhat(?:'s| is) (?:the )?best (?:pair|setup)\b/i,
+    ],
+    reason: "Trader asked about opportunities — Hamza owns watchlist and War Room grades.",
+  },
+  {
+    targetAgent: "adam",
+    topic: "last trade",
+    patterns: [
+      ...handoffTopicPatterns("last trade", "recent trade", "mistake", "my trade"),
+      /\bwhat went wrong\b/i,
+    ],
+    reason: "Trader asked about past execution — Adam owns trade review.",
+  },
+]
+
+export function pickCouncilCrossAgentHandoff(input: {
+  question: string
+  primaryAgent: CouncilAgentId
+}): CouncilCrossAgentHandoff | null {
+  if (detectCouncilAgentByName(input.question)) return null
+
+  const trimmed = input.question.trim()
+  if (!trimmed) return null
+
+  for (const rule of CROSS_AGENT_HANDOFFS) {
+    if (rule.targetAgent === input.primaryAgent) continue
+
+    for (const pattern of rule.patterns) {
+      if (pattern.test(trimmed)) {
+        return {
+          targetAgent: rule.targetAgent,
+          topic: rule.topic,
+          reason: rule.reason,
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+export function buildHandoffAskFallback(input: {
+  primaryAgent: CouncilAgentId
+  targetAgent: CouncilAgentId
+  topic: string
+}): string {
+  const targetName = getCouncilAgent(input.targetAgent).name
+
+  switch (input.topic) {
+    case "risk":
+      return `${targetName}, how are we looking on risk today?`
+    case "discipline":
+      return `${targetName}, how's my discipline looking this week?`
+    case "confirmation":
+    case "setup":
+      return `${targetName}, how's the setup looking from your read?`
+    case "watchlist":
+      return `${targetName}, what's the best setup on the watchlist right now?`
+    case "last trade":
+      return `${targetName}, what stands out from my last trade?`
+    default:
+      return `${targetName}, what's your read on that?`
+  }
+}
+
+export function buildHandoffAnswerFallback(input: {
+  targetAgent: CouncilAgentId
+  topic: string
+  context: CouncilAgentContext
+}): string {
+  switch (input.targetAgent) {
+    case "scott":
+      return input.context.scott.split(".").slice(0, 2).join(".") + "."
+    case "sarah":
+      return input.context.sarah.split(".").slice(0, 2).join(".") + "."
+    case "khalid":
+      return input.context.khalid.split(".").slice(0, 2).join(".") + "."
+    case "hamza":
+      return input.context.hamza.split(".").slice(0, 2).join(".") + "."
+    case "adam":
+      return input.context.adam.split(".").slice(0, 2).join(".") + "."
+  }
 }
 
 function isEntryDecisionQuestion(question: string): boolean {
