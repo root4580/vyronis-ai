@@ -2,27 +2,28 @@ import type { CouncilAgentId, CouncilAgentContext, CouncilTranscriptEntry } from
 import { getCouncilAgent } from "@/lib/council/agents"
 
 const CONVERSATION_RULES = [
-  "You are in a live back-and-forth conversation — not replaying the morning briefing.",
+  "You are in a live council room with Nova, Rex, Luna, Cipher, and Zara — not a solo chatbot.",
   "Answer the trader's LATEST message directly. Acknowledge what they just said.",
   "Never repeat your previous reply word-for-word or reopen with the same greeting twice.",
   "Add something new each turn: a next step, a clarification, or a direct yes/no.",
   "If the trader gives an update (e.g. 'it's ready now', 'price hit the zone'), respond to THAT first.",
   "If live snapshot data differs from what the trader says, briefly note both — then guide the next action.",
+  "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
   "Vary your wording. Sound natural, not like a script.",
 ].join("\n")
 
 function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): string {
   switch (agentId) {
-    case "sarah":
-      return context.sarah
-    case "adam":
-      return context.adam
-    case "scott":
-      return context.scott
-    case "hamza":
-      return context.hamza
-    case "khalid":
-      return context.khalid
+    case "nova":
+      return context.nova
+    case "zara":
+      return context.zara
+    case "rex":
+      return context.rex
+    case "luna":
+      return context.luna
+    case "cipher":
+      return context.cipher
   }
 }
 
@@ -54,19 +55,19 @@ export function buildCouncilAgentSystemPrompt(
     base.push(CONVERSATION_RULES)
   }
 
-  if (agentId === "sarah") {
+  if (agentId === "nova") {
     base.push("Focus on chapter momentum, discipline, and emotional steadiness.")
   }
-  if (agentId === "adam") {
+  if (agentId === "zara") {
     base.push("Focus on one specific improvement from recent trades.")
   }
-  if (agentId === "scott") {
+  if (agentId === "rex") {
     base.push("Be firm about limits and capital protection.")
   }
-  if (agentId === "hamza") {
+  if (agentId === "luna") {
     base.push("Highlight the strongest watchlist setup with encouragement.")
   }
-  if (agentId === "khalid") {
+  if (agentId === "cipher") {
     base.push(
       "Give clear technical entry/wait verdicts. If the trader says AOI is ready or price is in zone, move to M15 confirmation and invalidation — do not keep saying WAITING.",
     )
@@ -141,7 +142,7 @@ export function buildCouncilRespondUserPrompt(input: {
     isFollowUp
       ? "This looks like a follow-up. Respond to their update in one or two fresh sentences. Do not re-list every pair unless they asked."
       : "Answer their specific question with one clear takeaway.",
-    "Do not speak for other agents.",
+    "If their question belongs to another council member's lane, say you will bring them in — do not answer outside your role.",
   ]
     .filter(Boolean)
     .join("\n\n")
@@ -156,11 +157,17 @@ export function buildCouncilHandoffAskUserPrompt(input: {
 }): string {
   return [
     input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
-    `The trader asked about ${input.topic} while talking to you (${input.primaryAgentName}).`,
-    `You are NOT the ${input.topic} expert — ${input.targetAgentName} is.`,
+    input.topic === "question"
+      ? `The trader asked you (${input.primaryAgentName}) to bring ${input.targetAgentName} into the conversation.`
+      : `The trader asked about ${input.topic} while talking to you (${input.primaryAgentName}).`,
+    input.topic === "question"
+      ? `${input.targetAgentName} is right here in the council room with you.`
+      : `You are NOT the ${input.topic} expert — ${input.targetAgentName} is.`,
     `In ONE short sentence, turn to ${input.targetAgentName} by name and ask how things look.`,
-    `Example tone: "${input.targetAgentName}, how are we looking on ${input.topic}?"`,
-    `Do NOT answer ${input.topic} yourself. Do not give limits, numbers, or verdicts — only ask ${input.targetAgentName}.`,
+    input.topic === "question"
+      ? `Example tone: "${input.targetAgentName}, how are we doing?" or "${input.targetAgentName}, can you weigh in?"`
+      : `Example tone: "${input.targetAgentName}, how are we looking on ${input.topic}?"`,
+    `Do NOT answer the question yourself. Do not say you cannot connect them, facilitate, or speak for them — just ask ${input.targetAgentName} by name.`,
     `Trader's message: ${input.question}`,
   ]
     .filter(Boolean)

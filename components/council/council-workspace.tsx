@@ -11,7 +11,11 @@ import {
   runCouncilBriefing,
 } from "@/lib/council/api-client"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
-import { detectCouncilAgentByName } from "@/lib/council/router"
+import {
+  detectCouncilAgentByName,
+  isCouncilDelegationRequest,
+  resolveCouncilPronounTarget,
+} from "@/lib/council/router"
 import { cn } from "@/lib/utils"
 import { useCouncilVoicePlayback } from "@/hooks/use-council-voice-playback"
 import { useCouncilVoiceInput } from "@/hooks/use-council-voice-input"
@@ -53,6 +57,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const conversationAgentRef = useRef<CouncilAgentId | null>(null)
   const selectedAgentRef = useRef<CouncilAgentId | "auto">("auto")
   const submitQuestionRef = useRef<(message: string) => Promise<void>>(async () => {})
+  const transcriptRef = useRef<CouncilTranscriptEntry[]>([])
 
   const {
     voiceEnabled,
@@ -82,6 +87,10 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   useEffect(() => {
     selectedAgentRef.current = selectedAgent
   }, [selectedAgent])
+
+  useEffect(() => {
+    transcriptRef.current = transcript
+  }, [transcript])
 
   const greetingName = traderFirstName?.trim() || "Trader"
 
@@ -209,12 +218,18 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       clearMicError()
 
       const namedAgent = detectCouncilAgentByName(trimmed)
+      const delegating = isCouncilDelegationRequest(trimmed)
+      const pronounTarget = resolveCouncilPronounTarget(trimmed, transcriptRef.current)
       const manualAgent =
         selectedAgentRef.current === "auto" ? null : selectedAgentRef.current
       const activeConversation = conversationAgentRef.current
-      const targetAgent = namedAgent ?? manualAgent ?? activeConversation ?? undefined
+      const directSwitch = namedAgent && !delegating && !pronounTarget
+      const targetAgent =
+        delegating || pronounTarget
+          ? activeConversation ?? manualAgent ?? undefined
+          : namedAgent ?? manualAgent ?? activeConversation ?? undefined
 
-      if (namedAgent) {
+      if (directSwitch) {
         setConversationAgent(namedAgent)
         conversationAgentRef.current = namedAgent
         setSelectedAgent(namedAgent)

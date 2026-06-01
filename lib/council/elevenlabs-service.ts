@@ -10,11 +10,11 @@ export function councilSettingsToVoiceMap(
 ): CouncilVoiceSettings | null {
   if (!settings) return null
   return {
-    sarah_voice_id: settings.sarah_voice_id,
-    adam_voice_id: settings.adam_voice_id,
-    scott_voice_id: settings.scott_voice_id,
-    hamza_voice_id: settings.hamza_voice_id,
-    khalid_voice_id: settings.khalid_voice_id,
+    nova_voice_id: settings.nova_voice_id,
+    zara_voice_id: settings.zara_voice_id,
+    rex_voice_id: settings.rex_voice_id,
+    luna_voice_id: settings.luna_voice_id,
+    cipher_voice_id: settings.cipher_voice_id,
   }
 }
 

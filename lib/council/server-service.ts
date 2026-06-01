@@ -3,6 +3,12 @@ import { randomUUID } from "crypto"
 import { resolveAiProvider } from "@/lib/ai/providers"
 import { BRIEFING_AGENT_ORDER, getCouncilAgent } from "@/lib/council/agents"
 import {
+  LEGACY_COUNCIL_AGENT_NAME,
+  LEGACY_COUNCIL_SETTINGS_VOICE_KEYS,
+  normalizeCouncilAgentId,
+  normalizeCouncilDisplayName,
+} from "@/lib/council/agent-ids"
+import {
   isCouncilMorningWindow,
   loadCouncilAgentContext,
 } from "@/lib/council/context-service"
@@ -23,7 +29,13 @@ import {
   pickCouncilChimeInAgent,
   pickCouncilCrossAgentHandoff,
 } from "@/lib/council/multi-agent-orchestrator"
-import { getStickyCouncilAgentFromTranscript, resolveCouncilAgentForMessage } from "@/lib/council/router"
+import {
+  detectCouncilAgentByName,
+  getStickyCouncilAgentFromTranscript,
+  isCouncilDelegationRequest,
+  resolveCouncilAgentForMessage,
+  resolveCouncilPronounTarget,
+} from "@/lib/council/router"
 import type {
   CouncilAgentId,
   CouncilBriefingResponse,
@@ -53,6 +65,19 @@ function todayDateISO(now = new Date()): string {
   return now.toISOString().slice(0, 10)
 }
 
+function normalizeTranscriptEntry(entry: CouncilTranscriptEntry): CouncilTranscriptEntry {
+  if (entry.agent === "user" || entry.agent === "system") return entry
+  const normalized = normalizeCouncilAgentId(String(entry.agent))
+  return normalized ? { ...entry, agent: normalized } : entry
+}
+
+function readCouncilVoiceId(row: Record<string, unknown>, agentId: CouncilAgentId): string | null {
+  const newKey = `${agentId}_voice_id`
+  const legacyKey = LEGACY_COUNCIL_SETTINGS_VOICE_KEYS[agentId]
+  const value = row[newKey] ?? row[legacyKey]
+  return value != null ? String(value) : null
+}
+
 function normalizeSession(row: Record<string, unknown>): CouncilSessionRecord {
   return {
     id: String(row.id),
@@ -60,10 +85,10 @@ function normalizeSession(row: Record<string, unknown>): CouncilSessionRecord {
     account_id: row.account_id != null ? String(row.account_id) : null,
     session_date: String(row.session_date).slice(0, 10),
     agents_spoken: Array.isArray(row.agents_spoken)
-      ? row.agents_spoken.map(String)
+      ? row.agents_spoken.map((name) => normalizeCouncilDisplayName(String(name)))
       : [],
     full_transcript: Array.isArray(row.full_transcript)
-      ? (row.full_transcript as CouncilTranscriptEntry[])
+      ? (row.full_transcript as CouncilTranscriptEntry[]).map(normalizeTranscriptEntry)
       : [],
     key_insights: Array.isArray(row.key_insights) ? row.key_insights.map(String) : [],
     briefing_completed: Boolean(row.briefing_completed),
@@ -76,11 +101,11 @@ function normalizeSettings(row: Record<string, unknown>): CouncilSettingsRecord 
   return {
     id: String(row.id),
     user_id: String(row.user_id),
-    sarah_voice_id: row.sarah_voice_id != null ? String(row.sarah_voice_id) : null,
-    adam_voice_id: row.adam_voice_id != null ? String(row.adam_voice_id) : null,
-    scott_voice_id: row.scott_voice_id != null ? String(row.scott_voice_id) : null,
-    hamza_voice_id: row.hamza_voice_id != null ? String(row.hamza_voice_id) : null,
-    khalid_voice_id: row.khalid_voice_id != null ? String(row.khalid_voice_id) : null,
+    nova_voice_id: readCouncilVoiceId(row, "nova"),
+    zara_voice_id: readCouncilVoiceId(row, "zara"),
+    rex_voice_id: readCouncilVoiceId(row, "rex"),
+    luna_voice_id: readCouncilVoiceId(row, "luna"),
+    cipher_voice_id: readCouncilVoiceId(row, "cipher"),
     auto_briefing_enabled: row.auto_briefing_enabled !== false,
     briefing_time: String(row.briefing_time ?? "on_login"),
     language_preference: String(row.language_preference ?? "en"),
@@ -99,17 +124,17 @@ function buildConversationFallback(input: {
   const trimmed = input.question.trim()
 
   if (/ready|in the zone|hit the zone|at aoi|confirmed/i.test(trimmed)) {
-    if (input.agentId === "khalid") {
+    if (input.agentId === "cipher") {
       return "Good — if price is in your AOI, wait for the M15 close in your direction before entry. Keep invalidation clear and do not chase the wick."
     }
-    if (input.agentId === "hamza") {
+    if (input.agentId === "luna") {
       return "Nice — if the zone is live, run Coach on the setup before you commit size."
     }
   }
 
   if (/how are we|how am i|how'?s it going/i.test(trimmed)) {
-    if (input.agentId === "scott") {
-      return input.context.scott.split(".").slice(0, 2).join(".") + "."
+    if (input.agentId === "rex") {
+      return input.context.rex.split(".").slice(0, 2).join(".") + "."
     }
   }
 
@@ -122,22 +147,22 @@ function buildConversationFallback(input: {
 
 function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<typeof loadCouncilAgentContext>>): string {
   switch (agentId) {
-    case "sarah":
-      return `${context.chapterLabel} is underway. You have ${context.sarah.includes("remaining") ? "trades to protect" : "room to execute with discipline"}. Last week's lesson still counts — stay patient.`
-    case "scott":
-      return context.scott.split(".").slice(0, 2).join(".") + "."
-    case "hamza":
-      return context.hamza.includes("No War Room")
+    case "nova":
+      return `${context.chapterLabel} is underway. You have ${context.nova.includes("remaining") ? "trades to protect" : "room to execute with discipline"}. Last week's lesson still counts — stay patient.`
+    case "rex":
+      return context.rex.split(".").slice(0, 2).join(".") + "."
+    case "luna":
+      return context.luna.includes("No War Room")
         ? "Save your War Room watchlist first — I will highlight the best A+ setup once pairs are loaded."
-        : `Strongest focus: ${context.hamza.split("·")[0]?.trim() || "your top watchlist pair"}.`
-    case "khalid":
-      return context.khalid.includes("No setups")
+        : `Strongest focus: ${context.luna.split("·")[0]?.trim() || "your top watchlist pair"}.`
+    case "cipher":
+      return context.cipher.includes("No setups")
         ? "No confirmed setup yet — align HTF bias and AOI before entry."
-        : context.khalid.split("|")[0]?.trim() || "Wait for M15 close confirmation before entry."
-    case "adam":
-      return context.adam.includes("No live")
+        : context.cipher.split("|")[0]?.trim() || "Wait for M15 close confirmation before entry."
+    case "zara":
+      return context.zara.includes("No live")
         ? "No live trades to review yet — paper your plan until the journal has data."
-        : context.adam.split(".")[0] + "."
+        : context.zara.split(".")[0] + "."
   }
 }
 
@@ -330,12 +355,25 @@ async function loadAgentMemoryContext(
   agentId: CouncilAgentId,
   excludeReply?: string | null,
 ): Promise<string> {
-  const { data } = await supabase
+  let { data } = await supabase
     .from("agent_memories")
     .select("last_10_conversations")
     .eq("user_id", userId)
     .eq("agent_name", agentId)
     .maybeSingle()
+
+  if (!data?.last_10_conversations) {
+    const legacyName = LEGACY_COUNCIL_AGENT_NAME[agentId]
+    if (legacyName) {
+      const legacy = await supabase
+        .from("agent_memories")
+        .select("last_10_conversations")
+        .eq("user_id", userId)
+        .eq("agent_name", legacyName)
+        .maybeSingle()
+      data = legacy.data
+    }
+  }
 
   const conversations = Array.isArray(data?.last_10_conversations)
     ? (data.last_10_conversations as Array<{ user: string; agent: string }>)
@@ -484,8 +522,9 @@ export async function runCouncilRespond(
   const transcript = existing?.full_transcript ?? []
   const stickyAgent = getStickyCouncilAgentFromTranscript(transcript)
   const agentId = resolveCouncilAgentForMessage(trimmed, {
-    preferredAgent: options?.preferredAgent ?? options?.conversationAgent,
+    preferredAgent: options?.preferredAgent,
     stickyAgent,
+    conversationAgent: options?.conversationAgent,
   })
 
   const userEntry: CouncilTranscriptEntry = {
@@ -504,9 +543,15 @@ export async function runCouncilRespond(
     lastAgentReply,
   ).catch(() => "")
 
+  const pronounTarget = resolveCouncilPronounTarget(trimmed, transcript)
+  const namedAgent = detectCouncilAgentByName(trimmed)
+  const delegationTarget =
+    pronounTarget ?? (namedAgent && isCouncilDelegationRequest(trimmed) ? namedAgent : null)
+
   const handoff = pickCouncilCrossAgentHandoff({
     question: trimmed,
     primaryAgent: agentId,
+    forcedTarget: delegationTarget,
   })
 
   let reply: string

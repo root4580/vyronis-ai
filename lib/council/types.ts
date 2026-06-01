@@ -1,4 +1,4 @@
-export type CouncilAgentId = "sarah" | "adam" | "scott" | "hamza" | "khalid"
+export type CouncilAgentId = "nova" | "zara" | "luna" | "rex" | "cipher"
 
 export type CouncilAgentDefinition = {
   id: CouncilAgentId
@@ -32,11 +32,11 @@ export type CouncilSessionRecord = {
 export type CouncilSettingsRecord = {
   id: string
   user_id: string
-  sarah_voice_id: string | null
-  adam_voice_id: string | null
-  scott_voice_id: string | null
-  hamza_voice_id: string | null
-  khalid_voice_id: string | null
+  nova_voice_id: string | null
+  zara_voice_id: string | null
+  rex_voice_id: string | null
+  luna_voice_id: string | null
+  cipher_voice_id: string | null
   auto_briefing_enabled: boolean
   briefing_time: string
   language_preference: string
@@ -45,11 +45,11 @@ export type CouncilSettingsRecord = {
 }
 
 export type CouncilAgentContext = {
-  sarah: string
-  adam: string
-  scott: string
-  hamza: string
-  khalid: string
+  nova: string
+  zara: string
+  rex: string
+  luna: string
+  cipher: string
   traderFirstName: string
   chapterNumber: number
   chapterLabel: string

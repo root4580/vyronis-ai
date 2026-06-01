@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
+import { COUNCIL_AGENT_IDS, normalizeCouncilAgentId } from "@/lib/council/agent-ids"
 import type { CouncilAgentId } from "@/lib/council/types"
 import { CouncilTablesMissingError, runCouncilRespond } from "@/lib/council/server-service"
 
-const AGENTS = new Set<CouncilAgentId>(["sarah", "adam", "scott", "hamza", "khalid"])
+const AGENTS = new Set<CouncilAgentId>(COUNCIL_AGENT_IDS)
 
 export async function POST(request: Request) {
   try {
@@ -31,14 +32,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No active account" }, { status: 400 })
     }
 
-    const preferredAgent =
+    const preferredAgentRaw =
       body.agent && AGENTS.has(body.agent as CouncilAgentId)
         ? (body.agent as CouncilAgentId)
-        : undefined
-    const conversationAgent =
+        : normalizeCouncilAgentId(body.agent ?? "")
+    const preferredAgent =
+      preferredAgentRaw && AGENTS.has(preferredAgentRaw) ? preferredAgentRaw : undefined
+    const conversationAgentRaw =
       body.conversationAgent && AGENTS.has(body.conversationAgent as CouncilAgentId)
         ? (body.conversationAgent as CouncilAgentId)
-        : undefined
+        : normalizeCouncilAgentId(body.conversationAgent ?? "")
+    const conversationAgent =
+      conversationAgentRaw && AGENTS.has(conversationAgentRaw) ? conversationAgentRaw : undefined
 
     const result = await runCouncilRespond(
       supabase,

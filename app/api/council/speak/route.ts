@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { COUNCIL_AGENT_IDS, normalizeCouncilAgentId } from "@/lib/council/agent-ids"
 import type { CouncilAgentId } from "@/lib/council/types"
 import {
   councilSettingsToVoiceMap,
@@ -8,7 +9,7 @@ import {
 } from "@/lib/council/elevenlabs-service"
 import { getOrCreateCouncilSettings } from "@/lib/council/server-service"
 
-const AGENTS = new Set<CouncilAgentId>(["sarah", "adam", "scott", "hamza", "khalid"])
+const AGENTS = new Set<CouncilAgentId>(COUNCIL_AGENT_IDS)
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +28,8 @@ export async function POST(request: Request) {
       text?: string
     }
 
-    if (!body.agent || !AGENTS.has(body.agent as CouncilAgentId)) {
+    const agentId = normalizeCouncilAgentId(body.agent ?? "")
+    if (!agentId || !AGENTS.has(agentId)) {
       return NextResponse.json({ error: "Valid agent is required" }, { status: 400 })
     }
 
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
 
     const settings = await getOrCreateCouncilSettings(supabase, user.id)
     const audio = await synthesizeCouncilSpeech({
-      agentId: body.agent as CouncilAgentId,
+      agentId,
       text,
       settings: councilSettingsToVoiceMap(settings),
     })

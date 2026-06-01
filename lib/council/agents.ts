@@ -2,40 +2,40 @@ import type { CouncilAgentDefinition, CouncilAgentId } from "@/lib/council/types
 
 export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
   {
-    id: "sarah",
-    name: "Sarah",
+    id: "nova",
+    name: "Nova",
     role: "Weekly Chapter Review",
     personality: "Warm, caring, motivating",
     maxSentences: 3,
     accentClass: "border-rose-400/30 bg-rose-500/[0.08] text-rose-100",
   },
   {
-    id: "scott",
-    name: "Scott",
+    id: "rex",
+    name: "Rex",
     role: "Risk Manager",
     personality: "Firm, protective, no-nonsense",
     maxSentences: 2,
     accentClass: "border-amber-400/30 bg-amber-500/[0.08] text-amber-100",
   },
   {
-    id: "hamza",
-    name: "Hamza",
+    id: "luna",
+    name: "Luna",
     role: "Setup Analyst",
     personality: "Enthusiastic, encouraging",
     maxSentences: 3,
     accentClass: "border-violet-400/30 bg-violet-500/[0.08] text-violet-100",
   },
   {
-    id: "khalid",
-    name: "Khalid",
+    id: "cipher",
+    name: "Cipher",
     role: "Setup Confirmation",
     personality: "Sharp, precise, technical",
     maxSentences: 2,
     accentClass: "border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-100",
   },
   {
-    id: "adam",
-    name: "Adam",
+    id: "zara",
+    name: "Zara",
     role: "Last Trade Analyst",
     personality: "Analytical, precise, honest",
     maxSentences: 3,
@@ -44,11 +44,11 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
 ]
 
 export const BRIEFING_AGENT_ORDER: CouncilAgentId[] = [
-  "sarah",
-  "scott",
-  "hamza",
-  "khalid",
-  "adam",
+  "nova",
+  "rex",
+  "luna",
+  "cipher",
+  "zara",
 ]
 
 export function getCouncilAgent(id: CouncilAgentId): CouncilAgentDefinition {

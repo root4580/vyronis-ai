@@ -109,7 +109,7 @@ export async function loadCouncilAgentContext(
   const tradesRemaining = rulesSnapshot?.tradesRemainingThisWeek ?? 0
   const maxTrades = rulesSnapshot?.rules.max_trades_per_week ?? account?.max_trades_per_week ?? 2
 
-  const sarah = [
+  const nova = [
     `${chapterLabel} is active.`,
     `Live trades this week: ${weekTrades.length}/${maxTrades}. Slots remaining: ${tradesRemaining}.`,
     previousChapter
@@ -169,14 +169,14 @@ export async function loadCouncilAgentContext(
     .map((pattern) => pattern.message)
     .join(" ")
 
-  const adam = [
+  const zara = [
     lastThree.length > 0 ? `Last trades: ${lastThree.join(" | ")}` : "No live trades logged yet.",
     patterns ? `Patterns: ${patterns}` : null,
   ]
     .filter(Boolean)
     .join(" ")
 
-  const scott = [
+  const rex = [
     `Balance ${formatMoney(balance, currency)} (starting ${formatMoney(startingBalance, currency)}).`,
     `Drawdown ${drawdownPct.toFixed(1)}%.`,
     rulesSnapshot?.cooldownRequired
@@ -193,7 +193,7 @@ export async function loadCouncilAgentContext(
     if (warPlan && warPlan.pairs.length > 0) break
   }
 
-  const hamza = warPlan?.pairs.length
+  const luna = warPlan?.pairs.length
     ? warPlan.pairs
         .map((pair) => {
           const zone =
@@ -213,24 +213,24 @@ export async function loadCouncilAgentContext(
       })
     : null
 
-  const khalidPairs = (warPlan?.pairs ?? []).slice(0, 4).map((pair) => {
+  const cipherPairs = (warPlan?.pairs ?? []).slice(0, 4).map((pair) => {
     const htf = biasEval
       ? `Weekly ${biasEval.weekly_bias}, Daily ${biasEval.daily_bias}, H4 ${biasEval.h4_bias} — ${biasEval.alignment_summary}`
       : "HTF bias not set — run War Room bias panel."
     return `${pair.pair}: ${htf} Pair plan ${pair.directional_bias}. AOI ${pair.aoi_status}. ${pair.invalidation != null ? `Invalidation ${pair.invalidation}.` : ""}`
   })
 
-  const khalid =
-    khalidPairs.length > 0
-      ? khalidPairs.join(" | ")
+  const cipher =
+    cipherPairs.length > 0
+      ? cipherPairs.join(" | ")
       : "No setups to confirm — save War Room pair plans with AOI and bias first."
 
   return {
-    sarah,
-    adam,
-    scott,
-    hamza,
-    khalid,
+    nova,
+    zara,
+    rex,
+    luna,
+    cipher,
     traderFirstName: firstName,
     chapterNumber,
     chapterLabel,

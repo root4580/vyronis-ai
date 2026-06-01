@@ -1,20 +1,70 @@
-import { COUNCIL_AGENTS } from "@/lib/council/agents"
+import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
+import { detectCouncilAgentIdByName } from "@/lib/council/agent-ids"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 
-const AGENT_NAME_PATTERNS: Array<{ agent: CouncilAgentId; pattern: RegExp }> = COUNCIL_AGENTS.map(
-  (agent) => ({
-    agent: agent.id,
-    pattern: new RegExp(`\\b${agent.name}\\b`, "i"),
-  }),
-)
-
-/** Direct address — "Hey Scott", "Good morning Sarah", "Adam, review my trade". */
+/** Direct address — "Hey Rex", "Good morning Nova", "Zara, review my trade". */
 export function detectCouncilAgentByName(message: string): CouncilAgentId | null {
-  const trimmed = message.trim()
-  if (!trimmed) return null
+  return detectCouncilAgentIdByName(message)
+}
 
-  for (const { agent, pattern } of AGENT_NAME_PATTERNS) {
-    if (pattern.test(trimmed)) return agent
+/** Trader wants the current agent to bring another council member in — not switch to them directly. */
+export function isCouncilDelegationRequest(message: string): boolean {
+  const trimmed = message.trim()
+  if (!trimmed) return false
+
+  if (
+    /\b(?:have|let|want|need) (?:him|her|them) (?:to )?(?:speak|talk|answer|respond|say)\b/i.test(
+      trimmed,
+    )
+  ) {
+    return true
+  }
+
+  if (/\b(?:him|her|them) (?:to )?(?:speak|talk|answer|respond)\b/i.test(trimmed)) {
+    return true
+  }
+
+  for (const agent of COUNCIL_AGENTS) {
+    const name = getCouncilAgent(agent.id).name
+    const delegationPatterns = [
+      new RegExp(
+        `\\b(?:can you|could you|would you|will you|please|you mind) (?:ask|asking|have|let|get|tell) (?:\\w+\\s+){0,4}${name}\\b`,
+        "i",
+      ),
+      new RegExp(`\\bask (?:\\w+\\s+){0,2}${name}\\b`, "i"),
+      new RegExp(`\\b(?:have|let) ${name} (?:speak|talk|answer|respond)\\b`, "i"),
+      new RegExp(`\\bbring (?:in )?${name}\\b`, "i"),
+    ]
+
+    if (delegationPatterns.some((delegationPattern) => delegationPattern.test(trimmed))) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/** Direct address to an agent — "Cipher, is it valid?" not "can you ask Cipher". */
+export function isCouncilDirectAddress(message: string, agentId: CouncilAgentId): boolean {
+  const trimmed = message.trim()
+  const name = getCouncilAgent(agentId).name
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+  return new RegExp(`^${escaped}\\b|^hey ${escaped}\\b|^hi ${escaped}\\b|^good morning ${escaped}\\b`, "i").test(
+    trimmed,
+  )
+}
+
+/** Resolve "him/her/them" to the last agent mentioned in recent transcript. */
+export function resolveCouncilPronounTarget(
+  message: string,
+  transcript: CouncilTranscriptEntry[],
+): CouncilAgentId | null {
+  if (!/\b(?:him|her|them)\b/i.test(message.trim())) return null
+
+  for (let index = transcript.length - 1; index >= 0; index -= 1) {
+    const mentioned = detectCouncilAgentByName(transcript[index]!.content)
+    if (mentioned) return mentioned
   }
 
   return null
@@ -46,7 +96,7 @@ export function getStickyCouncilAgentFromTranscript(
 
 const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
   {
-    agent: "scott",
+    agent: "rex",
     patterns: [
       /\brisk\b/i,
       /\bbalance\b/i,
@@ -59,7 +109,7 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     ],
   },
   {
-    agent: "adam",
+    agent: "zara",
     patterns: [
       /\blast trade\b/i,
       /\bmy trade\b/i,
@@ -72,7 +122,7 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     ],
   },
   {
-    agent: "hamza",
+    agent: "luna",
     patterns: [
       /\bwatchlist\b/i,
       /\bwar room\b/i,
@@ -84,7 +134,7 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     ],
   },
   {
-    agent: "khalid",
+    agent: "cipher",
     patterns: [
       /\bconfirm\b/i,
       /\bapex\b/i,
@@ -99,7 +149,7 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     ],
   },
   {
-    agent: "sarah",
+    agent: "nova",
     patterns: [
       /\bchapter\b/i,
       /\bweek\b/i,
@@ -113,12 +163,12 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
 
 export function routeCouncilQuestion(message: string): CouncilAgentId {
   const trimmed = message.trim()
-  if (!trimmed) return "sarah"
+  if (!trimmed) return "nova"
 
   const byName = detectCouncilAgentByName(trimmed)
   if (byName) return byName
 
-  let best: CouncilAgentId = "sarah"
+  let best: CouncilAgentId = "nova"
   let bestScore = 0
 
   for (const rule of ROUTING) {
@@ -140,11 +190,21 @@ export function resolveCouncilAgentForMessage(
   options?: {
     preferredAgent?: CouncilAgentId
     stickyAgent?: CouncilAgentId | null
+    conversationAgent?: CouncilAgentId | null
   },
 ): CouncilAgentId {
-  const byName = detectCouncilAgentByName(message)
-  if (byName) return byName
-  if (options?.preferredAgent) return options.preferredAgent
-  if (options?.stickyAgent) return options.stickyAgent
+  const namedAgent = detectCouncilAgentByName(message)
+  const delegating = isCouncilDelegationRequest(message)
+
+  if (namedAgent && !delegating) return namedAgent
+
+  const partner =
+    options?.conversationAgent ?? options?.preferredAgent ?? options?.stickyAgent ?? null
+  if (partner) return partner
+
+  if (namedAgent && delegating) {
+    return routeCouncilQuestion(message)
+  }
+
   return routeCouncilQuestion(message)
 }
