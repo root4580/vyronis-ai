@@ -205,7 +205,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 pb-28">
+    <div className="mx-auto max-w-3xl space-y-4 pb-44 md:pb-28">
       <header className="hq-surface-card overflow-hidden">
         <div className="border-b border-[var(--border-subtle)] bg-violet-500/[0.06] px-4 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -346,7 +346,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
       <form
         onSubmit={(event) => void handleAsk(event)}
-        className="hq-surface-card fixed bottom-0 left-0 right-0 z-30 border-t border-white/[0.06] bg-[var(--surface-page)]/95 p-4 backdrop-blur-md md:static md:rounded-[var(--radius-md)] md:border md:bg-[var(--surface-card)]"
+        className="hq-surface-card fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 border-t border-white/[0.06] bg-[var(--surface-page)]/95 p-4 backdrop-blur-md md:static md:bottom-auto md:rounded-[var(--radius-md)] md:border md:bg-[var(--surface-card)]"
       >
         <div className="mx-auto flex max-w-3xl gap-2">
           <Button

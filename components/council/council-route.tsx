@@ -31,9 +31,10 @@ export function CouncilRoute() {
         isLoggingOut={chrome.isLoggingOut}
         showSignalBell={Boolean(chrome.user)}
         showMobileDock={Boolean(chrome.user)}
+        dockHighlight="coach"
         onDockHome={() => router.replace(getDashboardHomeHref())}
         onDockPlanner={() => router.replace("/trade-planner")}
-        onDockCoach={() => router.replace(getDashboardHomeHref())}
+        onDockCoach={() => router.replace("/council")}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
         banner={chrome.tradingRulesBanner}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
