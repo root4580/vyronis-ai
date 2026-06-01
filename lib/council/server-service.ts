@@ -262,6 +262,34 @@ async function appendAgentMemory(
   await supabase.from("agent_memories").upsert(payload, { onConflict: "user_id,agent_name" })
 }
 
+async function loadAgentMemoryContext(
+  supabase: SupabaseClient,
+  userId: string,
+  agentId: CouncilAgentId,
+): Promise<string> {
+  const { data } = await supabase
+    .from("agent_memories")
+    .select("last_10_conversations")
+    .eq("user_id", userId)
+    .eq("agent_name", agentId)
+    .maybeSingle()
+
+  const conversations = Array.isArray(data?.last_10_conversations)
+    ? (data.last_10_conversations as Array<{ user: string; agent: string }>)
+    : []
+
+  if (conversations.length === 0) return ""
+
+  return [...conversations]
+    .reverse()
+    .slice(-5)
+    .map(
+      (turn) =>
+        `Trader: ${turn.user}\n${getCouncilAgent(agentId).name}: ${turn.agent}`,
+    )
+    .join("\n\n")
+}
+
 export async function getCouncilSessionState(
   supabase: SupabaseClient,
   userId: string,
@@ -272,12 +300,16 @@ export async function getCouncilSessionState(
       getOrCreateCouncilSettings(supabase, userId),
       getTodayCouncilSession(supabase, userId, accountId),
     ])
+    const conversationAgent = session
+      ? getStickyCouncilAgentFromTranscript(session.full_transcript)
+      : null
     return {
       session,
       settings,
       isMorningWindow: isCouncilMorningWindow(),
       voiceConfigured: isCouncilVoiceOutputConfigured(),
       listenConfigured: isCouncilListenConfigured(),
+      conversationAgent,
     }
   } catch (error) {
     if (error instanceof CouncilTablesMissingError) {
@@ -395,10 +427,16 @@ export async function runCouncilRespond(
     })
     .join("\n")
 
+  const agentMemory = await loadAgentMemoryContext(supabase, userId, agentId).catch(() => "")
+
   const reply = await generateAgentText({
     agentId,
     systemPrompt: buildCouncilAgentSystemPrompt(agentId, context),
-    userPrompt: buildCouncilRespondUserPrompt({ question: trimmed, recentTranscript }),
+    userPrompt: buildCouncilRespondUserPrompt({
+      question: trimmed,
+      recentTranscript,
+      agentMemory,
+    }),
     fallback: fallbackAgentLine(agentId, context),
   })
 

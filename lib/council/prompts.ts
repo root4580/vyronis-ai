@@ -60,9 +60,11 @@ export function buildCouncilBriefingUserPrompt(agentId: CouncilAgentId): string 
 export function buildCouncilRespondUserPrompt(input: {
   question: string
   recentTranscript: string
+  agentMemory?: string
 }): string {
   return [
-    input.recentTranscript ? `Recent council conversation:\n${input.recentTranscript}` : "",
+    input.agentMemory ? `What you remember from earlier conversations:\n${input.agentMemory}` : "",
+    input.recentTranscript ? `Recent council conversation today:\n${input.recentTranscript}` : "",
     `Trader question: ${input.question}`,
     "Answer as yourself only. Do not speak for other agents.",
   ]

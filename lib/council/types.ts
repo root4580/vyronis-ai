@@ -74,5 +74,6 @@ export type CouncilSessionResponse = {
   isMorningWindow: boolean
   voiceConfigured?: boolean
   listenConfigured?: boolean
+  conversationAgent?: CouncilAgentId | null
   migrationPending?: boolean
 }

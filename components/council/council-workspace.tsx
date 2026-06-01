@@ -11,7 +11,7 @@ import {
   runCouncilBriefing,
 } from "@/lib/council/api-client"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
-import { detectCouncilAgentByName, getStickyCouncilAgentFromTranscript } from "@/lib/council/router"
+import { detectCouncilAgentByName } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
 import { useCouncilVoicePlayback } from "@/hooks/use-council-voice-playback"
 import { useCouncilVoiceInput } from "@/hooks/use-council-voice-input"
@@ -105,15 +105,21 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setIsMorningWindow(state.isMorningWindow)
       setVoiceConfigured(Boolean(state.voiceConfigured))
       setListenConfigured(Boolean(state.listenConfigured))
-      setTranscript(state.session?.full_transcript ?? [])
+      setTranscript([])
       setBriefingDone(Boolean(state.session?.briefing_completed))
-      const stickyAgent = getStickyCouncilAgentFromTranscript(state.session?.full_transcript ?? [])
+      const stickyAgent = state.conversationAgent ?? null
       if (stickyAgent) {
         setConversationAgent(stickyAgent)
         conversationAgentRef.current = stickyAgent
         setActiveAgent(stickyAgent)
         setSelectedAgent(stickyAgent)
         selectedAgentRef.current = stickyAgent
+      } else {
+        setConversationAgent(null)
+        conversationAgentRef.current = null
+        setActiveAgent(null)
+        setSelectedAgent("auto")
+        selectedAgentRef.current = "auto"
       }
       if (state.migrationPending) {
         setError("Run supabase/RUN-COUNCIL.sql in Supabase to enable the AI Council.")
