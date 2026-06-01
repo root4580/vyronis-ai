@@ -15,6 +15,10 @@ import {
 } from "@/lib/council/context-service"
 import { loadCachedCouncilAgentContext } from "@/lib/council/context-cache"
 import {
+  buildCouncilAgentLivePrompt,
+  loadCouncilLiveDataBundle,
+} from "@/lib/council/live-data-service"
+import {
   buildCouncilAgentSystemPrompt,
   buildCouncilBriefingUserPrompt,
   buildCouncilChimeInUserPrompt,
@@ -37,6 +41,17 @@ import {
   shouldJarvisRoute,
   shouldUseCouncilRoundtable,
 } from "@/lib/council/jarvis-service"
+import {
+  buildCouncilJournalTodayUserPrompt,
+  buildCouncilStatusUserPrompt,
+  buildJarvisJournalTodayIntro,
+  buildJarvisStatusIntro,
+  buildNovaStatusFallback,
+  buildRexStatusFallback,
+  buildZaraJournalTodayFallback,
+  isCouncilJournalTodayQuestion,
+  isCouncilStatusQuestion,
+} from "@/lib/council/status-response"
 import {
   buildChimeInFallback,
   buildHandoffAnswerFallback,
@@ -154,9 +169,12 @@ function buildConversationFallback(input: {
     }
   }
 
-  if (/how are we|how am i|how'?s it going/i.test(trimmed)) {
+  if (/how are we|how do we look|how am i|how'?s it going|stats|trades taken|emotion/i.test(trimmed)) {
+    if (input.agentId === "nova") {
+      return buildNovaStatusFallback(input.context)
+    }
     if (input.agentId === "rex") {
-      return input.context.rex.split(".").slice(0, 2).join(".") + "."
+      return buildRexStatusFallback(input.context)
     }
   }
 
@@ -225,12 +243,23 @@ async function produceCouncilAgentReply(input: {
   context: Awaited<ReturnType<typeof loadCouncilAgentContext>>
   userPrompt: string
   fallback: string
+  supabase: SupabaseClient
+  userId: string
+  accountId: string
   temperature?: number
   maxTokens?: number
+  mode?: "briefing" | "conversation"
 }): Promise<string> {
+  const liveBundle = await loadCouncilLiveDataBundle(input.supabase, input.userId, input.accountId)
+  const liveDataPrompt = buildCouncilAgentLivePrompt(input.agentId, liveBundle)
   return generateAgentText({
     agentId: input.agentId,
-    systemPrompt: buildCouncilAgentSystemPrompt(input.agentId, input.context, "conversation"),
+    systemPrompt: buildCouncilAgentSystemPrompt(
+      input.agentId,
+      input.context,
+      input.mode ?? "conversation",
+      liveDataPrompt,
+    ),
     userPrompt: input.userPrompt,
     fallback: input.fallback,
     temperature: input.temperature ?? 0.68,
@@ -665,13 +694,16 @@ export async function runCouncilMorningBriefing(
     pushMessage("jarvis", buildJarvisAgentIntro(agentId))
 
     const agent = getCouncilAgent(agentId)
-    const systemPrompt = buildCouncilAgentSystemPrompt(agentId, context, "briefing")
-    const content = await generateAgentText({
+    const content = await produceCouncilAgentReply({
       agentId,
-      systemPrompt,
+      context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilBriefingUserPrompt(agentId, previousSpecialist),
       fallback: fallbackAgentLine(agentId, context),
       temperature: 0.55,
+      mode: "briefing",
     })
 
     pushMessage(agentId, content)
@@ -700,6 +732,166 @@ export async function runCouncilMorningBriefing(
     sessionId: session.id,
     messages: newMessages,
     keyInsights: session.key_insights,
+  }
+}
+
+async function runCouncilStatusTurn(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  trimmed: string,
+  transcript: CouncilTranscriptEntry[],
+  userEntry: CouncilTranscriptEntry,
+  existing: CouncilSessionRecord | null,
+  context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
+  recentTranscript: string,
+): Promise<CouncilRespondResponse> {
+  const agentMessages: CouncilTranscriptEntry[] = [
+    {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisStatusIntro(context.traderFirstName),
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  const statusAgents = ["nova", "rex"] as const
+
+  for (const agentId of statusAgents) {
+    const reply = await produceCouncilAgentReply({
+      agentId,
+      context,
+      supabase,
+      userId,
+      accountId,
+      userPrompt: buildCouncilStatusUserPrompt({
+        question: trimmed,
+        agentId,
+        recentTranscript,
+        traderFirstName: context.traderFirstName,
+      }),
+      fallback:
+        agentId === "nova"
+          ? buildNovaStatusFallback(context)
+          : buildRexStatusFallback(context),
+      temperature: 0.45,
+      maxTokens: 160,
+    })
+
+    const entry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: agentId,
+      content: reply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(entry)
+    await appendAgentMemory(supabase, userId, agentId, trimmed, reply).catch(() => undefined)
+  }
+
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, userEntry, ...agentMessages],
+    agents_spoken: [
+      ...new Set([
+        ...(existing?.agents_spoken ?? []),
+        "Jarvis",
+        ...statusAgents.map((id) => getCouncilAgent(id).name),
+      ]),
+    ],
+  })
+
+  return {
+    sessionId: session.id,
+    agent: "nova",
+    message: agentMessages[1] ?? agentMessages[0]!,
+    messages: agentMessages,
+    chimeIn: null,
+    roundtable: true,
+  }
+}
+
+async function runCouncilJournalTodayTurn(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  trimmed: string,
+  transcript: CouncilTranscriptEntry[],
+  userEntry: CouncilTranscriptEntry,
+  existing: CouncilSessionRecord | null,
+  context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
+  recentTranscript: string,
+): Promise<CouncilRespondResponse> {
+  const agentMessages: CouncilTranscriptEntry[] = [
+    {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisJournalTodayIntro(context.traderFirstName),
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  const zaraReply = await produceCouncilAgentReply({
+    agentId: "zara",
+    context,
+    supabase,
+    userId,
+    accountId,
+    userPrompt: buildCouncilJournalTodayUserPrompt({
+      question: trimmed,
+      recentTranscript,
+      traderFirstName: context.traderFirstName,
+    }),
+    fallback: buildZaraJournalTodayFallback(context),
+    temperature: 0.45,
+    maxTokens: 160,
+  })
+
+  agentMessages.push({
+    id: randomUUID(),
+    agent: "zara",
+    content: zaraReply,
+    createdAt: new Date().toISOString(),
+  })
+
+  const rexReply = await produceCouncilAgentReply({
+    agentId: "rex",
+    context,
+    supabase,
+    userId,
+    accountId,
+    userPrompt: buildCouncilStatusUserPrompt({
+      question: trimmed,
+      agentId: "rex",
+      recentTranscript,
+      traderFirstName: context.traderFirstName,
+    }),
+    fallback: buildRexStatusFallback(context),
+    temperature: 0.45,
+    maxTokens: 120,
+  })
+
+  agentMessages.push({
+    id: randomUUID(),
+    agent: "rex",
+    content: rexReply,
+    createdAt: new Date().toISOString(),
+  })
+
+  await appendAgentMemory(supabase, userId, "zara", trimmed, zaraReply).catch(() => undefined)
+
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, userEntry, ...agentMessages],
+    agents_spoken: [
+      ...new Set([...(existing?.agents_spoken ?? []), "Jarvis", "Zara", "Rex"]),
+    ],
+  })
+
+  return {
+    sessionId: session.id,
+    agent: "zara",
+    message: agentMessages[1]!,
+    messages: agentMessages,
+    chimeIn: null,
+    roundtable: true,
   }
 }
 
@@ -732,6 +924,9 @@ async function runCouncilRoundtableTurn(
     const reply = await produceCouncilAgentReply({
       agentId,
       context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilRoundtableUserPrompt({
         question: trimmed,
         agentName: agent.name,
@@ -837,6 +1032,34 @@ export async function runCouncilRespond(
     createdAt: new Date().toISOString(),
   }
 
+  if (isCouncilStatusQuestion(trimmed)) {
+    return runCouncilStatusTurn(
+      supabase,
+      userId,
+      accountId,
+      trimmed,
+      transcript,
+      userEntry,
+      existing,
+      context,
+      recentTranscript,
+    )
+  }
+
+  if (isCouncilJournalTodayQuestion(trimmed)) {
+    return runCouncilJournalTodayTurn(
+      supabase,
+      userId,
+      accountId,
+      trimmed,
+      transcript,
+      userEntry,
+      existing,
+      context,
+      recentTranscript,
+    )
+  }
+
   const namedAgent = detectCouncilAgentByName(trimmed)
   const delegating = isCouncilDelegationRequest(trimmed)
 
@@ -884,6 +1107,9 @@ export async function runCouncilRespond(
     const jarvisReply = await produceCouncilAgentReply({
       agentId: "jarvis",
       context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilJarvisRespondUserPrompt({
         question: trimmed,
         recentTranscript,
@@ -973,6 +1199,9 @@ export async function runCouncilRespond(
       : await produceCouncilAgentReply({
           agentId,
           context,
+          supabase,
+          userId,
+          accountId,
           userPrompt: buildCouncilHandoffAskUserPrompt({
             primaryAgentName: primaryName,
             targetAgentName: targetName,
@@ -1000,6 +1229,9 @@ export async function runCouncilRespond(
     const targetReply = await produceCouncilAgentReply({
       agentId: handoff.targetAgent,
       context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilHandoffAnswerUserPrompt({
         primaryAgentName: primaryName,
         primaryHandoff: reply,
@@ -1040,6 +1272,9 @@ export async function runCouncilRespond(
     reply = await produceCouncilAgentReply({
       agentId,
       context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilRespondUserPrompt({
         question: trimmed,
         recentTranscript,
@@ -1088,6 +1323,9 @@ export async function runCouncilRespond(
     const chimeReply = await produceCouncilAgentReply({
       agentId: chimeDecision.agent,
       context,
+      supabase,
+      userId,
+      accountId,
       userPrompt: buildCouncilChimeInUserPrompt({
         question: trimmed,
         primaryAgentName: getCouncilAgent(lastSpeaker).name,

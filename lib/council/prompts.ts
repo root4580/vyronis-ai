@@ -8,6 +8,7 @@ const CONVERSATION_RULES = [
   "Add something new each turn: a next step, a clarification, or a direct yes/no.",
   "If the trader gives an update (e.g. 'it's ready now', 'price hit the zone'), respond to THAT first.",
   "If live snapshot data differs from what the trader says, briefly note both — then guide the next action.",
+  "Quote exact numbers from the LIVE SUPABASE DATA block (balance, drawdown, trades, P&L, watchlist) — never use placeholders.",
   "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
   "Never describe pair setups, watchlist grades, or M15 confirmation yourself — bring Luna or Cipher in.",
   "Never quote risk limits or drawdown yourself — bring Rex in.",
@@ -60,6 +61,7 @@ export function buildCouncilAgentSystemPrompt(
   agentId: CouncilAgentId,
   context: CouncilAgentContext,
   mode: "briefing" | "conversation" = "conversation",
+  liveDataPrompt?: string,
 ): string {
   const agent = getCouncilAgent(agentId)
   const data = agentDataBlock(agentId, context)
@@ -76,7 +78,9 @@ export function buildCouncilAgentSystemPrompt(
     if (mode === "briefing") {
       base.push("You open and close the morning briefing. Introduce each specialist briefly.")
     }
-    return base.join("\n")
+    const prompt = base.join("\n")
+    if (!liveDataPrompt?.trim()) return prompt
+    return `${liveDataPrompt.trim()}\n\n${prompt}`
   }
 
   const base = [
@@ -108,7 +112,10 @@ export function buildCouncilAgentSystemPrompt(
   if (agentId === "rex") {
     base.push("Be firm about limits and capital protection.")
     base.push(
-      "Quote today's journal line from your snapshot exactly. If the trader reports a loss but the journal line shows none or missing P&L, say Vyronis does not have it logged yet — never insist they are wrong.",
+      "Quote today's journal line from your snapshot exactly. When asked about today's trades or journal thread, answer from that line and your risk snapshot — never send the trader to Luna.",
+    )
+    base.push(
+      "If the trader reports a loss but the journal line shows none or missing P&L, say Vyronis does not have it logged yet — never insist they are wrong.",
     )
   }
   if (agentId === "luna") {
@@ -121,7 +128,9 @@ export function buildCouncilAgentSystemPrompt(
     )
   }
 
-  return base.join("\n")
+  const prompt = base.join("\n")
+  if (!liveDataPrompt?.trim()) return prompt
+  return `${liveDataPrompt.trim()}\n\n${prompt}`
 }
 
 export function buildCouncilJarvisRespondUserPrompt(input: {

@@ -143,7 +143,7 @@ export function isGeneralCouncilQuestion(message: string): boolean {
     return false
   }
   return (
-    /\b(how are we|how am i|what should i|any thoughts|general|overview|status update|what do you think|how(?:'s| is) everything|anything i should)\b/i.test(
+    /\b(how are we|how do we look|how am i|what should i|any thoughts|general|overview|status update|what do you think|how(?:'s| is) everything|anything i should)\b/i.test(
       trimmed,
     ) || (trimmed.length < 50 && /\?$/.test(trimmed))
   )

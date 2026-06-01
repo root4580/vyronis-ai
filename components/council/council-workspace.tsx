@@ -33,6 +33,8 @@ import {
 import { cn } from "@/lib/utils"
 import { useCouncilVoiceSession } from "@/hooks/use-council-voice-session"
 import { CouncilBriefingContext } from "@/components/council/council-briefing-context"
+import { CouncilInlineStatsCard } from "@/components/council/council-inline-stats-card"
+import { CouncilLiveStatsStrip } from "@/components/council/council-live-stats-strip"
 import { CouncilHistoryPanel } from "@/components/council/council-history-panel"
 import { CouncilMessageBubble } from "@/components/council/council-message-bubble"
 import { CouncilSettingsPanel } from "@/components/council/council-settings-panel"
@@ -376,13 +378,19 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           fullCouncilParticipation,
         })
         if (!result.roundtable) {
-          setConversationAgent(result.agent)
-          conversationAgentRef.current = result.agent
+          if (selectedAgentRef.current !== "auto") {
+            setConversationAgent(result.agent)
+            conversationAgentRef.current = result.agent
+            setSelectedAgent(result.agent)
+            selectedAgentRef.current = result.agent
+          }
           setActiveAgent(result.agent)
-          setSelectedAgent(result.agent)
-          selectedAgentRef.current = result.agent
         } else {
           setActiveAgent(null)
+          if (selectedAgentRef.current === "auto") {
+            setConversationAgent(null)
+            conversationAgentRef.current = null
+          }
         }
         const agentMessages =
           result.messages.length > 0 ? result.messages : [result.message]
@@ -642,13 +650,19 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       />
       <CouncilHistoryPanel accountId={accountId} />
 
+      <CouncilLiveStatsStrip
+        visual={visualContext}
+        loading={isContextLoading}
+        className="sticky top-0 z-20 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md"
+      />
+
       <section className="chart-grid hq-surface-card relative min-h-[320px] overflow-hidden px-4 py-4">
         {transcript.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
             <div>
               <p className="text-[11px] font-medium text-text-primary">Today&apos;s conversation</p>
               <p className="text-[10px] text-text-muted">
-                {transcript.length} message{transcript.length === 1 ? "" : "s"} · scroll up for earlier lines
+                {transcript.length} message{transcript.length === 1 ? "" : "s"} · live stats stay pinned above
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -690,12 +704,13 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               {fullCouncilParticipation && selectedAgent === "auto"
                 ? "Auto routes open questions to every specialist — Nova, Rex, Luna, Cipher, and Zara — then Jarvis wraps up."
                 : freshChatOnOpen
-                  ? "Ask about your trades, mindset, or setups. Memory and stats stay in the background until you need them."
+                  ? "Ask about your trades, mindset, or setups. Live stats stay pinned above while agents reply."
                   : "Before noon, briefing starts automatically once. Your conversation persists when you refresh."}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
+            <CouncilInlineStatsCard visual={visualContext} />
             {transcriptRows.map(({ entry, inlineChart }) => (
               <CouncilMessageBubble
                 key={entry.id}

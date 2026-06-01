@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { ChevronDown, ChevronUp, LayoutDashboard } from "lucide-react"
 import { CouncilContextPanel } from "@/components/council/council-context-panel"
 import { CouncilInsightsCard } from "@/components/council/council-insights-card"
@@ -28,13 +28,7 @@ export function CouncilBriefingContext({
   className,
 }: CouncilBriefingContextProps) {
   const hasContext = Boolean(visual) || insights.length > 0 || memoryHighlights.length > 0
-  const [open, setOpen] = useState(transcriptLength === 0)
-
-  useEffect(() => {
-    if (transcriptLength > 0) {
-      setOpen(false)
-    }
-  }, [transcriptLength])
+  const [open, setOpen] = useState(true)
 
   if (isLoading && !hasContext) {
     return (
@@ -78,7 +72,7 @@ export function CouncilBriefingContext({
           </span>
           {!open && summaryParts.length > 0 ? (
             <span className="truncate text-[10px] text-text-muted">
-              {summaryParts.join(" · ")} — tap to expand
+              {summaryParts.join(" · ")} — tap for charts &amp; memory
             </span>
           ) : null}
         </span>
@@ -90,7 +84,14 @@ export function CouncilBriefingContext({
       </button>
       {open ? (
         <div className="space-y-3 border-t border-white/[0.06] px-2 pb-3 pt-2">
-          <CouncilContextPanel visual={visual} onChartClick={onChartClick} className="border-0 bg-transparent" />
+          {(visual?.watchlistCharts?.length ?? 0) > 0 || visual?.lastTradeChart ? (
+            <CouncilContextPanel
+              visual={visual}
+              onChartClick={onChartClick}
+              className="border-0 bg-transparent"
+              statsHidden
+            />
+          ) : null}
           <CouncilInsightsCard insights={insights} />
           <CouncilMemoryStrip highlights={memoryHighlights} />
         </div>

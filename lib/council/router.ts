@@ -176,6 +176,10 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
       /\bentry\b/i,
       /\bexit\b/i,
       /\bwhat went wrong\b/i,
+      /\btoday'?s trades?\b/i,
+      /\btrades? today\b/i,
+      /\bjournal today\b/i,
+      /\bthread.{0,16}today\b/i,
     ],
   },
   {
