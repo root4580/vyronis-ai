@@ -60,10 +60,13 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   } = useCouncilVoicePlayback(voiceConfigured)
 
   const {
+    isConversationMode,
+    isListening,
     isRecording,
     isTranscribing,
     micError,
-    toggleRecording,
+    startConversation,
+    stopConversation,
     clearMicError,
   } = useCouncilVoiceInput(listenConfigured)
 
@@ -108,6 +111,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const handleBriefing = useCallback(
     async (force = false) => {
       if (!accountId || migrationPending) return
+      stopConversation()
       stopPlayback()
       setIsBriefing(true)
       setError(null)
@@ -136,7 +140,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         setIsBriefing(false)
       }
     },
-    [accountId, migrationPending, scrollToBottom, speakEntries, stopPlayback],
+    [accountId, migrationPending, scrollToBottom, speakEntries, stopPlayback, stopConversation],
   )
 
   useEffect(() => {
@@ -193,7 +197,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         })
         setActiveAgent(result.agent)
         setTranscript((current) => [...current, result.message])
-        void speakEntries([result.message])
+        await speakEntries([result.message])
         scrollToBottom()
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not reach the council")
@@ -221,33 +225,33 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     await submitQuestion(trimmed)
   }
 
-  async function handleMicToggle() {
-    if (isSending || isSpeaking || isTranscribing || migrationPending) return
+  function handleMicToggle() {
+    if (migrationPending || !listenConfigured) return
 
-    if (isRecording) {
-      const text = await toggleRecording()
-      if (text) {
-        setQuestion("")
-        await submitQuestion(text)
-      }
+    if (isConversationMode) {
+      stopConversation()
       return
     }
 
     stopPlayback()
-    await toggleRecording()
+    startConversation(async (text) => {
+      await submitQuestion(text)
+    })
   }
 
-  const headerLine = listenConfigured
-    ? voiceAvailable && voiceEnabled
-      ? "Speak or type — agents listen and reply by voice"
-      : voiceAvailable
-        ? "Mic ready — voice replies off, transcript only"
-        : "Mic ready — add ELEVENLABS_API_KEY for spoken replies"
-    : voiceAvailable && voiceEnabled
-      ? "Council is ready — agents will speak their briefing"
-      : voiceAvailable
-        ? "Voice off — read the transcript below"
-        : "Council is ready — add OPENAI + ElevenLabs keys for full voice"
+  const headerLine = isConversationMode
+    ? "Open conversation — speak naturally, tap mic when you are done"
+    : listenConfigured
+      ? voiceAvailable && voiceEnabled
+        ? "Tap mic for open conversation — speak, pause, agents reply"
+        : voiceAvailable
+          ? "Tap mic to talk — voice replies off, transcript only"
+          : "Tap mic to talk — add ELEVENLABS_API_KEY for spoken replies"
+      : voiceAvailable && voiceEnabled
+        ? "Council is ready — agents will speak their briefing"
+        : voiceAvailable
+          ? "Voice off — read the transcript below"
+          : "Council is ready — add OPENAI + ElevenLabs keys for full voice"
 
   if (isLoading) {
     return (
@@ -350,9 +354,17 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
       ) : null}
 
-      {isRecording ? (
+      {isConversationMode ? (
         <div className="rounded-[var(--radius-md)] border border-cyan-glow/25 bg-cyan-glow/[0.08] px-4 py-3 text-center text-[12px] text-cyan-glow">
-          Listening… tap the mic again when you are done.
+          {isRecording
+            ? "Hearing you… pause when finished and I'll send it."
+            : isTranscribing || isSending
+              ? "Sending to the council…"
+              : isSpeaking
+                ? "Agent is speaking… I'll listen again when they finish."
+                : isListening
+                  ? "Conversation on — speak whenever you're ready."
+                  : "Conversation on — tap mic to stop."}
         </div>
       ) : null}
 
@@ -412,30 +424,25 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             type="button"
             variant="outline"
             size="icon"
-            disabled={
-              !listenConfigured ||
-              migrationPending ||
-              isSpeaking ||
-              isSending ||
-              isTranscribing
-            }
+            disabled={!listenConfigured || migrationPending}
             className={cn(
               "size-11 shrink-0",
-              isRecording && "border-loss/40 bg-loss/10 text-loss",
+              isConversationMode && "border-cyan-glow/40 bg-cyan-glow/10 text-cyan-glow",
+              isRecording && "border-loss/40 bg-loss/10 text-loss animate-pulse",
             )}
             title={
               listenConfigured
-                ? isRecording
-                  ? "Stop and send"
-                  : "Ask by voice"
+                ? isConversationMode
+                  ? "Stop conversation"
+                  : "Start open conversation"
                 : "Voice input needs OPENAI_API_KEY"
             }
-            onClick={() => void handleMicToggle()}
+            onClick={handleMicToggle}
           >
-            {isTranscribing ? (
+            {isTranscribing || isSending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Mic className={cn("size-4", isRecording && "animate-pulse")} />
+              <Mic className={cn("size-4", (isRecording || isListening) && "animate-pulse")} />
             )}
           </Button>
           <Textarea
@@ -444,7 +451,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
             placeholder="Ask the council anything…"
             className="min-h-11 flex-1 resize-none text-[13px]"
             rows={1}
-            disabled={isSpeaking || isRecording || isTranscribing}
+            disabled={isSpeaking || isRecording || isTranscribing || isConversationMode}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault()
@@ -462,7 +469,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-text-muted">
           {listenConfigured
-            ? "Tap mic to speak · agents reply by voice when ElevenLabs is configured"
+            ? "Tap mic once — speak, pause, and agents reply. Tap mic again to stop."
             : "Mic needs OPENAI_API_KEY · spoken replies need ELEVENLABS_API_KEY"}
         </p>
       </form>
