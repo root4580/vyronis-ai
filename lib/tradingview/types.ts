@@ -171,6 +171,10 @@ export type TradingViewSignalListItem = Pick<
   | "timeframe"
   | "direction"
   | "strategy_name"
+  | "entry_zone"
+  | "stop_loss"
+  | "take_profit"
+  | "chart_url"
   | "message"
   | "ai_confidence_score"
   | "ai_recommendation"
@@ -185,8 +189,11 @@ export type TradingViewSignalListItem = Pick<
 export type TradingViewWebhookResult = {
   ok: boolean
   duplicate?: boolean
+  rejected?: boolean
+  reason?: "session" | "timeframe" | "bias"
   signalId?: string
   coachSessionId?: string
+  tradePlanId?: string
   user_id?: string
   message?: string
   setup_grade?: string

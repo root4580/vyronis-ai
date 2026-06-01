@@ -1,5 +1,9 @@
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
+import {
+  getTradingViewPlannerHref,
+  openTradingViewSignalInPlanner,
+} from "@/lib/tradingview/signal-planner-handoff"
 
 /** Deep-link to journal + optional pre-trade coach from a TradingView signal. */
 export function getTradingViewSignalHref(signal: TradingViewSignalListItem): string {
@@ -8,3 +12,5 @@ export function getTradingViewSignalHref(signal: TradingViewSignalListItem): str
   }
   return getDashboardTabHref("journal")
 }
+
+export { getTradingViewPlannerHref, openTradingViewSignalInPlanner }

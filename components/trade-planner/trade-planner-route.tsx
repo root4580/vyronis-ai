@@ -21,6 +21,13 @@ import {
 } from "@/lib/analytics/fetch-trades"
 import { computeCurrentAccountBalance } from "@/lib/trade-planner/account-balance"
 import { markRitualCoachEngaged } from "@/lib/daily-ritual"
+import { fetchTradingViewSignal } from "@/lib/tradingview/api-client"
+import {
+  buildTradingViewPlannerHandoff,
+  readTradingViewPlannerHandoff,
+  writeTradingViewPlannerHandoff,
+  type TradingViewPlannerHandoff,
+} from "@/lib/tradingview/signal-planner-handoff"
 import { AIContextProvider } from "@/providers/ai-context-provider"
 
 export function TradePlannerRoute() {
@@ -31,6 +38,8 @@ export function TradePlannerRoute() {
     if (!raw) return undefined
     return (TRADE_PLANNER_PAIRS as readonly string[]).includes(raw) ? raw : undefined
   }, [searchParams])
+  const fromSignalId = searchParams.get("fromSignal")?.trim() || null
+  const [tradingViewHandoff, setTradingViewHandoff] = useState<TradingViewPlannerHandoff | null>(null)
   const chrome = useDashboardChrome({ loginNextPath: "/trade-planner" })
   const settings = useAccountSettingsModal(chrome.supabase, chrome.user?.id)
   const openCommandCenterRef = useRef<() => void>(() => {})
@@ -71,6 +80,35 @@ export function TradePlannerRoute() {
       cancelled = true
     }
   }, [chrome.supabase, chrome.user?.id])
+
+  useEffect(() => {
+    if (!fromSignalId) {
+      setTradingViewHandoff(null)
+      return
+    }
+
+    const cached = readTradingViewPlannerHandoff()
+    if (cached?.signalId === fromSignalId) {
+      setTradingViewHandoff(cached)
+      return
+    }
+
+    let cancelled = false
+    void fetchTradingViewSignal(fromSignalId)
+      .then(({ signal }) => {
+        if (cancelled) return
+        const handoff = buildTradingViewPlannerHandoff(signal)
+        writeTradingViewPlannerHandoff(handoff)
+        setTradingViewHandoff(handoff)
+      })
+      .catch(() => {
+        if (!cancelled) setTradingViewHandoff(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [fromSignalId])
 
   if (chrome.isLoggingOut) return <SigningOutScreen />
   if (!chrome.isAuthReady) return null
@@ -116,6 +154,7 @@ export function TradePlannerRoute() {
           </div>
           <TradePlannerWorkspace
             initialPair={initialPair}
+            tradingViewHandoff={tradingViewHandoff}
             defaultAccountSize={balanceLoaded ? currentAccountBalance : settings.form.starting_balance}
             defaultRiskPercent={settings.form.max_risk_per_trade}
             maxRiskPerTrade={settings.form.max_risk_per_trade}

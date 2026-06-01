@@ -6,6 +6,13 @@ import { buildTradingViewSignalAnalysis } from "@/lib/tradingview/signal-composi
 import { gradeMeetsMinimum } from "@/lib/tradingview/signal-war-room-grader"
 import { buildPlannedContextFromSignal } from "@/lib/tradingview/planned-context-mapper"
 import { normalizeAlertPayload } from "@/lib/tradingview/signal-normalizer"
+import { createTradePlanFromTradingViewAlert } from "@/lib/tradingview/create-trade-plan-from-alert"
+import {
+  applyStrategyFilterAPlusGrade,
+  buildAPlusSetupNotification,
+  evaluateTradingViewStrategyFilters,
+} from "@/lib/tradingview/strategy-filters"
+import { logTradingViewWebhookDecision } from "@/lib/tradingview/signals-log-service"
 import type {
   TradingViewAlertPayload,
   TradingViewSignalAnalysis,
@@ -56,6 +63,7 @@ function safeCompareSecret(provided: string, expected: string): boolean {
 type WebhookUserContext = {
   user_id: string
   max_risk_per_trade: number
+  starting_balance: number
   preferred_session: string | null
 }
 
@@ -63,6 +71,7 @@ function mapWebhookUserRow(
   row: {
     user_id: string
     max_risk_per_trade: number | null
+    starting_balance: number | null
     preferred_session: string | null
     tradingview_webhook_secret: string | null
     tradingview_webhook_enabled: boolean | null
@@ -79,6 +88,7 @@ function mapWebhookUserRow(
   return {
     user_id: row.user_id,
     max_risk_per_trade: row.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
+    starting_balance: row.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance,
     preferred_session: row.preferred_session ?? null,
   }
 }
@@ -90,7 +100,7 @@ async function resolveUserBySecret(
   const trimmed = secret.trim()
   const { data, error } = await supabase
     .from("user_settings")
-    .select("user_id, max_risk_per_trade, preferred_session, tradingview_webhook_secret, tradingview_webhook_enabled")
+    .select("user_id, max_risk_per_trade, starting_balance, preferred_session, tradingview_webhook_secret, tradingview_webhook_enabled")
     .eq("tradingview_webhook_enabled", true)
     .eq("tradingview_webhook_secret", trimmed)
     .maybeSingle()
@@ -119,7 +129,7 @@ async function resolveUserByUserId(
 ): Promise<WebhookUserContext> {
   const { data, error } = await supabase
     .from("user_settings")
-    .select("user_id, max_risk_per_trade, preferred_session, tradingview_webhook_secret, tradingview_webhook_enabled")
+    .select("user_id, max_risk_per_trade, starting_balance, preferred_session, tradingview_webhook_secret, tradingview_webhook_enabled")
     .eq("user_id", userId)
     .maybeSingle()
 
@@ -142,6 +152,7 @@ async function resolveUserByUserId(
     return {
       user_id: data.user_id,
       max_risk_per_trade: data.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade,
+      starting_balance: data.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance,
       preferred_session: data.preferred_session ?? null,
     }
   }
@@ -183,6 +194,8 @@ export type TradingViewIngestOptions = {
   /** In-app test alert: use session client + skip secret DB lookup */
   trustedUserId?: string
   skipSecretValidation?: boolean
+  /** In-app test alerts only — skip session/timeframe/bias gates */
+  bypassStrategyFilters?: boolean
 }
 
 export async function ingestTradingViewAlert(
@@ -226,7 +239,77 @@ export async function ingestTradingViewAlert(
     }
   }
 
-  const analysis = await buildTradingViewSignalAnalysis(supabase, user.user_id, {
+  const receivedAt = new Date()
+  const shouldApplyStrategyFilters = !options?.bypassStrategyFilters && !isVyronisTestAlert
+
+  if (shouldApplyStrategyFilters) {
+    const filterResult = await evaluateTradingViewStrategyFilters(supabase, user.user_id, {
+      symbol: normalized.symbol,
+      direction: normalized.direction,
+      timeframe: normalized.timeframe,
+      receivedAt,
+    })
+
+    if (!filterResult.passed) {
+      let rejectedSignalId: string | null = null
+
+      if (filterResult.notify) {
+        const { data: rejectedSignal, error: rejectedSignalError } = await supabase
+          .from("tradingview_signals")
+          .insert({
+            user_id: user.user_id,
+            symbol: normalized.symbol,
+            timeframe: normalized.timeframe,
+            direction: normalized.direction,
+            strategy_name: normalized.strategy_name,
+            entry_zone: normalized.entry_zone,
+            stop_loss: normalized.stop_loss,
+            take_profit: normalized.take_profit,
+            confidence: normalized.confidence,
+            message: filterResult.userMessage ?? filterResult.detail,
+            chart_url: normalized.chart_url,
+            raw_payload: rawPayload,
+            status: "ignored",
+            ai_recommendation: "SKIP",
+            external_alert_id: normalized.external_alert_id,
+            received_at: receivedAt.toISOString(),
+          })
+          .select("id")
+          .maybeSingle()
+
+        if (rejectedSignalError && isMissingTableError(rejectedSignalError.message)) {
+          throw new TradingViewTableMissingError()
+        }
+        rejectedSignalId = rejectedSignal?.id ? String(rejectedSignal.id) : null
+      }
+
+      await logTradingViewWebhookDecision(supabase, {
+        user_id: user.user_id,
+        symbol: normalized.symbol,
+        direction: normalized.direction,
+        timeframe: normalized.timeframe,
+        strategy_name: normalized.strategy_name,
+        raw_payload: rawPayload,
+        passed: false,
+        reject_reason: filterResult.reason,
+        reject_message: filterResult.detail,
+        notification_message: filterResult.userMessage ?? null,
+        tradingview_signal_id: rejectedSignalId,
+      })
+
+      return {
+        result: {
+          ok: true,
+          rejected: true,
+          reason: filterResult.reason,
+          message: filterResult.userMessage,
+          signalId: rejectedSignalId ?? undefined,
+        },
+      }
+    }
+  }
+
+  const analysisBase = await buildTradingViewSignalAnalysis(supabase, user.user_id, {
     symbol: normalized.symbol,
     direction: normalized.direction,
     timeframe: normalized.timeframe,
@@ -240,6 +323,21 @@ export async function ingestTradingViewAlert(
     preferred_session: user.preferred_session,
   })
 
+  const analysis = shouldApplyStrategyFilters
+    ? applyStrategyFilterAPlusGrade(analysisBase, normalized.symbol, normalized.direction)
+    : analysisBase
+
+  const setupNotification = shouldApplyStrategyFilters
+    ? buildAPlusSetupNotification(normalized.symbol)
+    : analysis.verdict_summary
+
+  const tradePlan = shouldApplyStrategyFilters
+    ? await createTradePlanFromTradingViewAlert(supabase, user.user_id, normalized, {
+        accountSize: user.starting_balance,
+        riskPercent: user.max_risk_per_trade,
+      })
+    : null
+
   const { data: signal, error: signalError } = await supabase
     .from("tradingview_signals")
     .insert({
@@ -252,7 +350,7 @@ export async function ingestTradingViewAlert(
       stop_loss: normalized.stop_loss,
       take_profit: normalized.take_profit,
       confidence: normalized.confidence,
-      message: normalized.message,
+      message: setupNotification,
       chart_url: normalized.chart_url,
       raw_payload: rawPayload,
       status: "analyzed",
@@ -260,7 +358,8 @@ export async function ingestTradingViewAlert(
       ai_confidence_score: analysis.confidence_score,
       ai_recommendation: analysis.recommendation,
       external_alert_id: normalized.external_alert_id,
-      analyzed_at: new Date().toISOString(),
+      analyzed_at: receivedAt.toISOString(),
+      received_at: receivedAt.toISOString(),
     })
     .select("id")
     .single()
@@ -280,7 +379,7 @@ export async function ingestTradingViewAlert(
     entry_price: normalized.entry_price,
     stop_loss: normalized.stop_loss,
     take_profit: normalized.take_profit,
-    message: normalized.message,
+    message: setupNotification,
     chart_url: normalized.chart_url,
     analysis,
     maxRiskPerTrade: user.max_risk_per_trade,
@@ -299,6 +398,21 @@ export async function ingestTradingViewAlert(
   if (linkError) {
     throw new TradingViewWebhookError(linkError.message, 500)
   }
+
+  await logTradingViewWebhookDecision(supabase, {
+    user_id: user.user_id,
+    symbol: normalized.symbol,
+    direction: normalized.direction,
+    timeframe: normalized.timeframe,
+    strategy_name: normalized.strategy_name,
+    raw_payload: rawPayload,
+    passed: true,
+    notification_message: shouldApplyStrategyFilters ? setupNotification : null,
+    setup_grade: shouldApplyStrategyFilters ? "A+" : analysis.setup_grade,
+    tradingview_signal_id: signal.id,
+    trade_plan_id: tradePlan?.id ?? null,
+    coach_session_id: session.id,
+  })
 
   let emailSent = false
   if (gradeMeetsMinimum(analysis.setup_grade) && typeof supabase.auth.admin?.getUserById === "function") {
@@ -327,14 +441,17 @@ export async function ingestTradingViewAlert(
       ok: true,
       signalId: signal.id,
       coachSessionId: session.id,
+      tradePlanId: tradePlan?.id,
       user_id: user.user_id,
       setup_grade: analysis.setup_grade,
       setup_verdict: analysis.setup_verdict,
       email_sent: emailSent,
       chart_vision_scheduled: true,
-      message: analysis.meets_minimum_grade
-        ? `Grade ${analysis.setup_grade} — ${analysis.verdict_summary}${emailSent ? " Email sent." : ""} Chart vision runs in the background.`
-        : `Grade ${analysis.setup_grade} (below your B+ rule) — ${analysis.verdict_summary} Chart vision runs in the background.`,
+      message: shouldApplyStrategyFilters
+        ? `${setupNotification}${tradePlan ? " Trade plan created." : ""}${emailSent ? " Email sent." : ""}`
+        : analysis.meets_minimum_grade
+          ? `Grade ${analysis.setup_grade} — ${analysis.verdict_summary}${emailSent ? " Email sent." : ""} Chart vision runs in the background.`
+          : `Grade ${analysis.setup_grade} (below your B+ rule) — ${analysis.verdict_summary} Chart vision runs in the background.`,
     },
     chartVision: {
       userId: user.user_id,

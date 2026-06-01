@@ -5,12 +5,14 @@ import Link from "next/link"
 import { Bell, CheckCircle2, Circle, Copy, Loader2, Radio, RefreshCw, Zap } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import {
   fetchTradingViewSetupReadiness,
   fetchTradingViewWebhookSettings,
   regenerateTradingViewWebhookSecret,
   sendTradingViewTestAlert,
+  updateTradingViewWebhookEnabled,
   type TradingViewSetupReadiness,
 } from "@/lib/tradingview/api-client"
 import { useToast } from "@/hooks/use-toast"
@@ -31,6 +33,7 @@ export function TradingViewWebhookSettings() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
+  const [isTogglingEnabled, setIsTogglingEnabled] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadSettings = useCallback(async () => {
@@ -113,6 +116,28 @@ export function TradingViewWebhookSettings() {
     }
   }
 
+  async function handleToggleEnabled(checked: boolean) {
+    setIsTogglingEnabled(true)
+    try {
+      const result = await updateTradingViewWebhookEnabled(checked)
+      setSettings(result)
+      toast({
+        title: checked ? "TradingView webhook enabled" : "TradingView webhook paused",
+        description: checked
+          ? "Alerts from TradingView will flow into Vyronis again."
+          : "Incoming TradingView alerts are ignored until you turn this back on.",
+      })
+    } catch (toggleError) {
+      toast({
+        title: "Could not update webhook",
+        description: toggleError instanceof Error ? toggleError.message : "Try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsTogglingEnabled(false)
+    }
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -124,8 +149,29 @@ export function TradingViewWebhookSettings() {
           <Badge variant="outline" className="h-6 border-profit/25 bg-profit/[0.08] text-[10px] text-profit">
             Webhook active
           </Badge>
+        ) : settings ? (
+          <Badge variant="outline" className="h-6 border-warning/25 bg-warning/[0.08] text-[10px] text-warning-foreground">
+            Webhook paused
+          </Badge>
         ) : null}
       </div>
+
+      {settings ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5">
+          <div>
+            <p className="text-[11px] font-medium text-foreground/90">Accept TradingView alerts</p>
+            <p className="text-[10px] text-muted-foreground/65">
+              Pause without deleting your webhook URL or secret.
+            </p>
+          </div>
+          <Switch
+            checked={settings.enabled}
+            disabled={isTogglingEnabled || isLoading}
+            onCheckedChange={(checked) => void handleToggleEnabled(checked)}
+            aria-label="Accept TradingView alerts"
+          />
+        </div>
+      ) : null}
 
       <DashboardInsetPanel className="space-y-4 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground/75">
         <p>
@@ -275,6 +321,20 @@ export function TradingViewWebhookSettings() {
             <div className="rounded-lg border border-cyan-glow/15 bg-cyan-glow/[0.04] px-3 py-2.5">
               <p className="flex items-center gap-2 text-[11px] font-medium text-cyan-glow/90">
                 <Bell className="size-3.5" />
+                Strategy filters (auto)
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-[10px] text-muted-foreground/70">
+                <li>Session: London 2–5am ET or New York 8am–12pm ET only</li>
+                <li>Timeframe: M15 only</li>
+                <li>Direction must match your War Room watchlist bias</li>
+                <li>All pass → Grade A+ → trade plan + 🔥 notification</li>
+                <li>Bias fail → ⚠️ skipped in bell; session/timeframe fail → silent reject (logged)</li>
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-cyan-glow/15 bg-cyan-glow/[0.04] px-3 py-2.5">
+              <p className="flex items-center gap-2 text-[11px] font-medium text-cyan-glow/90">
+                <Bell className="size-3.5" />
                 What happens when an alert fires
               </p>
               <ol className="mt-2 list-decimal space-y-1 pl-4 text-[10px] text-muted-foreground/70">
@@ -289,7 +349,7 @@ export function TradingViewWebhookSettings() {
                   Chart vision on your War Room uploads (needs{" "}
                   <code className="text-cyan-glow/80">OPENAI_API_KEY</code> on server)
                 </li>
-                <li>Pre-trade coach session created — tap alert to open</li>
+                <li>Pre-trade coach session created — tap alert to open Coach or Plan</li>
                 <li>
                   Email for <strong className="text-foreground/80">B+</strong> only when{" "}
                   <code className="text-cyan-glow/80">RESEND_API_KEY</code> is set (optional — uses test sender until custom domain is verified)

@@ -16,7 +16,7 @@ function isMissingTableError(message: string): boolean {
 }
 
 const LIST_COLUMNS =
-  "id, symbol, timeframe, direction, strategy_name, message, ai_confidence_score, ai_recommendation, ai_analysis, coach_session_id, read_at, received_at, status"
+  "id, symbol, timeframe, direction, strategy_name, entry_zone, stop_loss, take_profit, chart_url, message, ai_confidence_score, ai_recommendation, ai_analysis, coach_session_id, read_at, received_at, status"
 
 export async function listTradingViewSignals(
   supabase: SupabaseClient,
@@ -28,7 +28,7 @@ export async function listTradingViewSignals(
     .from("tradingview_signals")
     .select(LIST_COLUMNS)
     .eq("user_id", userId)
-    .in("status", ["new", "analyzed", "converted"])
+    .in("status", ["new", "analyzed", "converted", "ignored"])
     .order("received_at", { ascending: false })
     .limit(limit)
 
@@ -54,7 +54,7 @@ export async function countUnreadTradingViewSignals(
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("read_at", null)
-    .in("status", ["new", "analyzed", "converted"])
+    .in("status", ["new", "analyzed", "converted", "ignored"])
 
   if (error) {
     if (isMissingTableError(error.message)) return 0
@@ -177,13 +177,7 @@ export async function ensureTradingViewWebhookSettings(
 
     if (upsertError) throw new Error(upsertError.message)
   } else if (!enabled) {
-    const { error: enableError } = await supabase
-      .from("user_settings")
-      .update({ tradingview_webhook_enabled: true, updated_at: new Date().toISOString() })
-      .eq("user_id", userId)
-
-    if (enableError) throw new Error(enableError.message)
-    enabled = true
+    enabled = false
   }
 
   return {
@@ -218,5 +212,27 @@ export async function regenerateTradingViewWebhookSecret(
     secret,
     enabled: true,
     webhookUrl: `${baseUrl}/api/webhooks/tradingview`,
+  }
+}
+
+export async function updateTradingViewWebhookEnabled(
+  supabase: SupabaseClient,
+  userId: string,
+  enabled: boolean,
+  baseUrl: string = getAppBaseUrl(),
+): Promise<{ secret: string; enabled: boolean; webhookUrl: string }> {
+  const current = await ensureTradingViewWebhookSettings(supabase, userId, baseUrl)
+
+  const { error } = await supabase
+    .from("user_settings")
+    .update({ tradingview_webhook_enabled: enabled, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+
+  if (error) throw new Error(error.message)
+
+  return {
+    secret: current.secret,
+    enabled,
+    webhookUrl: current.webhookUrl,
   }
 }

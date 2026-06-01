@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, ExternalLink, Loader2, Radio, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Bell, ClipboardList, ExternalLink, Loader2, Radio, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +16,7 @@ import { useTradingViewSignals } from "@/hooks/use-tradingview-signals"
 import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { TradingViewWhyPanel } from "@/components/tradingview/tradingview-why-panel"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
+import { openTradingViewSignalInPlanner } from "@/lib/tradingview/signal-navigation"
 import { cn } from "@/lib/utils"
 
 type SignalAlertsBellProps = {
@@ -46,10 +48,16 @@ function formatRelativeTime(iso: string) {
 }
 
 export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlertsBellProps) {
+  const router = useRouter()
   const { signals, unreadCount, isLoading, markRead, markAllRead, removeSignal } =
     useTradingViewSignals(enabled)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const hasUnread = unreadCount > 0
+
+  async function handlePlan(signal: TradingViewSignalListItem) {
+    if (!signal.read_at) await markRead(signal.id)
+    router.push(openTradingViewSignalInPlanner(signal))
+  }
 
   async function handleOpen(signal: TradingViewSignalListItem) {
     if (!signal.read_at) await markRead(signal.id)
@@ -127,14 +135,17 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
           ) : (
             signals.map((signal) => {
               const unread = !signal.read_at
+              const ignored = signal.status === "ignored"
               return (
                 <div
                   key={signal.id}
                   className={cn(
                     "rounded-lg border px-3 py-2.5",
-                    unread
-                      ? "border-cyan-glow/25 bg-cyan-glow/[0.05]"
-                      : "border-white/[0.06] bg-white/[0.02]",
+                    ignored
+                      ? "border-warning/25 bg-warning/[0.05]"
+                      : unread
+                        ? "border-cyan-glow/25 bg-cyan-glow/[0.05]"
+                        : "border-white/[0.06] bg-white/[0.02]",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -155,12 +166,14 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                         variant="outline"
                         className={cn(
                           "h-5 text-[9px] font-semibold uppercase tracking-wide",
-                          unread
-                            ? "border-cyan-glow/35 bg-cyan-glow/[0.12] text-cyan-glow"
-                            : "border-white/[0.1] bg-white/[0.04] text-muted-foreground/75",
+                          ignored
+                            ? "border-warning/35 bg-warning/[0.12] text-warning-foreground"
+                            : unread
+                              ? "border-cyan-glow/35 bg-cyan-glow/[0.12] text-cyan-glow"
+                              : "border-white/[0.1] bg-white/[0.04] text-muted-foreground/75",
                         )}
                       >
-                        {unread ? "Unread" : "Read"}
+                        {ignored ? "Skipped" : unread ? "Unread" : "Read"}
                       </Badge>
                       <span className="text-[10px] tabular-nums text-muted-foreground/55">
                         {formatRelativeTime(signal.received_at)}
@@ -213,20 +226,37 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                   ) : null}
 
                   <div className="mt-2.5 flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 flex-1 bg-cyan-glow/90 text-[11px] text-background hover:bg-cyan-glow"
-                      onClick={() => void handleOpen(signal)}
-                    >
-                      <ExternalLink className="mr-1.5 size-3.5" />
-                      Open
-                    </Button>
+                    {!ignored ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 flex-1 bg-cyan-glow/90 text-[11px] text-background hover:bg-cyan-glow"
+                          onClick={() => void handleOpen(signal)}
+                        >
+                          <ExternalLink className="mr-1.5 size-3.5" />
+                          Coach
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 flex-1 border-white/[0.1] text-[11px] text-foreground/90 hover:border-cyan-glow/30 hover:bg-cyan-glow/[0.08]"
+                          onClick={() => void handlePlan(signal)}
+                        >
+                          <ClipboardList className="mr-1.5 size-3.5" />
+                          Plan
+                        </Button>
+                      </>
+                    ) : null}
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 shrink-0 border-white/[0.1] px-3 text-[11px] text-muted-foreground hover:border-loss/30 hover:bg-loss/[0.08] hover:text-loss"
+                      className={cn(
+                        "h-8 shrink-0 border-white/[0.1] px-3 text-[11px] text-muted-foreground hover:border-loss/30 hover:bg-loss/[0.08] hover:text-loss",
+                        ignored && "w-full",
+                      )}
                       disabled={deletingId === signal.id}
                       onClick={() => void handleDelete(signal.id)}
                     >

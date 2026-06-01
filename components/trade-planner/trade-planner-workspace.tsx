@@ -39,6 +39,7 @@ import {
   readPlannerDraft,
   writePlannerDraft,
 } from "@/lib/trade-planner/planner-draft-storage"
+import type { TradingViewPlannerHandoff } from "@/lib/tradingview/signal-planner-handoff"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 
@@ -72,6 +73,7 @@ const PLANNER_MOBILE_SECTIONS: Array<{ id: PlannerMobileSection; label: string }
 
 type TradePlannerWorkspaceProps = {
   initialPair?: string
+  tradingViewHandoff?: TradingViewPlannerHandoff | null
   defaultAccountSize?: number
   defaultRiskPercent?: number
   maxRiskPerTrade?: number
@@ -82,6 +84,7 @@ type TradePlannerWorkspaceProps = {
 
 export function TradePlannerWorkspace({
   initialPair,
+  tradingViewHandoff = null,
   defaultAccountSize = DEFAULT_USER_SETTINGS.starting_balance,
   defaultRiskPercent = DEFAULT_USER_SETTINGS.max_risk_per_trade,
   maxRiskPerTrade = DEFAULT_USER_SETTINGS.max_risk_per_trade,
@@ -114,6 +117,7 @@ export function TradePlannerWorkspace({
   const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null)
   const [draftHydrated, setDraftHydrated] = useState(false)
   const [draftWasRestored, setDraftWasRestored] = useState(false)
+  const [tradingViewBanner, setTradingViewBanner] = useState<string | null>(null)
   const draftHydratedRef = useRef(false)
   const setupActionsRef = useRef<HTMLDivElement>(null)
 
@@ -185,6 +189,28 @@ export function TradePlannerWorkspace({
     draftHydratedRef.current = true
     setDraftHydrated(true)
   }, [initialPair])
+
+  useEffect(() => {
+    if (!draftHydrated || !tradingViewHandoff) return
+
+    setPair(tradingViewHandoff.pair)
+    setDirection(tradingViewHandoff.direction)
+    if (tradingViewHandoff.entryPrice) setEntryPrice(tradingViewHandoff.entryPrice)
+    if (tradingViewHandoff.stopLoss) setStopLoss(tradingViewHandoff.stopLoss)
+    if (tradingViewHandoff.takeProfit) setTakeProfit(tradingViewHandoff.takeProfit)
+    if (tradingViewHandoff.chartUrl) {
+      setChartScreenshotUrl(tradingViewHandoff.chartUrl)
+      setChartPointers([])
+    }
+    setDraftWasRestored(false)
+    setMobileSection("setup")
+    setTradingViewBanner(
+      tradingViewHandoff.setupGrade
+        ? `TradingView alert loaded · Grade ${tradingViewHandoff.setupGrade}`
+        : "TradingView alert loaded into planner",
+    )
+    scrollSetupActionsIntoView()
+  }, [draftHydrated, tradingViewHandoff])
 
   useEffect(() => {
     if (accountSizeTouched || defaultAccountSize <= 0 || !draftHydrated) return
@@ -651,7 +677,13 @@ export function TradePlannerWorkspace({
         </div>
       ) : null}
 
-      {draftWasRestored && !loadedPlan ? (
+      {tradingViewBanner ? (
+        <div className="rounded-[var(--radius-md)] border border-cyan-glow/25 bg-cyan-glow/[0.06] px-3 py-2 text-[10px] text-cyan-glow">
+          {tradingViewBanner}
+        </div>
+      ) : null}
+
+      {draftWasRestored && !loadedPlan && !tradingViewHandoff ? (
         <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-input)] px-3 py-2 text-[10px] text-text-muted">
           Your in-progress plan was restored from this device.
         </div>

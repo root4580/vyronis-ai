@@ -4,7 +4,7 @@ export function buildTradingViewAlertTemplate(secret: string): string {
     {
       secret,
       symbol: "{{ticker}}",
-      timeframe: "{{interval}}",
+      timeframe: "15",
       direction: "{{strategy.order.action}}",
       strategy_name: "My Strategy",
       entry_zone: "{{close}}",
@@ -25,7 +25,7 @@ export function buildTradingViewAlertTemplatePlain(secret: string): string {
   return `{
   "secret": "${secret}",
   "symbol": "{{ticker}}",
-  "timeframe": "{{interval}}",
+  "timeframe": "15",
   "direction": "BUY",
   "strategy_name": "London Breakout",
   "entry_zone": "{{close}}",

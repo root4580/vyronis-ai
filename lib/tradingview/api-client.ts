@@ -130,3 +130,27 @@ export async function regenerateTradingViewWebhookSecret(): Promise<{
   })
   return parseJson(response)
 }
+
+export async function updateTradingViewWebhookEnabled(enabled: boolean): Promise<{
+  secret: string
+  enabled: boolean
+  webhookUrl: string
+  alertTemplate: string
+}> {
+  const response = await fetch("/api/tradingview/settings", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  })
+  return parseJson(response)
+}
+
+export async function fetchTradingViewSignal(signalId: string): Promise<{
+  signal: TradingViewSignalListItem
+}> {
+  const response = await fetch(`/api/tradingview/signals/${signalId}`, {
+    credentials: "same-origin",
+  })
+  return parseJson(response)
+}
