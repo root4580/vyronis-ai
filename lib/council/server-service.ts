@@ -11,7 +11,7 @@ import {
   buildCouncilBriefingUserPrompt,
   buildCouncilRespondUserPrompt,
 } from "@/lib/council/prompts"
-import { routeCouncilQuestion } from "@/lib/council/router"
+import { resolveCouncilAgentForMessage } from "@/lib/council/router"
 import type {
   CouncilAgentId,
   CouncilBriefingResponse,
@@ -368,7 +368,7 @@ export async function runCouncilRespond(
   }
 
   const context = await loadCouncilAgentContext(supabase, userId, accountId)
-  const agentId = preferredAgent ?? routeCouncilQuestion(trimmed)
+  const agentId = resolveCouncilAgentForMessage(trimmed, preferredAgent)
   const existing = await getTodayCouncilSession(supabase, userId, accountId)
   const transcript = existing?.full_transcript ?? []
 

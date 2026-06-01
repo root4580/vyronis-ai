@@ -11,6 +11,7 @@ import {
   runCouncilBriefing,
 } from "@/lib/council/api-client"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
+import { detectCouncilAgentByName } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
 import { useCouncilVoicePlayback } from "@/hooks/use-council-voice-playback"
 import { useCouncilVoiceInput } from "@/hooks/use-council-voice-input"
@@ -181,6 +182,12 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       setError(null)
       clearMicError()
 
+      const namedAgent = detectCouncilAgentByName(trimmed)
+      if (namedAgent) {
+        setSelectedAgent(namedAgent)
+        setActiveAgent(namedAgent)
+      }
+
       const userEntry: CouncilTranscriptEntry = {
         id: `local-${Date.now()}`,
         agent: "user",
@@ -193,7 +200,8 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         const result = await askCouncil({
           accountId,
           message: trimmed,
-          agent: selectedAgent === "auto" ? undefined : selectedAgent,
+          agent:
+            namedAgent ?? (selectedAgent === "auto" ? undefined : selectedAgent),
         })
         setActiveAgent(result.agent)
         setTranscript((current) => [...current, result.message])

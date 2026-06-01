@@ -1,4 +1,24 @@
+import { COUNCIL_AGENTS } from "@/lib/council/agents"
 import type { CouncilAgentId } from "@/lib/council/types"
+
+const AGENT_NAME_PATTERNS: Array<{ agent: CouncilAgentId; pattern: RegExp }> = COUNCIL_AGENTS.map(
+  (agent) => ({
+    agent: agent.id,
+    pattern: new RegExp(`\\b${agent.name}\\b`, "i"),
+  }),
+)
+
+/** Direct address — "Hey Scott", "Good morning Sarah", "Adam, review my trade". */
+export function detectCouncilAgentByName(message: string): CouncilAgentId | null {
+  const trimmed = message.trim()
+  if (!trimmed) return null
+
+  for (const { agent, pattern } of AGENT_NAME_PATTERNS) {
+    if (pattern.test(trimmed)) return agent
+  }
+
+  return null
+}
 
 const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
   {
@@ -62,7 +82,6 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
       /\bdiscipline\b/i,
       /\bemotion/i,
       /\bgrowth\b/i,
-      /\bmorning\b/i,
       /\bhow am i\b/i,
     ],
   },
@@ -71,6 +90,9 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
 export function routeCouncilQuestion(message: string): CouncilAgentId {
   const trimmed = message.trim()
   if (!trimmed) return "sarah"
+
+  const byName = detectCouncilAgentByName(trimmed)
+  if (byName) return byName
 
   let best: CouncilAgentId = "sarah"
   let bestScore = 0
@@ -87,4 +109,11 @@ export function routeCouncilQuestion(message: string): CouncilAgentId {
   }
 
   return best
+}
+
+export function resolveCouncilAgentForMessage(
+  message: string,
+  preferredAgent?: CouncilAgentId,
+): CouncilAgentId {
+  return detectCouncilAgentByName(message) ?? preferredAgent ?? routeCouncilQuestion(message)
 }
