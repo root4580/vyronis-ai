@@ -20,6 +20,10 @@ import { listWeeklySummaries } from "@/lib/weekly-chapters/server-service"
 import { computeChapterStreak } from "@/lib/weekly-chapters/key-lesson"
 import { isTradeInWeekStart, toWeekStartISO } from "@/lib/weekly-chapters/week-utils"
 import type { WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
+import {
+  buildWeeklyPaperNarrativeLine,
+  readWeeklySummaryPaperStats,
+} from "@/lib/weekly-chapters/paper-stats"
 
 async function loadTraderFirstName(
   supabase: SupabaseClient,
@@ -140,8 +144,12 @@ function buildWeeklyNarrative(chapter: WeeklySummaryRecord, coachSessions: numbe
   const lines: string[] = []
   if (chapter.trades_taken > 0) {
     lines.push(
-      `You logged ${chapter.trades_taken} trade${chapter.trades_taken === 1 ? "" : "s"} with ${chapter.win_rate}% win rate.`,
+      `You logged ${chapter.trades_taken} live trade${chapter.trades_taken === 1 ? "" : "s"} with ${chapter.win_rate}% win rate.`,
     )
+  }
+  const paperLine = buildWeeklyPaperNarrativeLine(readWeeklySummaryPaperStats(chapter))
+  if (paperLine) {
+    lines.push(paperLine)
   }
   if (coachSessions > 0) {
     lines.push(`Coach sessions this week: ${coachSessions}.`)

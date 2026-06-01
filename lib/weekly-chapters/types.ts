@@ -30,6 +30,21 @@ export type WeeklyChapterWeekStats = {
   disciplineGrade: string | null
 }
 
+/** Practice Room snapshot for a trading week (stored in summary_payload.paper). */
+export type WeeklyChapterPaperStats = {
+  total: number
+  closed: number
+  pending: number
+  wins: number
+  losses: number
+  winRate: number
+  totalPnL: number
+  winStreak: number
+  readyForLive: boolean
+  coachGraded: number
+  warRoomCount: number
+}
+
 export type WeeklyChapterDashboard = {
   chapterNumber: number
   weekStart: string
@@ -38,6 +53,7 @@ export type WeeklyChapterDashboard = {
   subtitle: string
   chapterStreak: number
   thisWeek: WeeklyChapterWeekStats
+  thisWeekPaper: WeeklyChapterPaperStats | null
   previousChapter: WeeklySummaryRecord | null
   carryForwardMessage: string | null
   mondayMessage: string | null

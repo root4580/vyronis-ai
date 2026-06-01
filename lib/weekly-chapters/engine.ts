@@ -10,6 +10,8 @@ import {
   countWeekLosses,
   hasWinInWeek,
 } from "@/lib/weekly-chapters/key-lesson"
+import { computeWeeklyChapterPaperStats } from "@/lib/weekly-chapters/paper-stats"
+import type { PaperTradeRecord } from "@/lib/paper-trades/types"
 import {
   computeChapterNumber,
   formatChapterTitle,
@@ -22,6 +24,7 @@ import {
 
 export function buildWeeklyChapterDashboard(input: {
   trades: ChapterTradeRow[]
+  paperTrades?: PaperTradeRecord[]
   summaries: WeeklySummaryRecord[]
   originWeekStart: string
   currentWeekStart?: string
@@ -35,6 +38,10 @@ export function buildWeeklyChapterDashboard(input: {
   const weekStart = input.currentWeekStart ?? toWeekStartISO(now)
   const chapterNumber = computeChapterNumber(input.originWeekStart, weekStart)
   const weekStats = computeWeekTradeStats(input.trades, weekStart)
+  const thisWeekPaper =
+    input.paperTrades != null
+      ? computeWeeklyChapterPaperStats(input.paperTrades, weekStart)
+      : null
   const previousWeekStart = getPreviousWeekStartISO(weekStart)
   const previousChapter =
     input.summaries.find((summary) => summary.week_start === previousWeekStart) ?? null
@@ -64,7 +71,9 @@ export function buildWeeklyChapterDashboard(input: {
       "Last week was tough. Take your first trade extra carefully. Run Coach before entry this week."
   }
 
-  const showSundayComplete = isSundayEvening(now) && weekStats.tradesTaken > 0
+  const showSundayComplete =
+    isSundayEvening(now) &&
+    (weekStats.tradesTaken > 0 || (thisWeekPaper?.total ?? 0) > 0)
   const sundayCompletePreview = showSundayComplete
     ? buildPreviewSummary({
         weekStart,
@@ -74,6 +83,7 @@ export function buildWeeklyChapterDashboard(input: {
         disciplineScore: input.disciplineScore ?? null,
         disciplineGrade: input.disciplineGrade ?? null,
         trades: input.trades,
+        paperStats: thisWeekPaper,
       })
     : null
 
@@ -94,6 +104,7 @@ export function buildWeeklyChapterDashboard(input: {
       disciplineScore: input.disciplineScore ?? null,
       disciplineGrade: input.disciplineGrade ?? null,
     },
+    thisWeekPaper: thisWeekPaper && thisWeekPaper.total > 0 ? thisWeekPaper : null,
     previousChapter,
     carryForwardMessage,
     mondayMessage,
@@ -113,6 +124,7 @@ function buildPreviewSummary(input: {
   disciplineScore: number | null
   disciplineGrade: string | null
   trades: ChapterTradeRow[]
+  paperStats: ReturnType<typeof computeWeeklyChapterPaperStats> | null
 }): WeeklySummaryRecord {
   const keyLesson = buildKeyLesson({
     trades: input.trades,
@@ -139,7 +151,8 @@ function buildPreviewSummary(input: {
     chapter_number: input.chapterNumber,
     is_winning_chapter: input.weekStats.pnl > 0,
     max_trades_allowed: input.maxTrades,
-    summary_payload: {},
+    summary_payload:
+      input.paperStats && input.paperStats.total > 0 ? { paper: input.paperStats } : {},
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

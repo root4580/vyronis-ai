@@ -5,6 +5,10 @@ import { BookOpen, ChevronRight, Loader2 } from "lucide-react"
 import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import type { WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
 import { formatWeekOfLabel } from "@/lib/weekly-chapters/week-utils"
+import {
+  formatWeeklyPaperSummaryLine,
+  readWeeklySummaryPaperStats,
+} from "@/lib/weekly-chapters/paper-stats"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { cn } from "@/lib/utils"
@@ -81,6 +85,7 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
       {timeline.map((chapter) => {
         const expanded = expandedId === chapter.id
         const positive = chapter.is_winning_chapter
+        const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(chapter))
         return (
           <div key={chapter.id} className="relative pb-4 last:pb-0">
             <span
@@ -115,9 +120,12 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
                     </span>
                   </div>
                   <p className="mt-0.5 text-[10px] text-text-muted">
-                    {formatWeekOfLabel(chapter.week_start)} · {chapter.trades_taken} trades ·{" "}
+                    {formatWeekOfLabel(chapter.week_start)} · {chapter.trades_taken} live ·{" "}
                     {chapter.win_rate}% win
                   </p>
+                  {paperLine ? (
+                    <p className="mt-0.5 text-[10px] text-text-muted">📝 {paperLine}</p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   <span
@@ -151,6 +159,7 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
                   {chapter.key_lesson ? (
                     <p className="italic text-text-primary">“{chapter.key_lesson}”</p>
                   ) : null}
+                  {paperLine ? <p>Practice: {paperLine}</p> : null}
                 </div>
               ) : null}
             </button>

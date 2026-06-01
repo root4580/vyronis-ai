@@ -5,6 +5,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  FileEdit,
   Flame,
   Loader2,
   Sparkles,
@@ -14,6 +15,10 @@ import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import type { WeeklyChapterDashboard, WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
 import { formatWeekOfLabel } from "@/lib/weekly-chapters/week-utils"
+import {
+  formatWeeklyPaperSummaryLine,
+  readWeeklySummaryPaperStats,
+} from "@/lib/weekly-chapters/paper-stats"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 import type { PlanDisciplineGrade } from "@/lib/trade-planner/deviation-engine"
@@ -177,6 +182,10 @@ export function WeeklyChapterSystem({
             )}
           />
         </div>
+
+        {dashboard.thisWeekPaper ? (
+          <PaperPracticeRow stats={dashboard.thisWeekPaper} />
+        ) : null}
       </div>
 
       {dashboard.carryForwardMessage && dashboard.previousChapter ? (
@@ -252,17 +261,56 @@ function PreviousChapterLine({
   summary: WeeklySummaryRecord
   compact?: boolean
 }) {
-  const line = `${formatWeekOfLabel(summary.week_start)}: ${summary.trades_taken} trades · ${summary.win_rate}% win · ${formatPnL(summary.pnl, summary.pnl >= 0 ? "WIN" : "LOSS")}`
+  const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(summary))
+  const line = `${formatWeekOfLabel(summary.week_start)}: ${summary.trades_taken} live · ${summary.win_rate}% win · ${formatPnL(summary.pnl, summary.pnl >= 0 ? "WIN" : "LOSS")}`
   if (compact) {
-    return <p className="text-[10px] tabular-nums text-text-muted">{line}</p>
+    return (
+      <div className="space-y-0.5">
+        <p className="text-[10px] tabular-nums text-text-muted">{line}</p>
+        {paperLine ? <p className="text-[10px] text-text-muted">📝 {paperLine}</p> : null}
+      </div>
+    )
   }
   return (
     <div className="space-y-1">
       <p className="text-[11px] font-medium text-text-secondary">Last chapter recap</p>
       <p className="text-[11px] tabular-nums text-text-muted">{line}</p>
+      {paperLine ? <p className="text-[11px] text-text-muted">📝 {paperLine}</p> : null}
       {summary.key_lesson ? (
         <p className="text-[11px] italic text-text-secondary">“{summary.key_lesson}”</p>
       ) : null}
+    </div>
+  )
+}
+
+function PaperPracticeRow({
+  stats,
+}: {
+  stats: NonNullable<WeeklyChapterDashboard["thisWeekPaper"]>
+}) {
+  const line = formatWeeklyPaperSummaryLine(stats)
+  if (!line) return null
+
+  return (
+    <div className="border-t border-[var(--border-subtle)] bg-violet-500/[0.04] px-3 py-3 sm:px-4">
+      <div className="flex flex-wrap items-start gap-2">
+        <FileEdit className="mt-0.5 size-4 shrink-0 text-violet-300/90" />
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-300/80">
+            Practice Room · this week
+          </p>
+          <p className="mt-0.5 text-[12px] text-text-secondary">{line}</p>
+          {stats.readyForLive ? (
+            <p className="mt-1 text-[11px] font-medium text-profit">
+              🎓 Setup proven — ready to go live when your rules allow.
+            </p>
+          ) : stats.winStreak > 0 ? (
+            <p className="mt-1 text-[10px] text-text-muted">
+              {stats.winStreak}/3 winning paper trades toward graduation.
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }
@@ -296,6 +344,8 @@ function SundayCompleteCard({
   summary: WeeklySummaryRecord
   onDismiss: () => void
 }) {
+  const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(summary))
+
   return (
     <div className="hq-surface-card overflow-hidden border border-cyan-glow/20">
       <div className="border-b border-[var(--border-subtle)] bg-cyan-glow/[0.05] px-4 py-3">
@@ -307,8 +357,9 @@ function SundayCompleteCard({
         </h3>
       </div>
       <div className="space-y-2 px-4 py-3 text-[12px] text-text-secondary">
-        <p>✅ Trades: {summary.trades_taken}/{summary.max_trades_allowed}</p>
+        <p>✅ Live trades: {summary.trades_taken}/{summary.max_trades_allowed}</p>
         <p>📊 Win rate: {summary.win_rate}%</p>
+        {paperLine ? <p>📝 Practice: {paperLine}</p> : null}
         <p>
           💰 P&L:{" "}
           <span className={getPnLTextClass(summary.pnl, summary.pnl >= 0 ? "WIN" : "LOSS")}>
