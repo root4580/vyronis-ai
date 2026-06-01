@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   X,
   FlaskConical,
+  NotebookPen,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -100,7 +101,7 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { APP_HOME_PATH } from "@/lib/branding"
-import { getDashboardHomeHref, getDashboardTabHref, parseTabSearchParam } from "@/lib/dashboard-nav"
+import { getDashboardHomeHref, getDashboardTabHref, getPracticeRoomHref, parseTabSearchParam } from "@/lib/dashboard-nav"
 import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
@@ -244,6 +245,7 @@ export function DashboardHeader({
   const researchLabActive = pathname.startsWith("/research-lab")
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
   const warRoomActive = pathname.startsWith("/war-room")
+  const practiceRoomActive = pathname.startsWith("/practice-room")
   const analyticsActive = pathname.startsWith("/analytics") || activeTab === "analytics"
   const coachActive = dockHighlight === "coach"
   const journalActive = activeTab === "journal" || pathname.startsWith("/journal/")
@@ -380,6 +382,10 @@ export function DashboardHeader({
             <Link href="/war-room" className={vyronisNavLinkClass(warRoomActive)}>
               <Crosshair className="size-3.5" />
               War Room
+            </Link>
+            <Link href={getPracticeRoomHref()} className={vyronisNavLinkClass(practiceRoomActive)}>
+              <NotebookPen className="size-3.5" />
+              Practice
             </Link>
             <button
               type="button"

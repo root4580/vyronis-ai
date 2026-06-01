@@ -1,3 +1,4 @@
+import { sanitizeCoachLanguage } from "@/lib/coach-chapters/personality"
 import type { OutcomeLessonRecord } from "@/lib/learning/outcome-learning-engine"
 import { defaultConfirmationChecklist } from "@/lib/strategy-brain/confirmation-engine"
 import { findSimilarTradeMemory } from "@/lib/strategy-brain/trade-memory-engine"
@@ -133,7 +134,9 @@ function deriveRecommendation(
       case "wait":
         return "Hold — move War Room AOI to INSIDE_AOI or CONFIRMING before treating this as tradable."
       case "low_quality":
-        return "Skip for process — this alert fails your minimum grade vs weekly plan."
+        return sanitizeCoachLanguage(
+          "Not today — protect your chapter. This alert isn't aligned with your weekly plan yet.",
+        )
       default:
         return analysis.verdict_summary
     }

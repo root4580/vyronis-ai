@@ -18,6 +18,15 @@ import {
 } from "@/lib/user-profile"
 import { useToast } from "@/hooks/use-toast"
 import { useIdleReturnPolicy } from "@/hooks/use-idle-return-policy"
+import { useActiveTradingAccount } from "@/hooks/use-active-trading-account"
+import { useTradingRules } from "@/hooks/use-trading-rules"
+import { TradingRulesBanner } from "@/components/dashboard/trading-rules-banner"
+import { CooldownUnlockModal } from "@/components/dashboard/cooldown-unlock-modal"
+import {
+  DEFAULT_DASHBOARD_PREFERENCES,
+  parseDashboardPreferences,
+  type DashboardPreferences,
+} from "@/lib/user-preferences"
 
 type UseDashboardChromeOptions = {
   loginNextPath?: string
@@ -34,7 +43,66 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [userProfile, setUserProfile] = useState(DEFAULT_USER_PROFILE)
-  const [propFirmSize, setPropFirmSize] = useState<string | null>(null)
+  const [dashboardPreferences, setDashboardPreferences] = useState<DashboardPreferences>(
+    DEFAULT_DASHBOARD_PREFERENCES,
+  )
+
+  const handlePreferencesChange = useCallback((preferences: DashboardPreferences) => {
+    setDashboardPreferences(preferences)
+  }, [])
+
+  const tradingAccount = useActiveTradingAccount({
+    supabase,
+    userId: user?.id,
+    dashboardPreferences,
+    onPreferencesChange: handlePreferencesChange,
+  })
+
+  const tradingRules = useTradingRules({
+    accountId: tradingAccount.activeAccountId,
+    enabled: isAuthReady && Boolean(user),
+  })
+
+  const tradingRulesBanner = useMemo(
+    () => (
+      <TradingRulesBanner
+        snapshot={tradingRules.snapshot}
+        onRunCooldownCoach={() => tradingRules.setCooldownModalOpen(true)}
+      />
+    ),
+    [tradingRules.snapshot, tradingRules.setCooldownModalOpen],
+  )
+
+  const tradingRulesModal = useMemo(
+    () => (
+      <CooldownUnlockModal
+        open={tradingRules.cooldownModalOpen}
+        accountId={tradingAccount.activeAccountId}
+        traderFirstName={userProfile?.first_name}
+        minEmotionalScore={tradingRules.snapshot?.rules.min_emotional_score ?? 7}
+        onClose={() => tradingRules.setCooldownModalOpen(false)}
+        onCompleted={(unlocked, message) => {
+          toast({
+            title: unlocked ? "Trading unlocked" : "Not ready yet",
+            description: message,
+            variant: unlocked ? "default" : "destructive",
+          })
+          void tradingRules.refresh()
+          void tradingAccount.loadAccounts()
+        }}
+      />
+    ),
+    [
+      tradingRules.cooldownModalOpen,
+      tradingRules.snapshot?.rules.min_emotional_score,
+      tradingRules.refresh,
+      tradingRules.setCooldownModalOpen,
+      tradingAccount.activeAccountId,
+      tradingAccount.loadAccounts,
+      userProfile?.first_name,
+      toast,
+    ],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +134,7 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
         loadUserProfile(supabase, authUser.id, authUser.user_metadata),
         supabase
           .from("user_settings")
-          .select("prop_firm_size")
+          .select("dashboard_preferences")
           .eq("user_id", authUser.id)
           .maybeSingle(),
       ])
@@ -78,7 +146,9 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
       }
 
       if (settingsResult.status === "fulfilled" && settingsResult.value.data) {
-        setPropFirmSize(settingsResult.value.data.prop_firm_size ?? null)
+        setDashboardPreferences(
+          parseDashboardPreferences(settingsResult.value.data.dashboard_preferences),
+        )
       }
 
       setIsLoadingProfile(false)
@@ -96,7 +166,7 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
   const profileCard: UserProfileCardProps = buildUserProfileCardProps({
     profile: userProfile,
     email: user?.email,
-    propFirmSize,
+    propFirmSize: tradingAccount.activeAccount?.name ?? null,
     isLoading: isLoadingProfile && !userProfile.first_name && !userProfile.last_name,
   })
 
@@ -139,5 +209,10 @@ export function useDashboardChrome(options: UseDashboardChromeOptions = {}) {
     showProfileEmptyHint,
     handleLogout,
     supabase,
+    dashboardPreferences,
+    ...tradingAccount,
+    tradingRules,
+    tradingRulesBanner,
+    tradingRulesModal,
   }
 }

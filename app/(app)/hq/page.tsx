@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { X, Pencil, Trash2, Brain, FileUp, Plus, ClipboardCheck } from "lucide-react"
@@ -60,7 +60,13 @@ import {
   type UserSettingsForm,
   type UserSettingsRecord,
 } from "@/lib/user-settings"
-import { DEFAULT_DASHBOARD_PREFERENCES, mergeDashboardPreferences, parseDashboardPreferences } from "@/lib/user-preferences"
+import { filterTradesForAccount } from "@/lib/account-status"
+import { lockTradingAccountRequest } from "@/lib/accounts/api-client"
+import { useActiveTradingAccount } from "@/hooks/use-active-trading-account"
+import { useTradingRules } from "@/hooks/use-trading-rules"
+import { TradingRulesBanner } from "@/components/dashboard/trading-rules-banner"
+import { CooldownUnlockModal } from "@/components/dashboard/cooldown-unlock-modal"
+import { DEFAULT_DASHBOARD_PREFERENCES, mergeDashboardPreferences, parseDashboardPreferences, type DashboardPreferences } from "@/lib/user-preferences"
 import { FirstRunBanner } from "@/components/dashboard/first-run-banner"
 import { FirstRunSetupModal } from "@/components/dashboard/first-run-setup-modal"
 import { TradeEntryActionSheet } from "@/components/dashboard/trade-entry-action-sheet"
@@ -169,6 +175,7 @@ type Trade = {
   risk_percent: number | null
   rule_followed: boolean | null
   user_id: string | null
+  account_id?: string | null
   trade_date: string | null
   higher_timeframe: string | null
   entry_timeframe: string | null
@@ -307,6 +314,64 @@ function Home() {
     }) => Promise<void>
   >(async () => {})
   const skipUrlTabSyncRef = useRef(true)
+  const dashboardPreferences = parseDashboardPreferences(userSettings?.dashboard_preferences)
+
+  const handleDashboardPreferencesChange = useCallback((preferences: DashboardPreferences) => {
+    setUserSettings((current) =>
+      current ? { ...current, dashboard_preferences: preferences } : current,
+    )
+  }, [])
+
+  const {
+    accounts: tradingAccounts,
+    activeAccount,
+    activeAccountId,
+    legacyTradeAccountId,
+    isLoading: isLoadingAccounts,
+    isSaving: isSavingAccounts,
+    error: accountsError,
+    loadAccounts,
+    switchAccount,
+    createAccount,
+    updateAccount,
+    deleteAccount,
+    accountSwitcher,
+  } = useActiveTradingAccount({
+    supabase,
+    userId: user?.id,
+    dashboardPreferences,
+    onPreferencesChange: handleDashboardPreferencesChange,
+  })
+
+  const tradingRules = useTradingRules({
+    accountId: activeAccountId,
+    enabled: Boolean(user?.id),
+  })
+
+  const guardTradingAction = useCallback((): boolean => {
+    if (tradingRules.canLogTrade) return true
+    if (tradingRules.snapshot?.cooldownRequired) {
+      tradingRules.setCooldownModalOpen(true)
+      return false
+    }
+    toast({
+      title: "Trading blocked",
+      description: tradingRules.blockMessage ?? "Weekly trade limit reached.",
+      variant: "destructive",
+    })
+    return false
+  }, [tradingRules, toast])
+
+  const accountTrades = useMemo(
+    () => filterTradesForAccount(trades, activeAccountId, legacyTradeAccountId),
+    [trades, activeAccountId, legacyTradeAccountId],
+  )
+
+  const accountContextRefreshSalt = useMemo(() => {
+    if (!activeAccountId) return 0
+    return activeAccountId.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+  }, [activeAccountId])
+
   const bindOpenCommandCenter = useCallback((open: () => void) => {
     openCommandCenterRef.current = open
   }, [])
@@ -808,10 +873,11 @@ function Home() {
       )
 
       if (error && /import_source|column .* does not exist/i.test(error.message)) {
+        const fallbackSelect = DASHBOARD_TRADE_SELECT.replace(", account_id", "")
         const fallback = await withTimeout(
           supabase
             .from("trades")
-            .select(DASHBOARD_TRADE_SELECT)
+            .select(fallbackSelect)
             .eq("user_id", uid)
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_TRADES_LIMIT) as Promise<{
@@ -913,14 +979,19 @@ function Home() {
   }, [searchParams, user?.id])
 
   useEffect(() => {
-    const tradeId = searchParams.get("trade")
-    if (!tradeId || trades.length === 0) return
+    setSelectedTrade(null)
+    setEditingTrade(null)
+  }, [activeAccountId])
 
-    const trade = trades.find((row) => String(row.id) === String(tradeId))
+  useEffect(() => {
+    const tradeId = searchParams.get("trade")
+    if (!tradeId || accountTrades.length === 0) return
+
+    const trade = accountTrades.find((row) => String(row.id) === String(tradeId))
     if (trade) {
       setSelectedTrade(trade)
     }
-  }, [searchParams, trades])
+  }, [searchParams, accountTrades])
 
   useEffect(() => {
     if (searchParams.get("action") !== "new-trade") return
@@ -1195,7 +1266,7 @@ function Home() {
     }
 
     void refreshPlannedSessions(user.id)
-  }, [user?.id])
+  }, [user?.id, activeAccountId])
 
   type OpenCoachOptions = {
     sessionId?: string
@@ -1248,7 +1319,7 @@ function Home() {
     }
 
     try {
-      const planned = await fetchPlannedCoachSessions()
+      const planned = await fetchPlannedCoachSessions(activeAccountId)
       setPlannedSessions(planned)
     } catch {
       if (!background) {
@@ -1522,13 +1593,20 @@ function Home() {
       return
     }
 
+    if (!editingTrade && !guardTradingAction()) {
+      return
+    }
+
     const resolvedSettings = normalizeUserSettings(userSettings ?? settingsForm)
     const guard = evaluateTradeRiskGuard({
       form,
       settings: resolvedSettings,
       startingBalance:
-        userSettings?.starting_balance ?? settingsForm.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance,
-      historicalTrades: trades.map((trade) => ({
+        activeAccount?.starting_balance ??
+        userSettings?.starting_balance ??
+        settingsForm.starting_balance ??
+        DEFAULT_USER_SETTINGS.starting_balance,
+      historicalTrades: accountTrades.map((trade) => ({
         id: trade.id,
         risk_percent: trade.risk_percent,
         rule_followed: trade.rule_followed,
@@ -1614,6 +1692,7 @@ function Home() {
       risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
       rule_followed: form.rule_followed,
       user_id: activeUserId,
+      account_id: activeAccountId ?? undefined,
       trade_date: form.trade_date || new Date().toISOString().split("T")[0],
       higher_timeframe: form.higher_timeframe || null,
       entry_timeframe: form.entry_timeframe || null,
@@ -1746,9 +1825,17 @@ function Home() {
         setVyronisResultOpen(true)
       }
       fetchTrades(activeUserId)
+      if (savedTradeId && activeAccountId && activeAccount && !activeAccount.starting_balance_locked && !isPlanSave) {
+        void lockTradingAccountRequest(activeAccountId)
+          .then(() => loadAccounts())
+          .catch(() => undefined)
+      }
       if (savedTradeId) {
         void syncTradeLearningMemory(savedTradeId).catch(() => undefined)
         void finalizeCoachForTrade(savedTradeId, convertSessionId ?? coachSessionId)
+      }
+      if (activeAccountId && !editingTrade) {
+        void tradingRules.syncAfterTrade().then(() => loadAccounts())
       }
     }
     setIsSubmitting(false)
@@ -1756,38 +1843,42 @@ function Home() {
   }
 
   const openManualTrade = useCallback((tradeDate?: string) => {
+    if (!guardTradingAction()) return
     setSelectedTrade(null)
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("log")
     setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
     setIsModalOpen(true)
-  }, [])
+  }, [guardTradingAction])
 
   const openPlanTrade = useCallback((tradeDate?: string) => {
+    if (!guardTradingAction()) return
     setSelectedTrade(null)
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("plan")
     setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
     setIsModalOpen(true)
-  }, [])
+  }, [guardTradingAction])
 
   const openTradeEntrySheet = useCallback(() => {
     setTradeEntrySheetOpen(true)
   }, [])
 
   const handleFabClick = useCallback(() => {
+    if (!guardTradingAction()) return
     if (isMobile) {
       openTradeEntrySheet()
       return
     }
     openManualTrade()
-  }, [isMobile, openManualTrade, openTradeEntrySheet])
+  }, [guardTradingAction, isMobile, openManualTrade, openTradeEntrySheet])
 
   const handleDockLog = useCallback(() => {
+    if (!guardTradingAction()) return
     openTradeEntrySheet()
-  }, [openTradeEntrySheet])
+  }, [guardTradingAction, openTradeEntrySheet])
 
   const handleAssignStrategy = useCallback(
     async (tradeId: string, strategyName: string) => {
@@ -1938,48 +2029,55 @@ function Home() {
     setForm(createInitialTradeForm())
   }
 
-  // Calculate live analytics from trades
-  const startingBalance = userSettings?.starting_balance ?? settingsForm.starting_balance ?? DEFAULT_USER_SETTINGS.starting_balance
+  // Calculate live analytics from trades (scoped to active account)
+  const startingBalance =
+    activeAccount?.starting_balance ??
+    userSettings?.starting_balance ??
+    settingsForm.starting_balance ??
+    DEFAULT_USER_SETTINGS.starting_balance
   const maxRiskPerTrade = userSettings?.max_risk_per_trade ?? settingsForm.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade
   const showTradesSkeleton =
-    isLoadingTrades && trades.length === 0 && !dashboardLoadTimedOut
-  const dashboardPreferences = parseDashboardPreferences(userSettings?.dashboard_preferences)
+    (isLoadingTrades && trades.length === 0 && !dashboardLoadTimedOut) ||
+    (isLoadingAccounts && !activeAccount && Boolean(user))
   const showFirstRunSetup =
-    Boolean(user) && !showTradesSkeleton && trades.length === 0 && !dashboardPreferences.onboardingCompleted
+    Boolean(user) && !showTradesSkeleton && accountTrades.length === 0 && !dashboardPreferences.onboardingCompleted
   const showProfileSkeleton =
     isLoadingProfile && !userProfile && !dashboardLoadTimedOut
   const showLoadFallbackBanner = !!tradesLoadError
   const profileCard = buildUserProfileCardProps({
     profile: userProfile ?? DEFAULT_USER_PROFILE,
     email: user?.email,
-    propFirmSize: settingsForm.prop_firm_size,
+    propFirmSize: activeAccount?.name ?? settingsForm.prop_firm_size,
     isLoading: showProfileSkeleton,
   })
   const usingEmailFallback =
     !showProfileSkeleton &&
     !userProfile?.first_name?.trim() &&
     !userProfile?.last_name?.trim()
-  const totalPnL = trades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
+  const totalPnL = accountTrades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
   const accountBalance = startingBalance + totalPnL
-  const winCount = trades.filter(t => t.result === "WIN").length
-  const winRate = trades.length > 0 ? Math.round((winCount / trades.length) * 100) : 0
-  const avgRisk = trades.length > 0 ? trades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / trades.length : 1
-  const todayTrades = getTodayTrades(trades)
+  const winCount = accountTrades.filter((t) => t.result === "WIN").length
+  const winRate = accountTrades.length > 0 ? Math.round((winCount / accountTrades.length) * 100) : 0
+  const avgRisk =
+    accountTrades.length > 0
+      ? accountTrades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / accountTrades.length
+      : 1
+  const todayTrades = getTodayTrades(accountTrades)
 
   useTradingAlerts({
     userId: user?.id,
-    trades,
+    trades: accountTrades,
     settings: settingsForm,
     startingBalance,
   })
 
   // Calculate violation stats
-  const tradesWithViolations = trades.map(t => ({
+  const tradesWithViolations = accountTrades.map((t) => ({
     ...t,
     violations: getTradeViolations(t, maxRiskPerTrade)
   }))
-  const violationCount = tradesWithViolations.filter(t => t.violations.length > 0).length
-  const cleanCount = trades.length - violationCount
+  const violationCount = tradesWithViolations.filter((t) => t.violations.length > 0).length
+  const cleanCount = accountTrades.length - violationCount
 
   function clearSessionState() {
     const previousUserId = loadedDashboardUserRef.current ?? user?.id
@@ -2049,7 +2147,12 @@ function Home() {
   return (
     <AIContextProvider
       userId={user?.id}
-      refreshKey={trades.length + plannedSessions.length + coachFeedbackRefreshKey}
+      refreshKey={
+        accountTrades.length +
+        plannedSessions.length +
+        coachFeedbackRefreshKey +
+        accountContextRefreshSalt
+      }
       maxRiskPerTrade={maxRiskPerTrade}
       onCoachSessionChange={handleCoachSessionChangeFromHq}
       onCoachCompleted={handleCoachCompletedFromHq}
@@ -2091,6 +2194,8 @@ function Home() {
         }
       }}
       onFabClick={handleFabClick}
+      fabDisabled={!tradingRules.canLogTrade}
+      fabDisabledReason={tradingRules.blockMessage ?? undefined}
       showMobileDock={Boolean(user)}
       onDockHome={() => {
         setActiveTab("dashboard")
@@ -2102,12 +2207,19 @@ function Home() {
       }}
       onDockLog={handleDockLog}
       onDockPlanner={() => router.push("/trade-planner")}
+      accountSwitcher={accountSwitcher}
       banner={
-        showLoadFallbackBanner ? (
-          <DashboardInsetPanel className="border-warning/20 bg-warning/[0.06] px-4 py-3">
-            <p className="text-[12px] font-medium text-warning-muted/90">{tradesLoadError}</p>
-          </DashboardInsetPanel>
-        ) : null
+        <>
+          <TradingRulesBanner
+            snapshot={tradingRules.snapshot}
+            onRunCooldownCoach={() => tradingRules.setCooldownModalOpen(true)}
+          />
+          {showLoadFallbackBanner ? (
+            <DashboardInsetPanel className="border-warning/20 bg-warning/[0.06] px-4 py-3">
+              <p className="text-[12px] font-medium text-warning-muted/90">{tradesLoadError}</p>
+            </DashboardInsetPanel>
+          ) : null}
+        </>
       }
     >
         <TabTransition activeTab={activeTab}>
@@ -2116,40 +2228,47 @@ function Home() {
               <DashboardOverviewSkeleton />
             ) : (
               <div className="hq-content space-y-5">
-                {trades.length === 0 ? (
+                {accountTrades.length === 0 ? (
                   <FirstRunBanner
                     onLogTrade={() => openManualTrade()}
                     onOpenWarRoom={() => router.push("/war-room")}
                   />
                 ) : null}
 
-                <HqDashboard
-                  trades={trades}
-                  winRate={winRate}
-                  onOpenCoach={() => void handleOpenCoach()}
-                  onOpenWarRoom={() => router.push("/war-room")}
-                  onOpenJournal={() => {
-                    setActiveTab("journal")
-                    router.replace(getDashboardTabHref("journal"))
-                  }}
-                  onOpenPlanner={(pair) => {
-                    if (pair) {
-                      router.push(`/trade-planner?pair=${encodeURIComponent(pair)}`)
-                      return
-                    }
-                    router.push("/trade-planner")
-                  }}
-                  onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
-                />
+                {activeAccount ? (
+                  <HqDashboard
+                    trades={accountTrades}
+                    winRate={winRate}
+                    activeAccount={activeAccount}
+                    settings={settingsForm}
+                    tradingRulesSnapshot={tradingRules.snapshot}
+                    traderFirstName={userProfile?.first_name}
+                    onOpenCoach={() => void handleOpenCoach()}
+                    onOpenWarRoom={() => router.push("/war-room")}
+                    onOpenJournal={() => {
+                      setActiveTab("journal")
+                      router.replace(getDashboardTabHref("journal"))
+                    }}
+                    onOpenPlanner={(pair) => {
+                      if (pair) {
+                        router.push(`/trade-planner?pair=${encodeURIComponent(pair)}`)
+                        return
+                      }
+                      router.push("/trade-planner")
+                    }}
+                    onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
+                  />
+                ) : null}
 
                 <PrimaryLeakCardWithSettings
-                  trades={trades}
+                  trades={accountTrades}
                   settings={settingsForm}
                   className="today-hero-leak"
                 />
 
                 <RiskGuardBanner
-                  trades={trades}
+                  trades={accountTrades}
                   settings={settingsForm}
                   startingBalance={startingBalance}
                 />
@@ -2165,8 +2284,8 @@ function Home() {
                   className="dashboard-section scroll-mt-24"
                 >
                   <div className="dashboard-stagger grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
-                    <LazyEquityCurveChart trades={trades} startingBalance={startingBalance} />
-                    <LazyWeeklyPerformance trades={trades} />
+                    <LazyEquityCurveChart trades={accountTrades} startingBalance={startingBalance} />
+                    <LazyWeeklyPerformance trades={accountTrades} />
                   </div>
                   <p className="mt-2 text-center text-[10px] text-muted-foreground/65">
                     Deeper charts and weekly review in{" "}
@@ -2189,9 +2308,9 @@ function Home() {
                   className="dashboard-section"
                 >
                   <div className="dashboard-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
-                    <CalendarHeatmapPlaceholder trades={trades} />
+                    <CalendarHeatmapPlaceholder trades={accountTrades} />
                     <AITradeCoachPlaceholder
-                      trades={trades}
+                      trades={accountTrades}
                       maxRiskPerTrade={settingsForm.max_risk_per_trade}
                       patternMemoryRefreshKey={coachFeedbackRefreshKey}
                       onOpenCompanion={() => openCommandCenterRef.current()}
@@ -2227,7 +2346,7 @@ function Home() {
                 </Button>
               </div>
               <LazyStrategyPerformance
-                trades={trades}
+                trades={accountTrades}
                 isLoading={showTradesSkeleton}
                 loadError={tradesLoadError}
                 onPlanTrade={openPlanTrade}
@@ -2247,7 +2366,7 @@ function Home() {
             ) : (
               <div className="dashboard-stagger space-y-3">
                 <RiskGuardBanner
-                  trades={trades}
+                  trades={accountTrades}
                   settings={settingsForm}
                   startingBalance={startingBalance}
                 />
@@ -2263,7 +2382,7 @@ function Home() {
                   />
                 </CollapsibleDashboardSection>
                 <LazyJournalCommandCenter
-                  trades={trades}
+                  trades={accountTrades}
                   startingBalance={startingBalance}
                   plannedSessions={plannedSessions}
                   isLoadingPlanned={isLoadingPlannedSessions}
@@ -2351,7 +2470,7 @@ function Home() {
         isEditing={!!editingTrade}
         journalMode={editingTrade ? "edit" : tradeJournalMode}
         onJournalModeChange={setTradeJournalMode}
-        existingStrategyNames={collectStrategyNamesFromTrades(trades)}
+        existingStrategyNames={collectStrategyNamesFromTrades(accountTrades)}
         startingBalance={startingBalance}
         maxRiskPerTrade={maxRiskPerTrade}
         isUploading={isUploading}
@@ -2370,10 +2489,10 @@ function Home() {
         onOpenCoach={() =>
           void handleOpenCoach(buildPlannedContextFromForm(form, maxRiskPerTrade))
         }
-        canRepeatLast={!editingTrade && trades.length > 0}
-        repeatSourceLabel={getMostRecentTradeForRepeat(trades)?.pair}
+        canRepeatLast={!editingTrade && accountTrades.length > 0}
+        repeatSourceLabel={getMostRecentTradeForRepeat(accountTrades)?.pair}
         onRepeatLast={() => {
-          const source = getMostRecentTradeForRepeat(trades)
+          const source = getMostRecentTradeForRepeat(accountTrades)
           if (!source) return
           setForm(buildRepeatTradeDraft(source))
           toast({
@@ -2410,8 +2529,34 @@ function Home() {
         isSaving={isSavingSettings}
         accountBalance={accountBalance}
         totalPnL={totalPnL}
+        accounts={tradingAccounts}
+        activeAccountId={activeAccountId}
+        accountsLoading={isLoadingAccounts}
+        accountsSaving={isSavingAccounts}
+        accountsError={accountsError}
+        onCreateAccount={createAccount}
+        onUpdateAccount={updateAccount}
+        onDeleteAccount={deleteAccount}
+        onSwitchAccount={(accountId) => void switchAccount(accountId)}
         onMt5TradeSynced={() => {
           if (user?.id) void fetchTrades(user.id)
+        }}
+      />
+
+      <CooldownUnlockModal
+        open={tradingRules.cooldownModalOpen}
+        accountId={activeAccountId}
+        traderFirstName={userProfile?.first_name}
+        minEmotionalScore={tradingRules.snapshot?.rules.min_emotional_score ?? 7}
+        onClose={() => tradingRules.setCooldownModalOpen(false)}
+        onCompleted={(unlocked, message) => {
+          toast({
+            title: unlocked ? "Trading unlocked" : "Not ready yet",
+            description: message,
+            variant: unlocked ? "default" : "destructive",
+          })
+          void tradingRules.refresh()
+          void loadAccounts()
         }}
       />
 

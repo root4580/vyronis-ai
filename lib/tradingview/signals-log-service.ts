@@ -64,3 +64,55 @@ export async function logTradingViewWebhookDecision(
 
   return data?.id ? String(data.id) : null
 }
+
+export type TradingViewWebhookLogRow = {
+  id: string
+  symbol: string
+  direction: string
+  timeframe: string | null
+  passed: boolean
+  reject_reason: string | null
+  reject_message: string | null
+  notification_message: string | null
+  setup_grade: string | null
+  received_at: string
+}
+
+export async function listRecentTradingViewWebhookLogs(
+  supabase: SupabaseClient,
+  userId: string,
+  limit = 8,
+): Promise<TradingViewWebhookLogRow[]> {
+  const { data, error } = await supabase
+    .from("tradingview_signals_log")
+    .select(
+      "id, symbol, direction, timeframe, passed, reject_reason, reject_message, notification_message, setup_grade, received_at",
+    )
+    .eq("user_id", userId)
+    .order("received_at", { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    if (isMissingLogTableError(error.message)) return []
+    throw new Error(error.message)
+  }
+
+  return (data ?? []) as TradingViewWebhookLogRow[]
+}
+
+export async function countTradingViewWebhookLogs(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("tradingview_signals_log")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+
+  if (error) {
+    if (isMissingLogTableError(error.message)) return 0
+    return 0
+  }
+
+  return count ?? 0
+}

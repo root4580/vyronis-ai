@@ -78,6 +78,26 @@ export type TradingViewSetupReadiness = {
   suggestedTestDirection: "BUY" | "SELL"
 }
 
+export async function fetchTradingViewWebhookActivity(): Promise<{
+  webhookUrl: string
+  enabled: boolean
+  logs: Array<{
+    id: string
+    symbol: string
+    direction: string
+    timeframe: string | null
+    passed: boolean
+    reject_reason: string | null
+    reject_message: string | null
+    notification_message: string | null
+    setup_grade: string | null
+    received_at: string
+  }>
+}> {
+  const response = await fetch("/api/tradingview/webhook-activity", { credentials: "same-origin" })
+  return parseJson(response)
+}
+
 export async function fetchTradingViewSetupReadiness(): Promise<TradingViewSetupReadiness> {
   const response = await fetch("/api/tradingview/readiness", { credentials: "same-origin" })
   return parseJson(response)

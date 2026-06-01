@@ -11,6 +11,8 @@ import { AnalyticsPageSkeleton } from "@/components/analytics/analytics-skeleton
 import { TradeLearningPanel } from "@/components/dashboard/trade-learning-panel"
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome"
 import { WeeklyReviewPanel } from "@/components/weekly-review/weekly-review-panel"
+import { PaperVsLivePanel } from "@/components/analytics/paper-vs-live-panel"
+import { ChapterTimelinePanel } from "@/components/weekly-chapters/chapter-timeline-panel"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { buildDashboardAnalytics } from "@/lib/analytics/dashboard-analytics"
 import {
@@ -56,8 +58,11 @@ export default function AnalyticsPage() {
       const userId = chrome.user!.id
 
       const [tradesResult, balance] = await Promise.all([
-        fetchUserTradesForAnalytics(chrome.supabase, userId),
-        fetchUserStartingBalance(chrome.supabase, userId),
+        fetchUserTradesForAnalytics(chrome.supabase, userId, "manual", {
+          accountId: chrome.activeAccountId,
+          legacyAccountId: chrome.legacyTradeAccountId,
+        }),
+        fetchUserStartingBalance(chrome.supabase, userId, chrome.activeAccountId),
       ])
 
       if (cancelled) return
@@ -81,7 +86,7 @@ export default function AnalyticsPage() {
     return () => {
       cancelled = true
     }
-  }, [chrome.supabase, chrome.user?.id, toast])
+  }, [chrome.supabase, chrome.user?.id, chrome.activeAccountId, chrome.legacyTradeAccountId, toast])
 
   if (chrome.isLoggingOut) {
     return <SigningOutScreen />
@@ -97,12 +102,14 @@ export default function AnalyticsPage() {
         activeTab="analytics"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
         showSignalBell={Boolean(chrome.user)}
         showFab
         onFabClick={() => router.push(`${APP_HOME_PATH}?action=new-trade`)}
+        banner={chrome.tradingRulesBanner}
       >
         <section className="dashboard-section">
           <p className="dashboard-section-title">Analytics</p>
@@ -142,6 +149,22 @@ export default function AnalyticsPage() {
               </a>
             </section>
 
+            <section id="analytics-chapters" className="dashboard-section scroll-mt-24">
+              <p className="dashboard-section-title">Your trading story</p>
+              <p className="mb-3 max-w-2xl text-sm text-muted-foreground/75">
+                Every week is a chapter — green weeks and red weeks, all part of your journey.
+              </p>
+              <ChapterTimelinePanel accountId={chrome.activeAccountId} />
+            </section>
+
+            <section id="analytics-paper-live" className="dashboard-section scroll-mt-24">
+              <p className="dashboard-section-title">Paper vs live</p>
+              <p className="mb-3 max-w-2xl text-sm text-muted-foreground/75">
+                Practice Room paper trades are isolated from live journal stats — compare both here.
+              </p>
+              <PaperVsLivePanel accountId={chrome.activeAccountId} />
+            </section>
+
             <section id="analytics-learning" className="dashboard-section scroll-mt-24">
               <p className="dashboard-section-title">Trade memory + learning</p>
               <TradeLearningPanel refreshKey={analytics.tradeCount} />
@@ -154,6 +177,7 @@ export default function AnalyticsPage() {
           </div>
         )}
       </DashboardChrome>
+      {chrome.tradingRulesModal}
 
       <AccountSettingsModal
         open={settings.isOpen}

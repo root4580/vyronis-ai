@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import {
+  accountScopeOrFilter,
+  resolveActiveAccountId,
+  resolveLegacyTradeAccountId,
+} from "@/lib/accounts/server-active-account"
+import {
   aggregateHeadline,
   buildPlanDisciplineAggregate,
   type PlanDisciplineTradeRow,
@@ -25,7 +30,7 @@ function mapPlanRow(row: Record<string, unknown>): MatchableTradePlan {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient()
     const {
@@ -37,15 +42,24 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: trades, error: tradesError } = await supabase
+    const accountId = await resolveActiveAccountId(supabase, user.id, request)
+    const legacyAccountId = await resolveLegacyTradeAccountId(supabase, user.id)
+
+    let tradesQuery = supabase
       .from("trades")
       .select(
-        "id, plan_id, pair, direction, result, pnl, trade_date, created_at, entry_price, stop_loss, take_profit, risk_percent, risk_reward",
+        "id, plan_id, pair, direction, result, pnl, trade_date, created_at, entry_price, stop_loss, take_profit, risk_percent, risk_reward, account_id",
       )
       .eq("user_id", user.id)
       .not("plan_id", "is", null)
       .order("trade_date", { ascending: false })
       .limit(120)
+
+    if (accountId) {
+      tradesQuery = tradesQuery.or(accountScopeOrFilter(accountId, legacyAccountId))
+    }
+
+    const { data: trades, error: tradesError } = await tradesQuery
 
     if (tradesError) {
       if (/plan_id|column|schema cache/i.test(tradesError.message)) {
@@ -63,11 +77,17 @@ export async function GET() {
 
     const plansById = new Map<string, MatchableTradePlan>()
     if (planIds.length > 0) {
-      const { data: plans, error: plansError } = await supabase
+      let plansQuery = supabase
         .from("trade_plans")
         .select("*")
         .eq("user_id", user.id)
         .in("id", planIds)
+
+      if (accountId) {
+        plansQuery = plansQuery.or(accountScopeOrFilter(accountId, legacyAccountId))
+      }
+
+      const { data: plans, error: plansError } = await plansQuery
 
       if (plansError) throw plansError
       for (const row of plans || []) {

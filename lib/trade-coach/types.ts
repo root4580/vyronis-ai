@@ -136,6 +136,7 @@ export type PreTradeQuestion = {
 export type TradeCoachSessionRecord = {
   id: string
   user_id: string
+  account_id?: string | null
   trade_id: string | null
   status: CoachSessionStatus
   planned_context: PreTradePlannedContext

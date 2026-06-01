@@ -191,6 +191,7 @@ export default function ProfileSettingsPage() {
         activeTab="dashboard"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}

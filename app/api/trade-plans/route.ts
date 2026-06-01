@@ -3,6 +3,12 @@ import { buildTradePlanCalculation } from "@/lib/trade-planner/trade-plan-engine
 import { planIdsToExpire } from "@/lib/trade-planner/plan-match"
 import type { TradePlanDirection } from "@/lib/trade-planner/types"
 import { createClient } from "@/lib/supabase/server"
+import {
+  accountScopeOrFilter,
+  resolveActiveAccountId,
+  resolveLegacyTradeAccountId,
+} from "@/lib/accounts/server-active-account"
+import { getTradingRulesSnapshot } from "@/lib/trading-rules/trading-rules-service"
 
 function mapRow(row: Record<string, unknown>) {
   return {
@@ -54,7 +60,7 @@ async function expireStaleActivePlans(
   return rows.map((row) => (ids.includes(row.id) ? { ...row, status: "expired" } : row))
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient()
     const {
@@ -66,12 +72,21 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    const accountId = await resolveActiveAccountId(supabase, user.id, request)
+    const legacyAccountId = await resolveLegacyTradeAccountId(supabase, user.id)
+
+    let query = supabase
       .from("trade_plans")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(40)
+
+    if (accountId) {
+      query = query.or(accountScopeOrFilter(accountId, legacyAccountId))
+    }
+
+    const { data, error } = await query
 
     if (error) {
       if (error.code === "42P01" || error.code === "PGRST205") {
@@ -130,10 +145,20 @@ export async function POST(request: Request) {
       takeProfit: Number(body.takeProfit) || 0,
     })
 
+    const accountId = await resolveActiveAccountId(supabase, user.id, request)
+
+    if (accountId) {
+      const snapshot = await getTradingRulesSnapshot(supabase, user.id, accountId)
+      if (snapshot && !snapshot.canSavePlan) {
+        return NextResponse.json({ error: snapshot.blockReason ?? "Trading blocked" }, { status: 403 })
+      }
+    }
+
     const { data, error } = await supabase
       .from("trade_plans")
       .insert({
         user_id: user.id,
+        account_id: accountId,
         pair: calculation.pair,
         direction: calculation.direction,
         account_size: calculation.accountSize,

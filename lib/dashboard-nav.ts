@@ -39,6 +39,21 @@ export function getWarRoomCoachHref(pairs: string[]): string {
   return `${APP_HOME_PATH}?openCoach=1`
 }
 
+/** Practice Room — paper trades never touch live P&L. */
+export function getPracticeRoomHref(
+  params?: Record<string, string | number | null | undefined>,
+): string {
+  if (!params) return "/practice-room"
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== "") {
+      search.set(key, String(value))
+    }
+  }
+  const query = search.toString()
+  return query ? `/practice-room?${query}` : "/practice-room"
+}
+
 /** Home path after refresh — strips `tab`, keeps safe deep-link params only. */
 export function buildDashboardHomePath(searchParams: URLSearchParams | null): string {
   const preserve = new URLSearchParams()

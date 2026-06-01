@@ -1,0 +1,1 @@
+-- Run supabase/034-trading-accounts.sql in Supabase SQL Editor.

@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, ClipboardList, ExternalLink, Loader2, Radio, Trash2 } from "lucide-react"
+import { Bell, ClipboardList, ExternalLink, FileEdit, Loader2, Radio, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +18,9 @@ import type { TradingViewSignalListItem } from "@/lib/tradingview/types"
 import { TradingViewWhyPanel } from "@/components/tradingview/tradingview-why-panel"
 import { setupVerdictLabel } from "@/lib/tradingview/signal-war-room-grader"
 import { openTradingViewSignalInPlanner } from "@/lib/tradingview/signal-navigation"
+import { buildSignalPaperDraft, isAPlusSetupGrade } from "@/lib/paper-trades/draft-helpers"
+import { PaperTradeModal } from "@/components/paper-trades/paper-trade-modal"
+import { getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type SignalAlertsBellProps = {
@@ -52,6 +56,7 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
   const { signals, unreadCount, isLoading, markRead, markAllRead, removeSignal } =
     useTradingViewSignals(enabled)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [paperDraft, setPaperDraft] = useState<ReturnType<typeof buildSignalPaperDraft> | null>(null)
   const hasUnread = unreadCount > 0
 
   async function handlePlan(signal: TradingViewSignalListItem) {
@@ -136,6 +141,8 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
             signals.map((signal) => {
               const unread = !signal.read_at
               const ignored = signal.status === "ignored"
+              const grade = signal.ai_analysis?.setup_grade
+              const showPaperProminent = isAPlusSetupGrade(grade)
               return (
                 <div
                   key={signal.id}
@@ -225,9 +232,9 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                     </p>
                   ) : null}
 
-                  <div className="mt-2.5 flex gap-2">
+                  <div className="mt-2.5 flex flex-col gap-2">
                     {!ignored ? (
-                      <>
+                      <div className="flex gap-2">
                         <Button
                           type="button"
                           size="sm"
@@ -235,7 +242,7 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                           onClick={() => void handleOpen(signal)}
                         >
                           <ExternalLink className="mr-1.5 size-3.5" />
-                          Coach
+                          Analyse
                         </Button>
                         <Button
                           type="button"
@@ -247,7 +254,26 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
                           <ClipboardList className="mr-1.5 size-3.5" />
                           Plan
                         </Button>
-                      </>
+                      </div>
+                    ) : null}
+                    {!ignored ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className={cn(
+                          "h-8 w-full border-violet-400/30 bg-violet-500/[0.08] text-[11px] text-violet-100 hover:bg-violet-500/[0.14]",
+                          showPaperProminent &&
+                            "border-profit/35 bg-profit/[0.08] text-profit hover:bg-profit/[0.12]",
+                        )}
+                        onClick={() => {
+                          if (!signal.read_at) void markRead(signal.id)
+                          setPaperDraft(buildSignalPaperDraft(signal))
+                        }}
+                      >
+                        <FileEdit className="mr-1.5 size-3.5" />
+                        {showPaperProminent ? "📝 Paper Trade (A+ proven)" : "📝 Paper Trade This"}
+                      </Button>
                     ) : null}
                     <Button
                       type="button"
@@ -277,9 +303,24 @@ export function SignalAlertsBell({ enabled = true, onSelectSignal }: SignalAlert
         </div>
         <DropdownMenuSeparator className="bg-white/[0.06]" />
         <div className="px-3 py-2 text-[10px] text-muted-foreground/55">
-          Alert-only — Vyronis never places trades from TradingView webhooks.
+          Alert-only — Vyronis never places live trades from TradingView webhooks. Paper trades go to{" "}
+          <Link href={getPracticeRoomHref()} className="text-violet-200 hover:underline">
+            Practice Room
+          </Link>
+          .
         </div>
       </DropdownMenuContent>
+      {paperDraft ? (
+        <PaperTradeModal
+          open
+          draft={paperDraft}
+          onClose={() => setPaperDraft(null)}
+          onCreated={() => {
+            setPaperDraft(null)
+            router.push(getPracticeRoomHref())
+          }}
+        />
+      ) : null}
     </DropdownMenu>
   )
 }

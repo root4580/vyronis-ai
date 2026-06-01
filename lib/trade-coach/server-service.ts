@@ -7,6 +7,7 @@ import {
   isTradePlannerCoachHandoff,
   normalizeAnswer,
 } from "@/lib/trade-coach/pre-trade-flow"
+import { finalizeCoachChapterSession, loadCoachChapterContext } from "@/lib/coach-chapters/context-service"
 import {
   analyzeChartVisionForContext,
   buildChartAnalysisMessages,
@@ -104,17 +105,35 @@ export async function createPreTradeSession(
   supabase: SupabaseClient,
   userId: string,
   plannedContext: PreTradePlannedContext,
+  accountId?: string | null,
 ): Promise<TradeCoachSessionWithMessages> {
   const maxRisk = getMaxRiskPerTrade(plannedContext)
   const contextWithRisk = { ...plannedContext, max_risk_per_trade: maxRisk }
 
+  const insertPayload: Record<string, unknown> = {
+    user_id: userId,
+    planned_context: contextWithRisk,
+    status: "in_progress",
+  }
+  if (accountId) insertPayload.account_id = accountId
+
+  let weekChapter: number | null = null
+  let intro = buildCoachIntro(contextWithRisk)
+  if (accountId) {
+    try {
+      const chapterContext = await loadCoachChapterContext(supabase, userId, accountId)
+      weekChapter = chapterContext.currentChapterNumber
+      intro = `${chapterContext.openingMessage}\n\n${intro}`
+      insertPayload.week_chapter = weekChapter
+      insertPayload.session_type = "pre_trade"
+    } catch {
+      // Chapter tables optional until migrated
+    }
+  }
+
   const { data: session, error: sessionError } = await supabase
     .from("trade_coach_sessions")
-    .insert({
-      user_id: userId,
-      planned_context: contextWithRisk,
-      status: "in_progress",
-    })
+    .insert(insertPayload)
     .select("*")
     .single()
 
@@ -122,8 +141,6 @@ export async function createPreTradeSession(
   if (sessionError || !session) {
     throw new Error(sessionError?.message || "Could not create coach session")
   }
-
-  const intro = buildCoachIntro(contextWithRisk)
 
   const seedMessages: Array<{
     session_id: string
@@ -1065,6 +1082,26 @@ export async function submitPreTradeAnswer(
   if (!refreshed) {
     throw new Error("Could not reload coach session")
   }
+
+  if (nextStatus === "completed") {
+    const linkedAccountId = refreshed.account_id ?? null
+    if (linkedAccountId) {
+      const chapterContext = await loadCoachChapterContext(
+        supabase,
+        userId,
+        linkedAccountId,
+      ).catch(() => null)
+      if (chapterContext) {
+        await finalizeCoachChapterSession(
+          supabase,
+          userId,
+          refreshed,
+          chapterContext.currentChapterNumber,
+        ).catch(() => undefined)
+      }
+    }
+  }
+
   return refreshed
 }
 
@@ -1253,15 +1290,27 @@ export async function listPlannedCoachSessions(
   supabase: SupabaseClient,
   userId: string,
   limit = 20,
+  accountId?: string | null,
+  legacyAccountId?: string | null,
 ): Promise<PlannedCoachSessionItem[]> {
-  const { data: sessions, error } = await supabase
+  let query = supabase
     .from("trade_coach_sessions")
-    .select("id, status, planned_context, created_at, updated_at")
+    .select("id, status, planned_context, created_at, updated_at, account_id")
     .eq("user_id", userId)
     .is("trade_id", null)
     .in("status", ["in_progress", "completed"])
     .order("updated_at", { ascending: false })
     .limit(limit)
+
+  if (accountId) {
+    query = query.or(
+      legacyAccountId && accountId === legacyAccountId
+        ? `account_id.eq.${accountId},account_id.is.null`
+        : `account_id.eq.${accountId}`,
+    )
+  }
+
+  const { data: sessions, error } = await query
 
   throwIfMissing(error)
   if (error || !sessions || sessions.length === 0) return []

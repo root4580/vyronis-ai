@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Target } from "lucide-react"
+import { Search } from "lucide-react"
 import { WarRoomHtfUpload } from "@/components/strategy-brain/war-room-htf-upload"
+import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
 import { updatePairAoiStatus, saveWeeklyPlan } from "@/lib/strategy-brain/api-client"
 import type { AoiStatus, BiasDirection, PairPlanRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
+import { buildWarRoomPaperDraft } from "@/lib/paper-trades/draft-helpers"
 import { AoiStatusPill } from "@/components/strategy-brain/strategy-brain-primitives"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -119,13 +121,19 @@ export function WarRoomPairCard({
           <PairBiasReadonly bias={plan.directional_bias as BiasDirection} />
           <AoiStatusPill status={plan.aoi_status} />
         </div>
-        <Link
-          href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
-          className="inline-flex items-center gap-1 text-[11px] text-text-accent hover:underline"
-        >
-          <Target className="size-3.5" />
-          Coach
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/?coachPair=${encodeURIComponent(plan.pair)}`}
+            className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-white/[0.08] px-2 py-1 text-[11px] text-text-accent hover:bg-white/[0.04]"
+          >
+            <Search className="size-3.5" />
+            Analyse
+          </Link>
+          <PaperTradeButton
+            draft={buildWarRoomPaperDraft(plan)}
+            label="📝 Paper Trade This"
+          />
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">

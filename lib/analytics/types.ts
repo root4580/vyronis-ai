@@ -9,6 +9,7 @@ export type AnalyticsTradeRow = {
   direction: string
   result: string
   pnl: number
+  account_id?: string | null
   emotion: string
   emotion_after?: string | null
   setup: string

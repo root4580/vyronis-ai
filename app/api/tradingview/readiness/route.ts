@@ -6,6 +6,7 @@ import {
   TradingViewSignalsTableMissingError,
 } from "@/lib/tradingview/signal-server-service"
 import { getTradingViewSetupReadiness } from "@/lib/tradingview/setup-readiness"
+import { countTradingViewWebhookLogs } from "@/lib/tradingview/signals-log-service"
 
 export async function GET(request: Request) {
   try {
@@ -22,16 +23,19 @@ export async function GET(request: Request) {
 
     const settings = await ensureTradingViewWebhookSettings(supabase, user.id, baseUrl)
 
-    const { count: signalCount } = await supabase
-      .from("tradingview_signals")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+    const [signalsResult, logCount] = await Promise.all([
+      supabase
+        .from("tradingview_signals")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      countTradingViewWebhookLogs(supabase, user.id),
+    ])
 
     const readiness = await getTradingViewSetupReadiness(
       supabase,
       user.id,
       settings.enabled,
-      { hasReceivedAlert: (signalCount ?? 0) > 0 },
+      { hasReceivedAlert: (signalsResult.count ?? 0) > 0 || logCount > 0 },
     )
 
     return NextResponse.json(readiness)

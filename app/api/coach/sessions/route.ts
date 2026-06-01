@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
 import {
   createPreTradeSession,
   TradeCoachTableMissingError,
@@ -28,7 +29,12 @@ export async function POST(request: NextRequest) {
       max_risk_per_trade: body.maxRiskPerTrade ?? body.plannedContext?.max_risk_per_trade,
     }
 
-    const session = await createPreTradeSession(supabase, user.id, plannedContext)
+    const session = await createPreTradeSession(
+      supabase,
+      user.id,
+      plannedContext,
+      await resolveActiveAccountId(supabase, user.id, request),
+    )
 
     return NextResponse.json(session)
   } catch (error) {

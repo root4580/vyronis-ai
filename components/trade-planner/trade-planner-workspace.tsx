@@ -80,6 +80,9 @@ type TradePlannerWorkspaceProps = {
   accountSizeReady?: boolean
   skippedBalanceTrades?: number
   onCoachEngaged?: () => void
+  canSavePlan?: boolean
+  tradingBlockMessage?: string | null
+  onTradingBlocked?: () => void
 }
 
 export function TradePlannerWorkspace({
@@ -91,6 +94,9 @@ export function TradePlannerWorkspace({
   accountSizeReady = false,
   skippedBalanceTrades = 0,
   onCoachEngaged,
+  canSavePlan = true,
+  tradingBlockMessage = null,
+  onTradingBlocked,
 }: TradePlannerWorkspaceProps) {
   const { openPreTradeCoach } = useAIContext()
   const { toast } = useToast()
@@ -299,6 +305,15 @@ export function TradePlannerWorkspace({
   }, [])
 
   async function sendPlanToCoach(tradePlanId?: string) {
+    if (!canSavePlan) {
+      onTradingBlocked?.()
+      toast({
+        title: "Coach blocked",
+        description: tradingBlockMessage ?? "Complete Cooldown Coach before analyzing plans.",
+        variant: "destructive",
+      })
+      return
+    }
     if (!canCoach) return
 
     const prefill = buildTradePlannerCoachPrefill(plan, {
@@ -400,6 +415,15 @@ export function TradePlannerWorkspace({
   }
 
   async function handleSavePlan() {
+    if (!canSavePlan) {
+      onTradingBlocked?.()
+      toast({
+        title: "Plan blocked",
+        description: tradingBlockMessage ?? "Trading rules prevent new plans right now.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsSaving(true)
     try {
       const payload = {
@@ -825,7 +849,7 @@ export function TradePlannerWorkspace({
               className="sticky bottom-[calc(60px+env(safe-area-inset-bottom,0px))] z-10 -mx-4 space-y-2 border-t border-[var(--border-subtle)] bg-[var(--surface-page)] p-4 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 xl:static"
             >
               <SuggestedActionStrip plan={plan} />
-              {canCoach ? (
+              {canCoach && canSavePlan ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -839,7 +863,7 @@ export function TradePlannerWorkspace({
               <Button
                 type="button"
                 className="btn-primary h-10 w-full rounded-[var(--radius-md)] text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={!canSave || isSaving}
+                disabled={!canSave || isSaving || !canSavePlan}
                 onClick={() => void handleSavePlan()}
               >
                 <Save className="mr-2 size-4" />

@@ -84,6 +84,7 @@ export default function EvolutionPage() {
         activeTab="analytics"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}

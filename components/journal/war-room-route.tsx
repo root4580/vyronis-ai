@@ -25,6 +25,7 @@ export function WarRoomRoute() {
         activeTab="journal"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
@@ -34,10 +35,12 @@ export function WarRoomRoute() {
         onDockPlanner={() => router.replace("/trade-planner")}
         onDockCoach={() => router.replace(getDashboardHomeHref())}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
+        banner={chrome.tradingRulesBanner}
         mainClassName="dashboard-container px-4 py-5 pb-28 md:px-6 md:py-6 md:pb-24"
       >
         <WeeklyWarRoom />
       </DashboardChrome>
+      {chrome.tradingRulesModal}
       <AccountSettingsModal
         open={settings.isOpen}
         onClose={settings.closeSettings}

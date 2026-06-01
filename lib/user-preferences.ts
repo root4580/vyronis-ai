@@ -8,6 +8,7 @@ export type AlertPreferences = {
 export type DashboardPreferences = {
   activeTab: DashboardTab
   onboardingCompleted?: boolean
+  activeAccountId?: string
   alerts?: AlertPreferences
 }
 
@@ -26,13 +27,17 @@ export function parseDashboardPreferences(value: unknown): DashboardPreferences 
   const activeTab = record.activeTab
   const onboardingCompleted =
     typeof record.onboardingCompleted === "boolean" ? record.onboardingCompleted : undefined
+  const activeAccountId =
+    typeof record.activeAccountId === "string" && record.activeAccountId.trim()
+      ? record.activeAccountId.trim()
+      : undefined
   const alerts = parseAlertPreferences(record.alerts)
 
   if (VALID_TABS.has(activeTab)) {
-    return { activeTab, onboardingCompleted, alerts }
+    return { activeTab, onboardingCompleted, activeAccountId, alerts }
   }
 
-  return { ...DEFAULT_DASHBOARD_PREFERENCES, onboardingCompleted, alerts }
+  return { ...DEFAULT_DASHBOARD_PREFERENCES, onboardingCompleted, activeAccountId, alerts }
 }
 
 function parseAlertPreferences(value: unknown): AlertPreferences | undefined {

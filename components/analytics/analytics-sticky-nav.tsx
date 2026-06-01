@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { id: "analytics-weekly-review", label: "Weekly review" },
+  { id: "analytics-chapters", label: "Chapters" },
   { id: "analytics-learning", label: "Learning" },
   { id: "analytics-overview", label: "Overview" },
   { id: "analytics-charts", label: "Charts" },

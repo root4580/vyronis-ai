@@ -20,24 +20,33 @@ import {
 import { getForexSessionHeaderState } from "@/lib/trading/forex-sessions"
 import {
   computeAvgRiskReward,
-  computeWeekPnL,
   formatHeaderDate,
   getTimeOfDayGreeting,
-  hasLossStreak,
 } from "@/lib/hq-dashboard-metrics"
 import { formatPnL, getPnLTextClass, getSignedPnL } from "@/lib/trade-utils"
 import { getDashboardTabHref } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
+import { AccountStatusCard } from "@/components/dashboard/account-status-card"
+import { TradingRulesDashboardCard } from "@/components/dashboard/trading-rules-dashboard-card"
+import { WeeklyChapterSystem } from "@/components/weekly-chapters/weekly-chapter-system"
 import { ForexSessionsWidget } from "@/components/dashboard/forex-sessions-widget"
+import type { TradingAccountRecord } from "@/lib/accounts/types"
+import type { UserSettingsForm } from "@/lib/user-settings"
+import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
 
 type HqDashboardProps = {
   trades: DashboardTradeRow[]
   winRate: number
+  activeAccount: TradingAccountRecord
+  settings?: UserSettingsForm | null
   onOpenCoach: () => void
   onOpenWarRoom: () => void
   onOpenJournal: () => void
   onOpenPlanner: (pair?: string) => void
   onViewTrade: (trade: DashboardTradeRow) => void
+  onOpenSettings?: () => void
+  tradingRulesSnapshot?: TradingRulesSnapshot | null
+  traderFirstName?: string | null
   className?: string
 }
 
@@ -87,11 +96,16 @@ function HqStatCard({
 export function HqDashboard({
   trades,
   winRate,
+  activeAccount,
+  settings,
   onOpenCoach,
   onOpenWarRoom,
   onOpenJournal,
   onOpenPlanner,
   onViewTrade,
+  onOpenSettings,
+  tradingRulesSnapshot,
+  traderFirstName,
   className,
 }: HqDashboardProps) {
   const [weekPlan, setWeekPlan] = useState<WeeklyPlanWithPairs | null>(null)
@@ -107,9 +121,10 @@ export function HqDashboard({
     let cancelled = false
     async function load() {
       try {
+        const accountQuery = activeAccount.id ? `?accountId=${encodeURIComponent(activeAccount.id)}` : ""
         const [summaryRes, plansRes] = await Promise.all([
-          fetch("/api/trade-planner/discipline-summary"),
-          fetch("/api/trade-plans"),
+          fetch(`/api/trade-planner/discipline-summary${accountQuery}`),
+          fetch(`/api/trade-plans${accountQuery}`),
         ])
         const summary = await summaryRes.json().catch(() => ({}))
         const plansPayload = await plansRes.json().catch(() => ({}))
@@ -145,7 +160,7 @@ export function HqDashboard({
     return () => {
       cancelled = true
     }
-  }, [trades.length])
+  }, [trades.length, activeAccount.id])
 
   const [marketNow, setMarketNow] = useState(() => new Date())
 
@@ -157,13 +172,11 @@ export function HqDashboard({
   }, [])
 
   const forexHeader = useMemo(() => getForexSessionHeaderState(marketNow), [marketNow])
-  const weekPnL = useMemo(() => computeWeekPnL(trades), [trades])
   const { average: avgRr, plannedAverage } = useMemo(() => computeAvgRiskReward(trades), [trades])
   const totalPnL = useMemo(
     () => trades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0),
     [trades],
   )
-
   const streak = useMemo(
     () =>
       computePlanStreak({
@@ -188,8 +201,7 @@ export function HqDashboard({
   )
 
   const watchlistReady = isWatchlistComplete(weekPlan)
-  const showCoachNudge =
-    !coachNudgeDismissed && (!watchlistReady || hasLossStreak(trades, 3))
+  const showCoachNudge = !coachNudgeDismissed && !watchlistReady
 
   const recentTrades = useMemo(() => {
     return [...trades]
@@ -206,6 +218,14 @@ export function HqDashboard({
 
   return (
     <div className={cn("space-y-5", className)}>
+      <WeeklyChapterSystem
+        accountId={activeAccount.id}
+        traderFirstName={traderFirstName}
+        disciplineScore={disciplineScore ?? null}
+        disciplineGrade={disciplineGrade ?? null}
+        tradingRulesSnapshot={tradingRulesSnapshot ?? null}
+      />
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[17px] font-medium text-text-primary">{getTimeOfDayGreeting()}</h1>
@@ -227,17 +247,9 @@ export function HqDashboard({
             <span style={{ color: headerMuted }}>{forexHeader.secondaryLabel}</span>
           </p>
         </div>
-        <div className="hq-surface-card flex items-center gap-3 px-3 py-2">
-          <div>
-            <p className="section-label">Week</p>
-            <p className={cn("text-sm font-medium tabular-nums", getPnLTextClass(weekPnL, weekPnL >= 0 ? "WIN" : "LOSS"))}>
-              {formatPnL(weekPnL, weekPnL >= 0 ? "WIN" : "LOSS")}
-            </p>
-          </div>
-        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:items-stretch">
         <HqStatCard label="Win rate" value={`${winRate}%`} sub={`${trades.length} trades`} />
         <HqStatCard
           label="Avg R:R"
@@ -250,17 +262,15 @@ export function HqDashboard({
           valueClassName={getPnLTextClass(totalPnL, totalPnL >= 0 ? "WIN" : "LOSS")}
           sub="all time"
         />
-        <HqStatCard
-          label="Discipline"
-          value={disciplineGrade ?? "—"}
-          valueClassName="text-text-accent"
-          sub={
-            disciplineScore != null
-              ? `${disciplineScore} avg score`
-              : "link plans to trades"
-          }
+        <AccountStatusCard
+          trades={trades}
+          account={activeAccount}
+          settings={settings}
+          onOpenSettings={onOpenSettings}
         />
       </div>
+
+      <TradingRulesDashboardCard snapshot={tradingRulesSnapshot ?? null} />
 
       {showCoachNudge ? (
         <div
@@ -287,28 +297,19 @@ export function HqDashboard({
             </div>
             <div className="min-w-0 space-y-2">
               <p className="text-xs leading-relaxed text-text-secondary">
-                {!watchlistReady ? (
-                  <>
-                    <span className="font-medium text-text-primary">Set your War Room watchlist</span> before
-                    the session — Coach works best with a weekly plan.
-                  </>
-                ) : (
-                  <>
-                    <span className="font-medium text-text-primary">Three losses in a row.</span> Step back and
-                    run Coach before the next entry.
-                  </>
-                )}
+                <span className="font-medium text-text-primary">Set your War Room watchlist</span> before
+                the session — Coach works best with a weekly plan.
               </p>
               <button
                 type="button"
-                onClick={!watchlistReady ? onOpenWarRoom : onOpenCoach}
+                onClick={onOpenWarRoom}
                 className="inline-flex items-center rounded-[var(--radius-sm)] border px-2.5 py-1 text-[11px] text-text-accent"
                 style={{
                   background: "var(--color-accent-bg)",
                   borderColor: "var(--color-accent-border)",
                 }}
               >
-                {!watchlistReady ? "Open War Room" : "Run Coach"}
+                Open War Room
               </button>
             </div>
           </div>

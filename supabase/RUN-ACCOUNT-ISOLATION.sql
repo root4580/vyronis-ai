@@ -1,0 +1,2 @@
+-- Run after supabase/034-trading-accounts.sql
+-- Adds account_id to plans/coach sessions + accent colors

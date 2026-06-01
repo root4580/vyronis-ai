@@ -18,6 +18,8 @@ type ConnectedDashboardChromeProps = {
   isLoggingOut?: boolean
   showFab?: boolean
   onFabClick?: () => void
+  fabDisabled?: boolean
+  fabDisabledReason?: string
   showMobileDock?: boolean
   onDockHome?: () => void
   onDockCoach?: () => void
@@ -29,6 +31,7 @@ type ConnectedDashboardChromeProps = {
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
   tradeModalOpen?: boolean
+  accountSwitcher?: ReactNode
 }
 
 export function ConnectedDashboardChrome({

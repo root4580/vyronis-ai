@@ -36,6 +36,7 @@ import type {
   CommandCenterMessageRecord,
   CommandCenterMode,
 } from "@/lib/command-center/types"
+import { fetchTradingRulesSnapshot } from "@/lib/trading-rules/api-client"
 import { buildThinkingPhases } from "@/lib/intelligence/conversational-state-engine"
 import { useToast } from "@/hooks/use-toast"
 
@@ -425,6 +426,20 @@ export function AIContextProvider({
       }
 
       try {
+        if (!sessionId) {
+          const rules = await fetchTradingRulesSnapshot()
+          if (rules && !rules.canOpenPreTradeCoach) {
+            toast({
+              title: "Trading blocked",
+              description: rules.blockReason ?? "Complete Cooldown Coach before opening Coach.",
+              variant: "destructive",
+            })
+            setIsTransitioning(false)
+            preTradeOpenInFlightRef.current = false
+            return
+          }
+        }
+
         if (sessionId) {
           const cached = coachSessionCacheRef.current.get(sessionId) ?? null
           if (cached) {

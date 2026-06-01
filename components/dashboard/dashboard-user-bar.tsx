@@ -13,6 +13,7 @@ type DashboardUserBarProps = {
   onOpenSettings: () => void
   onLogout: () => void
   isLoggingOut?: boolean
+  accountSwitcher?: React.ReactNode
 }
 
 export function DashboardUserBar({
@@ -21,15 +22,18 @@ export function DashboardUserBar({
   onOpenSettings,
   onLogout,
   isLoggingOut = false,
+  accountSwitcher,
 }: DashboardUserBarProps) {
   return (
     <div className="dashboard-container px-4 pt-4 md:px-6 md:pt-5">
       <div className="dashboard-user-bar">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <UserProfileCard {...profileCard} />
           {showProfileEmptyHint && <UserProfileCardEmptyHint />}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {accountSwitcher}
+          <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onOpenSettings}
@@ -51,6 +55,7 @@ export function DashboardUserBar({
               <LogOut className="size-4 text-muted-foreground transition-colors group-hover:text-loss" />
             )}
           </button>
+          </div>
         </div>
       </div>
     </div>

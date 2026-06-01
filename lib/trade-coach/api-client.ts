@@ -145,8 +145,11 @@ export async function fetchPendingCoachSession(): Promise<TradeCoachSessionWithM
   return parseJson(response)
 }
 
-export async function fetchPlannedCoachSessions(): Promise<PlannedCoachSessionItem[]> {
-  const response = await fetch("/api/coach/sessions/planned", {
+export async function fetchPlannedCoachSessions(
+  accountId?: string | null,
+): Promise<PlannedCoachSessionItem[]> {
+  const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : ""
+  const response = await fetch(`/api/coach/sessions/planned${query}`, {
     credentials: "same-origin",
   })
   return parseJson(response)

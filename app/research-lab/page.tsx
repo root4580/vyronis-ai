@@ -64,6 +64,7 @@ export default function ResearchLabPage() {
         activeTab="analytics"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}

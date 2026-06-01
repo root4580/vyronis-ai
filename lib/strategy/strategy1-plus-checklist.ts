@@ -3,6 +3,7 @@
  */
 
 import type { TradeFormState } from "@/lib/trade-form-config"
+import { sanitizeCoachLanguage } from "@/lib/coach-chapters/personality"
 
 export type Strategy1ManualChecks = {
   liquiditySwept: boolean
@@ -245,7 +246,9 @@ export function evaluateStrategy1PlusChecklist(
 
   let summary: string
   if (hardSkip) {
-    summary = "Skip this trade — hard rule failed (HTF, confirmation, emotion, or impulsive entry)."
+    summary = sanitizeCoachLanguage(
+      "This setup isn't ready yet — hard rule failed (HTF, confirmation, emotion, or impulsive entry). Let it develop and come back stronger.",
+    )
   } else if (grade === "A+") {
     summary = "A+ setup — matches Strategy 1 + Strategy 2 steals. OK to execute if you still see it live."
   } else if (grade === "B") {

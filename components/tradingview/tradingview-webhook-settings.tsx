@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import {
   fetchTradingViewSetupReadiness,
+  fetchTradingViewWebhookActivity,
   fetchTradingViewWebhookSettings,
   regenerateTradingViewWebhookSecret,
   sendTradingViewTestAlert,
@@ -30,6 +31,9 @@ export function TradingViewWebhookSettings() {
   const { toast } = useToast()
   const [settings, setSettings] = useState<WebhookSettings | null>(null)
   const [readiness, setReadiness] = useState<TradingViewSetupReadiness | null>(null)
+  const [webhookLogs, setWebhookLogs] = useState<
+    Awaited<ReturnType<typeof fetchTradingViewWebhookActivity>>["logs"]
+  >([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
@@ -40,12 +44,14 @@ export function TradingViewWebhookSettings() {
     setIsLoading(true)
     setError(null)
     try {
-      const [webhook, setup] = await Promise.all([
+      const [webhook, setup, activity] = await Promise.all([
         fetchTradingViewWebhookSettings(),
         fetchTradingViewSetupReadiness(),
+        fetchTradingViewWebhookActivity().catch(() => ({ logs: [] as typeof webhookLogs, webhookUrl: "", enabled: false })),
       ])
       setSettings(webhook)
       setReadiness(setup)
+      setWebhookLogs(activity.logs)
     } catch (loadError) {
       setSettings(null)
       setReadiness(null)
@@ -265,6 +271,57 @@ export function TradingViewWebhookSettings() {
               value={settings.webhookUrl}
               onCopy={() => void copyValue("Webhook URL", settings.webhookUrl)}
             />
+
+            {webhookLogs.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-foreground/90">Recent webhook activity</p>
+                <p className="text-[10px] text-muted-foreground/65">
+                  Session/timeframe rejects are silent in the bell — they only appear here.
+                </p>
+                <ul className="max-h-40 space-y-1.5 overflow-y-auto">
+                  {webhookLogs.map((log) => (
+                    <li
+                      key={log.id}
+                      className="rounded-md border border-white/[0.06] bg-black/15 px-2 py-1.5 text-[10px]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-foreground/85">
+                          {log.symbol} {log.direction}
+                          {log.timeframe ? ` · ${log.timeframe}` : ""}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase",
+                            log.passed
+                              ? "bg-profit/15 text-profit"
+                              : log.reject_reason === "bias"
+                                ? "bg-warning/15 text-warning-foreground"
+                                : "bg-white/[0.06] text-muted-foreground",
+                          )}
+                        >
+                          {log.passed ? log.setup_grade ?? "PASS" : log.reject_reason ?? "reject"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-muted-foreground/70">
+                        {log.notification_message ??
+                          log.reject_message ??
+                          new Date(log.received_at).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-warning/20 bg-warning/[0.06] px-3 py-2.5 text-[10px] leading-relaxed text-warning-muted">
+                <p className="font-medium text-warning-foreground">No webhooks received yet</p>
+                <p className="mt-1 text-warning-muted/90">
+                  If TradingView is configured but nothing shows here, check: webhook URL is{" "}
+                  <code className="text-cyan-glow/80">{settings.webhookUrl}</code>, alert JSON includes
+                  your secret, timeframe is <strong>M15</strong> (<code>15</code>), and Vercel has{" "}
+                  <code className="text-cyan-glow/80">SUPABASE_SERVICE_ROLE_KEY</code>.
+                </p>
+              </div>
+            )}
 
             <CredentialRow
               label="5. Secret key (inside alert JSON)"

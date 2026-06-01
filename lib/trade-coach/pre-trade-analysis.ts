@@ -1,4 +1,9 @@
 import { detectCoachRedFlags } from "@/lib/trade-coach/red-flags"
+import {
+  buildPreTradeGradeMessage,
+  mapSetupGradeToBand,
+  sanitizeCoachLanguage,
+} from "@/lib/coach-chapters/personality"
 import type {
   CoachRedFlag,
   PreTradeAnalysis,
@@ -151,13 +156,21 @@ export function buildPreTradeCompletionMessages(analysis: PreTradeAnalysis): str
   }
 
   if (analysis.tradeQuality) {
+    const band = mapSetupGradeToBand(analysis.tradeQuality.grade)
     messages.push(
-      `Trade Quality Score: ${analysis.tradeQuality.score}/100 (${analysis.tradeQuality.grade}) — ${analysis.tradeQuality.recommendation}.`,
+      sanitizeCoachLanguage(
+        buildPreTradeGradeMessage({
+          grade: band,
+          missingReasons: analysis.tradeQuality.warnings,
+        }),
+      ),
     )
   }
 
   messages.push(
-    "Pre-trade check-in saved. Log the trade when execution is done — I'll compare plan vs outcome and score discipline after close.",
+    sanitizeCoachLanguage(
+      "Pre-trade check-in saved. Log the trade when execution is done — I'll compare plan vs outcome after close.",
+    ),
   )
 
   return messages

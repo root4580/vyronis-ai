@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Brain, ChevronDown, ClipboardList, Eye, Loader2, Send, Sparkles, X } from "lucide-react"
@@ -75,6 +76,16 @@ import type {
 } from "@/lib/trade-coach/types"
 import { partitionCoachThreadMessages } from "@/lib/trade-coach/coach-message-display"
 import { resolveTradeQualityFromSession } from "@/lib/trade-coach/trade-quality-utils"
+import { fetchCoachChapterContext } from "@/lib/coach-chapters/api-client"
+import {
+  buildPreTradeGradeMessage,
+  mapSetupGradeToBand,
+  sanitizeCoachLanguage,
+  shouldTakeTradeGrowthLabel,
+} from "@/lib/coach-chapters/personality"
+import type { CoachChapterContext } from "@/lib/coach-chapters/types"
+import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
+import { getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { TRADE_QUALITY_BLOCK_THRESHOLD } from "@/lib/trade-coach/trade-quality-engine"
 import { MessageHistoryToggle } from "@/components/ui/message-history-toggle"
@@ -123,6 +134,8 @@ type TradeCoachPanelProps = {
   onCompleted?: (sessionId: string) => void
   onLogPlannedTrade?: (sessionId: string) => void
   onWorkflowPhaseChange?: (phase: CoachWorkflowPhase) => void
+  accountId?: string | null
+  traderFirstName?: string | null
 }
 
 type TradeCoachModalProps = Omit<TradeCoachPanelProps, "active" | "embedded" | "showHeader"> & {
@@ -152,7 +165,7 @@ function CoachBubble({ message }: { message: TradeCoachMessageRecord }) {
               : "border border-white/[0.08] bg-white/[0.05] text-foreground",
         )}
       >
-        {message.content}
+        {sanitizeCoachLanguage(message.content)}
       </div>
     </div>
   )
@@ -172,7 +185,11 @@ export function TradeCoachPanel({
   onCompleted,
   onLogPlannedTrade,
   onWorkflowPhaseChange,
+  accountId,
+  traderFirstName,
 }: TradeCoachPanelProps) {
+  const router = useRouter()
+  const [chapterContext, setChapterContext] = useState<CoachChapterContext | null>(null)
   const [session, setSession] = useState<TradeCoachSessionWithMessages | null>(null)
   const [draft, setDraft] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -202,6 +219,20 @@ export function TradeCoachPanel({
   onSessionLoadedRef.current = onSessionLoaded
   plannedContextRef.current = plannedContext
   const [mtfDetailsOpen, setMtfDetailsOpen] = useState(false)
+
+  useEffect(() => {
+    if (!active) {
+      setChapterContext(null)
+      return
+    }
+    let cancelled = false
+    void fetchCoachChapterContext({ accountId, traderFirstName }).then((payload) => {
+      if (!cancelled) setChapterContext(payload)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [active, accountId, traderFirstName])
 
   const mtfAnalysis = useMemo(() => {
     if (!session) return null
@@ -755,14 +786,16 @@ export function TradeCoachPanel({
     totalQuestions,
   )
 
-  const shouldTakeLabel =
-    coachAnalysis?.shouldTakeTrade === "yes"
-      ? "Yes — proceed with discipline"
-      : coachAnalysis?.shouldTakeTrade === "caution"
-        ? "Proceed with caution"
-        : coachAnalysis?.shouldTakeTrade === "no"
-          ? "Consider skipping this trade"
-          : null
+  const shouldTakeLabel = shouldTakeTradeGrowthLabel(coachAnalysis?.shouldTakeTrade)
+
+  const setupGradeBand = mapSetupGradeToBand(
+    tradeQuality?.grade ??
+      session?.planned_context?.tradingview_setup_grade ??
+      mtfAnalysis?.playbookMatch?.setupGrade ??
+      null,
+  )
+  const showGrowthActions =
+    isComplete && setupGradeBand !== "A+" && setupGradeBand !== "A" && coachAnalysis?.shouldTakeTrade !== "yes"
 
   const statusLabel =
     workflowPhase === "upload"
@@ -832,6 +865,24 @@ export function TradeCoachPanel({
             </div>
           ) : (
             <>
+              {chapterContext?.newMilestones?.map((milestone) => (
+                <DashboardInsetPanel
+                  key={milestone.id}
+                  className="border-profit/25 bg-profit/[0.08] px-3 py-3 text-[12px] leading-relaxed text-profit"
+                >
+                  {sanitizeCoachLanguage(milestone.message)}
+                </DashboardInsetPanel>
+              ))}
+              {chapterContext?.weeklyCoachReview ? (
+                <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.05] px-3 py-3">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/80">
+                    Weekly coach note
+                  </p>
+                  <p className="whitespace-pre-line text-[11px] leading-relaxed text-foreground/90">
+                    {chapterContext.weeklyCoachReview}
+                  </p>
+                </DashboardInsetPanel>
+              ) : null}
               {session?.planned_context?.signal_source === "tradingview" ? (
                 <TradingViewAlertCoachSummary plannedContext={session.planned_context} />
               ) : null}
@@ -948,12 +999,12 @@ export function TradeCoachPanel({
               ) : null}
 
               {requiresOverride && (
-                <DashboardInsetPanel className="border-loss/25 bg-loss/[0.06] px-3 py-3">
-                  <p className="text-[12px] font-medium text-loss/95">
-                    High probability low-quality execution detected.
+                <DashboardInsetPanel className="border-violet-400/25 bg-violet-500/[0.08] px-3 py-3">
+                  <p className="text-[12px] font-medium text-violet-100">
+                    This setup isn't ready yet — quality score is below your usual bar.
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/75">
-                    Quality score is below {TRADE_QUALITY_BLOCK_THRESHOLD}. Acknowledge the risk before continuing.
+                    Paper trade it in Practice Room, or acknowledge the risk if you still plan to log live.
                   </p>
                   <label className="mt-3 flex items-start gap-2 text-[11px] text-foreground/85">
                     <input
@@ -995,13 +1046,59 @@ export function TradeCoachPanel({
                         {coachAnalysis && !tradeQuality && shouldTakeLabel && (
                           <p className="text-[11px] text-muted-foreground/75">{shouldTakeLabel}</p>
                         )}
+                        {isComplete && tradeQuality ? (
+                          <p className="text-[11px] leading-relaxed text-muted-foreground/75">
+                            {buildPreTradeGradeMessage({
+                              grade: setupGradeBand,
+                              pair: session?.planned_context?.pair,
+                              missingReasons: tradeQuality.warnings,
+                            })}
+                          </p>
+                        ) : null}
                         <p className="text-[11px] leading-relaxed text-muted-foreground/75">
                           Log the trade to link plan vs outcome and unlock coach review.
                         </p>
                       </div>
                     </div>
                   </DashboardInsetPanel>
-                  {onLogPlannedTrade && session ? (
+                  {showGrowthActions ? (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <PaperTradeButton
+                        draft={{
+                          symbol: session?.planned_context?.pair ?? "EURUSD",
+                          direction:
+                            session?.planned_context?.direction?.toUpperCase().includes("SELL") ||
+                            session?.planned_context?.direction?.toUpperCase() === "SHORT"
+                              ? "SELL"
+                              : "BUY",
+                          entry: session?.planned_context?.entry_price
+                            ? parseFloat(session.planned_context.entry_price)
+                            : null,
+                          sl: session?.planned_context?.stop_loss
+                            ? parseFloat(session.planned_context.stop_loss)
+                            : null,
+                          tp: session?.planned_context?.take_profit
+                            ? parseFloat(session.planned_context.take_profit)
+                            : null,
+                          notes: session?.planned_context?.setup ?? "",
+                          source: "practice",
+                          setup_grade: session?.planned_context?.tradingview_setup_grade ?? null,
+                        }}
+                        label="📝 Paper Trade"
+                        className="h-11 w-full flex-1"
+                        onCreated={() => router.push(getPracticeRoomHref())}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 w-full flex-1 border-white/[0.1]"
+                        onClick={onClose}
+                      >
+                        Wait for Better
+                      </Button>
+                    </div>
+                  ) : null}
+                  {onLogPlannedTrade && session && !showGrowthActions ? (
                     <Button
                       type="button"
                       onClick={() => onLogPlannedTrade(session.id)}

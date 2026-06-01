@@ -20,6 +20,8 @@ type DashboardChromeProps = {
   isLoggingOut?: boolean
   showFab?: boolean
   onFabClick?: () => void
+  fabDisabled?: boolean
+  fabDisabledReason?: string
   showMobileDock?: boolean
   onDockHome?: () => void
   onDockCoach?: () => void
@@ -31,6 +33,7 @@ type DashboardChromeProps = {
   showSignalBell?: boolean
   onSignalAlertClick?: (signal: import("@/lib/tradingview/types").TradingViewSignalListItem) => void
   dockHighlight?: DockHighlightId
+  accountSwitcher?: ReactNode
 }
 
 export function DashboardChrome({
@@ -43,6 +46,8 @@ export function DashboardChrome({
   isLoggingOut = false,
   showFab = false,
   onFabClick,
+  fabDisabled = false,
+  fabDisabledReason,
   showMobileDock = false,
   onDockHome,
   onDockCoach,
@@ -54,6 +59,7 @@ export function DashboardChrome({
   showSignalBell,
   onSignalAlertClick,
   dockHighlight = null,
+  accountSwitcher,
 }: DashboardChromeProps) {
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -74,10 +80,19 @@ export function DashboardChrome({
           onOpenSettings={onOpenSettings}
           onLogout={onLogout}
           isLoggingOut={isLoggingOut}
+          accountSwitcher={accountSwitcher}
         />
       }
       aiLauncher={aiLauncher}
-      fab={showFab && onFabClick ? <DashboardFab onClick={onFabClick} /> : null}
+      fab={
+        showFab && onFabClick ? (
+          <DashboardFab
+            onClick={onFabClick}
+            disabled={fabDisabled}
+            disabledReason={fabDisabledReason}
+          />
+        ) : null
+      }
       mobileDock={
         showMobileDock && onDockHome && onDockCoach && onDockLog && onDockPlanner ? (
           <>

@@ -74,6 +74,8 @@ export function PreTradeMode() {
         onLogPlannedTrade={logPlannedTrade}
         onWorkflowPhaseChange={setCoachPhase}
         onClose={() => void returnToCompanion()}
+        accountId={null}
+        traderFirstName={undefined}
       />
     </div>
   )

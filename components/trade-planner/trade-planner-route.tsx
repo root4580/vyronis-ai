@@ -61,8 +61,11 @@ export function TradePlannerRoute() {
     async function loadBalance() {
       const userId = chrome.user!.id
       const [tradesResult, balance] = await Promise.all([
-        fetchUserTradesForAnalytics(chrome.supabase, userId),
-        fetchUserStartingBalance(chrome.supabase, userId),
+        fetchUserTradesForAnalytics(chrome.supabase, userId, "manual", {
+          accountId: chrome.activeAccountId,
+          legacyAccountId: chrome.legacyTradeAccountId,
+        }),
+        fetchUserStartingBalance(chrome.supabase, userId, chrome.activeAccountId),
       ])
 
       if (cancelled) return
@@ -79,7 +82,7 @@ export function TradePlannerRoute() {
     return () => {
       cancelled = true
     }
-  }, [chrome.supabase, chrome.user?.id])
+  }, [chrome.supabase, chrome.user?.id, chrome.activeAccountId, chrome.legacyTradeAccountId])
 
   useEffect(() => {
     if (!fromSignalId) {
@@ -129,6 +132,7 @@ export function TradePlannerRoute() {
         activeTab="dashboard"
         profileCard={chrome.profileCard}
         showProfileEmptyHint={chrome.showProfileEmptyHint}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}
@@ -143,8 +147,10 @@ export function TradePlannerRoute() {
           if (chrome.user?.id) markRitualCoachEngaged(chrome.user.id)
         }}
         onDockLog={() => router.replace(`${APP_HOME_PATH}?action=new-trade`)}
+        banner={chrome.tradingRulesBanner}
         mainClassName="dashboard-container pb-28 md:pb-24"
       >
+        {chrome.tradingRulesModal}
         <div className="planner-content space-y-5">
           <div>
             <h1 className="text-base font-medium text-text-primary">Trade Planner</h1>
@@ -160,6 +166,13 @@ export function TradePlannerRoute() {
             maxRiskPerTrade={settings.form.max_risk_per_trade}
             accountSizeReady={balanceLoaded}
             skippedBalanceTrades={skippedBalanceTrades}
+            canSavePlan={chrome.tradingRules.canSavePlan}
+            tradingBlockMessage={chrome.tradingRules.blockMessage}
+            onTradingBlocked={() => {
+              if (chrome.tradingRules.snapshot?.cooldownRequired) {
+                chrome.tradingRules.setCooldownModalOpen(true)
+              }
+            }}
             onCoachEngaged={() => {
               if (chrome.user?.id) markRitualCoachEngaged(chrome.user.id)
             }}

@@ -24,6 +24,7 @@ export function TradeIntelligenceRoute({ tradeId }: { tradeId: string }) {
       <DashboardChrome
         activeTab="journal"
         profileCard={chrome.profileCard}
+        accountSwitcher={chrome.accountSwitcher}
         onOpenSettings={settings.openSettings}
         onLogout={() => void chrome.handleLogout()}
         isLoggingOut={chrome.isLoggingOut}

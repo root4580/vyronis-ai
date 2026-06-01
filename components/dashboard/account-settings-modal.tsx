@@ -12,9 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import { TradingAccountsPanel } from "@/components/dashboard/trading-accounts-panel"
 import { TradingViewWebhookSettings } from "@/components/tradingview/tradingview-webhook-settings"
 import { Mt5IntegrationsCollapsible } from "@/components/integrations/mt5-integrations-collapsible"
 import { ProductionDeployChecklist } from "@/components/settings/production-deploy-checklist"
+import type { TradingAccountInput, TradingAccountRecord } from "@/lib/accounts/types"
 import {
   PREFERRED_SESSION_OPTIONS,
   PROP_FIRM_SIZES,
@@ -32,6 +34,18 @@ type AccountSettingsModalProps = {
   accountBalance: number
   totalPnL: number
   onMt5TradeSynced?: () => void
+  accounts?: TradingAccountRecord[]
+  activeAccountId?: string | null
+  accountsLoading?: boolean
+  accountsSaving?: boolean
+  accountsError?: string | null
+  onCreateAccount?: (input: TradingAccountInput) => Promise<void>
+  onUpdateAccount?: (
+    accountId: string,
+    patch: Partial<TradingAccountInput> & { is_default?: boolean },
+  ) => Promise<void>
+  onDeleteAccount?: (accountId: string) => Promise<void>
+  onSwitchAccount?: (accountId: string) => void
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -52,6 +66,15 @@ export function AccountSettingsModal({
   accountBalance,
   totalPnL,
   onMt5TradeSynced,
+  accounts = [],
+  activeAccountId = null,
+  accountsLoading = false,
+  accountsSaving = false,
+  accountsError = null,
+  onCreateAccount,
+  onUpdateAccount,
+  onDeleteAccount,
+  onSwitchAccount,
 }: AccountSettingsModalProps) {
   if (!open) return null
 
@@ -84,6 +107,22 @@ export function AccountSettingsModal({
             </button>
           </div>
         </div>
+
+        {onCreateAccount && onUpdateAccount && onDeleteAccount && onSwitchAccount ? (
+          <div className="relative shrink-0 border-b border-white/[0.06] px-4 py-4 md:px-6">
+            <TradingAccountsPanel
+              accounts={accounts}
+              activeAccountId={activeAccountId}
+              isLoading={accountsLoading}
+              isSaving={accountsSaving}
+              loadError={accountsError}
+              onCreate={onCreateAccount}
+              onUpdate={onUpdateAccount}
+              onDelete={onDeleteAccount}
+              onSwitch={onSwitchAccount}
+            />
+          </div>
+        ) : null}
 
         <form onSubmit={onSubmit} className="relative flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
