@@ -52,6 +52,16 @@ import {
   shouldUseCouncilRoundtable,
 } from "@/lib/council/jarvis-service"
 import {
+  buildMarcusFallbackReply,
+  buildMarcusLivePrompt,
+  buildMarcusUserPrompt,
+  detectMarcusScenario,
+  loadMarcusPsychologyContext,
+  shouldMarcusChimeIn,
+  type MarcusPsychologyContext,
+  type MarcusScenario,
+} from "@/lib/council/marcus-service"
+import {
   buildCouncilJournalTodayUserPrompt,
   buildCouncilStatusUserPrompt,
   buildJarvisJournalTodayIntro,
@@ -154,6 +164,7 @@ function normalizeSettings(row: Record<string, unknown>): CouncilSettingsRecord 
     rex_voice_id: readCouncilVoiceId(row, "rex"),
     luna_voice_id: readCouncilVoiceId(row, "luna"),
     cipher_voice_id: readCouncilVoiceId(row, "cipher"),
+    marcus_voice_id: readCouncilVoiceId(row, "marcus"),
     auto_briefing_enabled: row.auto_briefing_enabled !== false,
     briefing_time: String(row.briefing_time ?? "on_login"),
     language_preference: String(row.language_preference ?? "en"),
@@ -193,6 +204,10 @@ function buildConversationFallback(input: {
     return `Got it. Building on what I said — ${input.lastReply.split(".").slice(0, 1).join(".")}. What's the one thing you want to clarify next?`
   }
 
+  if (input.agentId === "marcus") {
+    return `Before you execute — is this your setup or FOMO? Take 10 seconds. Breathe. If it's still valid, go.`
+  }
+
   return fallbackAgentLine(input.agentId, input.context)
 }
 
@@ -224,6 +239,8 @@ function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<
       return context.zara.includes("No live")
         ? "No live trades to review yet — paper your plan until the journal has data."
         : context.zara.split(".")[0] + "."
+    case "marcus":
+      return `${context.traderFirstName}, I've reviewed your week. You showed up — that's the foundation. One question before tomorrow: what would patience look like on your first decision?`
   }
 }
 
@@ -251,6 +268,58 @@ async function generateAgentText(input: {
     }
   }
   return input.fallback
+}
+
+async function produceMarcusReply(input: {
+  context: Awaited<ReturnType<typeof loadCouncilAgentContext>>
+  supabase: SupabaseClient
+  userId: string
+  accountId: string
+  traderMessage: string
+  scenario?: MarcusScenario
+  psychology?: MarcusPsychologyContext
+  mode?: "briefing" | "conversation"
+  temperature?: number
+  maxTokens?: number
+}): Promise<string> {
+  const psychology =
+    input.psychology ??
+    (await loadMarcusPsychologyContext(
+      input.supabase,
+      input.userId,
+      input.accountId,
+      input.context.traderFirstName,
+    ))
+  const scenario =
+    input.scenario ??
+    detectMarcusScenario({
+      message: input.traderMessage,
+      psychology,
+      mode: input.mode === "briefing" ? "briefing" : "conversation",
+    }) ??
+    "before_trade"
+  const liveDataPrompt = buildMarcusLivePrompt(psychology, scenario)
+  return generateAgentText({
+    agentId: "marcus",
+    systemPrompt: buildCouncilAgentSystemPrompt(
+      "marcus",
+      input.context,
+      input.mode ?? "conversation",
+      liveDataPrompt,
+    ),
+    userPrompt: buildMarcusUserPrompt({
+      scenario,
+      question: input.traderMessage,
+      traderFirstName: input.context.traderFirstName,
+    }),
+    fallback: buildMarcusFallbackReply({
+      scenario,
+      traderFirstName: input.context.traderFirstName,
+      psychology,
+    }),
+    temperature: input.temperature ?? 0.62,
+    maxTokens: input.maxTokens ?? 180,
+  })
 }
 
 async function produceCouncilAgentReply(input: {
@@ -801,6 +870,25 @@ export async function runCouncilMorningBriefing(
   }
 
   pushMessage("jarvis", buildJarvisClosing())
+
+  const marcusPsychology = await loadMarcusPsychologyContext(
+    supabase,
+    userId,
+    accountId,
+    context.traderFirstName,
+  )
+  const marcusContent = await produceMarcusReply({
+    context,
+    supabase,
+    userId,
+    accountId,
+    traderMessage: "",
+    scenario: "after_briefing",
+    psychology: marcusPsychology,
+    mode: "briefing",
+    temperature: 0.58,
+  })
+  pushMessage("marcus", marcusContent)
 
   const merged = [...transcript, ...newMessages]
   const session = await upsertTodaySession(supabase, userId, accountId, {
@@ -1375,26 +1463,36 @@ export async function runCouncilRespond(
       () => undefined,
     )
   } else {
-    reply = await produceCouncilAgentReply({
-      agentId,
-      context,
-      supabase,
-      userId,
-      accountId,
-      userPrompt: buildCouncilRespondUserPrompt({
-        question: trimmed,
-        recentTranscript,
-        agentMemory,
-        lastAgentReply,
-        agentName: getCouncilAgent(agentId).name,
-      }),
-      fallback: buildConversationFallback({
-        agentId,
-        context,
-        question: trimmed,
-        lastReply: lastAgentReply,
-      }),
-    })
+    reply =
+      agentId === "marcus"
+        ? await produceMarcusReply({
+            context,
+            supabase,
+            userId,
+            accountId,
+            traderMessage: trimmed,
+            mode: "conversation",
+          })
+        : await produceCouncilAgentReply({
+            agentId,
+            context,
+            supabase,
+            userId,
+            accountId,
+            userPrompt: buildCouncilRespondUserPrompt({
+              question: trimmed,
+              recentTranscript,
+              agentMemory,
+              lastAgentReply,
+              agentName: getCouncilAgent(agentId).name,
+            }),
+            fallback: buildConversationFallback({
+              agentId,
+              context,
+              question: trimmed,
+              lastReply: lastAgentReply,
+            }),
+          })
 
     const agentEntry: CouncilTranscriptEntry = {
       id: randomUUID(),
@@ -1460,6 +1558,42 @@ export async function runCouncilRespond(
     await appendAgentMemory(supabase, userId, chimeDecision.agent, trimmed, chimeReply).catch(
       () => undefined,
     )
+  }
+
+  const marcusChime = await shouldMarcusChimeIn({
+    supabase,
+    userId,
+    accountId,
+    traderFirstName: context.traderFirstName,
+    message: trimmed,
+    primaryAgent: lastSpeaker,
+    excludeAgents: agentMessages.map((entry) => entry.agent),
+  })
+
+  if (marcusChime) {
+    const marcusReply = await produceMarcusReply({
+      context,
+      supabase,
+      userId,
+      accountId,
+      traderMessage: trimmed,
+      scenario: marcusChime.scenario,
+      psychology: marcusChime.psychology,
+      mode: "conversation",
+      temperature: 0.6,
+      maxTokens: 160,
+    })
+
+    const marcusEntry: CouncilTranscriptEntry = {
+      id: randomUUID(),
+      agent: "marcus",
+      content: marcusReply,
+      createdAt: new Date().toISOString(),
+    }
+    agentMessages.push(marcusEntry)
+    lastReply = marcusReply
+    lastSpeaker = "marcus"
+    await appendAgentMemory(supabase, userId, "marcus", trimmed, marcusReply).catch(() => undefined)
   }
 
   if (

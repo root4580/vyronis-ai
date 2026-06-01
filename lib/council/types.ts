@@ -1,6 +1,6 @@
 import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
 
-export type CouncilAgentId = "jarvis" | "nova" | "zara" | "luna" | "rex" | "cipher"
+export type CouncilAgentId = "jarvis" | "nova" | "zara" | "luna" | "rex" | "cipher" | "marcus"
 
 export type CouncilAgentDefinition = {
   id: CouncilAgentId
@@ -11,6 +11,8 @@ export type CouncilAgentDefinition = {
   accentClass: string
   /** Master coordinator — opens/closes briefing, routes council traffic. */
   isCoordinator?: boolean
+  /** Personal psychologist — speaks on mindset triggers, not in specialist briefing loop. */
+  isPsychologist?: boolean
 }
 
 export type CouncilTranscriptEntry = {
@@ -42,6 +44,7 @@ export type CouncilSettingsRecord = {
   rex_voice_id: string | null
   luna_voice_id: string | null
   cipher_voice_id: string | null
+  marcus_voice_id: string | null
   auto_briefing_enabled: boolean
   briefing_time: string
   language_preference: string

@@ -2,7 +2,7 @@ import type { CouncilAgentId, CouncilAgentContext, CouncilTranscriptEntry } from
 import { getCouncilAgent } from "@/lib/council/agents"
 
 const CONVERSATION_RULES = [
-  "You are in a live council room with Jarvis, Nova, Rex, Luna, Cipher, and Zara — not a solo chatbot.",
+  "You are in a live council room with Jarvis, Nova, Rex, Luna, Cipher, Zara, and Marcus — not a solo chatbot.",
   "Answer the trader's LATEST message directly. Acknowledge what they just said.",
   "Never repeat your previous reply word-for-word or reopen with the same greeting twice.",
   "Add something new each turn: a next step, a clarification, or a direct yes/no.",
@@ -24,6 +24,15 @@ const JARVIS_RULES = [
   "You run the room — composed, professional, efficient.",
 ].join("\n")
 
+const MARCUS_RULES = [
+  "You are Marcus — the trader's personal trading psychologist. Mindset and growth ONLY.",
+  "NEVER give technical analysis, mention specific prices, pairs, setups, indicators, or entry calls.",
+  "NEVER replace other council agents — you complement them after they cover their lanes.",
+  "Do NOT speak during the specialist briefing loop — only at the end of briefing or on mindset triggers.",
+  "Sound deep, warm, and wise. Use the trader's first name when natural.",
+  "When chiming in after a loss or win, focus on process and rest — not the next setup.",
+].join("\n")
+
 function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): string {
   switch (agentId) {
     case "jarvis":
@@ -38,6 +47,8 @@ function agentDataBlock(agentId: CouncilAgentId, context: CouncilAgentContext): 
       return context.luna
     case "cipher":
       return context.cipher
+    case "marcus":
+      return "Psychology context is loaded in the MARCUS PSYCHOLOGY DATA block — coach sessions, emotion history, win/loss patterns, discipline trend, cooldown."
   }
 }
 
@@ -55,6 +66,8 @@ function agentDataLabel(agentId: CouncilAgentId): string {
       return "Live Supabase data (War Room watchlist, setup grades, active opportunities)"
     case "cipher":
       return "Live Supabase data (War Room apex filter, H4 zones, M15 confirmation)"
+    case "marcus":
+      return "Psychology snapshot (last 3 Coach sessions, emotion scores, win/loss patterns, discipline trend, cooldown)"
   }
 }
 
@@ -137,6 +150,14 @@ export function buildCouncilAgentSystemPrompt(
       "Give clear technical entry/wait verdicts. If the trader says AOI is ready or price is in zone, move to M15 confirmation and invalidation — do not keep saying WAITING.",
     )
     base.push("Cross-check Coach active session and watchlist Coach grades before giving a final entry call.")
+  }
+  if (agentId === "marcus") {
+    base.push(MARCUS_RULES)
+    if (mode === "briefing") {
+      base.push(
+        'End-of-briefing format: "[Name], I\'ve reviewed your week. [One thing they did well]. [One thing to improve]. One question before tomorrow: [personalized question from their patterns]."',
+      )
+    }
   }
 
   const prompt = base.join("\n")

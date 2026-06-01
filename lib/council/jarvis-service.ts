@@ -17,6 +17,7 @@ const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
   nova: "chapter and discipline review",
   zara: "trade review",
   jarvis: "council coordination",
+  marcus: "mindset and psychology",
 }
 
 function timeOfDayLabel(now: Date): "morning" | "afternoon" | "evening" {

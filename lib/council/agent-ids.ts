@@ -7,6 +7,7 @@ export const COUNCIL_AGENT_IDS: CouncilAgentId[] = [
   "luna",
   "cipher",
   "zara",
+  "marcus",
 ]
 
 const LEGACY_AGENT_IDS: Record<string, CouncilAgentId> = {
@@ -25,6 +26,7 @@ export const COUNCIL_AGENT_NAME_ALIASES: Record<CouncilAgentId, string[]> = {
   luna: ["Luna", "Hamza", "Layla"],
   cipher: ["Cipher", "Khalid"],
   zara: ["Zara", "Adam", "Emma"],
+  marcus: ["Marcus", "Coach Marcus"],
 }
 
 export function isCouncilAgentId(value: string): value is CouncilAgentId {
@@ -58,6 +60,7 @@ export const LEGACY_COUNCIL_AGENT_NAME: Record<CouncilAgentId, string> = {
   rex: "scott",
   luna: "hamza",
   cipher: "khalid",
+  marcus: "marcus",
 }
 
 export const LEGACY_COUNCIL_SETTINGS_VOICE_KEYS: Record<CouncilAgentId, string> = {
@@ -67,6 +70,7 @@ export const LEGACY_COUNCIL_SETTINGS_VOICE_KEYS: Record<CouncilAgentId, string> 
   rex: "scott_voice_id",
   luna: "hamza_voice_id",
   cipher: "khalid_voice_id",
+  marcus: "marcus_voice_id",
 }
 
 const LEGACY_DISPLAY_NAMES: Record<string, string> = {

@@ -221,6 +221,8 @@ export function buildHandoffAnswerFallback(input: {
       return input.context.zara.split(".").slice(0, 2).join(".") + "."
     case "jarvis":
       return input.context.jarvis.split(".").slice(0, 2).join(".") + "."
+    case "marcus":
+      return `${input.context.traderFirstName}, slow down and check whether this is your setup or FOMO before you execute.`
   }
 }
 
@@ -351,5 +353,7 @@ export function buildChimeInFallback(input: {
       return `Building on ${primaryName} — one fix from your last trades: patience on confirmation.`
     case "jarvis":
       return `${primaryName} has covered the specialist read. Proceed with discipline.`
+    case "marcus":
+      return `${primaryName} covered the plan — before you execute, take 10 seconds and ask if this is your setup or FOMO.`
   }
 }

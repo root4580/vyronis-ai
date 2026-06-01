@@ -8,6 +8,7 @@ export const DEFAULT_COUNCIL_VOICE_IDS: Record<CouncilAgentId, string> = {
   rex: "TxGEqnHWrfWFTfGW9XjX", // Josh — confident male
   luna: "ErXwobaYiN019PkySvjV", // Antoni — friendly male
   cipher: "2EiwWnXFnvU5JabPnv8n", // Clyde — direct male
+  marcus: "nPczCjzI2devNBz1zQrb", // Brian — deep warm American male; override via ELEVENLABS_MARCUS_VOICE_ID
 }
 
 const ENV_VOICE_KEYS: Record<CouncilAgentId, string> = {
@@ -17,6 +18,7 @@ const ENV_VOICE_KEYS: Record<CouncilAgentId, string> = {
   rex: "ELEVENLABS_REX_VOICE_ID",
   luna: "ELEVENLABS_LUNA_VOICE_ID",
   cipher: "ELEVENLABS_CIPHER_VOICE_ID",
+  marcus: "ELEVENLABS_MARCUS_VOICE_ID",
 }
 
 const LEGACY_ENV_VOICE_KEYS: Partial<Record<CouncilAgentId, string[]>> = {
@@ -34,6 +36,7 @@ export type CouncilVoiceSettings = Partial<{
   rex_voice_id: string | null
   luna_voice_id: string | null
   cipher_voice_id: string | null
+  marcus_voice_id: string | null
   sarah_voice_id: string | null
   adam_voice_id: string | null
   scott_voice_id: string | null
@@ -80,6 +83,7 @@ export const COUNCIL_VOICE_TUNING: Record<CouncilAgentId, CouncilVoiceTuning> = 
   luna: { stability: 0.5, similarity_boost: 0.8 },
   rex: { stability: 0.8, similarity_boost: 0.9 },
   cipher: { stability: 0.9, similarity_boost: 0.9 },
+  marcus: { stability: 0.75, similarity_boost: 0.85, speed: 0.92 },
 }
 
 export function getCouncilVoiceTuning(agentId: CouncilAgentId): CouncilVoiceTuning {

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.council_settings (
   rex_voice_id text,
   luna_voice_id text,
   cipher_voice_id text,
+  marcus_voice_id text,
   auto_briefing_enabled boolean NOT NULL DEFAULT true,
   briefing_time text NOT NULL DEFAULT 'on_login',
   language_preference text NOT NULL DEFAULT 'en',

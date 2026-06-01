@@ -554,6 +554,9 @@ export function buildCouncilAgentLivePrompt(
     case "rex":
       sections.push(bundle.rexRisk, bundle.coachRex)
       break
+    case "marcus":
+      sections.push(bundle.novaChapters, bundle.lastTrades, bundle.coachShared)
+      break
   }
 
   return sections.join("\n\n")

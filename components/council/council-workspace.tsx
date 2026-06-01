@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Crown, Loader2, Mic, RotateCcw, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { Brain, Crown, Loader2, Mic, RotateCcw, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
@@ -577,7 +577,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         </div>
 
         <div className="flex gap-1 overflow-x-auto px-2 py-2">
-          {COUNCIL_AGENTS.map((agent) => {
+          {COUNCIL_AGENTS.filter((agent) => !agent.isPsychologist).map((agent) => {
             const isSpeakingAgent = speakingAgent === agent.id
             const isThinkingAgent =
               isSending &&
@@ -614,6 +614,46 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                   <p className={cn("font-semibold", isJarvis ? "text-[13px]" : "text-[12px]")}>
                     {agent.name}
                   </p>
+                  {isSpeakingAgent ? <CouncilSpeakingWave className="ml-auto" bars={4} /> : null}
+                </div>
+                <p className="text-[10px] opacity-80">
+                  {isSpeakingAgent ? "Speaking…" : isThinkingAgent ? "Thinking…" : agent.role}
+                </p>
+              </button>
+            )
+          })}
+          <div className="mx-0.5 w-px shrink-0 self-stretch bg-purple-900/40" aria-hidden />
+          {COUNCIL_AGENTS.filter((agent) => agent.isPsychologist).map((agent) => {
+            const isSpeakingAgent = speakingAgent === agent.id
+            const isThinkingAgent =
+              isSending &&
+              (conversationAgent === agent.id ||
+                activeAgent === agent.id ||
+                (agent.id === "jarvis" && voicePhase === "thinking"))
+            return (
+              <button
+                key={agent.id}
+                type="button"
+                onClick={() => {
+                  setSelectedAgent(agent.id)
+                  selectedAgentRef.current = agent.id
+                  setConversationAgent(agent.id)
+                  conversationAgentRef.current = agent.id
+                  setActiveAgent(agent.id)
+                }}
+                className={cn(
+                  "shrink-0 min-w-[148px] rounded-[var(--radius-md)] border px-3 py-2.5 text-left transition-colors",
+                  agent.accentClass,
+                  selectedAgent === agent.id && "ring-1 ring-purple-300/25",
+                  activeAgent === agent.id && "ring-2 ring-purple-400/45",
+                  isSpeakingAgent &&
+                    "ring-2 ring-purple-400/60 shadow-[0_0_22px_rgba(168,85,247,0.28)]",
+                  isThinkingAgent && "council-agent-thinking ring-2 ring-purple-400/35",
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Brain className="size-3.5 shrink-0 text-purple-200/90" />
+                  <p className="text-[12px] font-semibold">{agent.name}</p>
                   {isSpeakingAgent ? <CouncilSpeakingWave className="ml-auto" bars={4} /> : null}
                 </div>
                 <p className="text-[10px] opacity-80">

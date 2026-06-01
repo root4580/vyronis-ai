@@ -210,6 +210,19 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     ],
   },
   {
+    agent: "marcus",
+    patterns: [
+      /\bmarcus\b/i,
+      /\bpsycholog/i,
+      /\bmindset\b/i,
+      /\bfomo\b/i,
+      /\brevenge\b/i,
+      /\btilt\b/i,
+      /\bmental\b/i,
+      /\bgrowth mindset\b/i,
+    ],
+  },
+  {
     agent: "nova",
     patterns: [
       /\bchapter\b/i,

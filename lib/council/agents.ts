@@ -56,6 +56,17 @@ export const COUNCIL_AGENTS: CouncilAgentDefinition[] = [
     maxSentences: 3,
     accentClass: "border-cyan-400/30 bg-cyan-500/[0.08] text-cyan-100",
   },
+  {
+    id: "marcus",
+    name: "Marcus",
+    role: "Personal Trading Psychologist",
+    personality:
+      "Deep, warm, and wise. Mindset and growth only — never technical. Speaks like a trusted psychologist who has read your whole week.",
+    maxSentences: 4,
+    accentClass:
+      "border-purple-700/45 bg-purple-950/50 text-purple-100 shadow-[0_0_22px_rgba(88,28,135,0.22)]",
+    isPsychologist: true,
+  },
 ]
 
 /** Specialist briefing order — Jarvis opens/closes around this sequence. */
@@ -70,7 +81,7 @@ export const BRIEFING_AGENT_ORDER: CouncilAgentId[] = [
 export const COUNCIL_SPECIALIST_IDS: CouncilAgentId[] = BRIEFING_AGENT_ORDER
 
 export function isCouncilSpecialistAgent(agentId: CouncilAgentId): boolean {
-  return agentId !== "jarvis"
+  return agentId !== "jarvis" && agentId !== "marcus"
 }
 
 export function getCouncilAgent(id: CouncilAgentId): CouncilAgentDefinition {
