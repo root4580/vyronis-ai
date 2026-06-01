@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import {
   BookOpen,
@@ -19,6 +20,7 @@ import {
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
+import { getChapterReviewHref } from "@/lib/dashboard-nav"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 import type { PlanDisciplineGrade } from "@/lib/trade-planner/deviation-engine"
@@ -209,10 +211,26 @@ export function WeeklyChapterSystem({
               <PreviousChapterLine summary={dashboard.previousChapter} />
             </div>
           ) : (
-            <div className="px-3 pb-2.5">
+            <div className="space-y-2.5 px-3 pb-2.5">
               <PreviousChapterLine summary={dashboard.previousChapter} compact />
+              <Link
+                href={getChapterReviewHref(dashboard.previousChapter.week_start)}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-[var(--radius-md)] border border-warning/35 bg-warning/[0.08] px-3 text-[12px] font-medium text-warning-muted transition-colors hover:bg-warning/[0.12]"
+              >
+                📖 Review Chapter {dashboard.previousChapter.chapter_number}
+              </Link>
             </div>
           )}
+          {carryOpen ? (
+            <div className="border-t border-warning/20 px-3 pb-3 pt-2">
+              <Link
+                href={getChapterReviewHref(dashboard.previousChapter.week_start)}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-[var(--radius-md)] border border-warning/35 bg-warning/[0.08] px-3 text-[12px] font-medium text-warning-muted transition-colors hover:bg-warning/[0.12]"
+              >
+                📖 Review Chapter {dashboard.previousChapter.chapter_number}
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

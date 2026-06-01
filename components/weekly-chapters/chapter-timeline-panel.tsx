@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { BookOpen, ChevronRight, Loader2 } from "lucide-react"
 import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import type { WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
@@ -9,6 +10,7 @@ import {
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
+import { getChapterReviewHref } from "@/lib/dashboard-nav"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { cn } from "@/lib/utils"
@@ -18,9 +20,9 @@ type ChapterTimelinePanelProps = {
 }
 
 export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
+  const router = useRouter()
   const [timeline, setTimeline] = useState<WeeklySummaryRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [migrationPending, setMigrationPending] = useState(false)
 
   useEffect(() => {
@@ -83,7 +85,6 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
         aria-hidden
       />
       {timeline.map((chapter) => {
-        const expanded = expandedId === chapter.id
         const positive = chapter.is_winning_chapter
         const paperLine = formatWeeklyPaperSummaryLine(readWeeklySummaryPaperStats(chapter))
         return (
@@ -97,7 +98,7 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
             />
             <button
               type="button"
-              onClick={() => setExpandedId(expanded ? null : chapter.id)}
+              onClick={() => router.push(getChapterReviewHref(chapter.week_start))}
               className={cn(
                 "w-full rounded-[var(--radius-md)] border px-3 py-3 text-left transition-colors hover:bg-white/[0.02]",
                 positive ? "border-profit/20" : "border-loss/20",
@@ -126,6 +127,11 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
                   {paperLine ? (
                     <p className="mt-0.5 text-[10px] text-text-muted">📝 {paperLine}</p>
                   ) : null}
+                  {chapter.key_lesson ? (
+                    <p className="mt-1 line-clamp-2 text-[10px] italic text-text-secondary">
+                      “{chapter.key_lesson}”
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1">
                   <span
@@ -136,32 +142,9 @@ export function ChapterTimelinePanel({ accountId }: ChapterTimelinePanelProps) {
                   >
                     {formatPnL(chapter.pnl, chapter.pnl >= 0 ? "WIN" : "LOSS")}
                   </span>
-                  <ChevronRight
-                    className={cn(
-                      "size-4 text-text-muted transition-transform",
-                      expanded && "rotate-90",
-                    )}
-                  />
+                  <ChevronRight className="size-4 text-text-muted" />
                 </div>
               </div>
-
-              {expanded ? (
-                <div className="mt-3 space-y-1.5 border-t border-[var(--border-subtle)] pt-3 text-[11px] text-text-secondary">
-                  <p>
-                    Wins / losses: {chapter.wins}W · {chapter.losses}L · slots{" "}
-                    {chapter.trades_taken}/{chapter.max_trades_allowed}
-                  </p>
-                  {chapter.discipline_grade && chapter.discipline_score != null ? (
-                    <p>
-                      Discipline: {chapter.discipline_grade} ({Math.round(chapter.discipline_score)})
-                    </p>
-                  ) : null}
-                  {chapter.key_lesson ? (
-                    <p className="italic text-text-primary">“{chapter.key_lesson}”</p>
-                  ) : null}
-                  {paperLine ? <p>Practice: {paperLine}</p> : null}
-                </div>
-              ) : null}
             </button>
           </div>
         )

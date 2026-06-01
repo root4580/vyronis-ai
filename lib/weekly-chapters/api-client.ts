@@ -1,4 +1,4 @@
-import type { WeeklyChapterDashboard } from "@/lib/weekly-chapters/types"
+import type { ChapterReviewPayload, WeeklyChapterDashboard } from "@/lib/weekly-chapters/types"
 
 async function parseJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}))
@@ -33,4 +33,18 @@ export async function closeCurrentWeekChapter(accountId?: string | null): Promis
     body: JSON.stringify({ accountId }),
   })
   await parseJson(response)
+}
+
+export async function fetchChapterReview(
+  weekStart: string,
+  accountId?: string | null,
+): Promise<ChapterReviewPayload> {
+  const params = new URLSearchParams()
+  if (accountId) params.set("accountId", accountId)
+  const query = params.toString()
+  const response = await fetch(
+    `/api/weekly-chapters/${encodeURIComponent(weekStart)}${query ? `?${query}` : ""}`,
+    { cache: "no-store" },
+  )
+  return parseJson<ChapterReviewPayload>(response)
 }

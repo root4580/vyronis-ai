@@ -79,7 +79,7 @@ export async function listWeeklySummaries(
   return (data ?? []).map((row) => normalizeSummary(row as Record<string, unknown>))
 }
 
-async function fetchChapterTrades(
+export async function fetchChapterTrades(
   supabase: SupabaseClient,
   userId: string,
   accountId: string,
@@ -111,7 +111,7 @@ async function fetchChapterTrades(
   return (data ?? []) as ChapterTradeRow[]
 }
 
-async function fetchChapterPaperTrades(
+export async function fetchChapterPaperTrades(
   supabase: SupabaseClient,
   userId: string,
   accountId: string,

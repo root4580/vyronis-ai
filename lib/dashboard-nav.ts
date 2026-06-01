@@ -30,6 +30,11 @@ export function getDashboardHomeHref(): string {
   return APP_HOME_PATH
 }
 
+/** Full chapter review for a closed or active trading week. */
+export function getChapterReviewHref(weekStart: string): string {
+  return `/chapters/${encodeURIComponent(weekStart.trim())}`
+}
+
 /** Deep-link from War Room into pre-trade Coach with watchlist context. */
 export function getWarRoomCoachHref(pairs: string[]): string {
   const normalized = pairs.map((pair) => pair.trim()).filter(Boolean)
