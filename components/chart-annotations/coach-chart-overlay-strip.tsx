@@ -58,8 +58,7 @@ export function CoachChartOverlayStrip({
         <ChartOverlayToggle mode={overlayMode} onChange={setOverlayMode} compact />
       </div>
       <p className="text-[10px] text-muted-foreground/70">
-        Top-Down AOI overlays: valid AOI (teal), invalid AOI (red dashed), countertrend/chase
-        (amber/red). BOS, CHOCH, sweeps, mitigation, retest, displacement marked per strategy.
+        Tap any chart to expand full size with AI overlays.
       </p>
       {confidenceBreakdown && (
         <div className="rounded-md border border-white/[0.06] bg-black/20 px-2 py-1.5 text-[9px] text-muted-foreground/80">
@@ -85,7 +84,8 @@ export function CoachChartOverlayStrip({
                 annotations: card.annotations,
               })
             }
-            className="overflow-hidden rounded-lg border border-white/[0.08] bg-black/25 text-left transition-colors hover:border-cyan-glow/30"
+            className="group overflow-hidden rounded-lg border border-white/[0.08] bg-black/25 text-left transition-colors hover:border-cyan-glow/35"
+            aria-label={`Expand ${card.label} chart`}
           >
             <ChartAnnotatedImage
               src={card.url}
@@ -95,11 +95,16 @@ export function CoachChartOverlayStrip({
               className={compact ? "h-14" : "h-16"}
               imageClassName={`${compact ? "h-14" : "h-16"} object-cover`}
             />
-            <div className="px-2 py-1">
-              <p className="text-[9px] font-medium text-foreground/85">{card.shortLabel}</p>
-              {card.strategyMatchPercent != null && (
-                <p className="text-[8px] text-cyan-glow/75">Match {card.strategyMatchPercent}%</p>
-              )}
+            <div className="flex items-center justify-between gap-1 px-2 py-1">
+              <div className="min-w-0">
+                <p className="text-[9px] font-medium text-foreground/85">{card.shortLabel}</p>
+                {card.strategyMatchPercent != null && (
+                  <p className="text-[8px] text-cyan-glow/75">Match {card.strategyMatchPercent}%</p>
+                )}
+              </div>
+              <span className="text-[8px] font-medium uppercase tracking-[0.08em] text-cyan-glow/70 opacity-0 transition-opacity group-hover:opacity-100">
+                Expand
+              </span>
             </div>
           </button>
         ))}

@@ -58,7 +58,7 @@ function EventRow({ event }: { event: EconomicCalendarEvent }) {
     <li className="rounded-[var(--radius-sm)] border border-loss/20 bg-loss/[0.04] px-3 py-2.5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
-          <p className="text-[12px] font-medium text-text-primary">{formatImpactLabel()}</p>
+          <p className="text-[12px] font-medium text-text-primary">{formatImpactLabel(event.impact)}</p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[12px] font-medium text-text-primary">{event.time}</span>
             <span className="text-[11px] font-medium text-text-muted">{event.currency}</span>

@@ -1,4 +1,4 @@
-export type CalendarImpact = "high"
+export type CalendarImpact = "high" | "medium" | "low"
 
 export type EconomicCalendarEvent = {
   time: string

@@ -4,7 +4,7 @@ import {
   type CalendarWatchlistCurrency,
 } from "@/lib/economic-calendar/constants"
 import type { RawForexFactoryEvent } from "@/lib/economic-calendar/faireconomy-client"
-import type { EconomicCalendarEvent } from "@/lib/economic-calendar/types"
+import type { CalendarImpact, EconomicCalendarEvent } from "@/lib/economic-calendar/types"
 import { pairsInvolvingCurrency } from "@/lib/economic-calendar/pair-impact"
 
 function isWatchlistCurrency(value: string): value is CalendarWatchlistCurrency {
@@ -38,6 +38,25 @@ export function formatCalendarTimeEt(dateIso: string): string {
   }).format(date)
 }
 
+export function formatCalendarTimeShort(dateIso: string): string {
+  const date = new Date(dateIso)
+  if (Number.isNaN(date.getTime())) return dateIso
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: CALENDAR_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date)
+}
+
+export function parseCalendarImpact(raw: string | undefined | null): CalendarImpact | null {
+  const value = raw?.trim().toLowerCase()
+  if (value === "high") return "high"
+  if (value === "medium") return "medium"
+  if (value === "low") return "low"
+  return null
+}
+
 export function minutesUntilEvent(dateIso: string, now = new Date()): number {
   const eventMs = new Date(dateIso).getTime()
   if (Number.isNaN(eventMs)) return Number.POSITIVE_INFINITY
@@ -69,7 +88,8 @@ export function normalizeForexFactoryEvents(
   const normalized: EconomicCalendarEvent[] = []
 
   for (const raw of rawEvents) {
-    if (raw.impact?.trim().toLowerCase() !== "high") continue
+    const impact = parseCalendarImpact(raw.impact)
+    if (!impact) continue
 
     const currency = raw.country?.trim().toUpperCase()
     if (!currency || !isWatchlistCurrency(currency)) continue
@@ -85,7 +105,7 @@ export function normalizeForexFactoryEvents(
       time: formatCalendarTimeEt(dateIso),
       currency,
       event: raw.title?.trim() || "Economic release",
-      impact: "high",
+      impact,
       minutesUntil,
       avoidPairs: pairsInvolvingCurrency(currency),
       dateUtc,

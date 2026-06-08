@@ -34,8 +34,8 @@ import {
 import type { MarketBiasRecord, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import { getWeekStartSunday, formatWeekLabel } from "@/lib/strategy-brain/week-utils"
 import { isWatchlistComplete } from "@/lib/strategy-brain/weekly-watchlist"
-import { WarRoomNewsBanner } from "@/components/economic-calendar/war-room-news-banner"
-import { WarRoomCalendarPanel } from "@/components/economic-calendar/war-room-calendar-panel"
+import { CouncilNewsRiskBar } from "@/components/economic-calendar/council-news-risk-bar"
+import { CouncilSection } from "@/components/journal/council-section"
 import { useEconomicCalendar } from "@/hooks/use-economic-calendar"
 
 export function WeeklyWarRoom({
@@ -222,49 +222,39 @@ export function WeeklyWarRoom({
   }
 
   return (
-    <div className="war-room-content space-y-4 pb-12">
+    <div className="war-room-content space-y-5 pb-12">
+      <CouncilNewsRiskBar calendar={calendar} loading={calendarLoading} />
+
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-medium text-text-primary">Weekly War Room</h1>
+          <h1 className="text-lg font-medium text-text-primary">Council</h1>
           <p className="mt-0.5 text-[12px] text-text-muted">
-            {formatWeekLabel(weekStart)} · weekly plan
+            {formatWeekLabel(weekStart)} · news, mission, and weekly plan
           </p>
         </div>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-9 text-text-muted hover:text-text-primary"
-            asChild
-          >
-            <Link href="/strategy-brain">
-              <History className="mr-2 size-4" />
-              Past weeks
-            </Link>
-          </Button>
-          <Button type="button" className="h-9 btn-primary" onClick={handleAskCoach}>
-            <Bot className="mr-2 size-4" />
-            Ask Coach
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-9 text-text-muted hover:text-text-primary"
+          asChild
+        >
+          <Link href="/strategy-brain">
+            <History className="mr-2 size-4" />
+            Past weeks
+          </Link>
+        </Button>
       </header>
 
       {setupError ? <StrategyBrainSetupBanner onRetry={() => void refresh()} /> : null}
 
-      <WarRoomNewsBanner calendar={calendar} />
-
-      <WarRoomCalendarPanel calendar={calendar} loading={calendarLoading} />
-
       {loading && !setupError ? (
-        <p className="text-center text-[12px] text-text-muted animate-pulse">Loading War Room…</p>
+        <p className="text-center text-[12px] text-text-muted animate-pulse">Loading Council…</p>
       ) : null}
 
       {!setupError ? (
         <>
           {pairs.length === 0 && !loading ? (
-            <div
-              className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3.5 py-3"
-            >
+            <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3.5 py-3">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--warning-foreground)]" />
               <p className="text-[12px] leading-relaxed text-[var(--warning-muted)]">
                 Add at least one pair to your weekly watchlist before the session. Upload charts and
@@ -273,124 +263,180 @@ export function WeeklyWarRoom({
             </div>
           ) : null}
 
-          <WarRoomWorkflowStatus readiness={readiness} />
-
-          <WarRoomChapterRecapPanel accountId={accountId} warRoomWeekStart={weekStart} />
-
-          {!watchlistComplete ? (
-            <div id="war-room-planning">
-              <SundayPlanningPanel
-                initial={weekPlan}
-                weekStart={weekStart}
-                onSaved={(p) => {
-                  setWeekPlan(p)
-                  void refresh()
-                }}
-                onBiasSuggest={(bias: MarketBiasInput) => {
-                  void saveMarketBias(bias)
-                    .then((b) => {
-                      setMarketBias(b)
-                      toast({ title: "HTF bias updated from chart read" })
-                    })
-                    .catch(() => {})
-                }}
+          <CouncilSection
+            title="Daily Mission"
+            id="council-daily-mission"
+            description="Readiness checklist and session expectations for today."
+          >
+            <WarRoomWorkflowStatus readiness={readiness} />
+            <WarRoomSurfaceCard className="p-4">
+              <p className="text-[11px] font-medium text-text-muted">Session expectations</p>
+              <p className="mb-3 mt-1 text-[11px] text-text-muted">
+                When you trade, which session, and what macro scenarios you expect.
+              </p>
+              <Textarea
+                className="war-room-textarea min-h-[52px]"
+                placeholder="Session focus — e.g. London only, max 2 trades, no impulse after red news"
+                value={sessionFocus}
+                onChange={(e) => setSessionFocus(e.target.value)}
               />
-            </div>
-          ) : null}
+              <Textarea
+                className="war-room-textarea mt-2 min-h-[72px]"
+                placeholder="Expected scenarios — e.g. USD weakness if DXY loses weekly support"
+                value={expectedScenarios}
+                onChange={(e) => setExpectedScenarios(e.target.value)}
+              />
+            </WarRoomSurfaceCard>
+          </CouncilSection>
 
-          <MarketBiasPanel initial={marketBias} onDraftChange={setBiasDraft} />
-
-          <WarRoomSurfaceCard className="p-4">
-            <p className="text-[11px] font-medium text-text-muted">Session expectations</p>
-            <p className="mb-3 mt-1 text-[11px] text-text-muted">
-              When you trade, which session, and what macro scenarios you expect.
-            </p>
-            <Textarea
-              className="war-room-textarea min-h-[52px]"
-              placeholder="Session focus — e.g. London only, max 2 trades, no impulse after red news"
-              value={sessionFocus}
-              onChange={(e) => setSessionFocus(e.target.value)}
-            />
-            <Textarea
-              className="war-room-textarea mt-2 min-h-[72px]"
-              placeholder="Expected scenarios — e.g. USD weakness if DXY loses weekly support"
-              value={expectedScenarios}
-              onChange={(e) => setExpectedScenarios(e.target.value)}
-            />
+          <CouncilSection
+            title="HTF Bias"
+            id="council-htf-bias"
+            description="Weekly, daily, and H4 directional read."
+          >
+            <MarketBiasPanel initial={marketBias} onDraftChange={setBiasDraft} />
             <Button
               type="button"
-              className="btn-primary mt-3 h-11 w-full rounded-[var(--radius-md)]"
+              className="btn-primary h-11 w-full rounded-[var(--radius-md)]"
               disabled={savingMeta || !weekPlan}
               onClick={() => void saveWarRoomMeta()}
             >
               {savingMeta ? "Saving…" : "Save session plan & bias"}
             </Button>
-          </WarRoomSurfaceCard>
+          </CouncilSection>
 
-          {pairs.length > 0 ? (
-            <div id="war-room-pairs" className="war-room-surface-card divide-y divide-[var(--border-subtle)]">
-              {pairs.map((p) =>
-                weekPlan ? (
-                  <WarRoomPairCard
-                    key={p.id}
-                    plan={p}
-                    weekPlan={weekPlan}
-                    weekStart={weekStart}
-                    sessionFocus={sessionFocus}
-                    expectedScenarios={expectedScenarios}
-                    onUpdated={setWeekPlan}
-                    onCoachEngaged={onCoachEngaged}
-                    onBiasSuggest={(bias: MarketBiasInput) => {
-                      void saveMarketBias(bias)
-                        .then((b) => {
-                          setMarketBias(b)
-                          toast({ title: "HTF bias updated from chart read" })
-                        })
-                        .catch(() => {})
-                    }}
-                  />
-                ) : null,
-              )}
-            </div>
-          ) : null}
-
-          {watchlistComplete ? (
-            <WarRoomSurfaceCard>
-              <button
-                type="button"
-                onClick={() => setShowWatchlistEditor((v) => !v)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left text-[12px] font-medium text-text-primary"
-              >
-                Edit weekly watchlist
+          <CouncilSection
+            title="Watchlist"
+            id="council-watchlist"
+            description="Weekly pairs you are allowed to trade."
+          >
+            {!watchlistComplete ? (
+              <div id="war-room-planning">
+                <SundayPlanningPanel
+                  initial={weekPlan}
+                  weekStart={weekStart}
+                  onSaved={(p) => {
+                    setWeekPlan(p)
+                    void refresh()
+                  }}
+                  onBiasSuggest={(bias: MarketBiasInput) => {
+                    void saveMarketBias(bias)
+                      .then((b) => {
+                        setMarketBias(b)
+                        toast({ title: "HTF bias updated from chart read" })
+                      })
+                      .catch(() => {})
+                  }}
+                />
+              </div>
+            ) : (
+              <WarRoomSurfaceCard>
+                <button
+                  type="button"
+                  onClick={() => setShowWatchlistEditor((v) => !v)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left text-[12px] font-medium text-text-primary"
+                >
+                  {pairs.length} pair{pairs.length === 1 ? "" : "s"} on this week&apos;s list
+                  {showWatchlistEditor ? (
+                    <ChevronUp className="size-4 text-text-muted" />
+                  ) : (
+                    <ChevronDown className="size-4 text-text-muted" />
+                  )}
+                </button>
                 {showWatchlistEditor ? (
-                  <ChevronUp className="size-4 text-text-muted" />
+                  <div className="border-t border-[var(--border-subtle)] p-3">
+                    <SundayPlanningPanel
+                      initial={weekPlan}
+                      weekStart={weekStart}
+                      onBiasSuggest={(bias: MarketBiasInput) => {
+                        void saveMarketBias(bias)
+                          .then((b) => {
+                            setMarketBias(b)
+                            toast({ title: "HTF bias updated from chart read" })
+                          })
+                          .catch(() => {})
+                      }}
+                      onSaved={(p) => {
+                        setWeekPlan(p)
+                        setShowWatchlistEditor(false)
+                        void refresh()
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <ChevronDown className="size-4 text-text-muted" />
+                  <div className="border-t border-[var(--border-subtle)] px-4 py-3">
+                    <p className="font-mono text-[12px] leading-relaxed text-text-primary">
+                      {pairs.map((pair) => pair.pair).join(" · ")}
+                    </p>
+                  </div>
                 )}
-              </button>
-              {showWatchlistEditor ? (
-                <div id="war-room-planning" className="border-t border-[var(--border-subtle)] p-3">
-                  <SundayPlanningPanel
-                    initial={weekPlan}
-                    weekStart={weekStart}
-                    onBiasSuggest={(bias: MarketBiasInput) => {
-                      void saveMarketBias(bias)
-                        .then((b) => {
-                          setMarketBias(b)
-                          toast({ title: "HTF bias updated from chart read" })
-                        })
-                        .catch(() => {})
-                    }}
-                    onSaved={(p) => {
-                      setWeekPlan(p)
-                      setShowWatchlistEditor(false)
-                      void refresh()
-                    }}
-                  />
-                </div>
-              ) : null}
+              </WarRoomSurfaceCard>
+            )}
+          </CouncilSection>
+
+          <CouncilSection
+            title="AOI Zones"
+            id="council-aoi"
+            description="Area of interest, invalidation, and chart uploads per pair."
+          >
+            {pairs.length > 0 ? (
+              <div id="war-room-pairs" className="war-room-surface-card divide-y divide-[var(--border-subtle)]">
+                {pairs.map((p) =>
+                  weekPlan ? (
+                    <WarRoomPairCard
+                      key={p.id}
+                      plan={p}
+                      weekPlan={weekPlan}
+                      weekStart={weekStart}
+                      sessionFocus={sessionFocus}
+                      expectedScenarios={expectedScenarios}
+                      onUpdated={setWeekPlan}
+                      onCoachEngaged={onCoachEngaged}
+                      onBiasSuggest={(bias: MarketBiasInput) => {
+                        void saveMarketBias(bias)
+                          .then((b) => {
+                            setMarketBias(b)
+                            toast({ title: "HTF bias updated from chart read" })
+                          })
+                          .catch(() => {})
+                      }}
+                    />
+                  ) : null,
+                )}
+              </div>
+            ) : (
+              <WarRoomSurfaceCard className="p-4">
+                <p className="text-[12px] text-text-muted">
+                  Add pairs in Watchlist to define AOI zones and upload charts.
+                </p>
+              </WarRoomSurfaceCard>
+            )}
+          </CouncilSection>
+
+          <CouncilSection
+            title="Coach"
+            id="council-coach"
+            description="Pre-trade chart read and entry gate before you size live."
+          >
+            <WarRoomSurfaceCard className="p-4">
+              <p className="text-[12px] leading-relaxed text-text-primary">
+                Run the AI Trade Coach on your weekly watchlist — MTF upload, entry gate, and a single
+                TAKE / WAIT / SKIP verdict.
+              </p>
+              <Button type="button" className="btn-primary mt-3 h-11 w-full" onClick={handleAskCoach}>
+                <Bot className="mr-2 size-4" />
+                Open Trade Coach
+              </Button>
             </WarRoomSurfaceCard>
-          ) : null}
+          </CouncilSection>
+
+          <CouncilSection
+            title="Reviews"
+            id="council-reviews"
+            description="Chapter recap and weekly performance review."
+          >
+            <WarRoomChapterRecapPanel accountId={accountId} warRoomWeekStart={weekStart} />
+          </CouncilSection>
 
           <div className="flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-4 text-[11px]">
             <Link href="/strategy-brain" className="font-medium text-text-accent hover:underline">
