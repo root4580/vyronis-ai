@@ -36,6 +36,7 @@ import {
   getEmotionDisplay,
   type TradeDetailInsight,
 } from "@/lib/trade-detail-insights"
+import { formatTradeDuration } from "@/lib/journal/trade-duration"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -64,6 +65,17 @@ export type TradeDetails = {
   stop_loss?: number | null
   take_profit?: number | null
   risk_reward?: number | null
+  lots?: number | null
+  opened_at?: string | null
+  closed_at?: string | null
+  hold_minutes?: number | null
+  thinking_before?: string | null
+  thinking_during?: string | null
+  thinking_after?: string | null
+  biggest_mistake?: string | null
+  lesson_learned?: string | null
+  what_worked?: string | null
+  what_didnt_work?: string | null
   screenshot_url?: string | null
   reflection_chart_url?: string | null
   setup_score?: number | null
@@ -193,6 +205,17 @@ export function TradeDetailsModal({
   )
   const vyronisEvaluation = trade?.vyronis_evaluation ?? null
   const riskReward = useMemo(() => (trade ? getTradeRiskReward(trade) : null), [trade])
+  const tradeDuration = useMemo(
+    () =>
+      trade
+        ? formatTradeDuration({
+            opened_at: trade.opened_at,
+            closed_at: trade.closed_at,
+            hold_minutes: trade.hold_minutes,
+          })
+        : null,
+    [trade],
+  )
 
   if (!mounted || !trade || !analysis || !setupScore) return null
 
@@ -360,7 +383,7 @@ export function TradeDetailsModal({
                 />
               ) : null}
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                 <DashboardInsetPanel className="glass">
                   <p className="section-label">Session</p>
                   <p className="mt-1 text-sm font-medium text-cyan-glow/95">{trade.session || "—"}</p>
@@ -368,6 +391,19 @@ export function TradeDetailsModal({
                 <DashboardInsetPanel className="glass">
                   <p className="section-label">Strategy</p>
                   <p className="mt-1 text-sm font-medium text-foreground/90">{trade.strategy_name || "—"}</p>
+                </DashboardInsetPanel>
+                <DashboardInsetPanel className="glass">
+                  <p className="section-label">Lot size</p>
+                  <p className="mt-1 text-sm font-medium tabular-nums text-foreground/90">
+                    {trade.lots != null ? trade.lots : "—"}
+                  </p>
+                </DashboardInsetPanel>
+                <DashboardInsetPanel className="glass flex items-center gap-2">
+                  <Clock className="size-4 shrink-0 text-muted-foreground/60" />
+                  <div>
+                    <p className="section-label">Duration</p>
+                    <p className="mt-0.5 text-sm font-medium text-foreground/90">{tradeDuration || "—"}</p>
+                  </div>
                 </DashboardInsetPanel>
                 <DashboardInsetPanel className="glass flex items-center gap-2">
                   <Calendar className="size-4 shrink-0 text-muted-foreground/60" />
@@ -606,6 +642,36 @@ export function TradeDetailsModal({
                   {trade.trade_notes?.trim() || "No notes recorded for this trade."}
                 </p>
               </DashboardInsetPanel>
+
+              {(trade.thinking_before ||
+                trade.thinking_during ||
+                trade.thinking_after ||
+                trade.what_worked ||
+                trade.what_didnt_work ||
+                trade.biggest_mistake ||
+                trade.lesson_learned) && (
+                <DashboardInsetPanel className="glass space-y-3">
+                  <p className="section-label">Post-trade reflection</p>
+                  {[
+                    { label: "Thinking before", value: trade.thinking_before },
+                    { label: "Thinking during", value: trade.thinking_during },
+                    { label: "Thinking after", value: trade.thinking_after },
+                    { label: "What worked", value: trade.what_worked },
+                    { label: "What didn't work", value: trade.what_didnt_work },
+                    { label: "Biggest mistake", value: trade.biggest_mistake },
+                    { label: "Lesson learned", value: trade.lesson_learned },
+                  ]
+                    .filter((row) => row.value?.trim())
+                    .map((row) => (
+                      <div key={row.label}>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+                          {row.label}
+                        </p>
+                        <p className="mt-1 text-[13px] leading-relaxed text-foreground/85">{row.value}</p>
+                      </div>
+                    ))}
+                </DashboardInsetPanel>
+              )}
             </div>
 
             <aside className="space-y-4">

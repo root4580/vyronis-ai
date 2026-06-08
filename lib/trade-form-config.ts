@@ -16,8 +16,17 @@ export type TradeFormState = {
   entry_price: string
   stop_loss: string
   take_profit: string
+  lots: string
+  hold_minutes: string
   mistake_tags: string[]
   trade_notes: string
+  thinking_before: string
+  thinking_during: string
+  thinking_after: string
+  biggest_mistake: string
+  lesson_learned: string
+  what_worked: string
+  what_didnt_work: string
   higher_timeframe: string
   entry_timeframe: string
   confirmation_timeframe: string
@@ -140,6 +149,7 @@ export const TRADE_SETUPS = [
 ]
 
 export const NOTES_MAX_LENGTH = 500
+export const REFLECTION_FIELD_MAX_LENGTH = 280
 
 export function createInitialTradeForm(overrides?: Partial<TradeFormState>): TradeFormState {
   return {
@@ -160,8 +170,17 @@ export function createInitialTradeForm(overrides?: Partial<TradeFormState>): Tra
     entry_price: "",
     stop_loss: "",
     take_profit: "",
+    lots: "",
+    hold_minutes: "",
     mistake_tags: [],
     trade_notes: "",
+    thinking_before: "",
+    thinking_during: "",
+    thinking_after: "",
+    biggest_mistake: "",
+    lesson_learned: "",
+    what_worked: "",
+    what_didnt_work: "",
     higher_timeframe: "",
     entry_timeframe: "",
     confirmation_timeframe: "",

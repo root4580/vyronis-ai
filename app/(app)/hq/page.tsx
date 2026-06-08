@@ -161,8 +161,10 @@ import {
 import {
   DASHBOARD_TRADE_SELECT,
   DASHBOARD_TRADE_SELECT_WITHOUT_REFLECTION,
+  DASHBOARD_TRADE_SELECT_WITHOUT_TRADE_REFLECTION,
   DASHBOARD_TRADES_LIMIT,
 } from "@/lib/trades/dashboard-trade-query"
+import { buildTradeReflectionPersistFields } from "@/lib/trades/trade-reflection-persist"
 
 type Trade = {
   id: string
@@ -189,9 +191,20 @@ type Trade = {
   stop_loss?: number | null
   take_profit?: number | null
   risk_reward?: number | null
+  lots?: number | null
+  opened_at?: string | null
+  closed_at?: string | null
+  hold_minutes?: number | null
   emotion_after?: string | null
   mistake_tags?: string | null
   trade_notes?: string | null
+  thinking_before?: string | null
+  thinking_during?: string | null
+  thinking_after?: string | null
+  biggest_mistake?: string | null
+  lesson_learned?: string | null
+  what_worked?: string | null
+  what_didnt_work?: string | null
   setup_score?: number | null
   setup_classification?: string | null
   setup_score_breakdown?: SetupScoreBreakdown | VyronisScoreBreakdown | null
@@ -935,10 +948,12 @@ function Home() {
         "trades.select",
       )
 
-      if (error && /import_source|reflection_chart|column .* does not exist/i.test(error.message)) {
+      if (error && /import_source|reflection_chart|thinking_before|hold_minutes|column .* does not exist/i.test(error.message)) {
         const fallbackSelect = error.message.includes("reflection_chart")
           ? DASHBOARD_TRADE_SELECT_WITHOUT_REFLECTION
-          : DASHBOARD_TRADE_SELECT.replace(", account_id", "")
+          : /thinking_before|hold_minutes|what_worked/i.test(error.message)
+            ? DASHBOARD_TRADE_SELECT_WITHOUT_TRADE_REFLECTION
+            : DASHBOARD_TRADE_SELECT.replace(", account_id", "")
         const fallback = await withTimeout(
           supabase
             .from("trades")
@@ -1731,6 +1746,7 @@ function Home() {
         : isPlanSave
           ? appendPlannedSetupMarker(form.trade_notes.trim())
           : form.trade_notes.trim() || null,
+      ...buildTradeReflectionPersistFields(form),
     }
 
     const normalizedResult = isPlanSave
@@ -1799,6 +1815,15 @@ function Home() {
         emotion_after,
         mistake_tags,
         trade_notes,
+        lots,
+        hold_minutes,
+        thinking_before,
+        thinking_during,
+        thinking_after,
+        biggest_mistake,
+        lesson_learned,
+        what_worked,
+        what_didnt_work,
         setup_score,
         setup_classification,
         setup_score_breakdown,
@@ -2030,8 +2055,17 @@ function Home() {
       entry_price: trade.entry_price?.toString() || "",
       stop_loss: trade.stop_loss?.toString() || "",
       take_profit: trade.take_profit?.toString() || "",
+      lots: trade.lots?.toString() || "",
+      hold_minutes: trade.hold_minutes?.toString() || "",
       mistake_tags: parseMistakeTags(trade.mistake_tags),
       trade_notes: stripPlannedSetupMarker(trade.trade_notes || ""),
+      thinking_before: trade.thinking_before || "",
+      thinking_during: trade.thinking_during || "",
+      thinking_after: trade.thinking_after || "",
+      biggest_mistake: trade.biggest_mistake || "",
+      lesson_learned: trade.lesson_learned || "",
+      what_worked: trade.what_worked || "",
+      what_didnt_work: trade.what_didnt_work || "",
       weekly_bias: trade.weekly_bias || "",
       daily_bias: trade.daily_bias || "",
       h4_bias: trade.h4_bias || "",

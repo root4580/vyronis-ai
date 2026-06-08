@@ -43,6 +43,7 @@ import {
   TRADING_SESSIONS,
   type TradeFormState,
 } from "@/lib/trade-form-config"
+import { TradeReflectionFields } from "@/components/dashboard/trade-reflection-fields"
 import { VyronisCoreModelFields } from "@/components/dashboard/vyronis-core-model-fields"
 import { Strategy1PreTradeChecklistPanel } from "@/components/dashboard/strategy1-pre-trade-checklist-panel"
 import {
@@ -609,7 +610,7 @@ export function AddTradeModal({
                 </DashboardInsetPanel>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="space-y-2">
                   <FieldLabel required>Risk %</FieldLabel>
                   <Input
@@ -630,6 +631,18 @@ export function AddTradeModal({
                       Risk above {maxRiskPerTrade}%
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <FieldLabel>Lot size</FieldLabel>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.lots}
+                    onChange={(e) => onFormChange({ lots: e.target.value })}
+                    className="add-trade-input h-10 tabular-nums"
+                    placeholder="0.10"
+                  />
                 </div>
                 <div className="space-y-2">
                   <FieldLabel>Trade date</FieldLabel>
@@ -809,14 +822,28 @@ export function AddTradeModal({
                 />
               </div>
 
-              <div className="space-y-2">
-                <FieldLabel>Trade date</FieldLabel>
-                <Input
-                  type="date"
-                  value={form.trade_date}
-                  onChange={(e) => onFormChange({ trade_date: e.target.value })}
-                  className="dashboard-date-input add-trade-input h-10 border-white/[0.08] text-white"
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <FieldLabel>Lot size</FieldLabel>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.lots}
+                    onChange={(e) => onFormChange({ lots: e.target.value })}
+                    className="add-trade-input h-10 tabular-nums"
+                    placeholder="0.10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FieldLabel>Trade date</FieldLabel>
+                  <Input
+                    type="date"
+                    value={form.trade_date}
+                    onChange={(e) => onFormChange({ trade_date: e.target.value })}
+                    className="dashboard-date-input add-trade-input h-10 border-white/[0.08] text-white"
+                  />
+                </div>
               </div>
             </section>
             )}
@@ -892,6 +919,8 @@ export function AddTradeModal({
                   className="add-trade-input min-h-[96px] resize-none"
                 />
               </div>
+
+              <TradeReflectionFields form={form} onFormChange={onFormChange} />
             </section>
             )}
 
