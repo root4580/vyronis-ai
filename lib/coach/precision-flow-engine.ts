@@ -192,6 +192,7 @@ function canIssueExecuteVerdict(stateScore: number, setupScore: number): boolean
 
 function deriveVerdict(input: {
   rulesPassed: number
+  rules: PrecisionFlowRuleResult[]
   emotion: string
   consecutiveLosses: number
   dailyLossRatio: number
@@ -207,8 +208,14 @@ function deriveVerdict(input: {
   }
   if (input.dailyLossRatio >= DAILY_LOSS_NOTIFY_RATIO) return "SKIP"
 
+  const confirmationReady = input.rules.find((rule) => rule.id === "confirmation")?.passed ?? false
+  const entryQualityReady =
+    input.rules.find((rule) => rule.id === "entry_quality")?.passed ?? false
+
   const strictExecute =
     input.rulesPassed >= 6 &&
+    confirmationReady &&
+    entryQualityReady &&
     EXECUTE_EMOTIONS.has(emotion) &&
     input.consecutiveLosses <= 3
 
@@ -216,6 +223,8 @@ function deriveVerdict(input: {
     input.stateScore > 70 &&
     input.setupScore > 70 &&
     input.rulesPassed >= 5 &&
+    confirmationReady &&
+    entryQualityReady &&
     EXECUTE_EMOTIONS.has(emotion) &&
     input.consecutiveLosses <= 3
 
@@ -283,6 +292,7 @@ export function evaluatePrecisionFlow(input: {
 
   const verdict = deriveVerdict({
     rulesPassed,
+    rules,
     emotion: input.responses.emotional_state || "",
     consecutiveLosses,
     dailyLossRatio,

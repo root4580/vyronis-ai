@@ -5,7 +5,6 @@ import {
   mapCoachVerdict,
   type CoachVerdictDisplay,
 } from "@/lib/coach/coach-verdict-display"
-import { sanitizeCoachLanguage } from "@/lib/coach-chapters/personality"
 import { cn } from "@/lib/utils"
 
 type CoachVerdictBadgeProps = {
@@ -35,13 +34,7 @@ export function CoachVerdictBadge({
       )}
     >
       <span className="text-[11px] font-bold uppercase tracking-[0.14em]">{verdict.label}</span>
-      <span className="text-[10px] leading-snug opacity-90">
-        {verdict.label === "PATIENCE"
-          ? sanitizeCoachLanguage(
-              "Borderline setup — reduce size, paper trade it, or wait for confirmation.",
-            )
-          : verdict.description}
-      </span>
+      <span className="text-[10px] leading-snug opacity-90">{verdict.description}</span>
     </div>
   )
 }

@@ -292,6 +292,15 @@ function deriveRecommendation(
   entry: MtfEntryAnalysis,
 ): TradeQualityRecommendation {
   if (bias.overallBias === "mixed" && entry.entryConfirmationScore < 50) return "SKIP"
+
+  const entryTriggersIncomplete =
+    entry.entryConfirmationScore < 70 || entry.m15EntryQuality < 70
+
+  if (entryTriggersIncomplete) {
+    if (overallScore >= 48) return "CAUTION"
+    return "SKIP"
+  }
+
   if (overallScore >= 72 && bias.biasWarnings.length <= 1 && entry.entryWarnings.length <= 1) {
     return "TAKE"
   }

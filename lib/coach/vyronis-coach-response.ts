@@ -4,6 +4,10 @@ import {
   enforceCoachTone,
   pickJournalDataPoint,
 } from "@/lib/coach/coach-tone-engine"
+import {
+  resolveCoachExecutionVerdict,
+  type CoachExecutionVerdict,
+} from "@/lib/coach/coach-execution-verdict"
 import type { PrecisionFlowResult, VyronisCoachVerdict } from "@/lib/coach/precision-flow-engine"
 import {
   buildVyronisCoachTraderContext,
@@ -38,6 +42,7 @@ export type VyronisCoachResponse = {
   journal_cross_reference: string
   one_improvement: string
   deep_analysis: VyronisCoachDeepAnalysis
+  execution_verdict?: CoachExecutionVerdict
   source: "heuristic" | "llm"
 }
 
@@ -149,9 +154,14 @@ export function buildVyronisCoachResponse(input: {
     responses,
   })
 
+  const executionVerdict = resolveCoachExecutionVerdict({
+    context,
+    precisionFlow,
+  })
+
   return {
     verdict,
-    setup_score: precisionFlow.setupScore,
+    setup_score: executionVerdict.setupQuality.score,
     state_score: precisionFlow.stateScore,
     risk_level: precisionFlow.riskLevel,
     confidence: precisionFlow.confidence,
@@ -161,6 +171,7 @@ export function buildVyronisCoachResponse(input: {
     journal_cross_reference: buildJournalCrossReference(trader, patternMemory, verdict),
     one_improvement: buildOneImprovement(precisionFlow, trader, verdict),
     deep_analysis: buildDeepAnalysis(context, precisionFlow),
+    execution_verdict: executionVerdict,
     source: "heuristic",
   }
 }

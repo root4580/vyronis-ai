@@ -106,7 +106,11 @@ export function CouncilContextPanel({
     if (!visual) return []
     const seen = new Set<string>()
     const items: CouncilChartSnapshot[] = []
-    for (const chart of [...visual.watchlistCharts, visual.lastTradeChart].filter(Boolean)) {
+    for (const chart of [
+      ...visual.watchlistCharts,
+      ...(visual.recentTradeCharts ?? []),
+      visual.lastTradeChart,
+    ].filter(Boolean)) {
       if (!chart || seen.has(chart.url)) continue
       seen.add(chart.url)
       items.push(chart)

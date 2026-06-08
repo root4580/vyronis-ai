@@ -14,8 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CoachWatchlistPairSelect } from "@/components/dashboard/coach-watchlist-pair-select"
+import { CoachExecutionVerdictPanel } from "@/components/dashboard/coach-execution-verdict-panel"
 import { CoachVerdictBadge } from "@/components/dashboard/coach-verdict-badge"
 import { VyronisCoachAnalysisPanel } from "@/components/dashboard/vyronis-coach-analysis-panel"
+import { resolveCoachExecutionVerdict } from "@/lib/coach/coach-execution-verdict"
 import { CoachMtfUploadGrid } from "@/components/dashboard/coach-mtf-upload-grid"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { CoachChartOverlayStrip } from "@/components/chart-annotations/coach-chart-overlay-strip"
@@ -371,6 +373,17 @@ export function TradeCoachPanel({
   const coachAnalysis = session?.planned_context?.coach_analysis
   const vyronisCoach = coachAnalysis?.vyronisCoach
   const tradeQuality = resolveTradeQualityFromSession(session)
+
+  const coachExecutionVerdict = useMemo(() => {
+    if (vyronisCoach?.execution_verdict) return vyronisCoach.execution_verdict
+    if (!session?.planned_context && !mtfAnalysis && !playbookMatch) return null
+    return resolveCoachExecutionVerdict({
+      context: session?.planned_context,
+      playbook: playbookMatch,
+      mtf: mtfAnalysis,
+      precisionFlow: coachAnalysis?.precisionFlow,
+    })
+  }, [vyronisCoach, session?.planned_context, playbookMatch, mtfAnalysis, coachAnalysis?.precisionFlow])
 
   useEffect(() => {
     if (!active) return
@@ -994,6 +1007,12 @@ export function TradeCoachPanel({
                 />
               ) : null}
 
+              {coachExecutionVerdict && workflowPhase !== "upload" && !collapseMtfForCheckIn ? (
+                <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.04] px-3 py-3">
+                  <CoachExecutionVerdictPanel verdict={coachExecutionVerdict} />
+                </DashboardInsetPanel>
+              ) : null}
+
               {playbookMatch && workflowPhase !== "upload" && !collapseMtfForCheckIn && (
                 <StrategyPlaybookMatchPanel
                   match={playbookMatch}
@@ -1045,6 +1064,12 @@ export function TradeCoachPanel({
         >
           {isComplete ? (
             <div className="space-y-3">
+              {coachExecutionVerdict ? (
+                <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.05] px-3 py-3">
+                  <CoachExecutionVerdictPanel verdict={coachExecutionVerdict} />
+                </DashboardInsetPanel>
+              ) : null}
+
               {mtfAnalysis && session && (
                 <CoachChartOverlayStrip
                   session={session}
@@ -1103,11 +1128,16 @@ export function TradeCoachPanel({
                       <Sparkles className="mt-0.5 size-4 shrink-0 text-profit" />
                       <div className="space-y-2">
                         <p className="text-[12px] font-medium text-foreground/90">Pre-trade plan saved</p>
-                        {mtfAnalysis && (
+                        {coachExecutionVerdict ? (
                           <p className="text-[11px] font-medium text-foreground/85">
-                            MTF recommendation: {mtfAnalysis.recommendation}
+                            {coachExecutionVerdict.mentorLine}
                           </p>
-                        )}
+                        ) : mtfAnalysis ? (
+                          <p className="text-[11px] font-medium text-foreground/85">
+                            Chart read {mtfAnalysis.overallScore}/100 — entry confirm{" "}
+                            {mtfAnalysis.entry.entryConfirmationScore}/100
+                          </p>
+                        ) : null}
                         {coachAnalysis && !tradeQuality && shouldTakeLabel && (
                           <p className="text-[11px] text-muted-foreground/75">{shouldTakeLabel}</p>
                         )}
@@ -1253,7 +1283,10 @@ export function TradeCoachPanel({
                   }}
                 />
               ) : analysisHasRun && vyronisCoach ? (
-                <VyronisCoachAnalysisPanel coach={vyronisCoach} />
+                <VyronisCoachAnalysisPanel
+                  coach={vyronisCoach}
+                  executionVerdict={coachExecutionVerdict}
+                />
               ) : analysisHasRun && coachAnalysis ? (
                 <CoachVerdictBadge
                   recommendation={mtfAnalysis?.recommendation}

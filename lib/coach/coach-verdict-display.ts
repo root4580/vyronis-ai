@@ -1,6 +1,12 @@
 import { sanitizeCoachLanguage } from "@/lib/coach-chapters/personality"
 
-export type CoachVerdictLabel = "READY" | "PATIENCE" | "NOT YET"
+export type CoachVerdictLabel =
+  | "A+ READY"
+  | "WAIT FOR CONFIRMATION"
+  | "SKIP TRADE"
+  | "READY"
+  | "PATIENCE"
+  | "NOT YET"
 
 export type CoachVerdictDisplay = {
   label: CoachVerdictLabel
@@ -15,56 +21,56 @@ export function mapCoachVerdict(input: {
   const rec = input.recommendation?.toUpperCase()
   if (rec === "TAKE" || rec === "EXECUTE") {
     return {
-      label: "READY",
+      label: "A+ READY",
       tone: "profit",
       description: sanitizeCoachLanguage(
-        "This is what you've been waiting for. All filters aligned — trust your analysis and execute the plan.",
+        "All rules satisfied. Setup and entry triggers are complete — execute the plan.",
       ),
     }
   }
   if (rec === "CAUTION") {
     return {
-      label: "PATIENCE",
+      label: "WAIT FOR CONFIRMATION",
       tone: "amber",
       description: sanitizeCoachLanguage(
-        "This setup has potential but isn't quite there yet. Wait for the full confirmation.",
+        "Setup quality may be strong, but entry triggers are incomplete. Wait for confirmation.",
       ),
     }
   }
   if (rec === "SKIP") {
     return {
-      label: "NOT YET",
-      tone: "amber",
+      label: "SKIP TRADE",
+      tone: "loss",
       description: sanitizeCoachLanguage(
-        "Not today — protect your chapter. A better setup is coming.",
+        "Playbook rules violated or setup quality too low — protect the chapter.",
       ),
     }
   }
 
   if (input.shouldTakeTrade === "yes") {
     return {
-      label: "READY",
+      label: "A+ READY",
       tone: "profit",
       description: sanitizeCoachLanguage(
-        "Aligned with your process — execute the plan with discipline.",
+        "All rules satisfied — setup and entry are aligned. Execute the plan with discipline.",
       ),
     }
   }
   if (input.shouldTakeTrade === "caution") {
     return {
-      label: "PATIENCE",
+      label: "WAIT FOR CONFIRMATION",
       tone: "amber",
       description: sanitizeCoachLanguage(
-        "Wait for the full confirmation. The best traders miss setups on purpose.",
+        "Valid setup, incomplete entry. The best traders miss setups on purpose.",
       ),
     }
   }
   if (input.shouldTakeTrade === "no") {
     return {
-      label: "NOT YET",
-      tone: "amber",
+      label: "SKIP TRADE",
+      tone: "loss",
       description: sanitizeCoachLanguage(
-        "Your edge is built on patience. This one needs more time.",
+        "Not an A+ entry today — stand down and wait for a cleaner read.",
       ),
     }
   }
@@ -75,5 +81,5 @@ export function mapCoachVerdict(input: {
 export function coachVerdictClassName(tone: CoachVerdictDisplay["tone"]): string {
   if (tone === "profit") return "border-profit/35 bg-profit/[0.12] text-profit"
   if (tone === "amber") return "border-warning/35 bg-warning/[0.12] text-warning-foreground"
-  return "border-violet-400/30 bg-violet-500/[0.1] text-violet-100"
+  return "border-loss/35 bg-loss/[0.12] text-loss"
 }

@@ -85,26 +85,37 @@ export function StrategyPlaybookMatchPanel({
         <span className="rounded-md border border-cyan-glow/20 bg-cyan-glow/[0.06] px-2 py-0.5 text-[10px] font-semibold text-cyan-glow">
           Grade {match.setupGrade}
         </span>
-        <span
-          className={cn(
-            "rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-            recommendationColor(match.recommendation),
-            match.recommendation === "TAKE"
-              ? "border-profit/25 bg-profit/[0.08]"
-              : match.recommendation === "CAUTION"
+        {match.missingConfirmations.length > 0 ? (
+          <span className="rounded-md border border-warning/25 bg-warning/[0.08] px-2 py-0.5 text-[10px] font-semibold text-warning-foreground">
+            Entry: wait for confirmation
+          </span>
+        ) : match.recommendation === "TAKE" ? (
+          <span className="rounded-md border border-profit/25 bg-profit/[0.08] px-2 py-0.5 text-[10px] font-semibold text-profit">
+            Entry: ready
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "rounded-md border px-2 py-0.5 text-[10px] font-semibold",
+              recommendationColor(match.recommendation),
+              match.recommendation === "CAUTION"
                 ? "border-warning/25 bg-warning/[0.08]"
                 : "border-loss/25 bg-loss/[0.08]",
-          )}
-        >
-          Final: {match.recommendation}
-        </span>
+            )}
+          >
+            Entry: {match.recommendation === "CAUTION" ? "wait" : "skip"}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <ScoreTile label="Setup Quality" score={setupQuality} icon={Target} />
         <ScoreTile label="Rule Adherence" score={ruleAdherence} icon={Shield} />
-        <ScoreTile label="Execution Timing" score={executionTiming} icon={Clock} />
+        <ScoreTile label="Entry Timing" score={executionTiming} icon={Clock} />
       </div>
+      <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+        High setup quality does not mean entry-ready — check confirmations below before sizing.
+      </p>
 
       {!compact && (
         <p className="text-[11px] leading-relaxed text-muted-foreground/80">{match.summary}</p>

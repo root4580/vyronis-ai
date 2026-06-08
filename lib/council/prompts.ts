@@ -1,6 +1,7 @@
 import type { CouncilAgentId, CouncilAgentContext, CouncilTranscriptEntry } from "@/lib/council/types"
 import { getCouncilAgent, getCouncilRosterNames } from "@/lib/council/agents"
 import { buildCouncilTimeGreeting, councilTimeGreetingRule } from "@/lib/council/time-of-day"
+import { COUNCIL_FOREX_PAIR_RULE } from "@/lib/council/forex-pair-format"
 
 function buildConversationRules(): string {
   const kai = getCouncilAgent("luna").name
@@ -19,6 +20,7 @@ function buildConversationRules(): string {
     "When the trader asks you to bring a colleague in, ask that agent by name in one short sentence — never say you cannot connect them or speak for them.",
     `Never describe pair setups, watchlist grades, or M15 confirmation yourself — bring ${kai} or ${finn} in.`,
     `Never quote risk limits or drawdown yourself — bring ${cole} in.`,
+    COUNCIL_FOREX_PAIR_RULE,
     "Vary your wording. Sound natural, not like a script.",
   ].join("\n")
 }
@@ -31,6 +33,8 @@ function buildCoordinatorRules(): string {
     "Route the trader to the right specialist by name when needed.",
     "Summarize council consensus when asked. Never analyze setups or risk yourself.",
     "You run the room — composed, professional, efficient.",
+    "When routing to setup or trade review, name the full forex pair from the snapshot if one is in focus.",
+    COUNCIL_FOREX_PAIR_RULE,
   ].join("\n")
 }
 
@@ -41,6 +45,7 @@ function buildPsychologistRules(): string {
     "NEVER give technical analysis, mention specific prices, pairs, setups, indicators, or entry calls.",
     "NEVER replace other council agents — you complement them after they cover their lanes.",
     "Do NOT speak during the specialist briefing loop — only at the end of briefing or on mindset triggers.",
+    "Never answer economic calendar or news questions — Max handles today's news.",
     "Sound deep, warm, and wise. Use the trader's first name when natural.",
     "When chiming in after a loss or win, focus on process and rest — not the next setup.",
   ].join("\n")
@@ -118,8 +123,9 @@ export function buildCouncilAgentSystemPrompt(
     `Speak directly to ${trader}.`,
     `Maximum ${agent.maxSentences} short sentences. No bullet points. No markdown.`,
     `Never say "skip trade" or use harsh negative language.`,
+    agentId !== "marcus" ? COUNCIL_FOREX_PAIR_RULE : "",
     `${agentDataLabel(agentId)} (prefer the trader's latest message if they correct it): ${data}`,
-  ]
+  ].filter(Boolean)
 
   if (mode === "briefing") {
     base.push(
@@ -147,6 +153,7 @@ export function buildCouncilAgentSystemPrompt(
     base.push("Focus on one specific improvement from recent trades.")
     base.push("Be brutally honest — no sugar coating. Name the mistake plainly.")
     base.push("Use Coach feedback and discipline scores on last trades when available.")
+    base.push("Name each trade with its full 6-letter pair (e.g. USDCHF) — never \"that trade\" or \"the pair\" alone.")
   }
   if (agentId === "rex") {
     base.push("Be blunt and direct. Few words. Protect capital first.")
@@ -160,7 +167,7 @@ export function buildCouncilAgentSystemPrompt(
   }
   if (agentId === "luna") {
     base.push("Be the most enthusiastic voice on the council — celebrate strong watchlist setups.")
-    base.push("When discussing setups, name the pair symbol first (e.g. AUDUSD) from the watchlist snapshot.")
+    base.push("When discussing setups, lead with the full 6-letter pair from the watchlist (e.g. USDCHF, AUDUSD) — every time.")
     base.push("If Coach has graded a watchlist pair, quote that grade — otherwise send the trader to run Coach on the setup.")
   }
   if (agentId === "cipher") {
@@ -171,6 +178,7 @@ export function buildCouncilAgentSystemPrompt(
       "Give clear technical entry/wait verdicts. If the trader says AOI is ready or price is in zone, move to M15 confirmation and invalidation — do not keep saying WAITING.",
     )
     base.push("Cross-check Coach active session and watchlist Coach grades before giving a final entry call.")
+    base.push("Name the full forex pair on every technical verdict (e.g. EURUSD invalidation at 1.0850).")
   }
   if (agentId === "marcus") {
     base.push(buildPsychologistRules())
@@ -222,6 +230,7 @@ export function buildCouncilRoundtableUserPrompt(input: {
   lines.push(
     "Maximum 2 short sentences. Sound like a live roundtable, not a solo monologue.",
     "Do not repeat what another council member already covered.",
+    COUNCIL_FOREX_PAIR_RULE,
   )
 
   return lines.filter(Boolean).join("\n\n")
@@ -244,6 +253,7 @@ export function buildCouncilBriefingUserPrompt(
     `Start with one short sentence that references ${previous.agentName} by name — agree, add nuance, or hand off naturally.`,
     `If you greet the room, use "${greeting}" — not good morning unless it is morning.`,
     `Then cover your data. Maximum ${agent.maxSentences} sentences total. Sound like a live council room, not five separate monologues.`,
+    COUNCIL_FOREX_PAIR_RULE,
   ].join("\n")
 }
 
@@ -281,21 +291,24 @@ export function buildCouncilRespondUserPrompt(input: {
   agentMemory?: string
   lastAgentReply?: string | null
   agentName: string
+  dataScopeInstruction?: string
 }): string {
   const isFollowUp =
     input.question.trim().length < 80 ||
     /^(and |so |ok |yes|no|really|what about|it'?s ready|now |what now)/i.test(input.question.trim())
 
   return [
+    input.dataScopeInstruction?.trim() || "",
     input.agentMemory ? `Earlier sessions (use for context, do not repeat verbatim):\n${input.agentMemory}` : "",
     input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
     input.lastAgentReply
       ? `Your last reply as ${input.agentName} (do NOT copy this — advance the conversation):\n"${input.lastAgentReply}"`
       : "",
-    `Trader's latest message: ${input.question}`,
+    `Trader's latest message (spoken aloud — only this line is what they just said; do not infer goodbyes or intent from older transcript lines): ${input.question}`,
     isFollowUp
       ? "This looks like a follow-up. Respond to their update in one or two fresh sentences. Do not re-list every pair unless they asked."
       : "Answer their specific question with one clear takeaway.",
+    "Do not assume they said goodbye or ended the session unless their latest message clearly says so.",
     `If their question belongs to another council member's lane, ${getCouncilAgent("jarvis").name} or the council room will connect them — do not promise to bring someone in later.`,
   ]
     .filter(Boolean)
@@ -351,7 +364,7 @@ export function buildCouncilHandoffAnswerUserPrompt(input: {
     (input.topic === "setup" || input.topic === "watchlist")
   ) {
     lines.push(
-      "Lead with your best watchlist pair by symbol (e.g. AUDUSD) and say why it looks good.",
+      "Lead with your best watchlist pair using the full 6-letter symbol (e.g. USDCHF) and say why it looks good.",
       input.contextSnippet
         ? `Watchlist snapshot: ${input.contextSnippet}`
         : "Use the watchlist snapshot in your system prompt.",

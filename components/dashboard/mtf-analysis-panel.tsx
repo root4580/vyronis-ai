@@ -78,15 +78,14 @@ export function MtfAnalysisPanel({
         <span
           className={cn(
             "rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-            recommendationColor(analysis.recommendation),
-            analysis.recommendation === "TAKE"
-              ? "border-profit/25 bg-profit/[0.08]"
-              : analysis.recommendation === "CAUTION"
-                ? "border-warning/25 bg-warning/[0.08]"
-                : "border-loss/25 bg-loss/[0.08]",
+            entry.entryConfirmationScore >= 70
+              ? "border-profit/25 bg-profit/[0.08] text-profit"
+              : entry.entryConfirmationScore >= 50
+                ? "border-warning/25 bg-warning/[0.08] text-warning-foreground"
+                : "border-loss/25 bg-loss/[0.08] text-loss",
           )}
         >
-          {analysis.recommendation}
+          Entry confirm {entry.entryConfirmationScore}/100
         </span>
         {provider && (
           <span className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-black/20 px-2 py-0.5 text-[9px] text-muted-foreground/75">

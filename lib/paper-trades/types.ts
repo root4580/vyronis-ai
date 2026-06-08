@@ -22,6 +22,7 @@ export type PaperTradeRecord = {
   source_ref: string | null
   setup_grade: string | null
   chart_image_url: string | null
+  chart_image_url_after: string | null
   ai_confidence: string | null
   coach_session_id: string | null
   coach_feedback: string | null
@@ -64,6 +65,7 @@ export type ClosePaperTradeInput = {
   rr?: number | null
   pnl?: number | null
   notes?: string
+  chart_image_url_after?: string | null
 }
 
 export type PaperTradeStats = {

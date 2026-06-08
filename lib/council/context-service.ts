@@ -5,6 +5,11 @@ import type { AnalyticsTradeRow } from "@/lib/analytics/types"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import { belongsToAccount, filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
+import {
+  COUNCIL_JOURNAL_LAST_TRADE_CHARTS_LIMIT,
+  COUNCIL_JOURNAL_LAST_TRADES_LIMIT,
+  type CouncilDataScope,
+} from "@/lib/council/data-scope"
 import type { CouncilAgentContext } from "@/lib/council/types"
 import { evaluateMarketBias } from "@/lib/strategy-brain/market-bias-engine"
 import { getMarketBias, getWeeklyPlanWithPairs } from "@/lib/strategy-brain/server-service"
@@ -17,6 +22,7 @@ import type {
   WeeklyPlanWithPairs,
 } from "@/lib/strategy-brain/types"
 import { getTradingRulesSnapshot } from "@/lib/trading-rules/trading-rules-service"
+import { normalizeForexPairSymbol } from "@/lib/council/forex-pair-format"
 import { buildJarvisContextSnapshot } from "@/lib/council/jarvis-service"
 import { buildRexCalendarLine } from "@/lib/economic-calendar/briefing-lines"
 import { getTodayCalendarSnapshot } from "@/lib/economic-calendar/service"
@@ -46,6 +52,7 @@ import {
 } from "@/lib/weekly-chapters/server-service"
 import type { ChapterReviewTrade, WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
 import {
+  disciplineGradeFromScore,
   formatChapterTitle,
   isTradeInWeekStart,
   toWeekStartISO,
@@ -281,7 +288,7 @@ function buildTodayRexJournalLine(
         latest.trade_date?.slice(0, 10) ??
         latest.created_at?.slice(0, 10) ??
         "unknown date"
-      const pair = latest.pair ?? "Unknown pair"
+      const pair = normalizeForexPairSymbol(latest.pair ?? "—")
       return `Journal today (${todayKey}): no trades today. Latest on this account: ${latestDate} — ${pair} ${result} ${formatPnL(pnl, result)}.`
     }
     return `Journal today (${todayKey}): no trades logged for this account in Vyronis.`
@@ -298,7 +305,7 @@ function buildTodayRexJournalLine(
       pnl = ((startingBalance * (row.risk_percent ?? 0)) / 100)
     }
     const signed = getSignedPnL(pnl, result)
-    const pair = row.pair ?? "Unknown pair"
+    const pair = normalizeForexPairSymbol(row.pair ?? "—")
     if (result === "LOSS" && Number(row.pnl ?? 0) === 0 && signed < 0) {
       return `${pair} LOSS ~${formatPnL(Math.abs(signed), "WIN")} (estimated from ${row.risk_percent}% risk)`
     }
@@ -473,7 +480,7 @@ function isActiveOpportunity(status: AoiStatus): boolean {
 function mapTradeForPatterns(row: TradeRow): ChapterReviewTrade {
   return {
     id: String(row.id),
-    pair: String(row.pair ?? "—"),
+    pair: normalizeForexPairSymbol(String(row.pair ?? "—")),
     direction: String(row.direction ?? "—"),
     result: String(row.result ?? "—"),
     pnl: getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? "")),
@@ -543,13 +550,13 @@ function buildNovaContext(input: {
       ? `Emotional history (recent): ${emotionTimeline
           .map(
             (point) =>
-              `${point.pair} ${point.emotion ?? "—"} (${point.emotionalScore}/100${point.disciplineScore != null ? `, discipline ${point.disciplineScore}` : ""})`,
+              `${normalizeForexPairSymbol(point.pair)} ${point.emotion ?? "—"} (${point.emotionalScore}/100${point.disciplineScore != null ? `, discipline ${point.disciplineScore}` : ""})`,
           )
           .join("; ")}. Stability avg ${input.emotionSummary?.emotionalStability ?? "—"}/100.`
       : input.weekTrades.length > 0
         ? `Emotional history: ${input.weekTrades
             .slice(0, 5)
-            .map((trade) => `${trade.pair} ${trade.emotion ?? "—"}`)
+            .map((trade) => `${normalizeForexPairSymbol(trade.pair)} ${trade.emotion ?? "—"}`)
             .join("; ")}.`
         : "Emotional history: no trades logged this chapter yet."
 
@@ -580,10 +587,28 @@ function buildNovaContext(input: {
     .join(" ")
 }
 
+function averageCoachDisciplineForTrades(
+  trades: TradeRow[],
+  disciplineByTradeId: Map<string, number>,
+): number | null {
+  const scores = trades
+    .map((row) => disciplineByTradeId.get(String(row.id)))
+    .filter((value): value is number => value != null && Number.isFinite(value))
+  if (scores.length === 0) return null
+  return Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+}
+
 function buildZaraContext(input: {
   tradeRows: TradeRow[]
   disciplineByTradeId: Map<string, number>
+  scopeLabel?: string
 }): string {
+  const scopePrefix =
+    input.scopeLabel === "this week only"
+      ? "Trades this week only: "
+      : input.scopeLabel === "last trades from Vyronis journal"
+        ? "Last trades from Vyronis journal: "
+        : "Last 3 trades: "
   const lastThree = input.tradeRows.slice(0, 3).map((row) => {
     const pnl = getSignedPnL(Number(row.pnl ?? 0), String(row.result ?? ""))
     const notes = buildChapterTradeReviewNotes({
@@ -603,7 +628,7 @@ function buildZaraContext(input: {
     const coachDiscipline = input.disciplineByTradeId.get(String(row.id))
     const noteText = row.trade_notes?.trim() || notes.whatWentWrong || notes.whatWentRight || "no notes"
     return [
-      `${row.pair} ${row.direction} ${row.result}`,
+      `${normalizeForexPairSymbol(row.pair)} ${row.direction} ${row.result}`,
       `entry ${formatPrice(row.entry_price)} SL ${formatPrice(row.stop_loss)} TP ${formatPrice(row.take_profit)}`,
       `emotion ${row.emotion ?? "—"}${row.emotion_after ? ` → ${row.emotion_after}` : ""}`,
       row.setup_classification ? `grade ${row.setup_classification}` : null,
@@ -620,8 +645,12 @@ function buildZaraContext(input: {
 
   return [
     lastThree.length > 0
-      ? `Last 3 trades: ${lastThree.join(" | ")}`
-      : "No live trades logged yet.",
+      ? `${scopePrefix}${lastThree.join(" | ")}`
+      : input.scopeLabel === "this week only"
+        ? "No live trades logged this week yet."
+        : input.scopeLabel === "last trades from Vyronis journal"
+          ? "No trades in your Vyronis journal yet — tap Log on HQ after your next close."
+          : "No live trades logged yet.",
     patterns ? `Patterns: ${patterns}` : null,
   ]
     .filter(Boolean)
@@ -689,7 +718,7 @@ function buildLunaContext(input: {
         pair.aoi_low != null && pair.aoi_high != null
           ? `H4 zone ${pair.aoi_low}-${pair.aoi_high}`
           : "H4 zone pending"
-      return `${pair.pair} ${pair.directional_bias}, ${pair.aoi_status}, ${zone}, ${grade}`
+      return `${normalizeForexPairSymbol(pair.pair)} ${pair.directional_bias}, ${pair.aoi_status}, ${zone}, ${grade}`
     })
     .join(" · ")
 
@@ -699,7 +728,7 @@ function buildLunaContext(input: {
       const evalRow =
         input.evaluationsByPlanId.get(pair.id) ??
         input.evaluationsByPair.get(pair.pair.replace(/\s/g, "").toUpperCase())
-      return `${pair.pair} (${pair.aoi_status}${evalRow?.grade ? `, ${evalRow.grade}` : ""})`
+      return `${normalizeForexPairSymbol(pair.pair)} (${pair.aoi_status}${evalRow?.grade ? `, ${evalRow.grade}` : ""})`
     })
 
   return [
@@ -753,14 +782,39 @@ function formatCipherPairLine(
   })
   const m15 = formatM15ConfirmationStatus(pair.aoi_status, evalRow?.confirmation, null)
 
-  return `${pair.pair}: Apex filter ${apex}. ${h4Zone}. Bias ${pair.directional_bias}, AOI ${pair.aoi_status}. ${m15}.${pair.invalidation != null ? ` Invalidation ${pair.invalidation}.` : ""}`
+  return `${normalizeForexPairSymbol(pair.pair)}: Apex filter ${apex}. ${h4Zone}. Bias ${pair.directional_bias}, AOI ${pair.aoi_status}. ${m15}.${pair.invalidation != null ? ` Invalidation ${pair.invalidation}.` : ""}`
+}
+
+function buildTradeChartsFromRows(
+  tradeRows: TradeRow[],
+  labelSuffix: string,
+): Array<{ pair: string; url: string; label: string }> {
+  const charts: Array<{ pair: string; url: string; label: string }> = []
+  const seen = new Set<string>()
+  for (const trade of tradeRows) {
+    if (charts.length >= 3) break
+    const resolved = resolveSignalChartImageUrl({
+      screenshot_url: trade.screenshot_url,
+      chart_url: trade.chart_url,
+    })
+    if (!resolved.url || seen.has(resolved.url)) continue
+    seen.add(resolved.url)
+    charts.push({
+      pair: String(trade.pair ?? "—"),
+      url: resolved.url,
+      label: `${trade.pair ?? "Trade"} · ${labelSuffix}`,
+    })
+  }
+  return charts
 }
 
 export async function loadCouncilAgentContext(
   supabase: SupabaseClient,
   userId: string,
   accountId: string,
+  options?: { dataScope?: CouncilDataScope },
 ): Promise<CouncilAgentContext> {
+  const dataScope = options?.dataScope ?? "all_time"
   const weekStart = toWeekStartISO(new Date())
 
   const { data: accountRows } = await supabase
@@ -914,6 +968,24 @@ export async function loadCouncilAgentContext(
     summaryDisciplineScore: disciplineScore,
   })
 
+  const coachWeekDiscipline = averageCoachDisciplineForTrades(weekTrades, disciplineByTradeId)
+  const inferredDiscipline =
+    coachWeekDiscipline ?? emotionSummary?.disciplineAverage ?? null
+  const effectiveDisciplineScore = disciplineScore ?? inferredDiscipline
+  const effectiveDisciplineGrade =
+    disciplineGrade ??
+    (effectiveDisciplineScore != null
+      ? disciplineGradeFromScore(effectiveDisciplineScore)
+      : null)
+  const disciplineScoreNote =
+    disciplineScore == null && effectiveDisciplineScore != null
+      ? coachWeekDiscipline != null
+        ? "Estimated from Coach reviews on this week's trades — save your weekly chapter to lock the official score."
+        : "Estimated from this week's journal trades — run Coach on each trade or complete your weekly review for the official score."
+      : disciplineScore == null && weekTrades.length > 0
+        ? "No discipline score yet — run Coach on your trades or complete the weekly chapter review."
+        : null
+
   const evaluationsByPair = latestEvaluationsByPair(setupEvaluations)
   const evaluationsByPlanId = latestEvaluationsByPlanId(setupEvaluations)
 
@@ -945,12 +1017,12 @@ export async function loadCouncilAgentContext(
       currentSummary != null
         ? {
             ...currentSummary,
-            discipline_score: disciplineScore,
-            discipline_grade: disciplineGrade,
+            discipline_score: effectiveDisciplineScore,
+            discipline_grade: effectiveDisciplineGrade,
           }
         : null,
-    dashboardDisciplineScore: disciplineScore,
-    dashboardDisciplineGrade: disciplineGrade,
+    dashboardDisciplineScore: effectiveDisciplineScore,
+    dashboardDisciplineGrade: effectiveDisciplineGrade,
     weekTrades,
     maxTrades,
     tradesRemaining,
@@ -960,7 +1032,23 @@ export async function loadCouncilAgentContext(
     disciplineByTradeId,
   })
 
-  const zara = buildZaraContext({ tradeRows, disciplineByTradeId })
+  const tradesForZara =
+    dataScope === "this_week"
+      ? weekTrades
+      : dataScope === "last_trades"
+        ? tradeRows.slice(0, COUNCIL_JOURNAL_LAST_TRADES_LIMIT)
+        : tradeRows
+  const zaraScopeLabel =
+    dataScope === "this_week"
+      ? "this week only"
+      : dataScope === "last_trades"
+        ? "last trades from Vyronis journal"
+        : "recent journal"
+  const zara = buildZaraContext({
+    tradeRows: tradesForZara,
+    disciplineByTradeId,
+    scopeLabel: zaraScopeLabel,
+  })
   const rex = buildRexContext({
     accountName: account?.name ?? "Trading account",
     balance,
@@ -1007,7 +1095,19 @@ export async function loadCouncilAgentContext(
     .filter((entry): entry is NonNullable<typeof entry> => entry != null)
     .slice(0, 3)
 
-  const lastTrade = tradeRows[0]
+  const chartTradeSource =
+    dataScope === "this_week"
+      ? weekTrades
+      : dataScope === "last_trades"
+        ? tradeRows.slice(0, COUNCIL_JOURNAL_LAST_TRADE_CHARTS_LIMIT)
+        : tradeRows
+  const chartLabelSuffix =
+    dataScope === "this_week"
+      ? "This week"
+      : dataScope === "last_trades"
+        ? "Journal"
+        : "Logged"
+  const lastTrade = chartTradeSource[0]
   const lastTradeResolved = lastTrade
     ? resolveSignalChartImageUrl({
         screenshot_url: lastTrade.screenshot_url,
@@ -1019,9 +1119,11 @@ export async function loadCouncilAgentContext(
       ? {
           pair: String(lastTrade.pair ?? "—"),
           url: lastTradeResolved.url,
-          label: `${lastTrade.pair ?? "Trade"} · Last logged`,
+          label: `${lastTrade.pair ?? "Trade"} · ${chartLabelSuffix}`,
         }
       : null
+
+  const recentTradeCharts = buildTradeChartsFromRows(chartTradeSource, chartLabelSuffix)
 
   const visual = {
     stats: {
@@ -1036,8 +1138,9 @@ export async function loadCouncilAgentContext(
       tradesThisWeek,
       maxTradesPerWeek: maxTrades,
       tradesRemaining,
-      disciplineScore,
-      disciplineGrade,
+      disciplineScore: effectiveDisciplineScore,
+      disciplineGrade: effectiveDisciplineGrade,
+      disciplineScoreNote,
       chapterLabel,
       accountName: account?.name ?? "Trading account",
       todayJournalLine,
@@ -1045,6 +1148,8 @@ export async function loadCouncilAgentContext(
     },
     watchlistCharts,
     lastTradeChart,
+    recentTradeCharts,
+    economicCalendar,
   }
 
   return {

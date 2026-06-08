@@ -30,7 +30,7 @@ export function buildCouncilJournalTodayUserPrompt(input: {
   return [
     input.recentTranscript ? `Today's conversation so far:\n${input.recentTranscript}` : "",
     `${input.traderFirstName} asked about today's journal thread: ${input.question}`,
-    "Answer from your live trade review snapshot and today's journal line. Quote pair, result, and P&L when available.",
+    "Answer from your live trade review snapshot and today's journal line. Quote the full 6-letter pair (e.g. USDCHF), result, and P&L when available.",
     `Maximum 2 short sentences. Do not redirect to ${getCouncilAgent("luna").name} or another agent.`,
   ]
     .filter(Boolean)

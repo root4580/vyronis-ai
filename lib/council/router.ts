@@ -1,5 +1,7 @@
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
 import { detectCouncilAgentIdByName } from "@/lib/council/agent-ids"
+import { isCouncilLastTradesRequest } from "@/lib/council/data-scope"
+import { isCouncilNewsRequest } from "@/lib/council/news-request"
 import { isGeneralCouncilQuestion } from "@/lib/council/jarvis-service"
 import type { CouncilAgentId, CouncilTranscriptEntry } from "@/lib/council/types"
 
@@ -153,6 +155,15 @@ export function getStickyCouncilAgentFromTranscript(
 
 const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
   {
+    agent: "jarvis",
+    patterns: [
+      /\bnews\b/i,
+      /\beconomic calendar\b/i,
+      /\bhigh impact\b/i,
+      /\b(red folder|releases? today)\b/i,
+    ],
+  },
+  {
     agent: "rex",
     patterns: [
       /\brisk\b/i,
@@ -168,8 +179,12 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
   {
     agent: "zara",
     patterns: [
+      /\blast trades?\b/i,
+      /\brecent trades?\b/i,
       /\blast trade\b/i,
       /\bmy trade\b/i,
+      /\bjournal trades?\b/i,
+      /\bfrom (?:the )?journal\b/i,
       /\bmistake\b/i,
       /\bloss\b/i,
       /\bwin\b/i,
@@ -212,14 +227,21 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
   {
     agent: "marcus",
     patterns: [
+      /\bomar\b/i,
       /\bmarcus\b/i,
+      /\bcoach omar\b/i,
       /\bpsycholog/i,
       /\bmindset\b/i,
       /\bfomo\b/i,
       /\brevenge\b/i,
       /\btilt\b/i,
       /\bmental\b/i,
+      /\bemotion/i,
+      /\bstress\b/i,
+      /\banxi/i,
       /\bgrowth mindset\b/i,
+      /\bhow am i feeling\b/i,
+      /\bfeeling\b/i,
     ],
   },
   {
@@ -227,10 +249,8 @@ const ROUTING: Array<{ agent: CouncilAgentId; patterns: RegExp[] }> = [
     patterns: [
       /\bchapter\b/i,
       /\bweek\b/i,
-      /\bdiscipline\b/i,
-      /\bemotion/i,
-      /\bgrowth\b/i,
-      /\bhow am i\b/i,
+      /\bweekly\b/i,
+      /\bhow am i doing\b/i,
     ],
   },
 ]
@@ -271,6 +291,10 @@ export function resolveCouncilAgentForMessage(
   const delegating = isCouncilDelegationRequest(message)
 
   if (namedAgent && !delegating) return namedAgent
+
+  if (isCouncilLastTradesRequest(message) && !delegating) return "zara"
+
+  if (isCouncilNewsRequest(message) && !delegating) return "jarvis"
 
   const partner =
     options?.conversationAgent ?? options?.preferredAgent ?? options?.stickyAgent ?? null

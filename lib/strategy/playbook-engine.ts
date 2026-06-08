@@ -564,6 +564,7 @@ function deriveFinalRecommendation(input: {
   ruleAdherenceScore: number
   executionTimingScore: number
   violations: string[]
+  missingConfirmations: string[]
   signals: StrategySignals
 }): TradeQualityRecommendation {
   const composite = Math.round(
@@ -582,6 +583,21 @@ function deriveFinalRecommendation(input: {
     (input.signals.poorRr && input.signals.earlyEntry)
 
   if (critical || composite < 40 || input.violations.length >= 4) return "SKIP"
+
+  const entryTriggersIncomplete =
+    input.missingConfirmations.length > 0 ||
+    input.signals.beforeConfirmationClose ||
+    !input.signals.candleConfirmed ||
+    !input.signals.m15Confirmed ||
+    input.signals.earlyEntry ||
+    input.signals.noConfirmation ||
+    input.executionTimingScore < 60
+
+  if (entryTriggersIncomplete) {
+    if (input.setupQualityScore >= 55 && input.violations.length <= 2) return "CAUTION"
+    return "SKIP"
+  }
+
   if (
     composite >= 72 &&
     input.setupQualityScore >= 65 &&
@@ -655,6 +671,7 @@ export function evaluateStrategyPlaybook(
     ruleAdherenceScore: penalizedAdherence,
     executionTimingScore,
     violations,
+    missingConfirmations,
     signals,
   })
 

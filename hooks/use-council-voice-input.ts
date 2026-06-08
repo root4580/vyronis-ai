@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { transcribeCouncilAudio } from "@/lib/council/api-client"
+import {
+  filterCouncilTranscription,
+  isCouncilGoodbyeRequest,
+} from "@/lib/council/voice-only-input"
 import type { CouncilVoiceSessionController } from "@/lib/council/voice-session"
 
 const SILENCE_THRESHOLD = 0.018
@@ -192,7 +196,10 @@ export function useCouncilVoiceInput(
   }, [stopStream])
 
   const startConversation = useCallback(
-    (onUtterance: (text: string) => Promise<void>) => {
+    (
+      onUtterance: (text: string) => Promise<void>,
+      onGoodbye?: () => void | Promise<void>,
+    ) => {
       if (!listenConfigured) {
         setMicError("Voice input needs OPENAI_API_KEY configured on the server.")
         return
@@ -267,7 +274,13 @@ export function useCouncilVoiceInput(
             sessionRef.current?.beginThinking()
             setIsTranscribing(true)
             try {
-              const text = (await transcribeCouncilAudio(blob)).trim()
+              const raw = (await transcribeCouncilAudio(blob)).trim()
+              if (raw && isCouncilGoodbyeRequest(raw)) {
+                controller.abort()
+                await onGoodbye?.()
+                break
+              }
+              const text = raw ? filterCouncilTranscription(raw) : null
               if (text) {
                 await onUtterance(text)
                 await sessionRef.current?.waitForTurnComplete(controller.signal)
@@ -276,9 +289,13 @@ export function useCouncilVoiceInput(
                 sessionRef.current?.beginListening()
               }
             } catch (error) {
-              setMicError(error instanceof Error ? error.message : "Could not transcribe audio")
+              const message = error instanceof Error ? error.message : "Could not transcribe audio"
+              const noSpeech = /no clear speech|empty transcription/i.test(message)
+              if (!noSpeech) {
+                setMicError(message)
+                await sleep(1200, controller.signal)
+              }
               sessionRef.current?.beginListening()
-              await sleep(1200, controller.signal)
             } finally {
               setIsTranscribing(false)
             }

@@ -15,6 +15,18 @@ import {
 } from "@/lib/council/context-service"
 import { loadCachedCouncilAgentContext } from "@/lib/council/context-cache"
 import {
+  buildCouncilDataScopeInstruction,
+  resolveCouncilDataScope,
+  type CouncilDataScope,
+} from "@/lib/council/data-scope"
+import { buildRexCalendarLine } from "@/lib/economic-calendar/briefing-lines"
+import {
+  buildCouncilNewsUserPrompt,
+  buildJarvisNewsFallback,
+  buildJarvisNewsIntro,
+  isCouncilNewsRequest,
+} from "@/lib/council/news-request"
+import {
   buildCouncilAgentLivePrompt,
   loadCouncilLiveDataBundle,
 } from "@/lib/council/live-data-service"
@@ -230,7 +242,7 @@ function fallbackAgentLine(agentId: CouncilAgentId, context: Awaited<ReturnType<
     case "luna":
       return context.luna.includes("No War Room")
         ? "Save your War Room watchlist first — I will highlight the best A+ setup once pairs are loaded."
-        : `Strongest focus: ${context.luna.split("·")[0]?.trim() || "your top watchlist pair"}.`
+        : `Strongest focus: ${context.luna.split("·")[0]?.trim().split(/\s+/)[0] ?? "your top watchlist pair"}.`
     case "cipher":
       return context.cipher.includes("No setups")
         ? "No confirmed setup yet — align HTF bias and AOI before entry."
@@ -333,8 +345,11 @@ async function produceCouncilAgentReply(input: {
   temperature?: number
   maxTokens?: number
   mode?: "briefing" | "conversation"
+  dataScope?: CouncilDataScope
 }): Promise<string> {
-  const liveBundle = await loadCouncilLiveDataBundle(input.supabase, input.userId, input.accountId)
+  const liveBundle = await loadCouncilLiveDataBundle(input.supabase, input.userId, input.accountId, {
+    dataScope: input.dataScope,
+  })
   const liveDataPrompt = buildCouncilAgentLivePrompt(input.agentId, liveBundle)
   return generateAgentText({
     agentId: input.agentId,
@@ -923,6 +938,7 @@ async function runCouncilStatusTurn(
   existing: CouncilSessionRecord | null,
   context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
   recentTranscript: string,
+  replyScope: { dataScope: CouncilDataScope; scopeInstruction: string },
 ): Promise<CouncilRespondResponse> {
   const agentMessages: CouncilTranscriptEntry[] = [
     {
@@ -942,18 +958,24 @@ async function runCouncilStatusTurn(
       supabase,
       userId,
       accountId,
-      userPrompt: buildCouncilStatusUserPrompt({
-        question: trimmed,
-        agentId,
-        recentTranscript,
-        traderFirstName: context.traderFirstName,
-      }),
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilStatusUserPrompt({
+          question: trimmed,
+          agentId,
+          recentTranscript,
+          traderFirstName: context.traderFirstName,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       fallback:
         agentId === "nova"
           ? buildNovaStatusFallback(context)
           : buildRexStatusFallback(context),
       temperature: 0.45,
       maxTokens: 160,
+      dataScope: replyScope.dataScope,
     })
 
     const entry: CouncilTranscriptEntry = {
@@ -987,6 +1009,121 @@ async function runCouncilStatusTurn(
   }
 }
 
+async function runCouncilNewsTurn(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  trimmed: string,
+  transcript: CouncilTranscriptEntry[],
+  userEntry: CouncilTranscriptEntry,
+  existing: CouncilSessionRecord | null,
+  context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
+  recentTranscript: string,
+  replyScope: { dataScope: CouncilDataScope; scopeInstruction: string },
+): Promise<CouncilRespondResponse> {
+  const calendar = context.economicCalendar
+  const agentMessages: CouncilTranscriptEntry[] = [
+    {
+      id: randomUUID(),
+      agent: "jarvis",
+      content: buildJarvisNewsIntro(context.traderFirstName),
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  const jarvisReply = await produceCouncilAgentReply({
+    agentId: "jarvis",
+    context,
+    supabase,
+    userId,
+    accountId,
+    userPrompt: [
+      replyScope.scopeInstruction,
+      buildCouncilNewsUserPrompt({
+        question: trimmed,
+        traderFirstName: context.traderFirstName,
+        recentTranscript,
+        calendar,
+        agentName: getCouncilAgent("jarvis").name,
+      }),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+    fallback: buildJarvisNewsFallback(calendar),
+    temperature: 0.4,
+    maxTokens: 180,
+    dataScope: replyScope.dataScope,
+  })
+
+  const jarvisEntry: CouncilTranscriptEntry = {
+    id: randomUUID(),
+    agent: "jarvis",
+    content: jarvisReply,
+    createdAt: new Date().toISOString(),
+  }
+  agentMessages.push(jarvisEntry)
+
+  const rexCalendarLine = buildRexCalendarLine(calendar)
+  if (rexCalendarLine) {
+    const rexReply = await produceCouncilAgentReply({
+      agentId: "rex",
+      context,
+      supabase,
+      userId,
+      accountId,
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilNewsUserPrompt({
+          question: trimmed,
+          traderFirstName: context.traderFirstName,
+          recentTranscript: `${recentTranscript}\n${getCouncilAgent("jarvis").name}: ${jarvisReply}`,
+          calendar,
+          agentName: getCouncilAgent("rex").name,
+        }),
+        "Add one short risk line: stand down until after the release if high impact is within the hour.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      fallback: rexCalendarLine,
+      temperature: 0.35,
+      maxTokens: 80,
+      dataScope: replyScope.dataScope,
+    })
+
+    agentMessages.push({
+      id: randomUUID(),
+      agent: "rex",
+      content: rexReply,
+      createdAt: new Date().toISOString(),
+    })
+    await appendAgentMemory(supabase, userId, "rex", trimmed, rexReply).catch(() => undefined)
+  }
+
+  await appendAgentMemory(supabase, userId, "jarvis", trimmed, jarvisReply).catch(() => undefined)
+
+  const session = await upsertTodaySession(supabase, userId, accountId, {
+    full_transcript: [...transcript, userEntry, ...agentMessages],
+    agents_spoken: [
+      ...new Set([
+        ...(existing?.agents_spoken ?? []),
+        getCouncilAgent("jarvis").name,
+        ...(rexCalendarLine ? [getCouncilAgent("rex").name] : []),
+      ]),
+    ],
+  })
+
+  const lastEntry = agentMessages[agentMessages.length - 1]!
+
+  return {
+    sessionId: session.id,
+    agent: lastEntry.agent as CouncilAgentId,
+    message: lastEntry,
+    messages: agentMessages,
+    chimeIn: null,
+    roundtable: rexCalendarLine != null,
+  }
+}
+
 async function runCouncilJournalTodayTurn(
   supabase: SupabaseClient,
   userId: string,
@@ -997,6 +1134,7 @@ async function runCouncilJournalTodayTurn(
   existing: CouncilSessionRecord | null,
   context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
   recentTranscript: string,
+  replyScope: { dataScope: CouncilDataScope; scopeInstruction: string },
 ): Promise<CouncilRespondResponse> {
   const agentMessages: CouncilTranscriptEntry[] = [
     {
@@ -1013,14 +1151,20 @@ async function runCouncilJournalTodayTurn(
     supabase,
     userId,
     accountId,
-    userPrompt: buildCouncilJournalTodayUserPrompt({
-      question: trimmed,
-      recentTranscript,
-      traderFirstName: context.traderFirstName,
-    }),
+    userPrompt: [
+      replyScope.scopeInstruction,
+      buildCouncilJournalTodayUserPrompt({
+        question: trimmed,
+        recentTranscript,
+        traderFirstName: context.traderFirstName,
+      }),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     fallback: buildZaraJournalTodayFallback(context),
     temperature: 0.45,
     maxTokens: 160,
+    dataScope: replyScope.dataScope,
   })
 
   agentMessages.push({
@@ -1036,15 +1180,21 @@ async function runCouncilJournalTodayTurn(
     supabase,
     userId,
     accountId,
-    userPrompt: buildCouncilStatusUserPrompt({
-      question: trimmed,
-      agentId: "rex",
-      recentTranscript,
-      traderFirstName: context.traderFirstName,
-    }),
+    userPrompt: [
+      replyScope.scopeInstruction,
+      buildCouncilStatusUserPrompt({
+        question: trimmed,
+        agentId: "rex",
+        recentTranscript,
+        traderFirstName: context.traderFirstName,
+      }),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     fallback: buildRexStatusFallback(context),
     temperature: 0.45,
     maxTokens: 120,
+    dataScope: replyScope.dataScope,
   })
 
   agentMessages.push({
@@ -1083,6 +1233,7 @@ async function runCouncilRoundtableTurn(
   existing: CouncilSessionRecord | null,
   context: Awaited<ReturnType<typeof loadCachedCouncilAgentContext>>,
   recentTranscript: string,
+  replyScope: { dataScope: CouncilDataScope; scopeInstruction: string },
 ): Promise<CouncilRespondResponse> {
   const agentMessages: CouncilTranscriptEntry[] = [
     {
@@ -1105,12 +1256,17 @@ async function runCouncilRoundtableTurn(
       supabase,
       userId,
       accountId,
-      userPrompt: buildCouncilRoundtableUserPrompt({
-        question: trimmed,
-        agentName: agent.name,
-        recentTranscript,
-        previousSpecialist,
-      }),
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilRoundtableUserPrompt({
+          question: trimmed,
+          agentName: agent.name,
+          recentTranscript,
+          previousSpecialist,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       fallback: buildConversationFallback({
         agentId,
         context,
@@ -1119,6 +1275,7 @@ async function runCouncilRoundtableTurn(
       }),
       temperature: 0.58,
       maxTokens: 140,
+      dataScope: replyScope.dataScope,
     })
 
     const entry: CouncilTranscriptEntry = {
@@ -1134,6 +1291,36 @@ async function runCouncilRoundtableTurn(
 
     await appendAgentMemory(supabase, userId, agentId, trimmed, reply).catch(() => undefined)
   }
+
+  const marcusPsychology = await loadMarcusPsychologyContext(
+    supabase,
+    userId,
+    accountId,
+    context.traderFirstName,
+  )
+  const marcusRoundtableReply = await produceMarcusReply({
+    context,
+    supabase,
+    userId,
+    accountId,
+    traderMessage: trimmed,
+    psychology: marcusPsychology,
+    mode: "conversation",
+    temperature: 0.58,
+    maxTokens: 140,
+  })
+  const marcusEntry: CouncilTranscriptEntry = {
+    id: randomUUID(),
+    agent: "marcus",
+    content: marcusRoundtableReply,
+    createdAt: new Date().toISOString(),
+  }
+  agentMessages.push(marcusEntry)
+  lastReply = marcusRoundtableReply
+  lastSpeaker = "marcus"
+  await appendAgentMemory(supabase, userId, "marcus", trimmed, marcusRoundtableReply).catch(
+    () => undefined,
+  )
 
   const consensusEntry: CouncilTranscriptEntry = {
     id: randomUUID(),
@@ -1183,6 +1370,7 @@ export async function runCouncilRespond(
 
   const existing = await getTodayCouncilSession(supabase, userId, accountId)
   const transcript = existing?.full_transcript ?? []
+  const dataScope = resolveCouncilDataScope(trimmed, transcript)
   const stickyAgent = getStickyCouncilAgentFromTranscript(transcript)
   const agentId = resolveCouncilAgentForMessage(trimmed, {
     preferredAgent: options?.preferredAgent,
@@ -1193,9 +1381,12 @@ export async function runCouncilRespond(
   const lastAgentReply = getLastAgentReplyInTranscript(transcript, agentId)
 
   const [context, agentMemory] = await Promise.all([
-    loadCachedCouncilAgentContext(supabase, userId, accountId),
+    loadCachedCouncilAgentContext(supabase, userId, accountId, dataScope),
     loadAgentMemoryContext(supabase, userId, agentId, lastAgentReply).catch(() => ""),
   ])
+
+  const scopeInstruction = buildCouncilDataScopeInstruction(dataScope, context.chapterLabel)
+  const replyScope = { dataScope, scopeInstruction }
 
   const recentTranscript = buildRecentTranscriptLines(
     transcript,
@@ -1211,18 +1402,24 @@ export async function runCouncilRespond(
   }
 
   if (isAwaitingEmotionCheckResponse(transcript)) {
-    const score = parseCouncilEmotionScore(trimmed)
-    if (score != null) {
-      return runCouncilEmotionCheckTurn(
-        supabase,
-        userId,
-        accountId,
-        trimmed,
-        transcript,
-        userEntry,
-        existing,
-        score,
-      )
+    const addressingMarcus =
+      options?.preferredAgent === "marcus" ||
+      options?.conversationAgent === "marcus" ||
+      detectCouncilAgentByName(trimmed) === "marcus"
+    if (!addressingMarcus) {
+      const score = parseCouncilEmotionScore(trimmed)
+      if (score != null) {
+        return runCouncilEmotionCheckTurn(
+          supabase,
+          userId,
+          accountId,
+          trimmed,
+          transcript,
+          userEntry,
+          existing,
+          score,
+        )
+      }
     }
   }
 
@@ -1237,6 +1434,22 @@ export async function runCouncilRespond(
       existing,
       context,
       recentTranscript,
+      replyScope,
+    )
+  }
+
+  if (isCouncilNewsRequest(trimmed)) {
+    return runCouncilNewsTurn(
+      supabase,
+      userId,
+      accountId,
+      trimmed,
+      transcript,
+      userEntry,
+      existing,
+      context,
+      recentTranscript,
+      replyScope,
     )
   }
 
@@ -1251,6 +1464,7 @@ export async function runCouncilRespond(
       existing,
       context,
       recentTranscript,
+      replyScope,
     )
   }
 
@@ -1274,6 +1488,7 @@ export async function runCouncilRespond(
       existing,
       context,
       recentTranscript,
+      replyScope,
     )
   }
 
@@ -1304,13 +1519,19 @@ export async function runCouncilRespond(
       supabase,
       userId,
       accountId,
-      userPrompt: buildCouncilJarvisRespondUserPrompt({
-        question: trimmed,
-        recentTranscript,
-      }),
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilJarvisRespondUserPrompt({
+          question: trimmed,
+          recentTranscript,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       fallback: buildJarvisRoutingLine(routeCouncilQuestion(trimmed)),
       temperature: 0.35,
       maxTokens: 100,
+      dataScope: replyScope.dataScope,
     })
     const jarvisEntry: CouncilTranscriptEntry = {
       id: randomUUID(),
@@ -1396,13 +1617,18 @@ export async function runCouncilRespond(
           supabase,
           userId,
           accountId,
-          userPrompt: buildCouncilHandoffAskUserPrompt({
-            primaryAgentName: primaryName,
-            targetAgentName: targetName,
-            topic: handoff.topic,
-            question: trimmed,
-            recentTranscript,
-          }),
+          userPrompt: [
+            replyScope.scopeInstruction,
+            buildCouncilHandoffAskUserPrompt({
+              primaryAgentName: primaryName,
+              targetAgentName: targetName,
+              topic: handoff.topic,
+              question: trimmed,
+              recentTranscript,
+            }),
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
           fallback: buildHandoffAskFallback({
             primaryAgent: agentId,
             targetAgent: handoff.targetAgent,
@@ -1410,6 +1636,7 @@ export async function runCouncilRespond(
           }),
           temperature: 0.55,
           maxTokens: 80,
+          dataScope: replyScope.dataScope,
         })
 
     const agentEntry: CouncilTranscriptEntry = {
@@ -1426,20 +1653,25 @@ export async function runCouncilRespond(
       supabase,
       userId,
       accountId,
-      userPrompt: buildCouncilHandoffAnswerUserPrompt({
-        primaryAgentName: primaryName,
-        primaryHandoff: reply,
-        targetAgentName: targetName,
-        targetAgentId: handoff.targetAgent,
-        topic: handoff.topic,
-        question: trimmed,
-        contextSnippet:
-          handoff.targetAgent === "luna"
-            ? context.luna
-            : handoff.targetAgent === "rex"
-              ? context.rex
-              : undefined,
-      }),
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilHandoffAnswerUserPrompt({
+          primaryAgentName: primaryName,
+          primaryHandoff: reply,
+          targetAgentName: targetName,
+          targetAgentId: handoff.targetAgent,
+          topic: handoff.topic,
+          question: trimmed,
+          contextSnippet:
+            handoff.targetAgent === "luna"
+              ? context.luna
+              : handoff.targetAgent === "rex"
+                ? context.rex
+                : undefined,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       fallback: buildHandoffAnswerFallback({
         targetAgent: handoff.targetAgent,
         topic: handoff.topic,
@@ -1447,6 +1679,7 @@ export async function runCouncilRespond(
       }),
       temperature: 0.62,
       maxTokens: 160,
+      dataScope: replyScope.dataScope,
     })
 
     const targetEntry: CouncilTranscriptEntry = {
@@ -1485,6 +1718,7 @@ export async function runCouncilRespond(
               agentMemory,
               lastAgentReply,
               agentName: getCouncilAgent(agentId).name,
+              dataScopeInstruction: replyScope.scopeInstruction,
             }),
             fallback: buildConversationFallback({
               agentId,
@@ -1492,6 +1726,7 @@ export async function runCouncilRespond(
               question: trimmed,
               lastReply: lastAgentReply,
             }),
+            dataScope: replyScope.dataScope,
           })
 
     const agentEntry: CouncilTranscriptEntry = {
@@ -1530,13 +1765,18 @@ export async function runCouncilRespond(
       supabase,
       userId,
       accountId,
-      userPrompt: buildCouncilChimeInUserPrompt({
-        question: trimmed,
-        primaryAgentName: getCouncilAgent(lastSpeaker).name,
-        primaryReply: lastReply,
-        chimeAgentName: getCouncilAgent(chimeDecision.agent).name,
-        reason: chimeDecision.reason,
-      }),
+      userPrompt: [
+        replyScope.scopeInstruction,
+        buildCouncilChimeInUserPrompt({
+          question: trimmed,
+          primaryAgentName: getCouncilAgent(lastSpeaker).name,
+          primaryReply: lastReply,
+          chimeAgentName: getCouncilAgent(chimeDecision.agent).name,
+          reason: chimeDecision.reason,
+        }),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       fallback: buildChimeInFallback({
         chimeAgent: chimeDecision.agent,
         primaryAgent: lastSpeaker,
@@ -1544,6 +1784,7 @@ export async function runCouncilRespond(
       }),
       temperature: 0.62,
       maxTokens: 160,
+      dataScope: replyScope.dataScope,
     })
 
     const chimeInEntry: CouncilTranscriptEntry = {

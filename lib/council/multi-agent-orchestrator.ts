@@ -1,4 +1,5 @@
 import { getCouncilAgent } from "@/lib/council/agents"
+import { normalizeForexPairSymbol } from "@/lib/council/forex-pair-format"
 import {
   detectCouncilAgentByName,
   isCouncilDelegationRequest,
@@ -52,13 +53,25 @@ const CROSS_AGENT_HANDOFFS: Array<{
     reason: ownerReason("rex", "limits and capital protection"),
   },
   {
+    targetAgent: "marcus",
+    topic: "mindset",
+    patterns: [
+      ...handoffTopicPatterns("mindset", "psychology", "mental", "fomo", "tilt", "emotion", "patience"),
+      /\bhow(?:'s| am) i (?:doing )?(?:emotionally|mentally)\b/i,
+      /\b(feel|feeling|anxious|stressed|revenge|tilt|fomo)\b/i,
+      /\b(?:talk|speak) to omar\b/i,
+    ],
+    reason: ownerReason("marcus", "mindset and psychology"),
+  },
+  {
     targetAgent: "nova",
     topic: "discipline",
     patterns: [
-      ...handoffTopicPatterns("discipline", "mindset", "emotion", "patience", "chapter"),
-      /\bhow(?:'s| am) i (?:doing )?(?:emotionally|mentally)\b/i,
+      ...handoffTopicPatterns("discipline", "chapter"),
+      /\bweekly chapter\b/i,
+      /\bchapter progress\b/i,
     ],
-    reason: ownerReason("nova", "discipline and chapter momentum"),
+    reason: ownerReason("nova", "weekly chapter and discipline score"),
   },
   {
     targetAgent: "luna",
@@ -140,6 +153,8 @@ export function pickCouncilCrossAgentHandoff(input: {
 
   for (const rule of CROSS_AGENT_HANDOFFS) {
     if (rule.targetAgent === input.primaryAgent) continue
+    // Omar owns psychology — do not route mindset/emotion questions to Nova while he is active.
+    if (input.primaryAgent === "marcus" && rule.targetAgent === "nova") continue
 
     for (const pattern of rule.patterns) {
       if (!pattern.test(trimmed)) continue
@@ -213,7 +228,8 @@ export function buildHandoffAnswerFallback(input: {
         const pair = extractWatchlistPairSymbol(input.context.luna)
         const lead = input.context.luna.split(" · ")[0]?.trim()
         if (pair) {
-          return `I see a good one on ${pair}${lead ? ` — ${lead.replace(/^([A-Z]{6,7})\s*/, "")}` : "."}`
+          const symbol = normalizeForexPairSymbol(pair)
+          return `I see a good one on ${symbol}${lead ? ` — ${lead.replace(/^([A-Z]{6,7})\s*/, "")}` : "."}`
         }
         return input.context.luna.split(".").slice(0, 2).join(".") + "."
       }
@@ -347,8 +363,12 @@ export function buildChimeInFallback(input: {
       return `${primaryName} — hold up. Confirm your weekly slot and daily loss budget before size goes on.`
     case "cipher":
       return `Agree with ${primaryName} on process — wait for M15 close in your direction before entry.`
-    case "luna":
-      return `${primaryName} covered the plan — your best War Room focus is still the top graded pair.`
+    case "luna": {
+      const symbol = extractWatchlistPairSymbol(input.primaryReply)
+      return symbol
+        ? `${primaryName} covered the plan — ${normalizeForexPairSymbol(symbol)} is still your best War Room focus.`
+        : `${primaryName} covered the plan — name your top graded pair from the watchlist.`
+    }
     case "zara":
       return `Building on ${primaryName} — one fix from your last trades: patience on confirmation.`
     case "jarvis":

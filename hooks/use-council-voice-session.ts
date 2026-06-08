@@ -25,9 +25,12 @@ export function useCouncilVoiceSession(
 
   const input = useCouncilVoiceInput(listenConfigured, { session })
 
-  const startConversation = (onUtterance: (text: string) => Promise<void>) => {
+  const startConversation = (
+    onUtterance: (text: string) => Promise<void>,
+    onGoodbye?: () => void | Promise<void>,
+  ) => {
     conversationActiveRef.current = true
-    input.startConversation(onUtterance)
+    input.startConversation(onUtterance, onGoodbye)
   }
 
   const stopConversation = () => {

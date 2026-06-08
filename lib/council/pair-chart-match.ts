@@ -29,7 +29,11 @@ export function listCouncilCharts(visual: CouncilVisualContext | null): CouncilC
   if (!visual) return []
   const seen = new Set<string>()
   const charts: CouncilChartSnapshot[] = []
-  for (const chart of [...visual.watchlistCharts, visual.lastTradeChart].filter(Boolean)) {
+  for (const chart of [
+    ...visual.watchlistCharts,
+    ...visual.recentTradeCharts,
+    visual.lastTradeChart,
+  ].filter(Boolean)) {
     if (!chart || seen.has(chart.url)) continue
     seen.add(chart.url)
     charts.push(chart)

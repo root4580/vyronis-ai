@@ -104,7 +104,7 @@ export function CouncilLiveStatsStrip({
                 : `${Math.round(stats.disciplineScore)}/100`
               : "—"
           }
-          detail="Chapter score"
+          detail={stats.disciplineScoreNote ?? "Chapter score"}
         />
         <Metric
           label="Loss today"

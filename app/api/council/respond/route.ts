@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
 import { COUNCIL_AGENT_IDS, normalizeCouncilAgentId } from "@/lib/council/agent-ids"
 import type { CouncilAgentId } from "@/lib/council/types"
+import { councilAcceptsInputSource, type CouncilInputSource } from "@/lib/council/voice-only-input"
 import { CouncilTablesMissingError, runCouncilRespond } from "@/lib/council/server-service"
 
 const AGENTS = new Set<CouncilAgentId>(COUNCIL_AGENT_IDS)
@@ -25,6 +26,19 @@ export async function POST(request: Request) {
       agent?: string
       conversationAgent?: string
       fullCouncilParticipation?: boolean
+      inputSource?: CouncilInputSource
+    }
+
+    const inputSource: CouncilInputSource =
+      body.inputSource === "voice" ? "voice" : "text"
+    if (!councilAcceptsInputSource(true, inputSource)) {
+      return NextResponse.json(
+        {
+          error:
+            "Council only responds to your voice. Tap the mic and speak — typed messages are not sent to agents.",
+        },
+        { status: 400 },
+      )
     }
 
     const accountId =

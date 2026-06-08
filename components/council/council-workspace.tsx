@@ -1,9 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Brain, Crown, Loader2, Mic, RotateCcw, Send, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Brain, Crown, Loader2, Mic, RotateCcw, Sparkles, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { COUNCIL_AGENTS, getCouncilAgent } from "@/lib/council/agents"
 import {
   askCouncil,
@@ -14,7 +14,8 @@ import {
   runCouncilOpen,
   fetchCouncilVoiceCheck,
 } from "@/lib/council/api-client"
-import { findChartForMessage } from "@/lib/council/pair-chart-match"
+import { resolveAgentVisualPanel } from "@/lib/council/agent-visual-panel"
+import { CouncilAgentVisualPanel as CouncilAgentVisualPanelView } from "@/components/council/council-agent-visual-panel"
 import { readFreshChatOnOpen } from "@/lib/council/fresh-chat-preference"
 import {
   readFullCouncilParticipation,
@@ -33,7 +34,9 @@ import {
   resolveCouncilPronounTarget,
 } from "@/lib/council/router"
 import { cn } from "@/lib/utils"
+import { getDashboardHomeHref } from "@/lib/dashboard-nav"
 import { buildCouncilTimeGreeting } from "@/lib/council/time-of-day"
+import type { CouncilInputSource } from "@/lib/council/voice-only-input"
 import { useCouncilVoiceSession } from "@/hooks/use-council-voice-session"
 import { CouncilBriefingContext } from "@/components/council/council-briefing-context"
 import { CouncilInlineStatsCard } from "@/components/council/council-inline-stats-card"
@@ -56,11 +59,11 @@ function isAgentEntry(entry: CouncilTranscriptEntry): entry is CouncilTranscript
 }
 
 export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspaceProps) {
+  const router = useRouter()
   const [transcript, setTranscript] = useState<CouncilTranscriptEntry[]>([])
   const [activeAgent, setActiveAgent] = useState<CouncilAgentId | null>(null)
   const [conversationAgent, setConversationAgent] = useState<CouncilAgentId | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<CouncilAgentId | "auto">("auto")
-  const [question, setQuestion] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isContextLoading, setIsContextLoading] = useState(false)
   const [isBriefing, setIsBriefing] = useState(false)
@@ -85,7 +88,9 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   const bottomRef = useRef<HTMLDivElement>(null)
   const conversationAgentRef = useRef<CouncilAgentId | null>(null)
   const selectedAgentRef = useRef<CouncilAgentId | "auto">("auto")
-  const submitQuestionRef = useRef<(message: string) => Promise<void>>(async () => {})
+  const submitQuestionRef = useRef<
+    (message: string, source: CouncilInputSource) => Promise<void>
+  >(async () => {})
   const transcriptRef = useRef<CouncilTranscriptEntry[]>([])
 
   const {
@@ -358,17 +363,12 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   }, [transcript, scrollToBottom])
 
   const transcriptRows = useMemo(() => {
-    const shownChartUrls = new Set<string>()
     return transcript.map((entry) => {
-      let inlineChart = null
-      if (entry.agent !== "user" && entry.agent !== "system") {
-        const chart = findChartForMessage(entry.agent, entry.content, visualContext)
-        if (chart && !shownChartUrls.has(chart.url)) {
-          shownChartUrls.add(chart.url)
-          inlineChart = chart
-        }
-      }
-      return { entry, inlineChart }
+      const agentPanel =
+        entry.agent !== "user" && entry.agent !== "system"
+          ? resolveAgentVisualPanel(entry.agent, entry.content, visualContext)
+          : null
+      return { entry, agentPanel }
     })
   }, [transcript, visualContext])
 
@@ -405,9 +405,17 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
   }, [accountId, migrationPending, isClearing, stopConversation, stopPlayback])
 
   const submitQuestion = useCallback(
-    async (message: string) => {
+    async (message: string, source: CouncilInputSource) => {
       const trimmed = message.trim()
       if (!trimmed || !accountId || isSending || migrationPending) return
+      if (source !== "voice") {
+        setError("Council only responds to your voice. Tap the mic and speak.")
+        return
+      }
+      if (!listenConfigured) {
+        setError("Voice input needs OPENAI_API_KEY on the server before the council can hear you.")
+        return
+      }
 
       unlockAudio()
       stopPlayback()
@@ -452,6 +460,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
           agent: targetAgent,
           conversationAgent: activeConversation ?? undefined,
           fullCouncilParticipation,
+          inputSource: source,
         })
         if (!result.roundtable) {
           if (selectedAgentRef.current !== "auto") {
@@ -499,6 +508,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
       voiceSession,
       isConversationMode,
       fullCouncilParticipation,
+      listenConfigured,
     ],
   )
 
@@ -520,11 +530,18 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
 
   async function handleAsk(event?: React.FormEvent) {
     event?.preventDefault()
-    const trimmed = question.trim()
-    if (!trimmed) return
-    setQuestion("")
-    await submitQuestion(trimmed)
+    setError("Council only responds to your voice. Tap the mic and speak.")
   }
+
+  const handleGoodbye = useCallback(() => {
+    stopConversation()
+    stopPlayback()
+    setConversationAgent(null)
+    conversationAgentRef.current = null
+    setIsSending(false)
+    voiceSession.reset()
+    router.replace(getDashboardHomeHref())
+  }, [router, stopConversation, stopPlayback, voiceSession])
 
   function handleMicToggle() {
     if (migrationPending || !listenConfigured) return
@@ -536,9 +553,14 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
     }
 
     stopPlayback()
-    startConversation(async (text) => {
-      await submitQuestionRef.current(text)
-    })
+    startConversation(
+      async (text) => {
+        await submitQuestionRef.current(text, "voice")
+      },
+      () => {
+        handleGoodbye()
+      },
+    )
   }
 
   const headerLine = isConversationMode
@@ -685,7 +707,7 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               isSending &&
               (conversationAgent === agent.id ||
                 activeAgent === agent.id ||
-                (agent.id === "jarvis" && voicePhase === "thinking"))
+                voicePhase === "thinking")
             return (
               <button
                 key={agent.id}
@@ -864,12 +886,12 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
         ) : (
           <div className="space-y-3">
             <CouncilInlineStatsCard visual={visualContext} />
-            {transcriptRows.map(({ entry, inlineChart }) => (
+            {transcriptRows.map(({ entry, agentPanel }) => (
               <CouncilMessageBubble
                 key={entry.id}
                 entry={entry}
                 visual={visualContext}
-                inlineChart={inlineChart}
+                agentPanel={agentPanel}
                 speakingAgent={speakingAgent}
                 voiceAvailable={voiceAvailable && voiceEnabled}
                 onReplay={
@@ -883,19 +905,35 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
                 onChartClick={(url, title) => setChartViewer({ url, title })}
               />
             ))}
-            {isSending ? (
-              <article className="mr-8 rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-                  {fullCouncilParticipation && selectedAgent === "auto" && !conversationAgent
-                    ? "Council"
-                    : getCouncilAgent(conversationAgent ?? activeAgent ?? "nova").name}
-                </p>
-                <p className="flex items-center gap-2 text-[12px] text-text-secondary">
-                  <Loader2 className="size-3.5 animate-spin text-cyan-glow/80" />
-                  Thinking…
-                </p>
-              </article>
-            ) : null}
+            {isSending ? (() => {
+              const thinkingAgent = conversationAgent ?? activeAgent ?? "nova"
+              const thinkingPanel = resolveAgentVisualPanel(
+                thinkingAgent,
+                "",
+                visualContext,
+              )
+              return (
+                <article className="mr-8 rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                    {fullCouncilParticipation && selectedAgent === "auto" && !conversationAgent
+                      ? "Council"
+                      : getCouncilAgent(thinkingAgent).name}
+                  </p>
+                  <p className="flex items-center gap-2 text-[12px] text-text-secondary">
+                    <Loader2 className="size-3.5 animate-spin text-cyan-glow/80" />
+                    Thinking…
+                  </p>
+                  {thinkingPanel && visualContext ? (
+                    <CouncilAgentVisualPanelView
+                      panel={thinkingPanel}
+                      visual={visualContext}
+                      speaking
+                      onChartClick={(url, title) => setChartViewer({ url, title })}
+                    />
+                  ) : null}
+                </article>
+              )
+            })() : null}
             <div ref={bottomRef} />
           </div>
         )}
@@ -932,32 +970,16 @@ export function CouncilWorkspace({ accountId, traderFirstName }: CouncilWorkspac
               <Mic className={cn("size-4", (isRecording || isListening) && "animate-pulse")} />
             )}
           </Button>
-          <Textarea
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Ask the council anything…"
-            className="min-h-11 flex-1 resize-none text-[13px]"
-            rows={1}
-            disabled={isSpeaking || isRecording || isTranscribing || isConversationMode || voicePhase === "thinking"}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault()
-                void handleAsk()
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            className="size-11 shrink-0 bg-cyan-glow text-[var(--surface-page)] hover:bg-cyan-glow/90"
-            disabled={isSending || !question.trim() || migrationPending || isSpeaking || isRecording || isTranscribing || voicePhase === "thinking"}
-          >
-            {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          </Button>
+          <p className="flex min-h-11 flex-1 items-center rounded-[var(--radius-md)] border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-text-muted">
+            {listenConfigured
+              ? "Voice only — tap the mic and speak. Keyboard typing does not reach the council."
+              : "Voice only — add OPENAI_API_KEY on the server, then tap the mic to speak."}
+          </p>
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-text-muted">
-          {listenConfigured
-            ? "Phase 4 — another council member may chime in. Tap mic once to talk, tap again to stop."
-            : "Mic needs OPENAI_API_KEY · spoken replies need ELEVENLABS_API_KEY"}
+          Voice only — say &quot;news&quot;, &quot;this week&quot;, or &quot;last trades&quot;. Say &quot;goodbye&quot; to end and leave HQ.
+          {!listenConfigured ? " · Mic needs OPENAI_API_KEY" : ""}
+          {!voiceConfigured ? " · Spoken replies need ELEVENLABS_API_KEY" : ""}
         </p>
       </form>
 

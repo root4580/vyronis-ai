@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getCouncilAgent } from "@/lib/council/agents"
+import { detectCouncilAgentIdByName } from "@/lib/council/agent-ids"
+import { isCouncilNewsRequest } from "@/lib/council/news-request"
 import { filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
 import { getTodayCouncilEmotionCheck } from "@/lib/council/opening-service"
@@ -16,6 +18,10 @@ export type MarcusScenario =
   | "after_win"
   | "cooldown_active"
   | "low_emotion"
+
+function messageNamesMarcus(message: string): boolean {
+  return detectCouncilAgentIdByName(message) === "marcus"
+}
 
 export type MarcusPsychologyContext = {
   traderFirstName: string
@@ -243,11 +249,12 @@ export function detectMarcusScenario(input: {
 
   const trimmed = input.message.trim()
   if (!trimmed) return null
+  if (isCouncilNewsRequest(trimmed)) return null
 
   if (
     input.psychology.cooldownActive &&
     (/\b(trade|enter|execute|size|setup|fomo|revenge|take|pull trigger)\b/i.test(trimmed) ||
-      /\bmarcus\b/i.test(trimmed))
+      messageNamesMarcus(trimmed))
   ) {
     return "cooldown_active"
   }
@@ -256,7 +263,7 @@ export function detectMarcusScenario(input: {
     input.psychology.emotionScoreToday != null &&
     input.psychology.emotionScoreToday < 7 &&
     (/\b(trade|enter|execute|size|pull trigger|fomo|ready|take|feel|emotion|mindset)\b/i.test(trimmed) ||
-      /\bmarcus\b/i.test(trimmed))
+      messageNamesMarcus(trimmed))
   ) {
     return "low_emotion"
   }
@@ -285,7 +292,10 @@ export function detectMarcusScenario(input: {
     return "after_win"
   }
 
-  if (/\b(marcus|mindset|psychology|fomo|revenge|tilt|mental|emotion)\b/i.test(trimmed)) {
+  if (
+    messageNamesMarcus(trimmed) ||
+    /\b(mindset|psychology|fomo|revenge|tilt|mental|emotion)\b/i.test(trimmed)
+  ) {
     if (input.psychology.cooldownActive) return "cooldown_active"
     if (input.psychology.emotionScoreToday != null && input.psychology.emotionScoreToday < 7) {
       return "low_emotion"

@@ -3,10 +3,15 @@ import { evaluateAccountStatus } from "@/lib/account-status"
 import { filterRowsForAccount, resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
 import { formatAccountMoney } from "@/lib/accounts/profit-target"
 import { getTradingAccount } from "@/lib/accounts/trading-account-service"
+import {
+  COUNCIL_JOURNAL_LAST_TRADES_LIMIT,
+  type CouncilDataScope,
+} from "@/lib/council/data-scope"
 import type { CouncilAgentId } from "@/lib/council/types"
 import { loadCouncilCoachLiveData } from "@/lib/council/coach-live-data"
 import { fetchUserStartingBalance, fetchUserTradesForAnalytics } from "@/lib/analytics/fetch-trades"
 import { isJournalTrade } from "@/lib/analytics/trade-scope"
+import { normalizeForexPairSymbol } from "@/lib/council/forex-pair-format"
 import { formatPairForSpeech } from "@/lib/economic-calendar/pair-impact"
 import { getTodayCalendarSnapshot } from "@/lib/economic-calendar/service"
 import { evaluateMarketBias } from "@/lib/strategy-brain/market-bias-engine"
@@ -44,6 +49,8 @@ type TradeRow = {
   trade_date: string | null
   import_source: string | null
   account_id: string | null
+  screenshot_url?: string | null
+  chart_url?: string | null
 }
 
 type SetupEvaluationRow = {
@@ -243,7 +250,9 @@ export async function loadCouncilLiveDataBundle(
   supabase: SupabaseClient,
   userId: string,
   accountId: string,
+  options?: { dataScope?: CouncilDataScope },
 ): Promise<CouncilLiveDataBundle> {
+  const dataScope = options?.dataScope ?? "all_time"
   const weekStart = toWeekStartISO(new Date())
 
   const { data: accountRows } = await supabase.from("accounts").select("id, created_at").eq("user_id", userId)
@@ -305,8 +314,30 @@ export async function loadCouncilLiveDataBundle(
       trade_date: row.trade_date ?? null,
       import_source: row.import_source ?? null,
       account_id: row.account_id ?? null,
+      screenshot_url: (row as { screenshot_url?: string | null }).screenshot_url ?? null,
+      chart_url: (row as { chart_url?: string | null }).chart_url ?? null,
     }))
   const accountTrades = filterRowsForAccount(allJournalRows, accountId, legacyAccountId)
+
+  function mapJournalTradeForPrompt(row: TradeRow) {
+    return {
+      id: row.id,
+      pair: row.pair,
+      direction: row.direction,
+      result: row.result,
+      pnl: row.pnl,
+      entry_price: row.entry_price,
+      stop_loss: row.stop_loss,
+      take_profit: row.take_profit,
+      trade_notes: row.trade_notes,
+      created_at: row.created_at,
+      trade_date: row.trade_date,
+      import_source: row.import_source,
+      account_id: row.account_id,
+      screenshot_url: row.screenshot_url ?? null,
+      chart_url: row.chart_url ?? null,
+    }
+  }
 
   const settings = normalizeUserSettings(settingsRow.data)
   const traderFirstName = profileRow.data?.first_name?.trim() || "Trader"
@@ -406,7 +437,7 @@ export async function loadCouncilLiveDataBundle(
       evaluationsByPlanId.get(pair.id) ??
       evaluationsByPair.get(pair.pair.replace(/\s/g, "").toUpperCase())
     const grade = evalRow?.grade ?? "—"
-    return `${formatPairForSpeech(pair.pair)} - ${biasToDirection(pair.directional_bias)} - ${grade} - Zone: ${formatZone(pair)}`
+    return `${normalizeForexPairSymbol(pair.pair)} - ${biasToDirection(pair.directional_bias)} - ${grade} - Zone: ${formatZone(pair)}`
   })
 
   const watchlistSection =
@@ -425,7 +456,7 @@ export async function loadCouncilLiveDataBundle(
       recommendation: evalRow?.recommendation ?? null,
       conflictSummary: biasEval?.conflict_summary ?? null,
     })
-    return `${formatPairForSpeech(pair.pair)} - ${biasToDirection(pair.directional_bias)} - ${evalRow?.grade ?? "—"} - Apex: ${apex} - Zone: ${formatZone(pair)} - AOI: ${pair.aoi_status}`
+    return `${normalizeForexPairSymbol(pair.pair)} - ${biasToDirection(pair.directional_bias)} - ${evalRow?.grade ?? "—"} - Apex: ${apex} - Zone: ${formatZone(pair)} - AOI: ${pair.aoi_status}`
   })
 
   const watchlistCipherSection =
@@ -433,36 +464,65 @@ export async function loadCouncilLiveDataBundle(
       ? ["[WATCHLIST TECHNICAL]", ...watchlistCipherLines].join("\n")
       : "[WATCHLIST TECHNICAL]\nNo War Room pairs loaded."
 
-  const tradeLines = recentTrades.map((row, index) => {
-    const pair = formatPairForSpeech(String(row.pair ?? "—"))
+  const tradeSource =
+    dataScope === "this_week"
+      ? weekTrades.slice(0, 3).map(mapJournalTradeForPrompt)
+      : dataScope === "last_trades"
+        ? accountTrades.slice(0, COUNCIL_JOURNAL_LAST_TRADES_LIMIT).map(mapJournalTradeForPrompt)
+        : recentTrades
+
+  const tradeLines = tradeSource.map((row, index) => {
+    const pair = normalizeForexPairSymbol(String(row.pair ?? "—"))
     const direction = String(row.direction ?? "—").toUpperCase()
     const result = String(row.result ?? "—").toUpperCase()
     return `${index + 1}. ${pair} ${direction} - ${result} - ${summarizeTradeNote(row)}`
   })
 
   const lastTradesSection =
-    tradeLines.length > 0
-      ? ["[LAST 3 TRADES]", ...tradeLines].join("\n")
-      : "[LAST 3 TRADES]\nNo trades logged on this account yet."
+    dataScope === "this_week"
+      ? tradeLines.length > 0
+        ? ["[TRADES THIS WEEK]", ...tradeLines].join("\n")
+        : "[TRADES THIS WEEK]\nNo trades logged this week yet."
+      : dataScope === "last_trades"
+        ? tradeLines.length > 0
+          ? ["[LAST TRADES — VYRONIS JOURNAL]", ...tradeLines].join("\n")
+          : "[LAST TRADES — VYRONIS JOURNAL]\nNo trades logged on this account yet — tap Log on HQ."
+        : tradeLines.length > 0
+          ? ["[LAST 3 TRADES]", ...tradeLines].join("\n")
+          : "[LAST 3 TRADES]\nNo trades logged on this account yet."
 
   const previousChapter = weeklySummaries.find((row) => row.week_start !== weekStart) ?? weeklySummaries[1]
-  const lastChapterSection = previousChapter
-    ? [
-        "[LAST CHAPTER]",
-        `${formatWeekOfLabel(previousChapter.week_start)} - ${previousChapter.trades_taken} trades - ${Math.round(previousChapter.win_rate)}% win`,
-        `Lesson: ${previousChapter.key_lesson?.trim() || "Protect process."}`,
-      ].join("\n")
-    : "[LAST CHAPTER]\nFirst chapter — build steady habits."
+  const lastChapterSection =
+    dataScope === "this_week"
+      ? "[LAST CHAPTER]\nOmitted — trader asked about this week only."
+      : previousChapter
+        ? [
+            "[LAST CHAPTER]",
+            `${formatWeekOfLabel(previousChapter.week_start)} - ${previousChapter.trades_taken} trades - ${Math.round(previousChapter.win_rate)}% win`,
+            `Lesson: ${previousChapter.key_lesson?.trim() || "Protect process."}`,
+          ].join("\n")
+        : "[LAST CHAPTER]\nFirst chapter — build steady habits."
 
-  const chapterHistoryLines = weeklySummaries.slice(0, 2).map((summary, index) => {
-    const label = index === 0 ? "Latest" : "Previous"
-    return `${label}: ${formatWeekOfLabel(summary.week_start)} - Ch.${summary.chapter_number} - ${summary.trades_taken} trades - ${Math.round(summary.win_rate)}% win - P&L ${formatPnL(Math.abs(summary.pnl), summary.pnl >= 0 ? "WIN" : "LOSS")} - Discipline ${formatDisciplineLabel(summary.discipline_grade, summary.discipline_score)}${summary.key_lesson?.trim() ? ` - Lesson: ${summary.key_lesson.trim()}` : ""}`
-  })
+  const chapterHistoryLines =
+    dataScope === "this_week"
+      ? currentSummary
+        ? [
+            `This week: ${formatWeekOfLabel(currentSummary.week_start)} - Ch.${currentSummary.chapter_number} - ${currentSummary.trades_taken} trades - ${Math.round(currentSummary.win_rate)}% win - P&L ${formatPnL(Math.abs(currentSummary.pnl), currentSummary.pnl >= 0 ? "WIN" : "LOSS")} - Discipline ${formatDisciplineLabel(currentSummary.discipline_grade, currentSummary.discipline_score)}${currentSummary.key_lesson?.trim() ? ` - Lesson: ${currentSummary.key_lesson.trim()}` : ""}`,
+          ]
+        : []
+      : weeklySummaries.slice(0, 2).map((summary, index) => {
+          const label = index === 0 ? "Latest" : "Previous"
+          return `${label}: ${formatWeekOfLabel(summary.week_start)} - Ch.${summary.chapter_number} - ${summary.trades_taken} trades - ${Math.round(summary.win_rate)}% win - P&L ${formatPnL(Math.abs(summary.pnl), summary.pnl >= 0 ? "WIN" : "LOSS")} - Discipline ${formatDisciplineLabel(summary.discipline_grade, summary.discipline_score)}${summary.key_lesson?.trim() ? ` - Lesson: ${summary.key_lesson.trim()}` : ""}`
+        })
 
   const novaChaptersSection =
-    chapterHistoryLines.length > 0
-      ? ["[WEEKLY CHAPTERS — last 2]", ...chapterHistoryLines].join("\n")
-      : lastChapterSection
+    dataScope === "this_week"
+      ? chapterHistoryLines.length > 0
+        ? ["[THIS WEEK'S CHAPTER]", ...chapterHistoryLines].join("\n")
+        : "[THIS WEEK'S CHAPTER]\nNo chapter summary saved for this week yet."
+      : chapterHistoryLines.length > 0
+        ? ["[WEEKLY CHAPTERS — last 2]", ...chapterHistoryLines].join("\n")
+        : lastChapterSection
 
   const drawdownBudget = startingBalance * (accountStatus.maxDrawdownPercent / 100)
 
@@ -479,7 +539,7 @@ export async function loadCouncilLiveDataBundle(
     supabase,
     userId,
     accountId,
-    recentTrades.map((row) => ({
+    tradeSource.map((row) => ({
       id: row.id,
       pair: row.pair,
       direction: row.direction,

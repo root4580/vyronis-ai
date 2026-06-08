@@ -1,5 +1,6 @@
 import { toFile } from "openai"
 import { getOpenAiClient, isOpenAiConfigured } from "@/lib/ai/providers/openai-provider"
+import { filterCouncilTranscription } from "@/lib/council/voice-only-input"
 
 export class CouncilListenNotConfiguredError extends Error {
   constructor() {
@@ -34,5 +35,10 @@ export async function transcribeCouncilAudio(input: {
     throw new Error("Whisper returned empty transcription")
   }
 
-  return text
+  const filtered = filterCouncilTranscription(text)
+  if (!filtered) {
+    throw new Error("No clear speech detected")
+  }
+
+  return filtered
 }

@@ -209,11 +209,11 @@ export function shouldTakeTradeGrowthLabel(
   }
   if (shouldTakeTrade === "caution") {
     return sanitizeCoachLanguage(
-      "Wait for the full confirmation. The best traders miss setups on purpose.",
+      "Valid setup — wait for confirmation before entry. Patience is the edge.",
     )
   }
   if (shouldTakeTrade === "no") {
-    return sanitizeCoachLanguage("Not today — protect your chapter. A better setup is coming.")
+    return sanitizeCoachLanguage("Skip this trade — playbook or setup quality is not there.")
   }
   return null
 }

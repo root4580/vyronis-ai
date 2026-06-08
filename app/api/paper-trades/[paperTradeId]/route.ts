@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import {
   closePaperTrade,
+  PaperTradesAfterChartColumnMissingError,
   PaperTradesTableMissingError,
 } from "@/lib/paper-trades/paper-trade-service"
 import type { ClosePaperTradeInput } from "@/lib/paper-trades/types"
@@ -29,10 +30,21 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Result must be WIN, LOSS, or BREAKEVEN" }, { status: 400 })
     }
 
-    const trade = await closePaperTrade(supabase, user.id, paperTradeId, body)
-    return NextResponse.json({ trade })
+    const { trade, afterChartSaved } = await closePaperTrade(supabase, user.id, paperTradeId, body)
+    return NextResponse.json({
+      trade,
+      afterChartSaved,
+      warning: afterChartSaved
+        ? null
+        : body.chart_image_url_after
+          ? "Trade closed, but the after chart was not saved. Run supabase/041-paper-trades-after-chart.sql in Supabase, then future closes will keep exit screenshots."
+          : null,
+    })
   } catch (error) {
     if (error instanceof PaperTradesTableMissingError) {
+      return NextResponse.json({ error: error.message }, { status: 503 })
+    }
+    if (error instanceof PaperTradesAfterChartColumnMissingError) {
       return NextResponse.json({ error: error.message }, { status: 503 })
     }
     console.error("Paper trade PATCH error:", error)

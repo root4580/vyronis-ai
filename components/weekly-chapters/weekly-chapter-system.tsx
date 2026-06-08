@@ -22,7 +22,7 @@ import {
   formatWeeklyPaperSummaryLine,
   readWeeklySummaryPaperStats,
 } from "@/lib/weekly-chapters/paper-stats"
-import { getChapterReviewHref, getCouncilHref } from "@/lib/dashboard-nav"
+import { getChapterReviewHref, getCouncilHref, getPracticeRoomHref } from "@/lib/dashboard-nav"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { disciplineGradeBoxClass } from "@/lib/trade-planner/plan-streak"
 import type { PlanDisciplineGrade } from "@/lib/trade-planner/deviation-engine"
@@ -340,10 +340,17 @@ function PaperPracticeRow({
   if (!line) return null
 
   return (
-    <div className="border-t border-[var(--border-subtle)] bg-violet-500/[0.04] px-3 py-3 sm:px-4">
-      <div className="flex flex-wrap items-start gap-2">
+    <Link
+      href={getPracticeRoomHref()}
+      className={cn(
+        "group block border-t border-[var(--border-subtle)] bg-violet-500/[0.04] px-3 py-3 transition-colors",
+        "hover:bg-violet-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40",
+        "sm:px-4",
+      )}
+    >
+      <div className="flex items-start gap-2">
         <FileEdit className="mt-0.5 size-4 shrink-0 text-violet-300/90" />
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-300/80">
             Practice Room · this week
           </p>
@@ -357,9 +364,13 @@ function PaperPracticeRow({
               {stats.winStreak}/3 winning paper trades toward graduation.
             </p>
           ) : null}
+          <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-violet-200 group-hover:underline">
+            Open Practice Room
+            <ChevronRight className="size-3.5" />
+          </p>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 

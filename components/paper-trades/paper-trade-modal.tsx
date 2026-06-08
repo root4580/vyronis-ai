@@ -333,7 +333,7 @@ export function PaperTradeModal({ open, draft, onClose, onCreated }: PaperTradeM
 
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4 px-4 py-4 md:px-6">
           <div className="space-y-2">
-            <FieldLabel>📸 Chart screenshot</FieldLabel>
+            <FieldLabel>📸 Before (entry chart)</FieldLabel>
             <input
               ref={fileInputRef}
               type="file"

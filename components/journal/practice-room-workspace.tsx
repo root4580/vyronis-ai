@@ -3,24 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Loader2, NotebookPen } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { PaperGraduationBanner } from "@/components/paper-trades/paper-graduation-banner"
 import { PaperVsLivePanel } from "@/components/analytics/paper-vs-live-panel"
 import { SetupGradeBadge } from "@/components/command-center/setup-grade-badge"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { PaperTradeButton } from "@/components/paper-trades/paper-trade-button"
 import { PaperTradeModal } from "@/components/paper-trades/paper-trade-modal"
+import {
+  createEmptyCloseDraft,
+  PaperTradeClosePanel,
+  type PaperTradeCloseDraft,
+} from "@/components/paper-trades/paper-trade-close-panel"
 import type { PaperTradeDraft } from "@/lib/paper-trades/types"
 import {
+  analyzePaperChartCloseAutofill,
   closePaperTradeRequest,
   fetchPaperTradesWithStats,
 } from "@/lib/paper-trades/api-client"
@@ -30,6 +26,8 @@ import type { SetupGrade } from "@/lib/strategy-brain/types"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+const CHART_FILE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+const MAX_CHART_BYTES = 10 * 1024 * 1024
 
 type PracticeRoomWorkspaceProps = {
   accountId: string | null
@@ -55,9 +53,7 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
   const [stats, setStats] = useState<PaperTradeStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [closingId, setClosingId] = useState<string | null>(null)
-  const [closePrice, setClosePrice] = useState("")
-  const [closeResult, setCloseResult] = useState<"WIN" | "LOSS" | "BREAKEVEN">("WIN")
-  const [closePnl, setClosePnl] = useState("")
+  const [closeDrafts, setCloseDrafts] = useState<Record<string, PaperTradeCloseDraft>>({})
   const [prefillOpen, setPrefillOpen] = useState(false)
 
   const prefillDraft = useMemo((): PaperTradeDraft | null => {
@@ -100,12 +96,122 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
     }
   }, [prefillDraft, searchParams])
 
+  const getCloseDraft = useCallback(
+    (tradeId: string) => closeDrafts[tradeId] ?? createEmptyCloseDraft(),
+    [closeDrafts],
+  )
+
+  const setCloseDraft = useCallback((tradeId: string, draft: PaperTradeCloseDraft) => {
+    setCloseDrafts((current) => ({ ...current, [tradeId]: draft }))
+  }, [])
+
+  async function uploadChartFile(file: File): Promise<string> {
+    const formData = new FormData()
+    formData.append("file", file)
+    const uploadResponse = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+      credentials: "same-origin",
+    })
+    if (!uploadResponse.ok) {
+      const payload = await uploadResponse.json().catch(() => ({}))
+      throw new Error(typeof payload.error === "string" ? payload.error : "Upload failed")
+    }
+    const { url } = (await uploadResponse.json()) as { url: string }
+    return url
+  }
+
+  async function handleAfterChartFile(trade: PaperTradeRecord, file: File) {
+    if (!CHART_FILE_TYPES.includes(file.type)) {
+      setCloseDraft(trade.id, {
+        ...getCloseDraft(trade.id),
+        chartPhase: "error",
+        chartMessage: "❌ Use JPG, PNG, or WebP.",
+      })
+      return
+    }
+    if (file.size > MAX_CHART_BYTES) {
+      setCloseDraft(trade.id, {
+        ...getCloseDraft(trade.id),
+        chartPhase: "error",
+        chartMessage: "❌ File too large (max 10MB).",
+      })
+      return
+    }
+
+    let draft = getCloseDraft(trade.id)
+    draft = {
+      ...draft,
+      chartPhase: "uploading",
+      chartMessage: "📤 Uploading after chart…",
+    }
+    setCloseDraft(trade.id, draft)
+
+    try {
+      const url = await uploadChartFile(file)
+      draft = { ...draft, afterChartUrl: url, chartPhase: "analyzing", chartMessage: "🔍 Reading exit chart…" }
+      setCloseDraft(trade.id, draft)
+
+      const result = await analyzePaperChartCloseAutofill({
+        imageUrl: url,
+        symbol: trade.symbol,
+        direction: trade.direction,
+        entry: trade.entry,
+        sl: trade.sl,
+        tp: trade.tp,
+      })
+
+      const aiFilledFields = new Set(result.aiFilledFields)
+      const next: PaperTradeCloseDraft = {
+        ...draft,
+        afterChartUrl: url,
+        chartPhase: result.applied ? "success" : "error",
+        chartMessage: result.applied
+          ? "✅ After chart analysed — close fields filled!"
+          : "❌ Could not read exit price. Fill manually.",
+        confidenceLabel: result.confidenceLabel,
+        aiFilledFields,
+      }
+
+      if (result.applied) {
+        if (result.applied.closePrice != null) {
+          next.closePrice = String(result.applied.closePrice)
+        }
+        if (result.applied.result) {
+          next.closeResult = result.applied.result
+        }
+        if (result.applied.pnl != null) {
+          next.closePnl = String(result.applied.pnl)
+        }
+      }
+
+      setCloseDraft(trade.id, next)
+    } catch (error) {
+      setCloseDraft(trade.id, {
+        ...getCloseDraft(trade.id),
+        chartPhase: "error",
+        chartMessage: "❌ Could not analyse after chart.",
+      })
+      toast({
+        title: "After chart analysis failed",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      })
+    }
+  }
+
   async function handleClose(trade: PaperTradeRecord) {
-    if (!closePrice.trim()) {
+    const draft = getCloseDraft(trade.id)
+    if (!draft.closePrice.trim()) {
       toast({ title: "Close price required", variant: "destructive" })
       return
     }
-    const close = parseFloat(closePrice)
+    if (!draft.closeResult) {
+      toast({ title: "Select a result", variant: "destructive" })
+      return
+    }
+
+    const close = parseFloat(draft.closePrice)
     const rr =
       trade.entry != null && trade.sl != null
         ? computeAchievedRR({
@@ -116,17 +222,40 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
           })
         : null
 
+    const pnlParsed = draft.closePnl.trim() ? parseFloat(draft.closePnl) : null
+
     setClosingId(trade.id)
     try {
-      await closePaperTradeRequest(trade.id, {
+      const closed = await closePaperTradeRequest(trade.id, {
         close_price: close,
-        result: closeResult,
+        result: draft.closeResult,
         rr,
-        pnl: closePnl ? parseFloat(closePnl) : closeResult === "WIN" ? 1 : closeResult === "LOSS" ? -1 : 0,
+        pnl:
+          pnlParsed != null && Number.isFinite(pnlParsed)
+            ? pnlParsed
+            : draft.closeResult === "WIN"
+              ? rr ?? 1
+              : draft.closeResult === "LOSS"
+                ? -1
+                : 0,
+        chart_image_url_after: draft.afterChartUrl,
       })
-      toast({ title: "Paper trade closed", description: `${trade.symbol} marked ${closeResult}.` })
-      setClosePrice("")
-      setClosePnl("")
+      if (closed.warning) {
+        toast({
+          title: "Paper trade closed",
+          description: `${trade.symbol} marked ${draft.closeResult}. ${closed.warning}`,
+        })
+      } else {
+        toast({
+          title: "Paper trade closed",
+          description: `${trade.symbol} marked ${draft.closeResult}.`,
+        })
+      }
+      setCloseDrafts((current) => {
+        const next = { ...current }
+        delete next[trade.id]
+        return next
+      })
       await load()
     } catch (error) {
       toast({
@@ -174,7 +303,10 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
         <StatCard label="Paper win rate" value={`${stats?.winRate ?? 0}%`} />
-        <StatCard label="Paper P&L" value={`${(stats?.totalPnL ?? 0) >= 0 ? "+" : ""}${(stats?.totalPnL ?? 0).toFixed(1)}R`} />
+        <StatCard
+          label="Paper P&L"
+          value={`${(stats?.totalPnL ?? 0) >= 0 ? "+" : ""}${(stats?.totalPnL ?? 0).toFixed(1)}R`}
+        />
         <StatCard label="Avg R:R" value={stats?.avgRR != null ? `${stats.avgRR.toFixed(2)}R` : "—"} />
         <StatCard label="Win streak" value={`${stats?.winStreak ?? 0}`} sub="/ 3 to graduate" />
       </div>
@@ -203,22 +335,10 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
             <PaperTradeCard
               key={trade.id}
               trade={trade}
-              closingId={closingId}
-              closePrice={closePrice}
-              closeResult={closeResult}
-              closePnl={closePnl}
-              onClosePriceChange={(id, value) => {
-                setClosingId(id)
-                setClosePrice(value)
-              }}
-              onCloseResultChange={(id, value) => {
-                setClosingId(id)
-                setCloseResult(value)
-              }}
-              onClosePnlChange={(id, value) => {
-                setClosingId(id)
-                setClosePnl(value)
-              }}
+              closeDraft={getCloseDraft(trade.id)}
+              isClosing={closingId === trade.id}
+              onCloseDraftChange={(draft) => setCloseDraft(trade.id, draft)}
+              onAfterChartFile={(file) => void handleAfterChartFile(trade, file)}
               onClose={() => void handleClose(trade)}
             />
           ))}
@@ -242,25 +362,19 @@ export function PracticeRoomWorkspace({ accountId, rulesSnapshot }: PracticeRoom
 
 type PaperTradeCardProps = {
   trade: PaperTradeRecord
-  closingId: string | null
-  closePrice: string
-  closeResult: "WIN" | "LOSS" | "BREAKEVEN"
-  closePnl: string
-  onClosePriceChange: (id: string, value: string) => void
-  onCloseResultChange: (id: string, value: "WIN" | "LOSS" | "BREAKEVEN") => void
-  onClosePnlChange: (id: string, value: string) => void
+  closeDraft: PaperTradeCloseDraft
+  isClosing: boolean
+  onCloseDraftChange: (draft: PaperTradeCloseDraft) => void
+  onAfterChartFile: (file: File) => void
   onClose: () => void
 }
 
 function PaperTradeCard({
   trade,
-  closingId,
-  closePrice,
-  closeResult,
-  closePnl,
-  onClosePriceChange,
-  onCloseResultChange,
-  onClosePnlChange,
+  closeDraft,
+  isClosing,
+  onCloseDraftChange,
+  onAfterChartFile,
   onClose,
 }: PaperTradeCardProps) {
   return (
@@ -271,7 +385,7 @@ function PaperTradeCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={trade.chart_image_url}
-              alt={`${trade.symbol} chart`}
+              alt={`${trade.symbol} entry chart`}
               className="size-[72px] object-cover object-top sm:size-20"
             />
           </div>
@@ -317,60 +431,34 @@ function PaperTradeCard({
       </div>
 
       {trade.result === "PENDING" ? (
-        <div className="grid grid-cols-1 gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-4">
-          <div className="space-y-1 sm:col-span-1">
-            <Label className="text-[10px] text-text-muted">Close price</Label>
-            <Input
-              type="number"
-              step="any"
-              value={closingId === trade.id ? closePrice : ""}
-              onChange={(e) => onClosePriceChange(trade.id, e.target.value)}
-              className="add-trade-input h-9 tabular-nums"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] text-text-muted">Result</Label>
-            <Select
-              value={closingId === trade.id ? closeResult : "WIN"}
-              onValueChange={(value) =>
-                onCloseResultChange(trade.id, value as typeof closeResult)
-              }
-            >
-              <SelectTrigger className="add-trade-input h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="WIN">Win</SelectItem>
-                <SelectItem value="LOSS">Loss</SelectItem>
-                <SelectItem value="BREAKEVEN">Breakeven</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] text-text-muted">P&L (R)</Label>
-            <Input
-              type="number"
-              step="0.1"
-              value={closingId === trade.id ? closePnl : ""}
-              onChange={(e) => onClosePnlChange(trade.id, e.target.value)}
-              placeholder="1.0"
-              className="add-trade-input h-9 tabular-nums"
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 w-full"
-              disabled={closingId === trade.id && !closePrice}
-              onClick={onClose}
-            >
-              Close paper trade
-            </Button>
-          </div>
+        <PaperTradeClosePanel
+          trade={trade}
+          draft={closeDraft}
+          isClosing={isClosing}
+          onDraftChange={onCloseDraftChange}
+          onAfterChartFile={onAfterChartFile}
+          onClose={onClose}
+        />
+      ) : trade.chart_image_url_after ? (
+        <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3">
+          <ClosedChartThumb label="Before" url={trade.chart_image_url} />
+          <ClosedChartThumb label="After" url={trade.chart_image_url_after} />
         </div>
       ) : null}
     </DashboardInsetPanel>
+  )
+}
+
+function ClosedChartThumb({ label, url }: { label: string; url: string | null }) {
+  if (!url) return null
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] text-text-muted">{label}</p>
+      <div className="overflow-hidden rounded-[var(--radius-sm)] border border-white/[0.08]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={label} className="h-16 w-full object-cover object-top" />
+      </div>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { resolveLegacyTradeAccountId } from "@/lib/accounts/account-query"
-import { formatPairForSpeech } from "@/lib/economic-calendar/pair-impact"
+import { normalizeForexPairSymbol } from "@/lib/council/forex-pair-format"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 import { isTradeInWeekStart, toWeekStartISO } from "@/lib/weekly-chapters/week-utils"
 
@@ -62,7 +62,7 @@ function pairKey(pair: string | null | undefined): string {
 
 function formatActiveSession(row: CoachSessionRow): string {
   const ctx = row.planned_context
-  const pair = formatPairForSpeech(String(ctx?.pair ?? "—"))
+  const pair = normalizeForexPairSymbol(String(ctx?.pair ?? "—"))
   const direction = String(ctx?.direction ?? "—").toUpperCase()
   const emotion = ctx?.emotion ?? "—"
   const grade = formatGrade(row)
@@ -97,7 +97,7 @@ function formatActiveSession(row: CoachSessionRow): string {
 
 function formatCompletedSession(row: CoachSessionRow, index: number): string {
   const ctx = row.planned_context
-  const pair = formatPairForSpeech(String(ctx?.pair ?? "—"))
+  const pair = normalizeForexPairSymbol(String(ctx?.pair ?? "—"))
   const direction = String(ctx?.direction ?? "—").toUpperCase()
   const grade = formatGrade(row)
   const verdict = formatVerdict(ctx)
@@ -209,7 +209,7 @@ export async function loadCouncilCoachLiveData(
 
   const feedbackLines = recentTrades.map((trade, index) => {
     const feedback = feedbackByTrade.get(trade.id)
-    const pair = formatPairForSpeech(String(trade.pair ?? "—"))
+    const pair = normalizeForexPairSymbol(String(trade.pair ?? "—"))
     const direction = String(trade.direction ?? "—").toUpperCase()
     const result = String(trade.result ?? "—").toUpperCase()
     if (!feedback) {
@@ -239,7 +239,7 @@ export async function loadCouncilCoachLiveData(
     `Sessions this week: ${sessionsThisWeek}`,
     avgDiscipline != null ? `Avg discipline (recent reviewed trades): ${avgDiscipline}/100` : null,
     activeSession
-      ? `Active: ${formatPairForSpeech(String(activeSession.planned_context?.pair ?? "—"))} ${String(activeSession.planned_context?.direction ?? "").toUpperCase()} — ${formatVerdict(activeSession.planned_context)}`
+      ? `Active: ${normalizeForexPairSymbol(String(activeSession.planned_context?.pair ?? "—"))} ${String(activeSession.planned_context?.direction ?? "").toUpperCase()} — ${formatVerdict(activeSession.planned_context)}`
       : "Active: none",
   ]
     .filter(Boolean)
@@ -250,7 +250,7 @@ export async function loadCouncilCoachLiveData(
     watchlistKeys.has(pairKey(row.planned_context?.pair)),
   )
   const watchlistCoachLines = watchlistCoachSessions.slice(0, 4).map((row) => {
-    const pair = formatPairForSpeech(String(row.planned_context?.pair ?? "—"))
+    const pair = normalizeForexPairSymbol(String(row.planned_context?.pair ?? "—"))
     return `${pair} — ${formatGrade(row)} — ${formatVerdict(row.planned_context)} — ${row.status}`
   })
   const watchlistCoachSection =

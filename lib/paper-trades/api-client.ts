@@ -1,4 +1,5 @@
 import type { PaperChartAutofillResult } from "@/lib/paper-trades/chart-autofill"
+import type { PaperChartCloseAutofillResult } from "@/lib/paper-trades/chart-close-autofill"
 import type {
   ClosePaperTradeInput,
   PaperTradeInput,
@@ -61,14 +62,22 @@ export async function createPaperTradeRequest(
 export async function closePaperTradeRequest(
   paperTradeId: string,
   input: ClosePaperTradeInput,
-): Promise<PaperTradeRecord> {
+): Promise<{ trade: PaperTradeRecord; afterChartSaved: boolean; warning: string | null }> {
   const response = await fetch(`/api/paper-trades/${paperTradeId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   })
-  const payload = await parseJson<{ trade: PaperTradeRecord }>(response)
-  return payload.trade
+  const payload = await parseJson<{
+    trade: PaperTradeRecord
+    afterChartSaved?: boolean
+    warning?: string | null
+  }>(response)
+  return {
+    trade: payload.trade,
+    afterChartSaved: payload.afterChartSaved !== false,
+    warning: payload.warning ?? null,
+  }
 }
 
 export async function fetchPaperVsLiveStats(
@@ -90,4 +99,20 @@ export async function analyzePaperChartAutofill(input: {
     body: JSON.stringify(input),
   })
   return parseJson<PaperChartAutofillResult>(response)
+}
+
+export async function analyzePaperChartCloseAutofill(input: {
+  imageUrl: string
+  symbol: string
+  direction: string
+  entry?: number | null
+  sl?: number | null
+  tp?: number | null
+}): Promise<PaperChartCloseAutofillResult> {
+  const response = await fetch("/api/paper-trades/chart-close-autofill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  return parseJson<PaperChartCloseAutofillResult>(response)
 }

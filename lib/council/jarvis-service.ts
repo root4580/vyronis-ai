@@ -9,6 +9,7 @@ import type { CouncilAgentContext, CouncilAgentId } from "@/lib/council/types"
 import { getSessionClock } from "@/lib/trading/session-timing"
 import type { TodayCalendarResponse } from "@/lib/economic-calendar/types"
 import { buildJarvisCalendarLine } from "@/lib/economic-calendar/briefing-lines"
+import { normalizeForexPairSymbol } from "@/lib/council/forex-pair-format"
 import { getCouncilTimeOfDay } from "@/lib/council/time-of-day"
 
 const ROUTING_TOPICS: Partial<Record<CouncilAgentId, string>> = {
@@ -98,9 +99,11 @@ function riskIsGreen(rexContext: string): boolean {
 }
 
 export function buildJarvisConsensus(context: CouncilAgentContext): string {
-  const pair = extractPrimaryPair(context.luna) ?? "your top watchlist pair"
+  const rawPair = extractPrimaryPair(context.luna)
+  const pair = rawPair ? normalizeForexPairSymbol(rawPair) : null
+  const focus = pair ?? "your top watchlist pair"
   const riskLabel = riskIsGreen(context.rex) ? "green" : "caution"
-  return `Council consensus: ${pair} is your focus today. Wait for M15 close. Risk is ${riskLabel}. Execute the plan.`
+  return `Council consensus: ${focus} is your focus today. Wait for M15 close. Risk is ${riskLabel}. Execute the plan.`
 }
 
 export function isCouncilConsensusRequest(message: string): boolean {
@@ -163,7 +166,9 @@ export function shouldJarvisRoute(input: {
 
 export function resolveSpecialistForGeneralQuestion(message: string): CouncilAgentId {
   const routed = routeCouncilQuestion(message)
-  return routed === "jarvis" ? "nova" : routed
+  if (routed === "jarvis") return "nova"
+  if (routed === "marcus") return "marcus"
+  return routed
 }
 
 export function buildJarvisContextSnapshot(input: {

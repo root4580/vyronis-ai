@@ -2,14 +2,15 @@
 
 import { Loader2, Volume2 } from "lucide-react"
 import { getCouncilAgent } from "@/lib/council/agents"
-import { findChartForMessage } from "@/lib/council/pair-chart-match"
-import type { CouncilAgentId, CouncilChartSnapshot, CouncilTranscriptEntry, CouncilVisualContext } from "@/lib/council/types"
+import type { CouncilAgentVisualPanel } from "@/lib/council/agent-visual-panel"
+import type { CouncilAgentId, CouncilTranscriptEntry, CouncilVisualContext } from "@/lib/council/types"
+import { CouncilAgentVisualPanel as CouncilAgentVisualPanelView } from "@/components/council/council-agent-visual-panel"
 import { cn } from "@/lib/utils"
 
 type CouncilMessageBubbleProps = {
   entry: CouncilTranscriptEntry
   visual: CouncilVisualContext | null
-  inlineChart?: CouncilChartSnapshot | null
+  agentPanel?: CouncilAgentVisualPanel | null
   speakingAgent: CouncilAgentId | null
   voiceAvailable?: boolean
   onReplay?: () => void
@@ -25,7 +26,7 @@ function speakerLabel(entry: CouncilTranscriptEntry): string {
 export function CouncilMessageBubble({
   entry,
   visual,
-  inlineChart: inlineChartOverride,
+  agentPanel,
   speakingAgent,
   voiceAvailable = false,
   onReplay,
@@ -35,12 +36,8 @@ export function CouncilMessageBubble({
   const agent =
     entry.agent !== "user" && entry.agent !== "system" ? getCouncilAgent(entry.agent) : null
   const isSpeakingLine = speakingAgent === entry.agent
-  const inlineChart =
-    inlineChartOverride !== undefined
-      ? inlineChartOverride
-      : entry.agent !== "user" && entry.agent !== "system"
-        ? findChartForMessage(entry.agent, entry.content, visual)
-        : null
+  const showPanel =
+    agentPanel && visual && entry.agent !== "user" && entry.agent !== "system"
 
   return (
     <article
@@ -76,22 +73,13 @@ export function CouncilMessageBubble({
         ) : null}
       </div>
       <p className="mt-1 text-[13px] leading-relaxed text-text-primary">{entry.content}</p>
-      {inlineChart ? (
-        <button
-          type="button"
-          onClick={() => onChartClick?.(inlineChart.url, inlineChart.label)}
-          className="mt-2 block w-full overflow-hidden rounded-lg border border-white/[0.08] bg-black/30 text-left transition-colors hover:border-cyan-glow/25"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={inlineChart.url}
-            alt={inlineChart.label}
-            className="max-h-36 w-full object-cover"
-          />
-          <span className="block border-t border-white/[0.06] px-2 py-1 text-[10px] text-text-secondary">
-            {inlineChart.label} · tap to expand
-          </span>
-        </button>
+      {showPanel ? (
+        <CouncilAgentVisualPanelView
+          panel={agentPanel}
+          visual={visual}
+          speaking={isSpeakingLine}
+          onChartClick={onChartClick}
+        />
       ) : null}
     </article>
   )

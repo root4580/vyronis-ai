@@ -34,6 +34,8 @@ function normalizeRow(row: Record<string, unknown>): PaperTradeRecord {
     source_ref: row.source_ref != null ? String(row.source_ref) : null,
     setup_grade: row.setup_grade != null ? String(row.setup_grade) : null,
     chart_image_url: row.chart_image_url != null ? String(row.chart_image_url) : null,
+    chart_image_url_after:
+      row.chart_image_url_after != null ? String(row.chart_image_url_after) : null,
     ai_confidence: row.ai_confidence != null ? String(row.ai_confidence) : null,
     coach_session_id: row.coach_session_id != null ? String(row.coach_session_id) : null,
     coach_feedback: row.coach_feedback != null ? String(row.coach_feedback) : null,
@@ -50,8 +52,28 @@ export class PaperTradesTableMissingError extends Error {
   }
 }
 
+export class PaperTradesAfterChartColumnMissingError extends Error {
+  constructor() {
+    super(
+      "After-chart column is missing. Run supabase/041-paper-trades-after-chart.sql in Supabase (or RUN-PAPER-TRADES-AI-FIELDS.sql).",
+    )
+    this.name = "PaperTradesAfterChartColumnMissingError"
+  }
+}
+
 function isMissingTableError(message: string): boolean {
-  return /paper_trades|relation .* does not exist|schema cache/i.test(message)
+  if (/chart_image_url_after/i.test(message)) return false
+  return (
+    /relation ["']?(?:public\.)?paper_trades["']? does not exist/i.test(message) ||
+    (/schema cache/i.test(message) &&
+      /does not exist/i.test(message) &&
+      !/column/i.test(message) &&
+      /paper_trades/i.test(message))
+  )
+}
+
+function isMissingAfterChartColumnError(message: string): boolean {
+  return /chart_image_url_after/i.test(message) && /column|schema cache/i.test(message)
 }
 
 export async function listPaperTrades(
@@ -121,30 +143,71 @@ export async function closePaperTrade(
   userId: string,
   paperTradeId: string,
   input: ClosePaperTradeInput,
-): Promise<PaperTradeRecord> {
+): Promise<{ trade: PaperTradeRecord; afterChartSaved: boolean }> {
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  const updatePayload: Record<string, unknown> = {
+    close_price: input.close_price,
+    result: input.result,
+    pips: input.pips ?? null,
+    rr: input.rr ?? null,
+    pnl: input.pnl ?? 0,
+    closed_at: now,
+  }
+  if (input.chart_image_url_after != null) {
+    updatePayload.chart_image_url_after = input.chart_image_url_after
+  }
+  if (input.notes !== undefined) {
+    updatePayload.notes = input.notes
+  }
+
+  let { data, error } = await supabase
     .from("paper_trades")
-    .update({
-      close_price: input.close_price,
-      result: input.result,
-      pips: input.pips ?? null,
-      rr: input.rr ?? null,
-      pnl: input.pnl ?? 0,
-      notes: input.notes,
-      closed_at: now,
-    })
+    .update(updatePayload)
     .eq("user_id", userId)
     .eq("id", paperTradeId)
     .select("*")
     .single()
 
+  if (
+    error &&
+    isMissingAfterChartColumnError(error.message) &&
+    updatePayload.chart_image_url_after != null
+  ) {
+    const { chart_image_url_after: _removed, ...withoutAfterChart } = updatePayload
+    const retry = await supabase
+      .from("paper_trades")
+      .update(withoutAfterChart)
+      .eq("user_id", userId)
+      .eq("id", paperTradeId)
+      .select("*")
+      .single()
+
+    if (!retry.error && retry.data) {
+      return {
+        trade: normalizeRow(retry.data as Record<string, unknown>),
+        afterChartSaved: false,
+      }
+    }
+
+    error = retry.error
+  }
+
   if (error) {
     if (isMissingTableError(error.message)) throw new PaperTradesTableMissingError()
+    if (isMissingAfterChartColumnError(error.message)) {
+      throw new PaperTradesAfterChartColumnMissingError()
+    }
     throw new Error(error.message)
   }
 
-  return normalizeRow(data as Record<string, unknown>)
+  if (!data) {
+    throw new Error("Paper trade not found or could not be updated.")
+  }
+
+  return {
+    trade: normalizeRow(data as Record<string, unknown>),
+    afterChartSaved: input.chart_image_url_after != null,
+  }
 }
 
 export async function getPaperVsLiveStats(

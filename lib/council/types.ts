@@ -72,6 +72,8 @@ export type CouncilStatsSnapshot = {
   tradesRemaining: number
   disciplineScore: number | null
   disciplineGrade: string | null
+  /** Shown when score is inferred (Coach avg or trade behavior), not saved on the chapter yet. */
+  disciplineScoreNote?: string | null
   chapterLabel: string
   accountName: string
   todayJournalLine: string
@@ -82,6 +84,9 @@ export type CouncilVisualContext = {
   stats: CouncilStatsSnapshot
   watchlistCharts: CouncilChartSnapshot[]
   lastTradeChart: CouncilChartSnapshot | null
+  /** Recent journal trades with chart screenshots (newest first). */
+  recentTradeCharts: CouncilChartSnapshot[]
+  economicCalendar?: TodayCalendarResponse | null
 }
 
 export type CouncilAgentContext = {
