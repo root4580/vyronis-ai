@@ -25,7 +25,8 @@
     "verify:vyronis-core": "npx tsx scripts/verify-vyronis-core.ts",
     "tv:test-alert": "npx tsx scripts/send-tradingview-test-alert.ts",
     "generate:og-image": "npx tsx scripts/generate-og-image.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:coach-verdicts": "npx tsx scripts/test-coach-verdict-scenarios.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

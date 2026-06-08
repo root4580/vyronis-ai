@@ -12,7 +12,7 @@ type CoachExecutionVerdictPanelProps = {
 
 function finalVerdictTone(verdict: CoachExecutionVerdict["finalVerdict"]) {
   if (verdict === "A_PLUS_READY") return "border-profit/30 bg-profit/[0.1] text-profit"
-  if (verdict === "WAIT_FOR_CONFIRMATION") {
+  if (verdict === "WAIT_FOR_CONFIRMATION" || verdict === "COACH_WARNING") {
     return "border-warning/30 bg-warning/[0.1] text-warning-foreground"
   }
   return "border-loss/30 bg-loss/[0.1] text-loss"

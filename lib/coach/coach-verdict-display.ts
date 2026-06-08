@@ -4,6 +4,8 @@ export type CoachVerdictLabel =
   | "A+ READY"
   | "WAIT FOR CONFIRMATION"
   | "SKIP TRADE"
+  | "TRADE LIMIT REACHED"
+  | "COACH WARNING"
   | "READY"
   | "PATIENCE"
   | "NOT YET"
@@ -76,6 +78,54 @@ export function mapCoachVerdict(input: {
   }
 
   return null
+}
+
+export function mapCoachFinalVerdictDisplay(
+  verdict: import("@/lib/coach/coach-execution-verdict").CoachFinalVerdict,
+): CoachVerdictDisplay {
+  if (verdict === "A_PLUS_READY") {
+    return {
+      label: "A+ READY",
+      tone: "profit",
+      description: sanitizeCoachLanguage(
+        "All entry gate rules satisfied — execute the plan with discipline.",
+      ),
+    }
+  }
+  if (verdict === "WAIT_FOR_CONFIRMATION") {
+    return {
+      label: "WAIT FOR CONFIRMATION",
+      tone: "amber",
+      description: sanitizeCoachLanguage(
+        "Setup may be strong, but a required entry gate rule is still open.",
+      ),
+    }
+  }
+  if (verdict === "COACH_WARNING") {
+    return {
+      label: "COACH WARNING",
+      tone: "amber",
+      description: sanitizeCoachLanguage(
+        "Technical gate passed — fix mindset before sizing live.",
+      ),
+    }
+  }
+  if (verdict === "TRADE_LIMIT_REACHED") {
+    return {
+      label: "TRADE LIMIT REACHED",
+      tone: "loss",
+      description: sanitizeCoachLanguage(
+        "Chapter trade cap hit — protect the week even when the setup is A+.",
+      ),
+    }
+  }
+  return {
+    label: "SKIP TRADE",
+    tone: "loss",
+    description: sanitizeCoachLanguage(
+      "Structural rule failed — skip and wait for a cleaner read.",
+    ),
+  }
 }
 
 export function coachVerdictClassName(tone: CoachVerdictDisplay["tone"]): string {

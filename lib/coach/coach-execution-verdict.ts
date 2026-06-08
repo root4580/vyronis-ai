@@ -1,10 +1,22 @@
+import {
+  evaluateCoachDiscipline,
+  shouldSkipForEmotion,
+  shouldWarnForEmotion,
+  type CoachDisciplineInput,
+} from "@/lib/coach/coach-discipline-gate"
 import { evaluateEntryGate, type EntryGateResult } from "@/lib/coach/entry-gate"
+import { isHardSkipEntryGateRule } from "@/lib/coach/entry-gate-classification"
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
 import type { PrecisionFlowResult } from "@/lib/coach/precision-flow-engine"
 import type { StrategyPlaybookMatchResult } from "@/lib/strategy/types"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 
-export type CoachFinalVerdict = "A_PLUS_READY" | "WAIT_FOR_CONFIRMATION" | "SKIP_TRADE"
+export type CoachFinalVerdict =
+  | "A_PLUS_READY"
+  | "WAIT_FOR_CONFIRMATION"
+  | "SKIP_TRADE"
+  | "TRADE_LIMIT_REACHED"
+  | "COACH_WARNING"
 
 export type CoachEntryReadinessStatus = "READY" | "WAIT_FOR_CONFIRMATION" | "NOT_READY"
 
@@ -39,6 +51,14 @@ export function setupQualityGradeFromScore(score: number): string {
   if (score >= 55) return "C"
   if (score >= 40) return "D"
   return "F"
+}
+
+export function coachFinalVerdictLabel(verdict: CoachFinalVerdict): string {
+  if (verdict === "A_PLUS_READY") return "🟢 A+ READY"
+  if (verdict === "WAIT_FOR_CONFIRMATION") return "🟡 WAIT FOR CONFIRMATION"
+  if (verdict === "TRADE_LIMIT_REACHED") return "🔴 TRADE LIMIT REACHED"
+  if (verdict === "COACH_WARNING") return "🟡 COACH WARNING"
+  return "🔴 SKIP TRADE"
 }
 
 function resolveSetupQualityScore(input: {
@@ -80,69 +100,57 @@ function collectSetupStrengths(input: {
   return [...new Set(strengths)].slice(0, 6)
 }
 
-function collectSkipReasons(input: {
+function collectStructuralSkipReasons(input: {
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
-  precisionFlow?: PrecisionFlowResult | null
+  setupScore: number
 }): string[] {
   const reasons: string[] = []
 
+  if (input.setupScore < SETUP_QUALITY_SKIP_THRESHOLD) {
+    reasons.push("Setup quality below minimum threshold.")
+  }
+
   if (input.playbook?.violations?.length) {
-    reasons.push(...input.playbook.violations.slice(0, 4))
+    reasons.push(...input.playbook.violations.slice(0, 3))
   }
 
   const detections = input.playbook?.detections
   if (detections?.countertrend) reasons.push("Counter-trend vs HTF bias")
   if (detections?.revengeEntry) reasons.push("Revenge-style entry pattern")
-  if (detections?.fomoEntry) reasons.push("FOMO / chase pattern")
   if (detections?.htfConflict) reasons.push("HTF conflict on bias stack")
 
   if (input.mtf?.bias.overallBias === "mixed") {
     reasons.push("Mixed HTF bias — no clear directional edge")
   }
 
-  if (input.precisionFlow?.verdict === "SKIP") {
-    for (const rule of input.precisionFlow.rules) {
-      if (!rule.passed && rule.id === "emotion_gate") {
-        reasons.push(rule.note)
-      }
-    }
-  }
-
   return [...new Set(reasons)].slice(0, 6)
 }
 
-function shouldSkipTrade(input: {
-  setupScore: number
-  playbook?: StrategyPlaybookMatchResult | null
-  mtf?: MtfAnalysisResult | null
-  precisionFlow?: PrecisionFlowResult | null
-  entryGate: EntryGateResult
-}): boolean {
-  const skipReasons = collectSkipReasons(input)
-  const detections = input.playbook?.detections
+function resolveVerdictFromEntryGate(entryGate: EntryGateResult): CoachFinalVerdict | null {
+  if (entryGate.failedRules.length === 0) return null
 
-  if (input.setupScore < SETUP_QUALITY_SKIP_THRESHOLD) return true
-  if (detections?.countertrend && detections.revengeEntry) return true
-  if (input.precisionFlow?.verdict === "SKIP" && skipReasons.length > 0) return true
-  if (input.playbook?.recommendation === "SKIP" && skipReasons.length >= 2) return true
-  if (
-    input.mtf?.bias.overallBias === "mixed" &&
-    input.entryGate.rulesPassed <= 2
-  ) {
-    return true
-  }
+  const hasHardSkip = entryGate.failedRules.some((rule) =>
+    isHardSkipEntryGateRule(rule.id),
+  )
 
-  return skipReasons.length >= 4
+  return hasHardSkip ? "SKIP_TRADE" : "WAIT_FOR_CONFIRMATION"
 }
 
 function buildMentorLine(input: {
   grade: string
   finalVerdict: CoachFinalVerdict
   entryGate: EntryGateResult
+  disciplineMessage?: string | null
 }): string {
   if (input.finalVerdict === "A_PLUS_READY") {
     return `${input.entryGate.progressLabel}. All entry gate rules satisfied.`
+  }
+  if (input.finalVerdict === "TRADE_LIMIT_REACHED") {
+    return `${input.entryGate.progressLabel}. ${input.disciplineMessage ?? "Weekly trade limit reached."}`
+  }
+  if (input.finalVerdict === "COACH_WARNING") {
+    return `${input.entryGate.progressLabel}. ${input.disciplineMessage ?? "Coach warning — fix mindset before live size."}`
   }
   if (input.finalVerdict === "WAIT_FOR_CONFIRMATION") {
     const quality =
@@ -152,6 +160,12 @@ function buildMentorLine(input: {
     const block = input.entryGate.blockMessage ?? "Entry gate incomplete."
     return `${quality} ${block}`
   }
+  const hardFail = input.entryGate.failedRules.find((rule) =>
+    isHardSkipEntryGateRule(rule.id),
+  )
+  if (hardFail) {
+    return `Entry blocked because ${hardFail.label} = ❌ — ${hardFail.note}`
+  }
   return "Playbook rules violated or setup quality too low — skip and protect the chapter."
 }
 
@@ -160,6 +174,7 @@ export function resolveCoachExecutionVerdict(input: {
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
   precisionFlow?: PrecisionFlowResult | null
+  discipline?: CoachDisciplineInput | null
 }): CoachExecutionVerdict {
   const mtf = input.mtf ?? input.context?.mtf_analysis ?? input.context?.chart_analysis?.mtf ?? null
   const playbook =
@@ -168,12 +183,20 @@ export function resolveCoachExecutionVerdict(input: {
   const entryGate = evaluateEntryGate({ context: input.context, playbook, mtf })
   const setupScore = resolveSetupQualityScore({ playbook, mtf })
   const grade = setupQualityGradeFromScore(setupScore)
-  const skipReasons = collectSkipReasons({
-    playbook,
-    mtf,
-    precisionFlow: input.precisionFlow,
-  })
+  const structuralSkips = collectStructuralSkipReasons({ playbook, mtf, setupScore })
   const strengths = collectSetupStrengths({ entryGate, playbook, mtf })
+
+  const emotionGateFailed = input.precisionFlow?.rules.find(
+    (rule) => rule.id === "emotion_gate" && !rule.passed,
+  )
+  const disciplineState = evaluateCoachDiscipline({
+    weeklyTradesTaken: input.discipline?.weeklyTradesTaken,
+    maxTradesPerWeek: input.discipline?.maxTradesPerWeek,
+    emotionalState:
+      input.discipline?.emotionalState ??
+      (emotionGateFailed ? "revenge" : null),
+    strictEmotionGate: input.discipline?.strictEmotionGate,
+  })
 
   const setupSummary =
     setupScore >= 85
@@ -182,50 +205,71 @@ export function resolveCoachExecutionVerdict(input: {
         ? "Structure is developing — idea is acceptable but not elite."
         : "Setup quality is below your usual bar."
 
-  const skip = shouldSkipTrade({
-    setupScore,
-    playbook,
-    mtf,
-    precisionFlow: input.precisionFlow,
-    entryGate,
-  })
-
   let finalVerdict: CoachFinalVerdict
   let entryStatus: CoachEntryReadinessStatus
   let entryHeadline: string
   let entrySummary: string
+  let blockers: string[] = []
+  let mentorDisciplineMessage: string | null = null
 
-  if (skip) {
+  if (disciplineState.tradeLimitReached && entryGate.rulesPassed === entryGate.rulesTotal) {
+    finalVerdict = "TRADE_LIMIT_REACHED"
+    entryStatus = "NOT_READY"
+    entryHeadline = "LIMIT REACHED"
+    entrySummary = disciplineState.tradeLimitMessage ?? "Weekly trade limit reached."
+    mentorDisciplineMessage = disciplineState.tradeLimitMessage
+    blockers = [disciplineState.tradeLimitMessage ?? "Weekly trade limit reached."]
+  } else if (structuralSkips.length > 0 && setupScore < SETUP_QUALITY_SKIP_THRESHOLD) {
     finalVerdict = "SKIP_TRADE"
     entryStatus = "NOT_READY"
     entryHeadline = "NOT READY"
-    entrySummary = skipReasons[0] ?? "Playbook rules violated or setup quality too low."
-  } else if (entryGate.entryStatus === "WAIT") {
-    finalVerdict = "WAIT_FOR_CONFIRMATION"
-    entryStatus = "WAIT_FOR_CONFIRMATION"
-    entryHeadline = "WAIT"
-    entrySummary = entryGate.blockMessage ?? "One or more entry gate rules failed."
+    entrySummary = structuralSkips[0]!
+    blockers = [
+      ...structuralSkips,
+      ...entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`),
+    ]
   } else {
-    finalVerdict = "A_PLUS_READY"
-    entryStatus = "READY"
-    entryHeadline = "ENTRY READY"
-    entrySummary = entryGate.progressLabel
+    const gateVerdict = resolveVerdictFromEntryGate(entryGate)
+
+    if (gateVerdict === "SKIP_TRADE") {
+      finalVerdict = "SKIP_TRADE"
+      entryStatus = "NOT_READY"
+      entryHeadline = "NOT READY"
+      const hardFail = entryGate.failedRules.find((rule) => isHardSkipEntryGateRule(rule.id))
+      entrySummary = hardFail
+        ? `Entry blocked because ${hardFail.label} = ❌`
+        : "Entry gate failed on structural rules."
+      blockers = entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`)
+    } else if (gateVerdict === "WAIT_FOR_CONFIRMATION") {
+      finalVerdict = "WAIT_FOR_CONFIRMATION"
+      entryStatus = "WAIT_FOR_CONFIRMATION"
+      entryHeadline = "WAIT"
+      entrySummary = entryGate.blockMessage ?? "One or more entry gate rules failed."
+      blockers = entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`)
+    } else if (
+      shouldSkipForEmotion(disciplineState, input.discipline?.strictEmotionGate ?? false)
+    ) {
+      finalVerdict = "SKIP_TRADE"
+      entryStatus = "NOT_READY"
+      entryHeadline = "NOT READY"
+      entrySummary = disciplineState.emotionMessage ?? "Emotional state blocks execution."
+      mentorDisciplineMessage = disciplineState.emotionMessage
+      blockers = [disciplineState.emotionMessage ?? "Emotional state blocks execution."]
+    } else if (shouldWarnForEmotion(disciplineState) && entryGate.entryStatus === "READY") {
+      finalVerdict = "COACH_WARNING"
+      entryStatus = "WAIT_FOR_CONFIRMATION"
+      entryHeadline = "COACH WARNING"
+      entrySummary = disciplineState.emotionMessage ?? "Mindset warning before entry."
+      mentorDisciplineMessage = disciplineState.emotionMessage
+      blockers = [disciplineState.emotionMessage ?? "Mindset warning before entry."]
+    } else {
+      finalVerdict = "A_PLUS_READY"
+      entryStatus = "READY"
+      entryHeadline = "ENTRY READY"
+      entrySummary = entryGate.progressLabel
+      blockers = []
+    }
   }
-
-  const finalVerdictLabel =
-    finalVerdict === "A_PLUS_READY"
-      ? "🟢 A+ READY"
-      : finalVerdict === "WAIT_FOR_CONFIRMATION"
-        ? "🟡 WAIT FOR CONFIRMATION"
-        : "🔴 SKIP TRADE"
-
-  const blockers =
-    finalVerdict === "SKIP_TRADE"
-      ? [
-          ...skipReasons,
-          ...entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`),
-        ].slice(0, 6)
-      : entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`)
 
   return {
     setupQuality: {
@@ -241,8 +285,13 @@ export function resolveCoachExecutionVerdict(input: {
       blockers,
     },
     finalVerdict,
-    finalVerdictLabel,
-    mentorLine: buildMentorLine({ grade, finalVerdict, entryGate }),
+    finalVerdictLabel: coachFinalVerdictLabel(finalVerdict),
+    mentorLine: buildMentorLine({
+      grade,
+      finalVerdict,
+      entryGate,
+      disciplineMessage: mentorDisciplineMessage,
+    }),
     reasons: {
       strengths,
       blockers,
@@ -254,6 +303,6 @@ export function mapCoachFinalVerdictToLegacyRecommendation(
   verdict: CoachFinalVerdict,
 ): "TAKE" | "CAUTION" | "SKIP" {
   if (verdict === "A_PLUS_READY") return "TAKE"
-  if (verdict === "WAIT_FOR_CONFIRMATION") return "CAUTION"
+  if (verdict === "WAIT_FOR_CONFIRMATION" || verdict === "COACH_WARNING") return "CAUTION"
   return "SKIP"
 }
