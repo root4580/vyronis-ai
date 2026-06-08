@@ -30,6 +30,8 @@ import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import { WeeklyChapterSystem } from "@/components/weekly-chapters/weekly-chapter-system"
 import { ForexSessionsWidget } from "@/components/dashboard/forex-sessions-widget"
 import { EconomicNewsPreview } from "@/components/economic-calendar/economic-news-preview"
+import { DailyClosePanel } from "@/components/journal/daily-close-panel"
+import { getTodayTrades } from "@/lib/user-settings"
 import type { TradingAccountRecord } from "@/lib/accounts/types"
 import type { UserSettingsForm } from "@/lib/user-settings"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
@@ -231,6 +233,16 @@ export function HqDashboard({
       .sort((a, b) => (b.trade_date ?? b.created_at).localeCompare(a.trade_date ?? a.created_at))
       .slice(0, 6)
   }, [trades])
+
+  const todayTrades = useMemo(() => getTodayTrades(trades), [trades])
+  const todayWinCount = useMemo(
+    () => todayTrades.filter((trade) => trade.result === "WIN").length,
+    [todayTrades],
+  )
+  const todayLossCount = useMemo(
+    () => todayTrades.filter((trade) => trade.result === "LOSS").length,
+    [todayTrades],
+  )
 
   const disciplineScore = chapterDisciplineScore ?? discipline?.weekAverageScore
   const disciplineGrade = chapterDisciplineGrade ?? discipline?.weekGrade
@@ -455,6 +467,14 @@ export function HqDashboard({
           </div>
         </div>
       </div>
+
+      <DailyClosePanel
+        accountId={activeAccount.id}
+        todayTradeCount={todayTrades.length}
+        todayWinCount={todayWinCount}
+        todayLossCount={todayLossCount}
+        compact
+      />
 
       <div className="hq-surface-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-3.5 py-3">

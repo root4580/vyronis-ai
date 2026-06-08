@@ -1,0 +1,1 @@
+export const DAILY_JOURNAL_FIELD_MAX_LENGTH = 400

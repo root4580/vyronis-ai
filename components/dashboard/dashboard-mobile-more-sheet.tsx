@@ -7,13 +7,20 @@ import {
   CandlestickChart,
   ChevronRight,
   Crosshair,
+  Moon,
   Newspaper,
   NotebookPen,
   Settings,
   Sparkles,
   X,
 } from "lucide-react"
-import { getCouncilHref, getDashboardTabHref, getNewsHref, getPracticeRoomHref } from "@/lib/dashboard-nav"
+import {
+  getCouncilHref,
+  getDashboardTabHref,
+  getJournalCloseHref,
+  getNewsHref,
+  getPracticeRoomHref,
+} from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
 type DashboardMobileMoreSheetProps = {
@@ -24,6 +31,7 @@ type DashboardMobileMoreSheetProps = {
 }
 
 const MORE_LINKS = [
+  { href: getJournalCloseHref(), label: "Close the day", icon: Moon },
   { href: getNewsHref(), label: "News", icon: Newspaper },
   { href: getCouncilHref(), label: "AI Council", icon: Sparkles },
   { href: "/war-room", label: "War Room", icon: Crosshair },

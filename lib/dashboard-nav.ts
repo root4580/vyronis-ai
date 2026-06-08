@@ -45,6 +45,11 @@ export function getNewsHref(): string {
   return "/news"
 }
 
+/** End-of-day journal close — improve tomorrow, rules, focus. */
+export function getJournalCloseHref(): string {
+  return "/journal/close"
+}
+
 /** AI Trading Council — morning briefing and Q&A. */
 export function getCouncilHref(): string {
   return "/council"
