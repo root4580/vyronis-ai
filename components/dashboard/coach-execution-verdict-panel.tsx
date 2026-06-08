@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Target, Timer } from "lucide-react"
+import { CoachSessionGateDebug } from "@/components/dashboard/coach-session-gate-debug"
 import type { CoachExecutionVerdict } from "@/lib/coach/coach-execution-verdict"
 import { cn } from "@/lib/utils"
 
@@ -126,6 +127,11 @@ export function CoachExecutionVerdictPanel({
             </li>
           ))}
         </ul>
+        {entryGate.sessionDebug ? (
+          <div className="mt-3">
+            <CoachSessionGateDebug debug={entryGate.sessionDebug} />
+          </div>
+        ) : null}
       </div>
 
       <div

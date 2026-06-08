@@ -175,12 +175,18 @@ export function resolveCoachExecutionVerdict(input: {
   mtf?: MtfAnalysisResult | null
   precisionFlow?: PrecisionFlowResult | null
   discipline?: CoachDisciplineInput | null
+  now?: Date
 }): CoachExecutionVerdict {
   const mtf = input.mtf ?? input.context?.mtf_analysis ?? input.context?.chart_analysis?.mtf ?? null
   const playbook =
     input.playbook ?? input.context?.playbook_match ?? mtf?.playbookMatch ?? null
 
-  const entryGate = evaluateEntryGate({ context: input.context, playbook, mtf })
+  const entryGate = evaluateEntryGate({
+    context: input.context,
+    playbook,
+    mtf,
+    now: input.now,
+  })
   const setupScore = resolveSetupQualityScore({ playbook, mtf })
   const grade = setupQualityGradeFromScore(setupScore)
   const structuralSkips = collectStructuralSkipReasons({ playbook, mtf, setupScore })

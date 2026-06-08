@@ -1,4 +1,9 @@
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
+import {
+  evaluateSessionGate,
+  logSessionGateDebug,
+  type SessionGateDebug,
+} from "@/lib/coach/session-gate"
 import { calculateRiskReward } from "@/lib/trade-form-utils"
 import type { StrategyPlaybookMatchResult } from "@/lib/strategy/types"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
@@ -27,9 +32,8 @@ export type EntryGateResult = {
   blockMessage: string | null
   progressLabel: string
   failedRules: EntryGateRule[]
+  sessionDebug: SessionGateDebug | null
 }
-
-const VALID_SESSIONS = new Set(["london", "new york", "newyork", "ny"])
 const ENTRY_CONFIRMATION_GATE = 70
 const EMA_ALIGNMENT_GATE = 65
 const HTF_BIAS_GATE = 70
@@ -107,24 +111,25 @@ function evaluateAoiValid(
   }
 }
 
-function evaluateSessionValid(context: PreTradePlannedContext): EntryGateRule {
-  const session = (context.session || "").trim().toLowerCase()
-  const passed =
-    Boolean(session) &&
-    (VALID_SESSIONS.has(session) ||
-      session.includes("london") ||
-      session.includes("new york"))
+function evaluateSessionValid(
+  context: PreTradePlannedContext,
+  now?: Date,
+): { rule: EntryGateRule; debug: SessionGateDebug } {
+  const gate = evaluateSessionGate({
+    loggedSession: context.session ?? null,
+    now,
+  })
+  logSessionGateDebug(gate.debug)
 
   return {
-    id: "session_valid",
-    label: "Session Valid",
-    passed,
-    required: true,
-    note: passed
-      ? `${context.session} — inside London/NY liquidity window.`
-      : session
-        ? `${context.session} — outside preferred session window.`
-        : "Session not set — log London or New York before entry.",
+    rule: {
+      id: "session_valid",
+      label: "Session Valid",
+      passed: gate.passed,
+      required: true,
+      note: gate.note,
+    },
+    debug: gate.debug,
   }
 }
 
@@ -241,6 +246,7 @@ export function evaluateEntryGate(input: {
   context?: PreTradePlannedContext | null
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
+  now?: Date
 }): EntryGateResult {
   const context = input.context ?? ({} as PreTradePlannedContext)
   const mtf =
@@ -248,10 +254,11 @@ export function evaluateEntryGate(input: {
   const playbook =
     input.playbook ?? context.playbook_match ?? mtf?.playbookMatch ?? null
 
+  const sessionEval = evaluateSessionValid(context, input.now)
   const rules: EntryGateRule[] = [
     evaluateHtfBias(context, mtf, playbook),
     evaluateAoiValid(context, playbook),
-    evaluateSessionValid(context),
+    sessionEval.rule,
     evaluateConfirmationPresent(context, mtf, playbook),
     evaluateRiskReward(context),
     evaluateEmaRule(context, mtf, playbook),
@@ -270,5 +277,6 @@ export function evaluateEntryGate(input: {
     blockMessage: buildBlockMessage(failedRules),
     progressLabel: buildProgressLabel(rulesPassed, rulesTotal),
     failedRules,
+    sessionDebug: sessionEval.debug,
   }
 }

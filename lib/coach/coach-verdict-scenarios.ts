@@ -4,7 +4,14 @@ import type { CoachDisciplineInput } from "@/lib/coach/coach-discipline-gate"
 import type { CoachFinalVerdict } from "@/lib/coach/coach-execution-verdict"
 import { evaluatePrecisionFlow } from "@/lib/coach/precision-flow-engine"
 import type { StrategyPlaybookMatchResult } from "@/lib/strategy/types"
+import { estWallInstant } from "@/lib/coach/session-gate"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
+
+/** Tuesday 2026-06-10 10:00 EST — London Session active. */
+export const LONDON_ACTIVE_NOW = estWallInstant("2026-06-10", 10, 0)
+
+/** Tuesday 2026-06-10 21:30 EST — Asia Session (not entry-allowed). */
+export const AFTER_HOURS_NOW = estWallInstant("2026-06-10", 21, 30)
 
 export type CoachVerdictScenario = {
   id: number
@@ -15,6 +22,7 @@ export type CoachVerdictScenario = {
   playbook: StrategyPlaybookMatchResult
   discipline?: CoachDisciplineInput
   responses?: Record<string, string>
+  now?: Date
   expectedVerdict: CoachFinalVerdict
   acceptableVerdicts?: CoachFinalVerdict[]
 }
@@ -149,9 +157,10 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
     id: 1,
     name: "A+ setup, all rules passed",
     description: "Perfect technical and discipline read.",
-    context: baseContext(),
+    context: baseContext({ session: "London" }),
     mtf: baseMtf(),
     playbook: basePlaybook(),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "A_PLUS_READY",
   },
   {
@@ -186,15 +195,17 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
         noLiquidityConfirmation: false,
       },
     }),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "WAIT_FOR_CONFIRMATION",
   },
   {
     id: 3,
     name: "A+ setup, session invalid",
-    description: "Outside London/NY liquidity window.",
+    description: "Outside London/NY liquidity window (Asia hours).",
     context: baseContext({ session: "Asian" }),
     mtf: baseMtf(),
     playbook: basePlaybook(),
+    now: AFTER_HOURS_NOW,
     expectedVerdict: "SKIP_TRADE",
   },
   {
@@ -208,6 +219,7 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
     }),
     mtf: baseMtf(),
     playbook: basePlaybook(),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "SKIP_TRADE",
   },
   {
@@ -238,6 +250,7 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
         noLiquidityConfirmation: false,
       },
     }),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "SKIP_TRADE",
   },
   {
@@ -256,6 +269,7 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
     playbook: basePlaybook({
       rulesPassed: ["HTF aligned"],
     }),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "SKIP_TRADE",
   },
   {
@@ -273,15 +287,17 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
       visionContext: { signals: { emaAligned: false } },
     }),
     expectedVerdict: "WAIT_FOR_CONFIRMATION",
+    now: LONDON_ACTIVE_NOW,
     acceptableVerdicts: ["WAIT_FOR_CONFIRMATION", "SKIP_TRADE"],
   },
   {
     id: 8,
-    name: "Perfect setup outside trading hours",
-    description: "Technical A+ but session outside playbook window.",
+    name: "Logged Sydney vs live London session",
+    description: "Header shows London but logged session conflicts.",
     context: baseContext({ session: "Sydney" }),
     mtf: baseMtf(),
     playbook: basePlaybook(),
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "SKIP_TRADE",
   },
   {
@@ -295,6 +311,7 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
       weeklyTradesTaken: 2,
       maxTradesPerWeek: 2,
     },
+    now: LONDON_ACTIVE_NOW,
     expectedVerdict: "TRADE_LIMIT_REACHED",
   },
   {
@@ -310,6 +327,7 @@ export const COACH_VERDICT_SCENARIOS: CoachVerdictScenario[] = [
       strictEmotionGate: false,
     },
     expectedVerdict: "COACH_WARNING",
+    now: LONDON_ACTIVE_NOW,
     acceptableVerdicts: ["COACH_WARNING", "SKIP_TRADE"],
   },
 ]

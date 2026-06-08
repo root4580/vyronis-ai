@@ -1,11 +1,13 @@
 import {
   COACH_VERDICT_SCENARIOS,
+  LONDON_ACTIVE_NOW,
   buildPrecisionFlowForScenario,
 } from "@/lib/coach/coach-verdict-scenarios"
 import {
   resolveCoachExecutionVerdict,
   type CoachFinalVerdict,
 } from "@/lib/coach/coach-execution-verdict"
+import type { SessionGateDebug } from "@/lib/coach/session-gate"
 
 type ScenarioResult = {
   id: number
@@ -17,6 +19,7 @@ type ScenarioResult = {
   progress: string
   blockMessage: string | null
   mentorLine: string
+  sessionDebug: SessionGateDebug | null
 }
 
 function verdictMatches(
@@ -42,6 +45,7 @@ function runScenario(
     playbook: scenario.playbook,
     precisionFlow,
     discipline: scenario.discipline,
+    now: scenario.now ?? LONDON_ACTIVE_NOW,
   })
 
   const passed = verdictMatches(
@@ -60,6 +64,7 @@ function runScenario(
     progress: verdict.entryGate.progressLabel,
     blockMessage: verdict.entryGate.blockMessage,
     mentorLine: verdict.mentorLine,
+    sessionDebug: verdict.entryGate.sessionDebug,
   }
 }
 
@@ -79,6 +84,14 @@ function main() {
     console.log(`  Progress: ${result.progress}`)
     if (result.blockMessage) {
       console.log(`  Block:    ${result.blockMessage}`)
+    }
+    if (result.sessionDebug) {
+      console.log(`  Session:  ${result.sessionDebug.currentTimeLabel}`)
+      console.log(`            Detected: ${result.sessionDebug.detectedSession}`)
+      console.log(`            Valid: ${result.sessionDebug.sessionValid ? "✅" : "❌"}`)
+      if (result.sessionDebug.failureReason) {
+        console.log(`            Reason: ${result.sessionDebug.failureReason}`)
+      }
     }
     console.log(`  Mentor:   ${result.mentorLine}`)
   }
