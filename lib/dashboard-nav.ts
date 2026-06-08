@@ -40,6 +40,11 @@ export function getWarRoomHref(): string {
   return "/war-room"
 }
 
+/** Economic calendar and news risk (Forex Factory feed). */
+export function getNewsHref(): string {
+  return "/news"
+}
+
 /** AI Trading Council — morning briefing and Q&A. */
 export function getCouncilHref(): string {
   return "/council"

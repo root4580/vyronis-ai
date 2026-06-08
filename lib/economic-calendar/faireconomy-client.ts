@@ -7,23 +7,38 @@ export type RawForexFactoryEvent = {
   impact: string
   forecast?: string
   previous?: string
+  actual?: string
+}
+
+const FETCH_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "VyronisHQ-Calendar/1.0",
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function fetchForexFactoryCalendarWeek(): Promise<RawForexFactoryEvent[]> {
-  const response = await fetch(FOREX_FACTORY_CALENDAR_URL, {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-    next: { revalidate: 300 },
-  })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await fetch(FOREX_FACTORY_CALENDAR_URL, {
+      headers: FETCH_HEADERS,
+      next: { revalidate: 900 },
+    })
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "")
-    throw new Error(
-      `ForexFactory calendar failed (${response.status})${detail ? `: ${detail.slice(0, 120)}` : ""}`,
-    )
+    if (response.status === 429 && attempt === 0) {
+      await sleep(2000)
+      continue
+    }
+
+    if (!response.ok) {
+      throw new Error(`ForexFactory calendar failed (${response.status})`)
+    }
+
+    const payload = await response.json()
+    if (!Array.isArray(payload)) return []
+    return payload as RawForexFactoryEvent[]
   }
 
-  const payload = await response.json()
-  if (!Array.isArray(payload)) return []
-  return payload as RawForexFactoryEvent[]
+  throw new Error("ForexFactory calendar failed (429)")
 }

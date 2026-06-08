@@ -63,6 +63,20 @@ export function minutesUntilEvent(dateIso: string, now = new Date()): number {
   return Math.round((eventMs - now.getTime()) / 60_000)
 }
 
+export function formatCalendarDayLabel(dateIso: string, now = new Date()): string {
+  const date = new Date(dateIso)
+  if (Number.isNaN(date.getTime())) return dateIso
+  const todayKey = formatCalendarDateEt(now)
+  const eventKey = formatCalendarDateEt(date)
+  const label = new Intl.DateTimeFormat("en-US", {
+    timeZone: CALENDAR_TIMEZONE,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(date)
+  return todayKey === eventKey ? `Today: ${label}` : label
+}
+
 export function formatCalendarDateEt(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: CALENDAR_TIMEZONE,
@@ -99,7 +113,6 @@ export function normalizeForexFactoryEvents(
 
     const dateUtc = new Date(dateIso).toISOString()
     const minutesUntil = minutesUntilEvent(dateIso, now)
-    if (minutesUntil < -120) continue
 
     normalized.push({
       time: formatCalendarTimeEt(dateIso),
@@ -108,6 +121,9 @@ export function normalizeForexFactoryEvents(
       impact,
       minutesUntil,
       avoidPairs: pairsInvolvingCurrency(currency),
+      forecast: raw.forecast?.trim() || null,
+      previous: raw.previous?.trim() || null,
+      actual: raw.actual?.trim() || null,
       dateUtc,
     })
   }

@@ -20,6 +20,12 @@ export function getImpactLabel(impact: CalendarImpact): string {
   return IMPACT_LABEL[impact]
 }
 
+export function getImpactColorClass(impact: CalendarImpact): string {
+  if (impact === "high") return "text-loss"
+  if (impact === "medium") return "text-warning"
+  return "text-yellow-400"
+}
+
 export function getSecondsUntil(dateUtc: string, now = new Date()): number {
   const eventMs = new Date(dateUtc).getTime()
   if (Number.isNaN(eventMs)) return 0

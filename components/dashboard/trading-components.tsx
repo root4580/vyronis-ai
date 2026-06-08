@@ -34,6 +34,7 @@ import {
   ArrowUpDown,
   Settings,
   Sparkles,
+  Newspaper,
   Flame,
   Eye,
   Image as ImageIcon,
@@ -101,7 +102,14 @@ import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { JOURNAL_MOBILE_BADGE_STACK_CLASS } from "@/lib/journal-badges"
 import { cn } from "@/lib/utils"
 import { APP_HOME_PATH } from "@/lib/branding"
-import { getDashboardHomeHref, getDashboardTabHref, getCouncilHref, getPracticeRoomHref, parseTabSearchParam } from "@/lib/dashboard-nav"
+import {
+  getDashboardHomeHref,
+  getDashboardTabHref,
+  getCouncilHref,
+  getNewsHref,
+  getPracticeRoomHref,
+  parseTabSearchParam,
+} from "@/lib/dashboard-nav"
 import type { DockHighlightId } from "@/lib/dashboard-dock"
 import { useResearchLabEnabled } from "@/hooks/use-research-lab-enabled"
 import { SignalAlertsBell } from "@/components/tradingview/signal-alerts-bell"
@@ -245,6 +253,7 @@ export function DashboardHeader({
 
   const researchLabActive = pathname.startsWith("/research-lab")
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
+  const newsActive = pathname.startsWith("/news")
   const warRoomActive = pathname.startsWith("/war-room")
   const practiceRoomActive = pathname.startsWith("/practice-room")
   const councilActive = pathname.startsWith("/council")
@@ -378,6 +387,10 @@ export function DashboardHeader({
             <Link href="/trade-planner" className={vyronisNavLinkClass(plannerActive)}>
               <Calculator className="size-3.5" />
               Planner
+            </Link>
+            <Link href={getNewsHref()} className={vyronisNavLinkClass(newsActive)}>
+              <Newspaper className="size-3.5" />
+              News
             </Link>
           </div>
 

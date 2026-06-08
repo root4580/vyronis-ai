@@ -1,3 +1,4 @@
+import { formatCalendarError } from "@/lib/economic-calendar/calendar-errors"
 import { fetchForexFactoryCalendarWeek } from "@/lib/economic-calendar/faireconomy-client"
 import { normalizeForexFactoryEvents } from "@/lib/economic-calendar/normalize"
 import { refreshCalendarMinutes } from "@/lib/economic-calendar/refresh-snapshot"
@@ -7,17 +8,20 @@ export { refreshCalendarMinutes, getUpcomingHighImpactWithin } from "@/lib/econo
 
 type CacheEntry = {
   expiresAtMs: number
+  staleUntilMs: number
   payload: TodayCalendarResponse
 }
 
 let calendarCache: CacheEntry | null = null
-const CACHE_TTL_MS = 5 * 60_000
+const CACHE_TTL_MS = 15 * 60_000
+const STALE_CACHE_TTL_MS = 24 * 60 * 60_000
 
 function emptyResponse(setupMessage: string | null): TodayCalendarResponse {
   return {
     connected: false,
     fetchedAt: new Date().toISOString(),
     setupMessage,
+    stale: false,
     events: [],
     nextHighImpact: null,
     nextEvent: null,
@@ -38,6 +42,7 @@ export async function getTodayCalendarSnapshot(now = new Date()): Promise<TodayC
         connected: true,
         fetchedAt: now.toISOString(),
         setupMessage: null,
+        stale: false,
         events,
         nextHighImpact: null,
         nextEvent: null,
@@ -48,14 +53,24 @@ export async function getTodayCalendarSnapshot(now = new Date()): Promise<TodayC
 
     calendarCache = {
       expiresAtMs: now.getTime() + CACHE_TTL_MS,
+      staleUntilMs: now.getTime() + STALE_CACHE_TTL_MS,
       payload,
     }
 
     return payload
   } catch (error) {
-    return {
-      ...emptyResponse(error instanceof Error ? error.message : "Failed to load economic calendar."),
-      connected: false,
+    if (calendarCache && calendarCache.staleUntilMs > now.getTime()) {
+      return refreshCalendarMinutes(
+        {
+          ...calendarCache.payload,
+          connected: true,
+          stale: true,
+          setupMessage: formatCalendarError(error),
+        },
+        now,
+      )
     }
+
+    return emptyResponse(formatCalendarError(error))
   }
 }

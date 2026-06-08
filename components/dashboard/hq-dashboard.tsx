@@ -29,6 +29,7 @@ import { TradingRulesDashboardCard } from "@/components/dashboard/trading-rules-
 import { fetchWeeklyChapterDashboard } from "@/lib/weekly-chapters/api-client"
 import { WeeklyChapterSystem } from "@/components/weekly-chapters/weekly-chapter-system"
 import { ForexSessionsWidget } from "@/components/dashboard/forex-sessions-widget"
+import { EconomicNewsPreview } from "@/components/economic-calendar/economic-news-preview"
 import type { TradingAccountRecord } from "@/lib/accounts/types"
 import type { UserSettingsForm } from "@/lib/user-settings"
 import type { TradingRulesSnapshot } from "@/lib/trading-rules/types"
@@ -225,7 +226,6 @@ export function HqDashboard({
 
   const watchlistReady = isWatchlistComplete(weekPlan)
   const showCoachNudge = !coachNudgeDismissed && !watchlistReady
-
   const recentTrades = useMemo(() => {
     return [...trades]
       .sort((a, b) => (b.trade_date ?? b.created_at).localeCompare(a.trade_date ?? a.created_at))
@@ -241,6 +241,8 @@ export function HqDashboard({
 
   return (
     <div className={cn("space-y-5", className)}>
+      <EconomicNewsPreview />
+
       <AccountStatusCard
         trades={trades}
         account={activeAccount}
