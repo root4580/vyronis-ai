@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, CheckCircle2, Target, Timer } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Target, Timer } from "lucide-react"
 import type { CoachExecutionVerdict } from "@/lib/coach/coach-execution-verdict"
 import { cn } from "@/lib/utils"
 
@@ -25,11 +25,27 @@ function setupGradeTone(grade: string) {
   return "text-loss"
 }
 
+function RuleStatusIcon({ passed }: { passed: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-[1.25rem] justify-center text-[12px] font-bold",
+        passed ? "text-profit" : "text-loss",
+      )}
+      aria-hidden
+    >
+      {passed ? "✅" : "❌"}
+    </span>
+  )
+}
+
 export function CoachExecutionVerdictPanel({
   verdict,
   className,
   compact = false,
 }: CoachExecutionVerdictPanelProps) {
+  const { entryGate } = verdict
+
   return (
     <div className={cn("space-y-3", className)}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -55,25 +71,61 @@ export function CoachExecutionVerdictPanel({
           <div className="flex items-center gap-2">
             <Timer className="size-3.5 text-warning-foreground" />
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-              Entry Readiness
+              Entry Status
             </p>
           </div>
           <p
             className={cn(
               "mt-2 text-[13px] font-bold uppercase tracking-[0.08em]",
-              verdict.entryReadiness.status === "READY"
+              entryGate.entryStatus === "READY"
                 ? "text-profit"
-                : verdict.entryReadiness.status === "WAIT_FOR_CONFIRMATION"
-                  ? "text-warning-foreground"
-                  : "text-loss",
+                : "text-warning-foreground",
             )}
           >
-            {verdict.entryReadiness.headline}
+            {entryGate.entryStatus === "READY" ? "READY" : "WAIT"}
           </p>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-foreground/85">
-            {verdict.entryReadiness.summary}
+          <p className="mt-1.5 text-[11px] font-medium tabular-nums text-foreground/90">
+            {entryGate.progressLabel}
           </p>
+          {entryGate.blockMessage ? (
+            <p className="mt-1.5 text-[11px] leading-relaxed text-warning-foreground/95">
+              {entryGate.blockMessage}
+            </p>
+          ) : null}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.08] bg-black/20 px-3 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="size-3.5 text-cyan-glow" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+              Entry Gate
+            </p>
+          </div>
+          <span className="text-[10px] font-semibold tabular-nums text-foreground/85">
+            {entryGate.progressLabel}
+          </span>
+        </div>
+        <ul className="mt-2.5 space-y-1.5">
+          {entryGate.rules.map((rule) => (
+            <li
+              key={rule.id}
+              className="flex items-start gap-2 text-[11px] leading-snug text-foreground/88"
+            >
+              <RuleStatusIcon passed={rule.passed} />
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{rule.label}:</span>{" "}
+                {rule.passed ? "✅" : "❌"}
+                {!compact && rule.note ? (
+                  <span className="mt-0.5 block text-[10px] text-muted-foreground/70">
+                    {rule.note}
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div
@@ -86,6 +138,10 @@ export function CoachExecutionVerdictPanel({
           Final Verdict
         </p>
         <p className="mt-1 text-[15px] font-bold tracking-tight">{verdict.finalVerdictLabel}</p>
+        <p className="mt-1 text-[10px] font-medium tabular-nums opacity-90">
+          {verdict.setupQuality.grade} Setup ({verdict.setupQuality.score}/100) ·{" "}
+          {entryGate.progressLabel}
+        </p>
         <p className="mt-2 text-[11px] leading-relaxed opacity-95">{verdict.mentorLine}</p>
       </div>
 
@@ -95,7 +151,7 @@ export function CoachExecutionVerdictPanel({
             <div className="rounded-lg border border-profit/15 bg-profit/[0.04] px-3 py-2.5">
               <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-profit/85">
                 <CheckCircle2 className="size-3" />
-                What checks out
+                Rules passed
               </p>
               <ul className="mt-1.5 space-y-1">
                 {verdict.reasons.strengths.map((item) => (
@@ -111,7 +167,7 @@ export function CoachExecutionVerdictPanel({
             <div className="rounded-lg border border-warning/15 bg-warning/[0.04] px-3 py-2.5">
               <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-warning-foreground/85">
                 <AlertTriangle className="size-3" />
-                {verdict.finalVerdict === "SKIP_TRADE" ? "Why skip" : "Still waiting for"}
+                {verdict.finalVerdict === "SKIP_TRADE" ? "Why skip" : "Entry blocked"}
               </p>
               <ul className="mt-1.5 space-y-1">
                 {verdict.reasons.blockers.map((item) => (

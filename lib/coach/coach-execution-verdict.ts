@@ -1,3 +1,4 @@
+import { evaluateEntryGate, type EntryGateResult } from "@/lib/coach/entry-gate"
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
 import type { PrecisionFlowResult } from "@/lib/coach/precision-flow-engine"
 import type { StrategyPlaybookMatchResult } from "@/lib/strategy/types"
@@ -13,6 +14,7 @@ export type CoachExecutionVerdict = {
     score: number
     summary: string
   }
+  entryGate: EntryGateResult
   entryReadiness: {
     status: CoachEntryReadinessStatus
     headline: string
@@ -28,8 +30,6 @@ export type CoachExecutionVerdict = {
   }
 }
 
-const ENTRY_CONFIRMATION_GATE = 70
-const M15_ENTRY_GATE = 70
 const SETUP_QUALITY_SKIP_THRESHOLD = 40
 
 export function setupQualityGradeFromScore(score: number): string {
@@ -56,96 +56,25 @@ function resolveSetupQualityScore(input: {
   return 0
 }
 
-function collectEntryBlockers(input: {
-  context?: PreTradePlannedContext | null
-  playbook?: StrategyPlaybookMatchResult | null
-  mtf?: MtfAnalysisResult | null
-  precisionFlow?: PrecisionFlowResult | null
-}): string[] {
-  const blockers: string[] = []
-  const { playbook, mtf, precisionFlow } = input
-
-  if (playbook?.missingConfirmations?.length) {
-    blockers.push(...playbook.missingConfirmations)
-  }
-
-  const detections = playbook?.detections
-  if (detections?.beforeConfirmationClose) {
-    blockers.push("M15 confirmation candle has not closed yet")
-  }
-  if (detections?.earlyEntry) {
-    blockers.push("Possible early entry before H1 setup completed")
-  }
-  if (detections?.noLiquidityConfirmation) {
-    blockers.push("Liquidity sweep / confirmation not verified")
-  }
-  if (detections?.overextendedEntry) {
-    blockers.push("Entry reads overextended — wait for retest")
-  }
-
-  if (mtf) {
-    if (mtf.entry.entryConfirmationScore < ENTRY_CONFIRMATION_GATE) {
-      blockers.push(
-        `Entry confirmation ${mtf.entry.entryConfirmationScore}/100 — trigger incomplete`,
-      )
-    }
-    if (mtf.entry.m15EntryQuality < M15_ENTRY_GATE) {
-      blockers.push(`M15 entry quality ${mtf.entry.m15EntryQuality}/100 — below entry gate`)
-    }
-    for (const warning of mtf.entry.entryWarnings.slice(0, 3)) {
-      blockers.push(warning)
-    }
-  }
-
-  if (precisionFlow) {
-    for (const rule of precisionFlow.rules) {
-      if (
-        (rule.id === "confirmation" || rule.id === "entry_quality") &&
-        !rule.passed
-      ) {
-        blockers.push(rule.note)
-      }
-    }
-  }
-
-  const signal = input.context?.confirmation_signal?.trim()
-  if (!signal && mtf && mtf.entry.entryConfirmationScore < ENTRY_CONFIRMATION_GATE) {
-    blockers.push("No CHoCH, BOS, engulfing, or break & retest confirmation logged")
-  }
-
-  return [...new Set(blockers)].slice(0, 8)
-}
-
 function collectSetupStrengths(input: {
+  entryGate: EntryGateResult
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
-  precisionFlow?: PrecisionFlowResult | null
 }): string[] {
   const strengths: string[] = []
 
+  for (const rule of input.entryGate.rules) {
+    if (rule.passed) {
+      strengths.push(`${rule.label}: ${rule.note}`)
+    }
+  }
+
   if (input.playbook?.rulesPassed?.length) {
-    strengths.push(...input.playbook.rulesPassed.slice(0, 4))
+    strengths.push(...input.playbook.rulesPassed.slice(0, 2))
   }
 
-  if (input.mtf) {
-    if (input.mtf.bias.biasAlignmentScore >= 70 && input.mtf.bias.overallBias !== "mixed") {
-      strengths.push(`HTF bias aligned (${input.mtf.bias.overallBias})`)
-    }
-    if (input.mtf.entry.h1SetupQuality >= 70) {
-      strengths.push("H1 structure is clean")
-    }
+  if (input.mtf?.entry.entryStrengths?.length) {
     strengths.push(...input.mtf.entry.entryStrengths.slice(0, 2))
-  }
-
-  if (input.precisionFlow) {
-    for (const rule of input.precisionFlow.rules) {
-      if (
-        (rule.id === "htf_bias" || rule.id === "aoi" || rule.id === "risk_reward") &&
-        rule.passed
-      ) {
-        strengths.push(rule.note)
-      }
-    }
   }
 
   return [...new Set(strengths)].slice(0, 6)
@@ -161,9 +90,6 @@ function collectSkipReasons(input: {
   if (input.playbook?.violations?.length) {
     reasons.push(...input.playbook.violations.slice(0, 4))
   }
-  if (input.playbook?.rulesFailed?.length) {
-    reasons.push(...input.playbook.rulesFailed.slice(0, 3))
-  }
 
   const detections = input.playbook?.detections
   if (detections?.countertrend) reasons.push("Counter-trend vs HTF bias")
@@ -177,10 +103,7 @@ function collectSkipReasons(input: {
 
   if (input.precisionFlow?.verdict === "SKIP") {
     for (const rule of input.precisionFlow.rules) {
-      if (
-        !rule.passed &&
-        (rule.id === "emotion_gate" || rule.id === "htf_bias" || rule.id === "risk_reward")
-      ) {
+      if (!rule.passed && rule.id === "emotion_gate") {
         reasons.push(rule.note)
       }
     }
@@ -194,42 +117,42 @@ function shouldSkipTrade(input: {
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
   precisionFlow?: PrecisionFlowResult | null
+  entryGate: EntryGateResult
 }): boolean {
   const skipReasons = collectSkipReasons(input)
   const detections = input.playbook?.detections
 
-  if (input.playbook?.recommendation === "SKIP" && skipReasons.length >= 2) return true
-  if (input.precisionFlow?.verdict === "SKIP" && skipReasons.length > 0) return true
-  if (detections?.countertrend && detections.revengeEntry) return true
-  if (detections?.htfConflict && input.setupScore < 55) return true
   if (input.setupScore < SETUP_QUALITY_SKIP_THRESHOLD) return true
+  if (detections?.countertrend && detections.revengeEntry) return true
+  if (input.precisionFlow?.verdict === "SKIP" && skipReasons.length > 0) return true
+  if (input.playbook?.recommendation === "SKIP" && skipReasons.length >= 2) return true
   if (
     input.mtf?.bias.overallBias === "mixed" &&
-    (input.mtf.entry.entryConfirmationScore ?? 0) < 50
+    input.entryGate.rulesPassed <= 2
   ) {
     return true
   }
 
-  return skipReasons.length >= 3
+  return skipReasons.length >= 4
 }
 
-function buildMentorLine(
-  grade: string,
-  finalVerdict: CoachFinalVerdict,
-  blockers: string[],
-): string {
-  if (finalVerdict === "A_PLUS_READY") {
-    return "All rules satisfied — this is an A+ setup and an A+ entry."
+function buildMentorLine(input: {
+  grade: string
+  finalVerdict: CoachFinalVerdict
+  entryGate: EntryGateResult
+}): string {
+  if (input.finalVerdict === "A_PLUS_READY") {
+    return `${input.entryGate.progressLabel}. All entry gate rules satisfied.`
   }
-  if (finalVerdict === "WAIT_FOR_CONFIRMATION") {
+  if (input.finalVerdict === "WAIT_FOR_CONFIRMATION") {
     const quality =
-      grade === "A+" || grade === "A"
-        ? `This is an ${grade} setup, but not an ${grade} entry yet.`
-        : "The idea has merit, but entry triggers are still incomplete."
-    const waitFor = blockers[0] ? ` Wait for: ${blockers[0].replace(/\.$/, "")}.` : ""
-    return `${quality}${waitFor}`
+      input.grade === "A+" || input.grade === "A"
+        ? `This is an ${input.grade} setup (${input.entryGate.progressLabel}).`
+        : `${input.entryGate.progressLabel}.`
+    const block = input.entryGate.blockMessage ?? "Entry gate incomplete."
+    return `${quality} ${block}`
   }
-  return "Playbook rules or setup quality are not there — skip and protect the chapter."
+  return "Playbook rules violated or setup quality too low — skip and protect the chapter."
 }
 
 export function resolveCoachExecutionVerdict(input: {
@@ -242,20 +165,15 @@ export function resolveCoachExecutionVerdict(input: {
   const playbook =
     input.playbook ?? input.context?.playbook_match ?? mtf?.playbookMatch ?? null
 
+  const entryGate = evaluateEntryGate({ context: input.context, playbook, mtf })
   const setupScore = resolveSetupQualityScore({ playbook, mtf })
   const grade = setupQualityGradeFromScore(setupScore)
-  const entryBlockers = collectEntryBlockers({
-    context: input.context,
-    playbook,
-    mtf,
-    precisionFlow: input.precisionFlow,
-  })
-  const strengths = collectSetupStrengths({ playbook, mtf, precisionFlow: input.precisionFlow })
   const skipReasons = collectSkipReasons({
     playbook,
     mtf,
     precisionFlow: input.precisionFlow,
   })
+  const strengths = collectSetupStrengths({ entryGate, playbook, mtf })
 
   const setupSummary =
     setupScore >= 85
@@ -264,26 +182,34 @@ export function resolveCoachExecutionVerdict(input: {
         ? "Structure is developing — idea is acceptable but not elite."
         : "Setup quality is below your usual bar."
 
+  const skip = shouldSkipTrade({
+    setupScore,
+    playbook,
+    mtf,
+    precisionFlow: input.precisionFlow,
+    entryGate,
+  })
+
   let finalVerdict: CoachFinalVerdict
   let entryStatus: CoachEntryReadinessStatus
   let entryHeadline: string
   let entrySummary: string
 
-  if (shouldSkipTrade({ setupScore, playbook, mtf, precisionFlow: input.precisionFlow })) {
+  if (skip) {
     finalVerdict = "SKIP_TRADE"
     entryStatus = "NOT_READY"
     entryHeadline = "NOT READY"
-    entrySummary = "Playbook rules violated or setup quality too low."
-  } else if (entryBlockers.length > 0) {
+    entrySummary = skipReasons[0] ?? "Playbook rules violated or setup quality too low."
+  } else if (entryGate.entryStatus === "WAIT") {
     finalVerdict = "WAIT_FOR_CONFIRMATION"
     entryStatus = "WAIT_FOR_CONFIRMATION"
-    entryHeadline = "WAIT FOR CONFIRMATION"
-    entrySummary = entryBlockers[0] ?? "One or more entry triggers are incomplete."
+    entryHeadline = "WAIT"
+    entrySummary = entryGate.blockMessage ?? "One or more entry gate rules failed."
   } else {
     finalVerdict = "A_PLUS_READY"
     entryStatus = "READY"
     entryHeadline = "ENTRY READY"
-    entrySummary = "All required confirmations are in place."
+    entrySummary = entryGate.progressLabel
   }
 
   const finalVerdictLabel =
@@ -295,8 +221,11 @@ export function resolveCoachExecutionVerdict(input: {
 
   const blockers =
     finalVerdict === "SKIP_TRADE"
-      ? [...skipReasons, ...entryBlockers].slice(0, 6)
-      : entryBlockers
+      ? [
+          ...skipReasons,
+          ...entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`),
+        ].slice(0, 6)
+      : entryGate.failedRules.map((rule) => `${rule.label} = ❌ — ${rule.note}`)
 
   return {
     setupQuality: {
@@ -304,6 +233,7 @@ export function resolveCoachExecutionVerdict(input: {
       score: setupScore,
       summary: setupSummary,
     },
+    entryGate,
     entryReadiness: {
       status: entryStatus,
       headline: entryHeadline,
@@ -312,7 +242,7 @@ export function resolveCoachExecutionVerdict(input: {
     },
     finalVerdict,
     finalVerdictLabel,
-    mentorLine: buildMentorLine(grade, finalVerdict, entryBlockers),
+    mentorLine: buildMentorLine({ grade, finalVerdict, entryGate }),
     reasons: {
       strengths,
       blockers,
