@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Brain, ChevronDown, ClipboardList, Eye, Loader2, Send, Sparkles, X } from "lucide-react"
+import { Brain, ClipboardList, Eye, Loader2, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CoachWatchlistPairSelect } from "@/components/dashboard/coach-watchlist-pair-select"
+import { CoachCollapsibleSection } from "@/components/dashboard/coach-collapsible-section"
 import { CoachExecutionVerdictPanel } from "@/components/dashboard/coach-execution-verdict-panel"
 import { CoachVerdictBadge } from "@/components/dashboard/coach-verdict-badge"
 import { VyronisCoachAnalysisPanel } from "@/components/dashboard/vyronis-coach-analysis-panel"
@@ -964,61 +965,61 @@ export function TradeCoachPanel({
               {session?.planned_context?.signal_source === "tradingview" ? (
                 <TradingViewAlertCoachSummary plannedContext={session.planned_context} />
               ) : null}
-              {mtfAnalysis && workflowPhase !== "upload" && collapseMtfForCheckIn ? (
-                <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-medium text-text-muted">
-                        Analysis complete
-                      </p>
-                      <p className="mt-0.5 truncate text-[12px] font-medium text-foreground/90">
-                        {mtfAnalysis.overallScore}/100 · {mtfAnalysis.recommendation} · scroll down for check-in
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 shrink-0 border-white/[0.1] text-[11px]"
-                      onClick={() => setMtfDetailsOpen(true)}
-                    >
-                      Details
-                      <ChevronDown className="ml-1 size-3.5" />
-                    </Button>
-                  </div>
-                </DashboardInsetPanel>
-              ) : null}
-              {mtfAnalysis && !collapseMtfForCheckIn ? (
-                <MtfAnalysisPanel
-                  analysis={mtfAnalysis}
-                  session={session}
-                  compact={workflowPhase === "questions"}
-                  onOpenChart={({ url, title, timeframe }) => {
-                    setChartViewer({
-                      url,
-                      title,
-                      annotations: resolveChartAnnotationsForTimeframe({
-                        session,
-                        analysis: mtfAnalysis,
-                        timeframe,
-                      }),
-                    })
-                  }}
-                />
-              ) : null}
-
-              {coachExecutionVerdict && workflowPhase !== "upload" && !collapseMtfForCheckIn ? (
-                <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.04] px-3 py-3">
+              {coachExecutionVerdict && workflowPhase !== "upload" ? (
+                <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.05] px-3 py-3">
                   <CoachExecutionVerdictPanel verdict={coachExecutionVerdict} />
                 </DashboardInsetPanel>
               ) : null}
 
-              {playbookMatch && workflowPhase !== "upload" && !collapseMtfForCheckIn && (
-                <StrategyPlaybookMatchPanel
-                  match={playbookMatch}
-                  compact={workflowPhase === "questions"}
+              {mtfAnalysis && session && workflowPhase !== "upload" ? (
+                <CoachChartOverlayStrip
+                  session={session}
+                  analysis={mtfAnalysis}
+                  compact={collapseMtfForCheckIn}
+                  onOpenChart={(chart) => setChartViewer(chart)}
                 />
-              )}
+              ) : null}
+
+              {mtfAnalysis && workflowPhase !== "upload" && collapseMtfForCheckIn ? (
+                <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.03] px-3 py-2.5">
+                  <p className="text-[10px] font-medium text-text-muted">Check-in below</p>
+                  <p className="mt-0.5 text-[12px] font-medium text-foreground/90">
+                    {mtfAnalysis.overallScore}/100 chart read · answer quick questions to finish
+                  </p>
+                </DashboardInsetPanel>
+              ) : null}
+
+              {mtfAnalysis && workflowPhase !== "upload" && !collapseMtfForCheckIn ? (
+                <CoachCollapsibleSection
+                  title="Detailed coach explanation"
+                  subtitle={`${mtfAnalysis.overallScore}/100 · ${mtfAnalysis.recommendation}${
+                    playbookMatch?.setupGrade ? ` · ${playbookMatch.setupGrade} setup` : ""
+                  }`}
+                >
+                  <MtfAnalysisPanel
+                    analysis={mtfAnalysis}
+                    session={session}
+                    hideChartOverlays
+                    onOpenChart={({ url, title, timeframe }) => {
+                      setChartViewer({
+                        url,
+                        title,
+                        annotations: resolveChartAnnotationsForTimeframe({
+                          session,
+                          analysis: mtfAnalysis,
+                          timeframe,
+                        }),
+                      })
+                    }}
+                  />
+                  {vyronisCoach ? (
+                    <VyronisCoachAnalysisPanel coach={vyronisCoach} />
+                  ) : null}
+                  {playbookMatch ? (
+                    <StrategyPlaybookMatchPanel match={playbookMatch} />
+                  ) : null}
+                </CoachCollapsibleSection>
+              ) : null}
 
               {visibleCoachMessages.map((message) => (
                 <CoachBubble key={message.id} message={message} />
@@ -1064,21 +1065,6 @@ export function TradeCoachPanel({
         >
           {isComplete ? (
             <div className="space-y-3">
-              {coachExecutionVerdict ? (
-                <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.05] px-3 py-3">
-                  <CoachExecutionVerdictPanel verdict={coachExecutionVerdict} />
-                </DashboardInsetPanel>
-              ) : null}
-
-              {mtfAnalysis && session && (
-                <CoachChartOverlayStrip
-                  session={session}
-                  analysis={mtfAnalysis}
-                  compact
-                  onOpenChart={(chart) => setChartViewer(chart)}
-                />
-              )}
-
               {tradeQuality && !embedded ? (
                 <TradeQualityPanel
                   quality={tradeQuality}
@@ -1130,12 +1116,11 @@ export function TradeCoachPanel({
                         <p className="text-[12px] font-medium text-foreground/90">Pre-trade plan saved</p>
                         {coachExecutionVerdict ? (
                           <p className="text-[11px] font-medium text-foreground/85">
-                            {coachExecutionVerdict.mentorLine}
+                            {coachExecutionVerdict.finalVerdictLabel}
                           </p>
                         ) : mtfAnalysis ? (
                           <p className="text-[11px] font-medium text-foreground/85">
-                            Chart read {mtfAnalysis.overallScore}/100 — entry confirm{" "}
-                            {mtfAnalysis.entry.entryConfirmationScore}/100
+                            Chart read {mtfAnalysis.overallScore}/100
                           </p>
                         ) : null}
                         {coachAnalysis && !tradeQuality && shouldTakeLabel && (
@@ -1266,27 +1251,46 @@ export function TradeCoachPanel({
                   </p>
                 </div>
               )}
+              {analysisHasRun && coachExecutionVerdict ? (
+                <DashboardInsetPanel className="border-cyan-glow/25 bg-cyan-glow/[0.05] px-3 py-3">
+                  <CoachExecutionVerdictPanel verdict={coachExecutionVerdict} />
+                </DashboardInsetPanel>
+              ) : null}
               {analysisHasRun && mtfAnalysis ? (
-                <MtfAnalysisPanel
-                  analysis={mtfAnalysis}
+                <CoachChartOverlayStrip
                   session={session}
-                  onOpenChart={({ url, title, timeframe }) => {
-                    setChartViewer({
-                      url,
-                      title,
-                      annotations: resolveChartAnnotationsForTimeframe({
-                        session,
-                        analysis: mtfAnalysis,
-                        timeframe,
-                      }),
-                    })
-                  }}
+                  analysis={mtfAnalysis}
+                  onOpenChart={(chart) => setChartViewer(chart)}
                 />
+              ) : null}
+              {analysisHasRun && mtfAnalysis ? (
+                <CoachCollapsibleSection
+                  title="Detailed coach explanation"
+                  subtitle={`${mtfAnalysis.overallScore}/100 · ${mtfAnalysis.recommendation}${
+                    playbookMatch?.setupGrade ? ` · ${playbookMatch.setupGrade} setup` : ""
+                  }`}
+                >
+                  <MtfAnalysisPanel
+                    analysis={mtfAnalysis}
+                    session={session}
+                    hideChartOverlays
+                    onOpenChart={({ url, title, timeframe }) => {
+                      setChartViewer({
+                        url,
+                        title,
+                        annotations: resolveChartAnnotationsForTimeframe({
+                          session,
+                          analysis: mtfAnalysis,
+                          timeframe,
+                        }),
+                      })
+                    }}
+                  />
+                  {vyronisCoach ? <VyronisCoachAnalysisPanel coach={vyronisCoach} /> : null}
+                  {playbookMatch ? <StrategyPlaybookMatchPanel match={playbookMatch} /> : null}
+                </CoachCollapsibleSection>
               ) : analysisHasRun && vyronisCoach ? (
-                <VyronisCoachAnalysisPanel
-                  coach={vyronisCoach}
-                  executionVerdict={coachExecutionVerdict}
-                />
+                <VyronisCoachAnalysisPanel coach={vyronisCoach} />
               ) : analysisHasRun && coachAnalysis ? (
                 <CoachVerdictBadge
                   recommendation={mtfAnalysis?.recommendation}

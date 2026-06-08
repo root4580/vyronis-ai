@@ -18,6 +18,7 @@ type MtfAnalysisPanelProps = {
   analysis: MtfAnalysisResult
   session?: TradeCoachSessionWithMessages | null
   compact?: boolean
+  hideChartOverlays?: boolean
   onOpenChart?: (input: {
     url: string
     title: string
@@ -45,6 +46,7 @@ export function MtfAnalysisPanel({
   analysis,
   session,
   compact = false,
+  hideChartOverlays = false,
   onOpenChart,
 }: MtfAnalysisPanelProps) {
   const { bias, entry } = analysis
@@ -100,7 +102,7 @@ export function MtfAnalysisPanel({
 
       <p className="text-[11px] leading-relaxed text-muted-foreground/80">{analysis.summary}</p>
 
-      {!compact && chartCards.length > 0 && (
+      {!compact && !hideChartOverlays && chartCards.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-cyan-glow/85">

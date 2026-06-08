@@ -1,28 +1,16 @@
 "use client"
 
-import type { CoachExecutionVerdict } from "@/lib/coach/coach-execution-verdict"
 import type { VyronisCoachResponse } from "@/lib/coach/vyronis-coach-response"
-import { CoachExecutionVerdictPanel } from "@/components/dashboard/coach-execution-verdict-panel"
 import { cn } from "@/lib/utils"
 
 type VyronisCoachAnalysisPanelProps = {
   coach: VyronisCoachResponse
-  executionVerdict?: CoachExecutionVerdict | null
   className?: string
 }
 
-export function VyronisCoachAnalysisPanel({
-  coach,
-  executionVerdict,
-  className,
-}: VyronisCoachAnalysisPanelProps) {
-  if (!executionVerdict && !coach.execution_verdict) return null
-  const resolvedVerdict = executionVerdict ?? coach.execution_verdict!
-
+export function VyronisCoachAnalysisPanel({ coach, className }: VyronisCoachAnalysisPanelProps) {
   return (
     <div className={cn("space-y-3", className)}>
-      <CoachExecutionVerdictPanel verdict={resolvedVerdict} />
-
       <div className="grid grid-cols-3 gap-2 text-center text-[10px] tabular-nums">
         <div className="rounded-lg border border-white/[0.08] bg-black/20 px-2 py-2">
           <p className="text-muted-foreground/60">Setup</p>
