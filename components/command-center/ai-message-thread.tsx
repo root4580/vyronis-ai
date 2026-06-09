@@ -201,20 +201,44 @@ function VerdictReasoningPanel({ reasoning }: { reasoning: VerdictReasoning }) {
   return <SessionGuardVerdictCard reasoning={reasoning} />
 }
 
+function resolveMoodAtAnalysis(payload: Record<string, unknown>): string | null | undefined {
+  if (!("sessionMoodAtAnalysis" in payload)) return undefined
+  const raw = payload.sessionMoodAtAnalysis
+  return typeof raw === "string" ? raw.trim() || null : null
+}
+
+function canShowTraderVerdictCard(input: {
+  verdictReasoning?: VerdictReasoning | null
+  sessionMoodComplete: boolean
+  moodAtAnalysis?: string | null
+}): boolean {
+  if (!input.verdictReasoning || !input.sessionMoodComplete) return false
+  if (input.moodAtAnalysis === undefined) return false
+  return Boolean(input.moodAtAnalysis?.trim())
+}
+
 function ChartReviewBody({
   content,
   stream,
   onStreamComplete,
   verdictReasoning,
   sessionMoodComplete = true,
+  moodAtAnalysis,
 }: {
   content: string
   stream?: boolean
   onStreamComplete?: () => void
   verdictReasoning?: VerdictReasoning | null
   sessionMoodComplete?: boolean
+  moodAtAnalysis?: string | null
 }) {
-  const showVerdict = Boolean(verdictReasoning && sessionMoodComplete)
+  const showVerdict = canShowTraderVerdictCard({
+    verdictReasoning,
+    sessionMoodComplete,
+    moodAtAnalysis,
+  })
+  const legacyAnalysisWithoutMood =
+    Boolean(verdictReasoning) && moodAtAnalysis === undefined
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const { narrative, footer } = splitChartReviewContent(content)
   const footerParts = footer ? splitChartReviewFooter(footer) : null
@@ -224,9 +248,11 @@ function ChartReviewBody({
 
   return (
     <div className="space-y-2">
-      {verdictReasoning && !sessionMoodComplete ? (
+      {(legacyAnalysisWithoutMood || (verdictReasoning && !sessionMoodComplete)) ? (
         <p className="rounded-lg border border-cyan-glow/20 bg-cyan-glow/[0.06] px-2.5 py-2 text-[11px] leading-snug text-foreground/85">
-          Trader state is hidden until you complete today&apos;s mood check-in above.
+          {legacyAnalysisWithoutMood
+            ? "This analysis predates today's mood check-in — save your mood below and re-upload charts for a fair trader state score."
+            : "Trader state is hidden until you complete today's mood check-in below."}
         </p>
       ) : null}
       {showVerdict && verdictReasoning ? (
@@ -336,6 +362,7 @@ function AssistantBubble({
       : null
   const verdictReasoning =
     decision?.weightedConfidence?.verdictReasoning ?? null
+  const moodAtAnalysis = resolveMoodAtAnalysis(message.payload)
 
   return (
     <div
@@ -368,12 +395,14 @@ function AssistantBubble({
             onStreamComplete={onStreamComplete}
             verdictReasoning={verdictReasoning}
             sessionMoodComplete={sessionMoodComplete}
+            moodAtAnalysis={moodAtAnalysis}
           />
         ) : (
           <ChartReviewBody
             content={message.content}
             verdictReasoning={verdictReasoning}
             sessionMoodComplete={sessionMoodComplete}
+            moodAtAnalysis={moodAtAnalysis}
           />
         )
       ) : (

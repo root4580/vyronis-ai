@@ -446,11 +446,8 @@ function applySessionMoodToContext(
   }
 }
 
-function resolveSessionMood(
-  inputMood: string | null | undefined,
-  context: FullTraderContext,
-): string | null {
-  return inputMood?.trim() || context.activePlannedContext?.emotion?.trim() || null
+function resolveSessionMood(inputMood: string | null | undefined): string | null {
+  return inputMood?.trim() || null
 }
 
 export async function postCommandCenterChat(
@@ -503,7 +500,7 @@ export async function postCommandCenterChat(
   })
   fullContext = applySessionMoodToContext(fullContext, input.sessionMood)
 
-  const sessionMood = resolveSessionMood(input.sessionMood, fullContext)
+  const sessionMood = resolveSessionMood(input.sessionMood)
   if (imageUrls.length > 0 && !hasSessionMoodCheckIn(sessionMood)) {
     const userMessage = await insertMessage(supabase, {
       userId,
@@ -608,6 +605,7 @@ export async function postCommandCenterChat(
       isCriticalHighlight: dialogue.isCriticalHighlight,
       intent: dialogue.intent,
       decision: dialogue.decision,
+      sessionMoodAtAnalysis: chartVision ? sessionMood : null,
       imageUrl: chartVision?.imageUrl,
       imageUrls: chartVision?.imageUrls,
       analysisKind: chartVision?.bundle ? "timeframe_bundle" : chartVision?.imageUrl ? "single_chart" : undefined,

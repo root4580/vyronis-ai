@@ -103,9 +103,6 @@ export function CompanionMode() {
           }}
         />
       )}
-      {!viewingArchivedSession && !sessionMoodComplete ? (
-        <CompanionMoodCheckIn onSubmit={saveSessionMood} />
-      ) : null}
       <AiMessageThread
         messages={context.messages}
         isThinking={isThinking}
@@ -165,6 +162,11 @@ export function CompanionMode() {
       ) : null}
 
       <div className="command-center-compose-footer shrink-0">
+        {!viewingArchivedSession && !sessionMoodComplete ? (
+          <div className="mb-2">
+            <CompanionMoodCheckIn onSubmit={saveSessionMood} compact />
+          </div>
+        ) : null}
         {showQuickPrompts ? (
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {quickPrompts.map((prompt) => (

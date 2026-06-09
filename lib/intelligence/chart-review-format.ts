@@ -10,6 +10,7 @@ import {
 import { filterFreshWarnings } from "@/lib/intelligence/conversation-continuity"
 import { computeWeightedConfidence } from "@/lib/intelligence/weighted-confidence-engine"
 import type { VerdictReasoning } from "@/lib/intelligence/verdict-reasoning-engine"
+import { countTradesThisWeek } from "@/lib/user-settings"
 import { evaluateTradeDecision } from "@/lib/intelligence/trade-decision-engine"
 import type {
   FullTraderContext,
@@ -135,14 +136,37 @@ export function evaluateChartReviewDecision(input: {
     buildSimilarTradeMemoryLine(input.context, input.chartVision),
   ].filter(Boolean) as string[]
 
+  let recommendation = weighted.verdict
+  let weightedConfidence = weighted
+  const weekTrades = countTradesThisWeek(input.context.recentTrades)
+  const hasExplicitMood = Boolean(input.context.activePlannedContext?.emotion?.trim())
+  const historyOnlyPsych =
+    weekTrades === 0 &&
+    !hasExplicitMood &&
+    weighted.verdictReasoning.psychologyOverride &&
+    weighted.verdict === "SKIP"
+
+  if (historyOnlyPsych || (weekTrades === 0 && !hasExplicitMood && recommendation === "SKIP")) {
+    recommendation = "CAUTION"
+    weightedConfidence = {
+      ...weighted,
+      verdict: "CAUTION",
+      verdictReasoning: {
+        ...weighted.verdictReasoning,
+        verdict: "CAUTION",
+        psychologyOverride: false,
+      },
+    }
+  }
+
   return {
-    recommendation: weighted.verdict,
-    confidence: weighted.score,
+    recommendation,
+    confidence: weightedConfidence.score,
     evidence: [...new Set(evidence)].slice(0, 5),
-    nextQuestion: weighted.waitFor,
+    nextQuestion: weightedConfidence.waitFor,
     similarity: base?.similarity,
-    weightedConfidence: weighted,
-    psychWarning: weighted.psychWarning,
+    weightedConfidence,
+    psychWarning: weightedConfidence.psychWarning,
   }
 }
 
