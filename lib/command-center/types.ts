@@ -68,6 +68,8 @@ export type CommandCenterChatSendInput = {
   imageUrls?: string[] | null
   mode?: CommandCenterMode
   focusId?: string | null
+  /** Today's mood check-in — required before chart verdicts use trader state. */
+  sessionMood?: string | null
 }
 
 export type CommandCenterContext = {

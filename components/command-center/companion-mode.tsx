@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { CompanionContextStrip } from "@/components/command-center/companion-context-strip"
+import { CompanionMoodCheckIn } from "@/components/command-center/companion-mood-check-in"
 import { AiMessageThread } from "@/components/command-center/ai-message-thread"
 import { CommandCenterInput } from "@/components/command-center/command-center-input"
 import { useAIContext } from "@/providers/ai-context-provider"
@@ -43,6 +44,8 @@ export function CompanionMode() {
     viewingArchivedSession,
     startNewSession,
     coachPlannedContext,
+    sessionMoodComplete,
+    saveSessionMood,
   } = useAIContext()
 
   const [plansExpanded, setPlansExpanded] = useState(false)
@@ -100,12 +103,16 @@ export function CompanionMode() {
           }}
         />
       )}
+      {!viewingArchivedSession && !sessionMoodComplete ? (
+        <CompanionMoodCheckIn onSubmit={saveSessionMood} />
+      ) : null}
       <AiMessageThread
         messages={context.messages}
         isThinking={isThinking}
         thinkingPhases={thinkingPhases}
         streamingMessage={streamingMessage}
         onStreamComplete={clearStreamingMessage}
+        sessionMoodComplete={sessionMoodComplete}
         className="min-h-0 flex-1"
       />
 

@@ -26,6 +26,7 @@ type AiMessageThreadProps = {
   thinkingPhases?: string[]
   streamingMessage?: CommandCenterMessageRecord | null
   onStreamComplete?: () => void
+  sessionMoodComplete?: boolean
   className?: string
 }
 
@@ -205,22 +206,30 @@ function ChartReviewBody({
   stream,
   onStreamComplete,
   verdictReasoning,
+  sessionMoodComplete = true,
 }: {
   content: string
   stream?: boolean
   onStreamComplete?: () => void
   verdictReasoning?: VerdictReasoning | null
+  sessionMoodComplete?: boolean
 }) {
+  const showVerdict = Boolean(verdictReasoning && sessionMoodComplete)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const { narrative, footer } = splitChartReviewContent(content)
   const footerParts = footer ? splitChartReviewFooter(footer) : null
   const trimmedNarrative = narrative.trim()
   const collapseNarrative =
-    Boolean(verdictReasoning) && trimmedNarrative.length > 120 && !analysisOpen
+    showVerdict && trimmedNarrative.length > 120 && !analysisOpen
 
   return (
     <div className="space-y-2">
-      {verdictReasoning ? (
+      {verdictReasoning && !sessionMoodComplete ? (
+        <p className="rounded-lg border border-cyan-glow/20 bg-cyan-glow/[0.06] px-2.5 py-2 text-[11px] leading-snug text-foreground/85">
+          Trader state is hidden until you complete today&apos;s mood check-in above.
+        </p>
+      ) : null}
+      {showVerdict && verdictReasoning ? (
         <VerdictReasoningPanel reasoning={verdictReasoning} />
       ) : null}
       {trimmedNarrative ? (
@@ -307,10 +316,12 @@ function AssistantBubble({
   message,
   stream = false,
   onStreamComplete,
+  sessionMoodComplete = true,
 }: {
   message: CommandCenterMessageRecord
   stream?: boolean
   onStreamComplete?: () => void
+  sessionMoodComplete?: boolean
 }) {
   const state = stateFromPayload(message.payload)
   const isCritical = Boolean(message.payload.isCriticalHighlight) || message.message_type === "warning"
@@ -356,11 +367,13 @@ function AssistantBubble({
             stream
             onStreamComplete={onStreamComplete}
             verdictReasoning={verdictReasoning}
+            sessionMoodComplete={sessionMoodComplete}
           />
         ) : (
           <ChartReviewBody
             content={message.content}
             verdictReasoning={verdictReasoning}
+            sessionMoodComplete={sessionMoodComplete}
           />
         )
       ) : (
@@ -396,6 +409,7 @@ export function AiMessageThread({
   thinkingPhases = [],
   streamingMessage,
   onStreamComplete,
+  sessionMoodComplete = true,
   className,
 }: AiMessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -437,7 +451,11 @@ export function AiMessageThread({
                 group.role === "user" ? (
                   <UserBubble key={message.id} message={message} />
                 ) : (
-                  <AssistantBubble key={message.id} message={message} />
+                  <AssistantBubble
+                    key={message.id}
+                    message={message}
+                    sessionMoodComplete={sessionMoodComplete}
+                  />
                 ),
               )}
             </div>
@@ -451,7 +469,10 @@ export function AiMessageThread({
         <MessageHistoryToggle count={historyMessages.length} label="analyses">
           {historyMessages.map((message) => (
             <div key={message.id} className="flex justify-start">
-              <AssistantBubble message={message} />
+              <AssistantBubble
+                message={message}
+                sessionMoodComplete={sessionMoodComplete}
+              />
             </div>
           ))}
         </MessageHistoryToggle>
@@ -462,6 +483,7 @@ export function AiMessageThread({
               message={streamingMessage}
               stream
               onStreamComplete={onStreamComplete}
+              sessionMoodComplete={sessionMoodComplete}
             />
           </div>
         ) : null}

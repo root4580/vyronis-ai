@@ -12,7 +12,10 @@ import {
   inferMessageTone,
 } from "@/lib/intelligence/tone-memory-engine"
 import { syncAutonomousPersistence } from "@/lib/autonomous/server-service"
+import { hasSessionMoodCheckIn } from "@/lib/coach/session-mood-check-in"
 import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
+import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
+import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import {
   analyzeCommandCenterBundle,
   analyzeCommandCenterChart,
@@ -430,6 +433,26 @@ export async function getCommandCenterContext(
   }
 }
 
+function applySessionMoodToContext(
+  context: FullTraderContext,
+  sessionMood: string | null | undefined,
+): FullTraderContext {
+  const mood = sessionMood?.trim()
+  if (!mood) return context
+  const planned = context.activePlannedContext ?? buildEmptyPlannedContext()
+  return {
+    ...context,
+    activePlannedContext: { ...planned, emotion: mood },
+  }
+}
+
+function resolveSessionMood(
+  inputMood: string | null | undefined,
+  context: FullTraderContext,
+): string | null {
+  return inputMood?.trim() || context.activePlannedContext?.emotion?.trim() || null
+}
+
 export async function postCommandCenterChat(
   supabase: SupabaseClient,
   userId: string,
@@ -439,6 +462,7 @@ export async function postCommandCenterChat(
     imageUrls?: string[] | null
     mode?: CommandCenterMode
     focusId?: string | null
+    sessionMood?: string | null
   },
 ): Promise<{
   userMessage: CommandCenterMessageRecord
@@ -473,10 +497,56 @@ export async function postCommandCenterChat(
 
   const recentMessages = await listThreadMessages(supabase, userId, threadId, 40)
 
-  const fullContext = await buildFullTraderContext(supabase, userId, {
+  let fullContext = await buildFullTraderContext(supabase, userId, {
     focusId: input.focusId,
     recentMessages,
   })
+  fullContext = applySessionMoodToContext(fullContext, input.sessionMood)
+
+  const sessionMood = resolveSessionMood(input.sessionMood, fullContext)
+  if (imageUrls.length > 0 && !hasSessionMoodCheckIn(sessionMood)) {
+    const userMessage = await insertMessage(supabase, {
+      userId,
+      threadId,
+      role: "user",
+      messageType: "analysis",
+      content,
+      payload: {
+        imageUrl,
+        imageUrls,
+        analysisKind: isBundle ? "timeframe_bundle" : "single_chart",
+        pendingMoodGate: true,
+      },
+    })
+
+    const assistantMessage = await insertMessage(supabase, {
+      userId,
+      threadId,
+      role: "assistant",
+      messageType: "text",
+      content:
+        "Before I score this setup, tell me how you're feeling right now. Use the mood check-in below — Coach won't judge trader state from journal history until you do.",
+      payload: {
+        replyEngine: "mood-gate-v1",
+        requiresMoodCheckIn: true,
+      },
+    })
+
+    await supabase
+      .from("command_center_threads")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", threadId)
+
+    const context = await getCommandCenterContext(supabase, userId, mode, input.focusId)
+
+    return {
+      userMessage,
+      assistantMessage,
+      context,
+      thinkingPhases: ["Waiting for mood check-in…"],
+      engine: "heuristic",
+    }
+  }
 
   const chartVision =
     imageUrls.length > 0

@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       imageUrls?: string[] | null
       mode?: CommandCenterMode
       focusId?: string | null
+      sessionMood?: string | null
     }
 
     const content = body.content?.trim() ?? ""
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
       imageUrls: imageUrls.length > 0 ? imageUrls : null,
       mode: body.mode,
       focusId: body.focusId,
+      sessionMood: body.sessionMood?.trim() || null,
     })
 
     return NextResponse.json(result)

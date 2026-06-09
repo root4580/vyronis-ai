@@ -38,6 +38,11 @@ import type {
 } from "@/lib/command-center/types"
 import { fetchTradingRulesSnapshot } from "@/lib/trading-rules/api-client"
 import { buildThinkingPhases } from "@/lib/intelligence/conversational-state-engine"
+import {
+  hasSessionMoodCheckIn,
+  readSessionMood,
+  writeSessionMood,
+} from "@/lib/coach/session-mood-check-in"
 import { useToast } from "@/hooks/use-toast"
 
 const OPEN_STATE_KEY = "vyronis.commandCenter.open"
@@ -88,6 +93,9 @@ type AIContextValue = {
     imageUrl?: string | null
     imageUrls?: string[] | null
   }) => Promise<void>
+  sessionMood: string | null
+  sessionMoodComplete: boolean
+  saveSessionMood: (mood: string) => void
   clearStreamingMessage: () => void
   handleCoachSessionChange: (sessionId: string | null) => void
   handleCoachSessionLoaded: (session: TradeCoachSessionWithMessages) => void
@@ -137,6 +145,27 @@ export function AIContextProvider({
   const loadGenerationRef = useRef(0)
   const [coachPreloadedSession, setCoachPreloadedSession] =
     useState<TradeCoachSessionWithMessages | null>(null)
+  const [sessionMood, setSessionMood] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSessionMood(readSessionMood(userId))
+  }, [userId])
+
+  const saveSessionMood = useCallback(
+    (mood: string) => {
+      const trimmed = mood.trim()
+      if (!trimmed) return
+      if (userId) writeSessionMood(userId, trimmed)
+      setSessionMood(trimmed)
+      toast({
+        title: "Mood saved",
+        description: "Re-upload charts if you want Coach to rescore trader state with today's mood.",
+      })
+    },
+    [toast, userId],
+  )
+
+  const sessionMoodComplete = hasSessionMoodCheckIn(sessionMood)
 
   useEffect(() => {
     contextRef.current = context
@@ -563,14 +592,23 @@ export function AIContextProvider({
       imageUrls?: string[] | null
     }) => {
       if (!userId || historySessionId) return
+
+      const bundleUrls =
+        input.imageUrls?.filter(Boolean) ??
+        (input.imageUrl ? [input.imageUrl] : [])
+      if (bundleUrls.length > 0 && !hasSessionMoodCheckIn(sessionMood)) {
+        toast({
+          title: "Mood check-in required",
+          description: "Tell Coach how you're feeling before uploading charts for a verdict.",
+        })
+        return
+      }
+
       setIsSending(true)
       setIsThinking(true)
       setStreamingMessage(null)
       setError(null)
 
-      const bundleUrls =
-        input.imageUrls?.filter(Boolean) ??
-        (input.imageUrl ? [input.imageUrl] : [])
       const isBundle = bundleUrls.length > 1
       const previewText =
         input.content.trim() ||
@@ -627,6 +665,7 @@ export function AIContextProvider({
           imageUrls: isBundle ? bundleUrls : null,
           mode,
           focusId,
+          sessionMood,
         })
         if (epoch !== panelEpochRef.current) return
         setThinkingPhases(result.thinkingPhases)
@@ -653,7 +692,7 @@ export function AIContextProvider({
         }
       }
     },
-    [context, focusId, historySessionId, mode, refresh, userId],
+    [context, focusId, historySessionId, mode, refresh, sessionMood, toast, userId],
   )
 
   const clearStreamingMessage = useCallback(() => {
@@ -727,6 +766,9 @@ export function AIContextProvider({
       returnToCompanion,
       refresh,
       sendMessage,
+      sessionMood,
+      sessionMoodComplete,
+      saveSessionMood,
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachSessionLoaded,
@@ -760,6 +802,9 @@ export function AIContextProvider({
       returnToCompanion,
       refresh,
       sendMessage,
+      sessionMood,
+      sessionMoodComplete,
+      saveSessionMood,
       clearStreamingMessage,
       handleCoachSessionChange,
       handleCoachSessionLoaded,
