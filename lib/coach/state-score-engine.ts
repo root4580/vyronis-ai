@@ -1,3 +1,4 @@
+import { getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import { DAILY_LOSS_NOTIFY_RATIO } from "@/lib/alerts/evaluate-alerts"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getSignedPnL } from "@/lib/trade-utils"
@@ -27,6 +28,19 @@ function sortTradesNewestFirst(trades: TradeRiskGuardHistoryTrade[]): TradeRiskG
 
 function recentTrades(trades: TradeRiskGuardHistoryTrade[]): TradeRiskGuardHistoryTrade[] {
   return sortTradesNewestFirst(trades).slice(0, RECENT_SAMPLE)
+}
+
+export function countTradesThisWeek(
+  trades: TradeRiskGuardHistoryTrade[],
+  referenceDate = new Date(),
+): number {
+  const { start, end } = getWeekRange(referenceDate, 0)
+  const startMs = start.getTime()
+  const endMs = end.getTime()
+  return trades.filter((trade) => {
+    const ts = getTradeTimestamp(trade)
+    return ts >= startMs && ts <= endMs
+  }).length
 }
 
 function lossStreakWorsening(trades: TradeRiskGuardHistoryTrade[], consecutiveLosses: number): boolean {
@@ -60,10 +74,24 @@ export function calculateStateScore(input: {
   currentEmotion: string
   maxRiskPerTrade: number
 }): number {
+  const moodAnswered = Boolean(input.currentEmotion?.trim())
+  const weekTradeCount = countTradesThisWeek(input.trades)
+  const cleanWeekNoMood = weekTradeCount === 0 && !moodAnswered
+
+  if (cleanWeekNoMood) {
+    return 78
+  }
+
   let score = 100
   const { consecutiveLosses, dailyLossRatio, maxRiskPerTrade } = input
-  const sample = recentTrades(input.trades)
-  const lastEmotion = normalizeEmotion(input.currentEmotion || sample[0]?.emotion)
+  const sample = weekTradeCount === 0 ? [] : recentTrades(input.trades)
+  const lastEmotion = moodAnswered
+    ? normalizeEmotion(input.currentEmotion)
+    : normalizeEmotion(sample[0]?.emotion)
+
+  if (weekTradeCount === 0 && POSITIVE_EMOTIONS.has(lastEmotion)) {
+    return Math.min(100, lastEmotion === "confident" ? 90 : 85)
+  }
 
   if (consecutiveLosses >= 5) score -= 40
   else if (consecutiveLosses >= 4) score -= 25

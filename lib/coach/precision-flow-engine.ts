@@ -1,5 +1,5 @@
 import type { MtfAnalysisResult } from "@/lib/coach/mtf-types"
-import { calculateStateScore } from "@/lib/coach/state-score-engine"
+import { calculateStateScore, countTradesThisWeek } from "@/lib/coach/state-score-engine"
 import { calculateRiskReward } from "@/lib/trade-form-utils"
 import { DAILY_LOSS_NOTIFY_RATIO } from "@/lib/alerts/evaluate-alerts"
 import { getRecentLossStreak, type TradeRiskGuardHistoryTrade } from "@/lib/trade-risk-guard"
@@ -194,6 +194,8 @@ function deriveVerdict(input: {
   rulesPassed: number
   rules: PrecisionFlowRuleResult[]
   emotion: string
+  hasMoodCheckIn: boolean
+  weekTradeCount: number
   consecutiveLosses: number
   dailyLossRatio: number
   chartUnclear: boolean
@@ -201,9 +203,13 @@ function deriveVerdict(input: {
   setupScore: number
 }): VyronisCoachVerdict {
   const emotion = normalizeEmotion(input.emotion)
+  const structuralRulesPassed = input.rules.filter((rule) => rule.id !== "emotion_gate").filter((rule) => rule.passed).length
+  const effectiveRulesPassed = input.hasMoodCheckIn ? input.rulesPassed : structuralRulesPassed
 
   if (input.chartUnclear) return "CAUTION"
-  if (BLOCKED_EMOTIONS.has(emotion) || input.consecutiveLosses >= 5 || input.rulesPassed < 4) {
+  if (BLOCKED_EMOTIONS.has(emotion)) return "SKIP"
+  if (input.consecutiveLosses >= 5 || effectiveRulesPassed < 4) {
+    if (input.weekTradeCount === 0 && !input.hasMoodCheckIn) return "CAUTION"
     return "SKIP"
   }
   if (input.dailyLossRatio >= DAILY_LOSS_NOTIFY_RATIO) return "SKIP"
@@ -213,7 +219,7 @@ function deriveVerdict(input: {
     input.rules.find((rule) => rule.id === "entry_quality")?.passed ?? false
 
   const strictExecute =
-    input.rulesPassed >= 6 &&
+    effectiveRulesPassed >= 6 &&
     confirmationReady &&
     entryQualityReady &&
     EXECUTE_EMOTIONS.has(emotion) &&
@@ -222,7 +228,7 @@ function deriveVerdict(input: {
   const highConfidenceExecute =
     input.stateScore > 70 &&
     input.setupScore > 70 &&
-    input.rulesPassed >= 5 &&
+    effectiveRulesPassed >= 5 &&
     confirmationReady &&
     entryQualityReady &&
     EXECUTE_EMOTIONS.has(emotion) &&
@@ -232,7 +238,9 @@ function deriveVerdict(input: {
     return "EXECUTE"
   }
 
-  if (input.rulesPassed >= 4 || input.consecutiveLosses >= 3) return "CAUTION"
+  if (effectiveRulesPassed >= 4 || input.consecutiveLosses >= 3) return "CAUTION"
+
+  if (input.weekTradeCount === 0 && !BLOCKED_EMOTIONS.has(emotion)) return "CAUTION"
 
   return "SKIP"
 }
@@ -281,6 +289,10 @@ export function evaluatePrecisionFlow(input: {
       snapshot.dailyLossLimit > 0 ? snapshot.todayLossPercent / snapshot.dailyLossLimit : 0
   }
 
+  const moodAnswered = Boolean(
+    (input.responses.emotional_state || input.responses.emotion || "").trim(),
+  )
+  const weekTradeCount = countTradesThisWeek(input.historicalTrades ?? [])
   const setupScore = Math.round((rulesPassed / 7) * 100)
   const stateScore = calculateStateScore({
     trades: input.historicalTrades ?? [],
@@ -293,7 +305,9 @@ export function evaluatePrecisionFlow(input: {
   const verdict = deriveVerdict({
     rulesPassed,
     rules,
-    emotion: input.responses.emotional_state || "",
+    emotion: input.responses.emotional_state || input.responses.emotion || "",
+    hasMoodCheckIn: moodAnswered,
+    weekTradeCount,
     consecutiveLosses,
     dailyLossRatio,
     chartUnclear,

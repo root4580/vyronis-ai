@@ -1,3 +1,4 @@
+import { filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import type { CommandCenterVisionAnalysis } from "@/lib/intelligence/command-center-vision-engine"
 import type { ConfidenceFactor } from "@/lib/intelligence/weighted-confidence-engine"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
@@ -132,6 +133,13 @@ const IMPULSIVE = new Set(["fomo", "revenge", "euphoric", "anxious", "tilted", "
 const PSYCHOLOGY_CLARIFICATION =
   "The chart is not the main problem — your process state is. A workable setup can still become a poor trade when execution is compromised."
 
+function isHistoryOnlyPsychologicalRead(context: FullTraderContext): boolean {
+  const { start, end } = getWeekRange(new Date(), 0)
+  const weekTrades = filterTradesForWeek(context.recentTrades, start, end)
+  const hasTodayMood = Boolean(context.activePlannedContext?.emotion?.trim())
+  return weekTrades.length === 0 && !hasTodayMood
+}
+
 function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)))
 }
@@ -162,6 +170,7 @@ function collectBlockers(input: {
     })
   }
 
+  const historyOnlyPsychRead = isHistoryOnlyPsychologicalRead(context)
   const emotionalCritical = shouldTreatEmotionalBlockerAsCritical(context)
   const emotionalElevated =
     !emotionalCritical &&
@@ -169,7 +178,10 @@ function collectBlockers(input: {
       context.emotionalState.impulsiveCount >= 1 ||
       context.sessionRecovery?.carryoverMode === "historical_caution")
 
-  if (emotionalCritical || IMPULSIVE.has(plannedEmotion)) {
+  if (
+    !historyOnlyPsychRead &&
+    (emotionalCritical || IMPULSIVE.has(plannedEmotion))
+  ) {
     blockers.push({
       id: "emotional_instability",
       message: softenBlockerMessage(
@@ -179,7 +191,11 @@ function collectBlockers(input: {
       ),
       priority: emotionalCritical ? "critical" : "elevated",
     })
-  } else if (emotionalElevated && context.sessionRecovery?.sessionGuardMode === "soft_caution") {
+  } else if (
+    !historyOnlyPsychRead &&
+    emotionalElevated &&
+    context.sessionRecovery?.sessionGuardMode === "soft_caution"
+  ) {
     blockers.push({
       id: "emotional_instability",
       message: emotionalInstabilityBlockerMessage(context),
@@ -697,7 +713,7 @@ export function resolveVerdictWithReasoning(input: {
     }),
   )
 
-  const psychologyOverride =
+  let psychologyOverride =
     (technicalSetupVerdict === "TAKE" || technicalSetupVerdict === "CAUTION") &&
     verdict === "SKIP" &&
     (traderStateVerdict === "SKIP" || riskConditionsVerdict === "SKIP") &&
@@ -705,6 +721,17 @@ export function resolveVerdictWithReasoning(input: {
 
   if (psychologyOverride) {
     verdict = "SKIP"
+  }
+
+  const historyOnlyPsychRead = isHistoryOnlyPsychologicalRead(input.context)
+  if (
+    historyOnlyPsychRead &&
+    verdict === "SKIP" &&
+    input.context.sessionRecovery?.carryoverMode === "historical_caution" &&
+    !shouldTreatEmotionalBlockerAsCritical(input.context)
+  ) {
+    verdict = "CAUTION"
+    psychologyOverride = false
   }
 
   let cognitiveStrictness = input.context.cognitive?.state.verdictStrictness ?? 55
@@ -715,7 +742,12 @@ export function resolveVerdictWithReasoning(input: {
   if (cognitiveStrictness >= 75 && verdict === "TAKE") {
     verdict = "CAUTION"
   }
-  if (cognitiveStrictness >= 82 && verdict !== "SKIP" && traderCritical.length > 0) {
+  if (
+    cognitiveStrictness >= 82 &&
+    verdict !== "SKIP" &&
+    traderCritical.length > 0 &&
+    !historyOnlyPsychRead
+  ) {
     verdict = "SKIP"
   }
 

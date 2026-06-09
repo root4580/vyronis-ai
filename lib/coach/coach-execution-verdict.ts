@@ -192,15 +192,10 @@ export function resolveCoachExecutionVerdict(input: {
   const structuralSkips = collectStructuralSkipReasons({ playbook, mtf, setupScore })
   const strengths = collectSetupStrengths({ entryGate, playbook, mtf })
 
-  const emotionGateFailed = input.precisionFlow?.rules.find(
-    (rule) => rule.id === "emotion_gate" && !rule.passed,
-  )
   const disciplineState = evaluateCoachDiscipline({
     weeklyTradesTaken: input.discipline?.weeklyTradesTaken,
     maxTradesPerWeek: input.discipline?.maxTradesPerWeek,
-    emotionalState:
-      input.discipline?.emotionalState ??
-      (emotionGateFailed ? "revenge" : null),
+    emotionalState: input.discipline?.emotionalState ?? null,
     strictEmotionGate: input.discipline?.strictEmotionGate,
   })
 

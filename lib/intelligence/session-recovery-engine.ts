@@ -1,3 +1,4 @@
+import { filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import { getTodayTrades, getTradeTimestamp } from "@/lib/user-settings"
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
@@ -364,12 +365,17 @@ export function buildSessionRecovery(
   const hoursSinceImpulsive = lastImpulsiveMs != null ? hoursSince(lastImpulsiveMs, now.getTime()) : null
 
   const overnightGap = recoverySignals.includes("overnight_reset")
-  const historicalWeight = computeDecayMultiplier({
+  const { start: weekStart, end: weekEnd } = getWeekRange(now, 0)
+  const weekTradeCount = filterTradesForWeek(context.recentTrades, weekStart, weekEnd).length
+  let historicalWeight = computeDecayMultiplier({
     hoursSinceLastImpulsive: hoursSinceImpulsive,
     noTradesToday,
     overnightGap,
     recoverySignalCount: recoverySignals.length,
   })
+  if (weekTradeCount === 0) {
+    historicalWeight = Math.min(historicalWeight, 0.35)
+  }
 
   const activeInstability = detectActiveInstability(context, todayTrades)
   const revengeRisk = detectRevengeRisk(context, todayTrades)

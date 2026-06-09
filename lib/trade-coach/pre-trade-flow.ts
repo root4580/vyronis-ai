@@ -255,6 +255,10 @@ export function validateAnswer(question: PreTradeQuestion, raw: string): string 
 
 export type CoachWorkflowPhase = "upload" | "questions" | "complete"
 
+export function hasMoodCheckIn(responses: Record<string, string>): boolean {
+  return Boolean((responses.emotional_state || responses.emotion || "").trim())
+}
+
 export function getCoachWorkflowPhase(input: {
   status: string
   chartUrl?: string | null
@@ -262,7 +266,15 @@ export function getCoachWorkflowPhase(input: {
   responses: Record<string, string>
   session?: CoachSessionWorkflowSlice | null
 }): CoachWorkflowPhase {
-  if (input.status === "completed" || input.status === "linked") return "complete"
+  if (input.status === "completed" || input.status === "linked") {
+    if (
+      !hasMoodCheckIn(input.responses) &&
+      isPreTradeCheckInReady(input.plannedContext, input.chartUrl, input.session ?? null)
+    ) {
+      return "questions"
+    }
+    return "complete"
+  }
 
   if (!isPreTradeCheckInReady(input.plannedContext, input.chartUrl, input.session ?? null)) {
     return "upload"

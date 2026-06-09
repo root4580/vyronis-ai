@@ -60,6 +60,7 @@ import {
   extractResponsesFromMessages,
   getActiveQuestionFromSession,
   getCoachWorkflowPhase,
+  hasMoodCheckIn,
   getQuestionByKey,
   isMtfAnalysisComplete,
   isTradePlannerCoachHandoff,
@@ -349,6 +350,10 @@ export function TradeCoachPanel({
       precisionFlow: coachAnalysis?.precisionFlow,
     })
   }, [vyronisCoach, session?.planned_context, playbookMatch, mtfAnalysis, coachAnalysis?.precisionFlow])
+
+  const moodCheckInComplete = hasMoodCheckIn(responses)
+  const canShowCoachVerdict = Boolean(coachExecutionVerdict && moodCheckInComplete)
+  const awaitingMoodCheckIn = Boolean(analysisHasRun && coachExecutionVerdict && !moodCheckInComplete)
 
   useEffect(() => {
     if (!active) return
@@ -927,9 +932,9 @@ export function TradeCoachPanel({
               {session?.planned_context?.signal_source === "tradingview" ? (
                 <TradingViewAlertCoachSummary plannedContext={session.planned_context} />
               ) : null}
-              {coachExecutionVerdict && workflowPhase !== "upload" ? (
+              {canShowCoachVerdict && workflowPhase !== "upload" ? (
                 <CoachDecisionStack
-                  verdict={coachExecutionVerdict}
+                  verdict={coachExecutionVerdict!}
                   session={session}
                   mtf={mtfAnalysis}
                   context={session?.planned_context}
@@ -939,11 +944,19 @@ export function TradeCoachPanel({
                 />
               ) : null}
 
-              {!coachExecutionVerdict &&
+              {awaitingMoodCheckIn && workflowPhase !== "upload" ? (
+                <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
+                  <p className="text-[12px] leading-relaxed text-foreground/90">
+                    Chart analysis is ready. Answer the mood check-in below — Coach won&apos;t score
+                    your readiness until you do.
+                  </p>
+                </DashboardInsetPanel>
+              ) : null}
+              {!canShowCoachVerdict &&
                 visibleCoachMessages.map((message) => (
                   <CoachBubble key={message.id} message={message} />
                 ))}
-              {!coachExecutionVerdict ? (
+              {!canShowCoachVerdict ? (
                 <MessageHistoryToggle count={historyCoachMessages.length} label="coach messages">
                   {historyCoachMessages.map((message) => (
                     <CoachBubble key={message.id} message={message} />
@@ -1026,10 +1039,10 @@ export function TradeCoachPanel({
                       <Sparkles className="mt-0.5 size-4 shrink-0 text-profit" />
                       <div className="space-y-2">
                         <p className="text-[12px] font-medium text-foreground/90">Pre-trade plan saved</p>
-                        {coachExecutionVerdict ? (
+                        {canShowCoachVerdict ? (
                           <p className="text-[11px] font-medium text-foreground/85">
                             Verdict locked:{" "}
-                            {mapFinalVerdictToPrimaryAction(coachExecutionVerdict.finalVerdict)}
+                            {mapFinalVerdictToPrimaryAction(coachExecutionVerdict!.finalVerdict)}
                           </p>
                         ) : null}
                         <p className="text-[11px] leading-relaxed text-muted-foreground/75">
@@ -1148,9 +1161,17 @@ export function TradeCoachPanel({
                   </p>
                 </div>
               )}
-              {analysisHasRun && coachExecutionVerdict ? (
+              {awaitingMoodCheckIn ? (
+                <DashboardInsetPanel className="border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
+                  <p className="text-[12px] leading-relaxed text-foreground/90">
+                    Run the quick mood check-in next — Coach scores readiness after that, not from
+                    journal history alone.
+                  </p>
+                </DashboardInsetPanel>
+              ) : null}
+              {analysisHasRun && canShowCoachVerdict ? (
                 <CoachDecisionStack
-                  verdict={coachExecutionVerdict}
+                  verdict={coachExecutionVerdict!}
                   session={session}
                   mtf={mtfAnalysis}
                   context={session.planned_context}
@@ -1158,7 +1179,7 @@ export function TradeCoachPanel({
                   onOpenChart={(chart) => setChartViewer(chart)}
                 />
               ) : null}
-              {analysisHasRun && coachExecutionVerdict && visionEngineLabel ? (
+              {analysisHasRun && canShowCoachVerdict && visionEngineLabel ? (
                 <DashboardInsetPanel className="border-white/[0.06] bg-black/15 px-3 py-2">
                   <p className="text-[10px] text-muted-foreground/70">
                     Vision read by {visionEngineLabel}
