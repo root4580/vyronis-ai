@@ -302,6 +302,62 @@ export function buildChartReviewOpening(input: {
  * Ensures footer verdict matches engine decision and appends structured reasoning
  * so SKIP/CAUTION never contradict strong checklist metrics without explanation.
  */
+function verdictAlignedLead(
+  verdict: TradeDecisionRecommendation,
+  decision: TradeDecisionResult,
+): string {
+  const vr = decision.weightedConfidence?.verdictReasoning
+  if (verdict === "SKIP") {
+    return (
+      vr?.coachHeadline ??
+      "Coach verdict is SKIP — stand down and protect capital even when structure looks workable."
+    )
+  }
+  if (verdict === "CAUTION") {
+    return (
+      vr?.coachHeadline ??
+      "Coach verdict is CAUTION — there is edge on the chart, but trade it smaller and slower until confirmation."
+    )
+  }
+  return (
+    vr?.coachHeadline ??
+    "Coach verdict is TAKE — structure and state align; execute only with your defined risk and invalidation."
+  )
+}
+
+/** Force chart narrative tone to match the verdict card — no bullish hype under CAUTION/SKIP. */
+export function alignChartReviewNarrativeToVerdict(input: {
+  content: string
+  decision: TradeDecisionResult
+  traderName?: string | null
+}): string {
+  const verdict =
+    input.decision.weightedConfidence?.verdictReasoning?.verdict ??
+    input.decision.recommendation
+  const { narrative, footer } = splitChartReviewContent(input.content)
+  const lead = verdictAlignedLead(verdict, input.decision)
+  const name = firstName(input.traderName)
+
+  let body = narrative.trim()
+  if (verdict === "CAUTION" || verdict === "SKIP") {
+    body = body
+      .replace(/\bgood opportunity\b/gi, "workable structure")
+      .replace(/\bgreat (setup|opportunity)\b/gi, "workable structure")
+      .replace(/\bsolid setup\b/gi, "workable structure")
+      .replace(/\b(diving into|taking) a solid setup\b/gi, "reviewing a workable structure")
+  }
+
+  const withoutDuplicateLead = body
+    .replace(
+      /^(?:coach verdict is|there is edge|standing aside)[^.!?]*[.!?]\s*/i,
+      "",
+    )
+    .trim()
+
+  const merged = [`${name}, ${lead}`, withoutDuplicateLead].filter(Boolean).join("\n\n")
+  return footer ? `${merged}\n\n${footer}` : merged
+}
+
 export function reconcileChartReviewVerdict(input: {
   content: string
   context: FullTraderContext
@@ -316,16 +372,23 @@ export function reconcileChartReviewVerdict(input: {
     chartVision: input.chartVision,
     mentionedWarningIds: input.mentionedWarningIds,
   })
-  if (!footer) {
-    return [narrative, formatChartReviewFooter(built)].filter(Boolean).join("\n\n")
-  }
+  const base = !footer
+    ? [narrative, formatChartReviewFooter(built)].filter(Boolean).join("\n\n")
+    : [
+        narrative,
+        footer.replace(
+          /\*\*Verdict:\*\*[^\n]*/i,
+          `**Verdict:** ${built.verdict} (${built.score}/100)`,
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n\n")
 
-  const nextFooter = footer.replace(
-    /\*\*Verdict:\*\*[^\n]*/i,
-    `**Verdict:** ${built.verdict} (${built.score}/100)`,
-  )
-
-  return [narrative, nextFooter].filter(Boolean).join("\n\n")
+  return alignChartReviewNarrativeToVerdict({
+    content: base,
+    decision: input.decision,
+    traderName: input.context.traderName,
+  })
 }
 
 export function assembleChartReviewReply(input: {

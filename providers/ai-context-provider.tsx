@@ -41,6 +41,7 @@ import { fetchTradingRulesSnapshot } from "@/lib/trading-rules/api-client"
 import { buildThinkingPhases } from "@/lib/intelligence/conversational-state-engine"
 import {
   hasSessionMoodCheckIn,
+  parseSessionMoodFromMessage,
   readSessionMood,
   writeSessionMood,
 } from "@/lib/coach/session-mood-check-in"
@@ -605,10 +606,23 @@ export function AIContextProvider({
       const bundleUrls =
         input.imageUrls?.filter(Boolean) ??
         (input.imageUrl ? [input.imageUrl] : [])
-      if (bundleUrls.length > 0 && !hasSessionMoodCheckIn(sessionMood)) {
+
+      let moodForRequest = sessionMood
+      if (!hasSessionMoodCheckIn(moodForRequest)) {
+        const parsed = parseSessionMoodFromMessage(input.content)
+        if (parsed) {
+          moodForRequest = parsed
+          if (userId) writeSessionMood(userId, parsed)
+          setSessionMood(parsed)
+          void saveCoachSessionMood(parsed).catch(() => null)
+        }
+      }
+
+      if (bundleUrls.length > 0 && !hasSessionMoodCheckIn(moodForRequest)) {
         toast({
           title: "Mood check-in required",
-          description: "Tell Coach how you're feeling before uploading charts for a verdict.",
+          description:
+            "Tell Coach how you're feeling (picker or a message like \"calm\") before uploading charts.",
         })
         return
       }
@@ -674,7 +688,7 @@ export function AIContextProvider({
           imageUrls: isBundle ? bundleUrls : null,
           mode,
           focusId,
-          sessionMood,
+          sessionMood: moodForRequest,
         })
         if (epoch !== panelEpochRef.current) return
         setThinkingPhases(result.thinkingPhases)

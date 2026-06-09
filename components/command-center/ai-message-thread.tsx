@@ -347,6 +347,14 @@ function AssistantBubble({
   const verdictReasoning =
     decision?.weightedConfidence?.verdictReasoning ?? null
   const moodAtAnalysis = resolveMoodAtAnalysis(message.payload)
+  const intent =
+    typeof message.payload.intent === "string" ? message.payload.intent : null
+  const showDecisionBadge =
+    Boolean(decision) &&
+    !verdictReasoning &&
+    message.message_type === "analysis" &&
+    intent !== "emotional_check_in" &&
+    intent !== "casual_conversation"
 
   return (
     <div
@@ -397,7 +405,7 @@ function AssistantBubble({
         />
       )}
       <MessageImageGrid urls={imageUrls} />
-      {decision && !verdictReasoning ? <DecisionBadge decision={decision} /> : null}
+      {showDecisionBadge && decision ? <DecisionBadge decision={decision} /> : null}
       <VisionChecklist items={checklist} />
     </div>
   )

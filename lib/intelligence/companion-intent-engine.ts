@@ -1,3 +1,5 @@
+import { parseSessionMoodFromMessage } from "@/lib/coach/session-mood-check-in"
+
 export type CompanionIntent =
   | "casual_conversation"
   | "market_check"
@@ -83,6 +85,10 @@ const CHART_ONLY_PATTERN = /^(📷|chart|screenshot|image|upload|here'?s?\s+(the
 export function detectCompanionIntent(text: string): CompanionIntent {
   const normalized = text.trim().toLowerCase()
   if (!normalized) return "casual_conversation"
+
+  if (parseSessionMoodFromMessage(text)) {
+    return "emotional_check_in"
+  }
 
   if (CASUAL_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return "casual_conversation"

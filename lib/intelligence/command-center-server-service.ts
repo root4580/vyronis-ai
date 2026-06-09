@@ -12,8 +12,15 @@ import {
   inferMessageTone,
 } from "@/lib/intelligence/tone-memory-engine"
 import { syncAutonomousPersistence } from "@/lib/autonomous/server-service"
-import { getTodayCoachSessionMood } from "@/lib/coach/daily-mood-service"
-import { hasSessionMoodCheckIn } from "@/lib/coach/session-mood-check-in"
+import {
+  getTodayCoachSessionMood,
+  saveTodayCoachSessionMood,
+} from "@/lib/coach/daily-mood-service"
+import {
+  hasSessionMoodCheckIn,
+  parseSessionMoodFromMessage,
+  resolveEffectiveSessionMood,
+} from "@/lib/coach/session-mood-check-in"
 import { sanitizeCompanionMessage } from "@/lib/command-center/mood-gate"
 import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
@@ -502,7 +509,20 @@ export async function postCommandCenterChat(
   const recentMessages = await listThreadMessages(supabase, userId, threadId, 40)
 
   const storedMood = await getTodayCoachSessionMood(supabase, userId)
-  const sessionMood = resolveSessionMood(input.sessionMood ?? storedMood)
+  const parsedFromMessage = parseSessionMoodFromMessage(trimmed || content)
+  const sessionMood = resolveSessionMood(
+    resolveEffectiveSessionMood({
+      explicitMood: input.sessionMood ?? storedMood,
+      message: trimmed || content,
+    }),
+  )
+  if (
+    sessionMood &&
+    parsedFromMessage === sessionMood &&
+    !hasSessionMoodCheckIn(input.sessionMood ?? storedMood)
+  ) {
+    await saveTodayCoachSessionMood(supabase, userId, sessionMood).catch(() => null)
+  }
 
   let fullContext = await buildFullTraderContext(supabase, userId, {
     focusId: input.focusId,
@@ -612,7 +632,7 @@ export async function postCommandCenterChat(
       mentionedWarningIds: dialogue.mentionedWarningIds,
       isCriticalHighlight: dialogue.isCriticalHighlight,
       intent: dialogue.intent,
-      decision: dialogue.decision,
+      decision: chartVision ? dialogue.decision : undefined,
       sessionMoodAtAnalysis: chartVision ? sessionMood : null,
       imageUrl: chartVision?.imageUrl,
       imageUrls: chartVision?.imageUrls,

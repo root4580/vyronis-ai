@@ -264,9 +264,17 @@ function buildSystemPrompt(input: {
       `Cross-memory: ${cog.memory.crossMemorySynthesis}`
     : ""
 
+  const chartVerdict = input.decision?.weightedConfidence?.verdictReasoning?.verdict
+    ?? input.decision?.recommendation
   const chartReviewGuide = input.isChartReview
     ? [
         "CHART REVIEW — synthesize, don't list each timeframe.",
+        `- OPENING SENTENCE MUST reflect final verdict ${chartVerdict ?? "from engine"} — never sound like a green light if verdict is CAUTION or SKIP.`,
+        chartVerdict === "CAUTION"
+          ? "- CAUTION tone: acknowledge chart edge, then emphasize smaller/slower/wait-for-confirmation. Forbidden: 'good opportunity', 'take this', 'solid setup today'."
+          : chartVerdict === "SKIP"
+            ? "- SKIP tone: stand down first; chart quality is secondary. Forbidden: bullish entry language."
+            : "- TAKE tone: structure and state align — still mention risk and invalidation.",
         "- Lead with one synthesized HTF vs LTF read (e.g. HTF bullish but LTF fighting trend).",
         "- ONE comparative journal line (winners/losers/emotional pattern) woven naturally.",
         "- Verdict MUST match engine decision in ## Verdict engine block — never contradict it.",
@@ -619,6 +627,8 @@ export async function generateCompanionIntelligenceReply(input: {
   }
 
   if (!isChartReview) {
+    const conversationalIntent =
+      intent === "casual_conversation" || intent === "emotional_check_in"
     followUpQuestion =
       followUpQuestion ||
       pickFollowUpQuestion({
@@ -627,7 +637,7 @@ export async function generateCompanionIntelligenceReply(input: {
         userMessage: input.userMessage,
         intent,
       }) ||
-      decision?.nextQuestion
+      (conversationalIntent ? undefined : decision?.nextQuestion)
   }
 
   if (isChartReview && decision && input.chartVision) {
@@ -665,7 +675,7 @@ export async function generateCompanionIntelligenceReply(input: {
     isCriticalHighlight: safety.isCriticalHighlight,
     intent,
     engine,
-    decision: decision ?? undefined,
+    decision: isChartReview && decision ? decision : undefined,
     primaryLeak: context.memory.primaryLeak,
     topPatterns: context.memory.topPatterns,
     chartVision: input.chartVision ?? undefined,
