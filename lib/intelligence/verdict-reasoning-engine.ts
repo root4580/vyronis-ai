@@ -31,6 +31,7 @@ import {
   shouldTreatEmotionalBlockerAsCritical,
 } from "@/lib/intelligence/session-recovery-engine"
 import type { EmotionalConfidenceLevel } from "@/lib/intelligence/session-recovery-engine"
+import { isCleanWeekWithPositiveMood } from "@/lib/coach/clean-week-mood"
 import { countTradesThisWeek } from "@/lib/user-settings"
 
 export type BlockerPriority = "critical" | "elevated"
@@ -266,7 +267,11 @@ function collectBlockers(input: {
   }
 
   const comparative = buildComparativeMemoryLine({ context, chartVision })
-  if (comparative && /loss|emotional|impulsive|revenge/i.test(comparative)) {
+  if (
+    comparative &&
+    !isCleanWeekWithPositiveMood(context) &&
+    /loss|emotional|impulsive|revenge/i.test(comparative)
+  ) {
     blockers.push({
       id: "losing_pattern_similarity",
       message: comparative,
@@ -556,7 +561,11 @@ function buildOverrideReasons(input: {
     reasons.push("Emotional drift in recent journal")
   }
   const comparative = buildComparativeMemoryLine({ context: input.context })
-  if (comparative && /loss|emotional|impulsive|revenge/i.test(comparative)) {
+  if (
+    comparative &&
+    !isCleanWeekWithPositiveMood(input.context) &&
+    /loss|emotional|impulsive|revenge/i.test(comparative)
+  ) {
     reasons.push(comparative)
   }
   return [...new Set(reasons)].slice(0, 5)

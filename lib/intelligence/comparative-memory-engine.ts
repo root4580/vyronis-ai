@@ -1,3 +1,4 @@
+import { isCleanWeekWithPositiveMood } from "@/lib/coach/clean-week-mood"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import type { CommandCenterVisionAnalysis } from "@/lib/intelligence/command-center-vision-engine"
 import { compareSetupToHistory } from "@/lib/intelligence/setup-similarity-engine"
@@ -126,16 +127,23 @@ export function buildComparativeMemoryRead(input: {
     ? `Your ${lossMatch.pair} ${lossMatch.result} looked like this (${lossMatch.similarityScore}% match) — ${lossMatch.summary}`
     : null
 
-  const impulsivePattern = detectImpulsiveLossPattern(input.context, structure)
-  const emotionalEcho = impulsivePattern
-    ? `You've tagged ${impulsivePattern} in your journal recently.`
-    : input.context.emotionalState.dominantEmotion &&
-        IMPULSIVE.has(normalizeEmotion(input.context.emotionalState.dominantEmotion))
-      ? `Mood lately: ${input.context.emotionalState.dominantEmotion} — that emotion has hurt execution before.`
-      : null
+  const cleanWeekPositive = isCleanWeekWithPositiveMood(input.context)
+  const impulsivePattern = cleanWeekPositive
+    ? null
+    : detectImpulsiveLossPattern(input.context, structure)
+  const emotionalEcho = cleanWeekPositive
+    ? null
+    : impulsivePattern
+      ? `You've tagged ${impulsivePattern} in your journal recently.`
+      : input.context.emotionalState.dominantEmotion &&
+          IMPULSIVE.has(normalizeEmotion(input.context.emotionalState.dominantEmotion))
+        ? `Mood lately: ${input.context.emotionalState.dominantEmotion} — that emotion has hurt execution before.`
+        : null
 
   let structureContrast: string | null = null
-  if (impulsivePattern && input.htfCleaner) {
+  if (cleanWeekPositive && input.htfCleaner) {
+    structureContrast = "HTF alignment is solid and lower timeframes confirm."
+  } else if (impulsivePattern && input.htfCleaner) {
     structureContrast = "HTF alignment is cleaner here than those impulsive reads."
   } else if (lossMatch && input.chartVision?.bundle?.htfAlignment === "aligned") {
     structureContrast = "HTF alignment is cleaner than that losing snapshot."
@@ -144,8 +152,14 @@ export function buildComparativeMemoryRead(input: {
   const strongest = strongestSetupType(input.context)
   let narrative: string | null = null
 
-  if (impulsivePattern && structureContrast) {
-    narrative = `This setup resembles your ${impulsivePattern}, but ${structureContrast.charAt(0).toLowerCase()}${structureContrast.slice(1)}`
+  if (cleanWeekPositive && input.htfCleaner) {
+    narrative =
+      "No trades logged this week — chart structure leads today. HTF is bullish and lower timeframes confirm; size down until you have live confirmation."
+  } else if (cleanWeekPositive) {
+    narrative =
+      "No trades logged this week — today's mood check-in is positive, so journal history stays in the background."
+  } else if (impulsivePattern && structureContrast) {
+    narrative = `In past sessions (not this week), setups resembled your ${impulsivePattern}, but ${structureContrast.charAt(0).toLowerCase()}${structureContrast.slice(1)}`
   } else if (winMatch && lossMatch) {
     narrative = `Journal split: you've won and lost on similar ${winMatch.pair} profiles — execution and timing decide this one.`
   } else if (lossEcho && structureContrast) {

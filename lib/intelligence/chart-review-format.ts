@@ -168,6 +168,22 @@ export function evaluateChartReviewDecision(input: {
     }
   }
 
+  if (cleanWeekPositiveMood && recommendation === "CAUTION") {
+    const { technicalSetupScore, traderStateScore } = weighted.verdictReasoning
+    if (technicalSetupScore >= 72 && traderStateScore >= 62) {
+      recommendation = "TAKE"
+      weightedConfidence = {
+        ...weightedConfidence,
+        verdict: "TAKE",
+        verdictReasoning: {
+          ...weightedConfidence.verdictReasoning,
+          verdict: "TAKE",
+          psychologyOverride: false,
+        },
+      }
+    }
+  }
+
   return {
     recommendation,
     confidence: weightedConfidence.score,

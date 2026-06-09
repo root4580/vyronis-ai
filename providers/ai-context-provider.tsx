@@ -24,6 +24,7 @@ import type {
 import {
   archiveCommandCenterSession,
   fetchCommandCenterContext,
+  saveCoachSessionMood,
   sendCommandCenterChat,
   switchCommandCenterMode,
 } from "@/lib/command-center/api-client"
@@ -148,8 +149,13 @@ export function AIContextProvider({
   const [sessionMood, setSessionMood] = useState<string | null>(null)
 
   useEffect(() => {
+    if (context?.sessionMood) {
+      setSessionMood(context.sessionMood)
+      if (userId) writeSessionMood(userId, context.sessionMood)
+      return
+    }
     setSessionMood(readSessionMood(userId))
-  }, [userId])
+  }, [userId, context?.sessionMood])
 
   const saveSessionMood = useCallback(
     (mood: string) => {
@@ -157,6 +163,9 @@ export function AIContextProvider({
       if (!trimmed) return
       if (userId) writeSessionMood(userId, trimmed)
       setSessionMood(trimmed)
+      void saveCoachSessionMood(trimmed).catch(() => {
+        /* table may not be migrated yet; sessionStorage still works */
+      })
       toast({
         title: "Mood saved",
         description: "Re-upload charts if you want Coach to rescore trader state with today's mood.",

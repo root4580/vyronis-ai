@@ -8,6 +8,32 @@ import type {
 import type { TradeDecisionResult } from "@/lib/intelligence/intelligence-types"
 import type { CommandCenterVisionAnalysis } from "@/lib/intelligence/command-center-vision-engine"
 
+export async function fetchCoachSessionMood(): Promise<string | null> {
+  const response = await fetch("/api/coach/session-mood", {
+    method: "GET",
+    credentials: "include",
+  })
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to load mood check-in")
+  }
+  return typeof payload.mood === "string" ? payload.mood : null
+}
+
+export async function saveCoachSessionMood(mood: string): Promise<string> {
+  const response = await fetch("/api/coach/session-mood", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mood }),
+  })
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to save mood check-in")
+  }
+  return typeof payload.mood === "string" ? payload.mood : mood
+}
+
 export async function fetchCommandCenterContext(
   mode: CommandCenterMode = "companion",
   focusId?: string | null,

@@ -12,6 +12,7 @@ import {
   inferMessageTone,
 } from "@/lib/intelligence/tone-memory-engine"
 import { syncAutonomousPersistence } from "@/lib/autonomous/server-service"
+import { getTodayCoachSessionMood } from "@/lib/coach/daily-mood-service"
 import { hasSessionMoodCheckIn } from "@/lib/coach/session-mood-check-in"
 import { sanitizeCompanionMessage } from "@/lib/command-center/mood-gate"
 import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
@@ -342,13 +343,17 @@ export async function getCommandCenterContext(
   focusId: string | null = null,
   options?: { sessionThreadId?: string | null; fresh?: boolean; lean?: boolean },
 ): Promise<CommandCenterContext> {
-  const [{ settings, memory, recentTrades, traderName, timeZone }, activeCompanionThreadId] =
-    await Promise.all([
-      buildMemoryBundle(supabase, userId),
-      options?.fresh && mode === "companion" && !options?.sessionThreadId
-        ? rotateCompanionSession(supabase, userId, listThreadMessages)
-        : getOrCreateCompanionThread(supabase, userId),
-    ])
+  const [
+    { settings, memory, recentTrades, traderName, timeZone },
+    activeCompanionThreadId,
+    sessionMood,
+  ] = await Promise.all([
+    buildMemoryBundle(supabase, userId),
+    options?.fresh && mode === "companion" && !options?.sessionThreadId
+      ? rotateCompanionSession(supabase, userId, listThreadMessages)
+      : getOrCreateCompanionThread(supabase, userId),
+    getTodayCoachSessionMood(supabase, userId),
+  ])
 
   const viewSessionId = options?.sessionThreadId?.trim() || null
   const viewingArchived =
@@ -431,6 +436,7 @@ export async function getCommandCenterContext(
     vyronisCore: traderContext?.vyronisCore ?? null,
     viewingArchivedSession: viewingArchived,
     sessionTitle,
+    sessionMood,
   }
 }
 
@@ -495,13 +501,14 @@ export async function postCommandCenterChat(
 
   const recentMessages = await listThreadMessages(supabase, userId, threadId, 40)
 
+  const storedMood = await getTodayCoachSessionMood(supabase, userId)
+  const sessionMood = resolveSessionMood(input.sessionMood ?? storedMood)
+
   let fullContext = await buildFullTraderContext(supabase, userId, {
     focusId: input.focusId,
     recentMessages,
   })
-  fullContext = applySessionMoodToContext(fullContext, input.sessionMood)
-
-  const sessionMood = resolveSessionMood(input.sessionMood)
+  fullContext = applySessionMoodToContext(fullContext, sessionMood)
   if (imageUrls.length > 0 && !hasSessionMoodCheckIn(sessionMood)) {
     const userMessage = await insertMessage(supabase, {
       userId,

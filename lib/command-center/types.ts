@@ -100,6 +100,8 @@ export type CommandCenterContext = {
   /** True when browsing a closed/archived companion session (read-only) */
   viewingArchivedSession?: boolean
   sessionTitle?: string | null
+  /** Server-persisted mood check-in for today (companion Coach). */
+  sessionMood?: string | null
 }
 
 export type CompanionSessionSummary = {
