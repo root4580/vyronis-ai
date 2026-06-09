@@ -6,6 +6,8 @@ import { CompanionContextStrip } from "@/components/command-center/companion-con
 import { CompanionMoodCheckIn } from "@/components/command-center/companion-mood-check-in"
 import { AiMessageThread } from "@/components/command-center/ai-message-thread"
 import { CommandCenterInput } from "@/components/command-center/command-center-input"
+import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
+import { threadHasLegacyChartVerdict } from "@/lib/command-center/mood-gate"
 import { useAIContext } from "@/providers/ai-context-provider"
 import { cn } from "@/lib/utils"
 
@@ -59,6 +61,12 @@ export function CompanionMode() {
     (context?.messages.length ?? 0) === 0 &&
     !isThinking &&
     !streamingMessage
+  const legacyChartVerdict = useMemo(
+    () => (context ? threadHasLegacyChartVerdict(context.messages) : false),
+    [context],
+  )
+  const showMoodCheckIn =
+    !viewingArchivedSession && (!sessionMoodComplete || legacyChartVerdict)
 
   if (!context && (isLoading || isOpen)) {
     return (
@@ -91,17 +99,30 @@ export function CompanionMode() {
           </button>
         </div>
       ) : (
-        <CompanionContextStrip
-          context={{
-            cognitive: context.cognitive,
-            tradingOs: context.tradingOs,
-            adaptiveCognition: context.adaptiveCognition,
-            vyronisCore: context.vyronisCore,
-            autonomous: context.autonomous,
-            freshWarnings: context.freshWarnings,
-            snapshot: context.snapshot,
-          }}
-        />
+        <>
+          {legacyChartVerdict ? (
+            <DashboardInsetPanel className="border-warning/30 bg-warning/[0.08] px-3 py-2.5">
+              <p className="text-[11px] font-medium text-warning-foreground">
+                Outdated trader score in this thread
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+                The SKIP / STATE read used journal history — not how you feel today. Save your mood
+                below, then re-upload charts for a fresh verdict.
+              </p>
+            </DashboardInsetPanel>
+          ) : null}
+          <CompanionContextStrip
+            context={{
+              cognitive: context.cognitive,
+              tradingOs: context.tradingOs,
+              adaptiveCognition: context.adaptiveCognition,
+              vyronisCore: context.vyronisCore,
+              autonomous: context.autonomous,
+              freshWarnings: context.freshWarnings,
+              snapshot: context.snapshot,
+            }}
+          />
+        </>
       )}
       <AiMessageThread
         messages={context.messages}
@@ -162,7 +183,7 @@ export function CompanionMode() {
       ) : null}
 
       <div className="command-center-compose-footer shrink-0">
-        {!viewingArchivedSession && !sessionMoodComplete ? (
+        {showMoodCheckIn ? (
           <div className="mb-2">
             <CompanionMoodCheckIn onSubmit={saveSessionMood} compact />
           </div>

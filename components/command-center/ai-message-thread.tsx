@@ -18,6 +18,10 @@ import {
   filterMessagesForStreaming,
   partitionCompanionMessages,
 } from "@/lib/command-center/message-display"
+import {
+  canShowTraderVerdictCard,
+  resolveMoodAtAnalysis,
+} from "@/lib/command-center/mood-gate"
 import { cn } from "@/lib/utils"
 
 type AiMessageThreadProps = {
@@ -201,22 +205,6 @@ function VerdictReasoningPanel({ reasoning }: { reasoning: VerdictReasoning }) {
   return <SessionGuardVerdictCard reasoning={reasoning} />
 }
 
-function resolveMoodAtAnalysis(payload: Record<string, unknown>): string | null | undefined {
-  if (!("sessionMoodAtAnalysis" in payload)) return undefined
-  const raw = payload.sessionMoodAtAnalysis
-  return typeof raw === "string" ? raw.trim() || null : null
-}
-
-function canShowTraderVerdictCard(input: {
-  verdictReasoning?: VerdictReasoning | null
-  sessionMoodComplete: boolean
-  moodAtAnalysis?: string | null
-}): boolean {
-  if (!input.verdictReasoning || !input.sessionMoodComplete) return false
-  if (input.moodAtAnalysis === undefined) return false
-  return Boolean(input.moodAtAnalysis?.trim())
-}
-
 function ChartReviewBody({
   content,
   stream,
@@ -232,11 +220,7 @@ function ChartReviewBody({
   sessionMoodComplete?: boolean
   moodAtAnalysis?: string | null
 }) {
-  const showVerdict = canShowTraderVerdictCard({
-    verdictReasoning,
-    sessionMoodComplete,
-    moodAtAnalysis,
-  })
+  const showVerdict = canShowTraderVerdictCard({ verdictReasoning, moodAtAnalysis })
   const legacyAnalysisWithoutMood =
     Boolean(verdictReasoning) && moodAtAnalysis === undefined
   const [analysisOpen, setAnalysisOpen] = useState(false)
