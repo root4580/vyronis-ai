@@ -4,6 +4,7 @@ import {
   resolveVerdictWithReasoning,
   type VerdictReasoning,
 } from "@/lib/intelligence/verdict-reasoning-engine"
+import { countTradesThisWeek } from "@/lib/user-settings"
 import { getTradeRiskReward } from "@/lib/trade-form-utils"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
 
@@ -147,6 +148,21 @@ function scoreRr(planned?: PreTradePlannedContext | null): ConfidenceFactor {
 }
 
 function scoreEmotional(context: FullTraderContext): ConfidenceFactor {
+  const plannedEmotion = context.activePlannedContext?.emotion?.trim().toLowerCase() ?? ""
+  const positiveToday = new Set(["calm", "confident", "disciplined"])
+  const weekTrades = countTradesThisWeek(context.recentTrades)
+  if (weekTrades === 0 && positiveToday.has(plannedEmotion)) {
+    const label =
+      context.activePlannedContext?.emotion?.trim() || plannedEmotion
+    return {
+      key: "emotional",
+      label: "Emotional state",
+      weight: 0.14,
+      score: label.toLowerCase() === "confident" ? 85 : 80,
+      note: `Today's mood: ${label} — 0 trades this week; journal history not applied.`,
+    }
+  }
+
   const { emotionalState, memory } = context
   const recovery = context.sessionRecovery
   const softHistorical =

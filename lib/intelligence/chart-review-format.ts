@@ -146,7 +146,16 @@ export function evaluateChartReviewDecision(input: {
     weighted.verdictReasoning.psychologyOverride &&
     weighted.verdict === "SKIP"
 
-  if (historyOnlyPsych || (weekTrades === 0 && !hasExplicitMood && recommendation === "SKIP")) {
+  const positiveToday = new Set(["calm", "confident", "disciplined"])
+  const plannedMood = input.context.activePlannedContext?.emotion?.trim().toLowerCase() ?? ""
+  const cleanWeekPositiveMood =
+    weekTrades === 0 && positiveToday.has(plannedMood) && recommendation === "SKIP"
+
+  if (
+    historyOnlyPsych ||
+    cleanWeekPositiveMood ||
+    (weekTrades === 0 && !hasExplicitMood && recommendation === "SKIP")
+  ) {
     recommendation = "CAUTION"
     weightedConfidence = {
       ...weighted,

@@ -13,6 +13,7 @@ import {
 } from "@/lib/intelligence/tone-memory-engine"
 import { syncAutonomousPersistence } from "@/lib/autonomous/server-service"
 import { hasSessionMoodCheckIn } from "@/lib/coach/session-mood-check-in"
+import { sanitizeCompanionMessage } from "@/lib/command-center/mood-gate"
 import { buildFullTraderContext } from "@/lib/intelligence/trader-context-builder"
 import { buildEmptyPlannedContext } from "@/lib/trade-coach/planned-context"
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
@@ -65,7 +66,7 @@ function isMissingTableError(error: { message?: string; code?: string } | null) 
 }
 
 function mapMessage(row: Record<string, unknown>): CommandCenterMessageRecord {
-  return {
+  return sanitizeCompanionMessage({
     id: String(row.id),
     thread_id: String(row.thread_id),
     role: row.role as CommandCenterMessageRecord["role"],
@@ -73,7 +74,7 @@ function mapMessage(row: Record<string, unknown>): CommandCenterMessageRecord {
     content: String(row.content),
     payload: (row.payload || {}) as Record<string, unknown>,
     created_at: String(row.created_at),
-  }
+  })
 }
 
 async function loadUserSettings(supabase: SupabaseClient, userId: string) {

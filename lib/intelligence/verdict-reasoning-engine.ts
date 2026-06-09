@@ -732,6 +732,14 @@ export function resolveVerdictWithReasoning(input: {
     psychologyOverride = false
   }
 
+  const weekTrades = countTradesThisWeek(input.context.recentTrades)
+  const plannedMood = input.context.activePlannedContext?.emotion?.trim().toLowerCase() ?? ""
+  const positiveToday = new Set(["calm", "confident", "disciplined"])
+  if (weekTrades === 0 && positiveToday.has(plannedMood) && verdict === "SKIP") {
+    verdict = "CAUTION"
+    psychologyOverride = false
+  }
+
   let cognitiveStrictness = input.context.cognitive?.state.verdictStrictness ?? 55
   cognitiveStrictness = applyCalibrationToStrictness(
     cognitiveStrictness,
