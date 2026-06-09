@@ -1,5 +1,4 @@
-import { filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
-import { getTodayTrades, getTradeTimestamp } from "@/lib/user-settings"
+import { getTodayTrades, getTradeTimestamp, countTradesThisWeek } from "@/lib/user-settings"
 import type { FullTraderContext } from "@/lib/intelligence/intelligence-types"
 import type { RecentTradeMemory } from "@/lib/intelligence/conversational-types"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
@@ -365,8 +364,7 @@ export function buildSessionRecovery(
   const hoursSinceImpulsive = lastImpulsiveMs != null ? hoursSince(lastImpulsiveMs, now.getTime()) : null
 
   const overnightGap = recoverySignals.includes("overnight_reset")
-  const { start: weekStart, end: weekEnd } = getWeekRange(now, 0)
-  const weekTradeCount = filterTradesForWeek(context.recentTrades, weekStart, weekEnd).length
+  const weekTradeCount = countTradesThisWeek(context.recentTrades, now)
   let historicalWeight = computeDecayMultiplier({
     hoursSinceLastImpulsive: hoursSinceImpulsive,
     noTradesToday,

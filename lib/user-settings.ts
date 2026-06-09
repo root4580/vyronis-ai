@@ -1,3 +1,4 @@
+import { getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import { getLocalDateKey as getLocalDateKeyInTimeZone } from "@/lib/intelligence/greeting-engine"
 import { getCalendarDateKey } from "@/lib/journal/trade-date-parser"
 import { getSignedPnL } from "@/lib/trade-utils"
@@ -133,6 +134,19 @@ export function getTodayTrades<T extends Pick<SettingsTrade, "trade_date" | "cre
 ): T[] {
   const todayKey = getLocalDateKey(referenceDate, resolveTradingDayTimeZone(timeZone))
   return trades.filter((trade) => getTradeDateKey(trade) === todayKey)
+}
+
+export function countTradesThisWeek<T extends Pick<SettingsTrade, "trade_date" | "created_at">>(
+  trades: T[],
+  referenceDate = new Date(),
+): number {
+  const { start, end } = getWeekRange(referenceDate, 0)
+  const startMs = start.getTime()
+  const endMs = end.getTime()
+  return trades.filter((trade) => {
+    const ts = getTradeTimestamp(trade)
+    return ts >= startMs && ts <= endMs
+  }).length
 }
 
 export function getTodayLossPercent(

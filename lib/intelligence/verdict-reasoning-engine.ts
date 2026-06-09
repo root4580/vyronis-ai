@@ -1,4 +1,3 @@
-import { filterTradesForWeek, getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import type { CommandCenterVisionAnalysis } from "@/lib/intelligence/command-center-vision-engine"
 import type { ConfidenceFactor } from "@/lib/intelligence/weighted-confidence-engine"
 import { detectTraderPatterns } from "@/lib/intelligence/pattern-intelligence-engine"
@@ -32,6 +31,7 @@ import {
   shouldTreatEmotionalBlockerAsCritical,
 } from "@/lib/intelligence/session-recovery-engine"
 import type { EmotionalConfidenceLevel } from "@/lib/intelligence/session-recovery-engine"
+import { countTradesThisWeek } from "@/lib/user-settings"
 
 export type BlockerPriority = "critical" | "elevated"
 
@@ -134,10 +134,8 @@ const PSYCHOLOGY_CLARIFICATION =
   "The chart is not the main problem — your process state is. A workable setup can still become a poor trade when execution is compromised."
 
 function isHistoryOnlyPsychologicalRead(context: FullTraderContext): boolean {
-  const { start, end } = getWeekRange(new Date(), 0)
-  const weekTrades = filterTradesForWeek(context.recentTrades, start, end)
   const hasTodayMood = Boolean(context.activePlannedContext?.emotion?.trim())
-  return weekTrades.length === 0 && !hasTodayMood
+  return countTradesThisWeek(context.recentTrades) === 0 && !hasTodayMood
 }
 
 function clamp(n: number): number {

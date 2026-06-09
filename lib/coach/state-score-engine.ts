@@ -1,8 +1,7 @@
-import { getWeekRange } from "@/lib/ai/weekly-debrief-engine"
 import { DAILY_LOSS_NOTIFY_RATIO } from "@/lib/alerts/evaluate-alerts"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getSignedPnL } from "@/lib/trade-utils"
-import { getTradeTimestamp } from "@/lib/user-settings"
+import { countTradesThisWeek, getTradeTimestamp } from "@/lib/user-settings"
 import type { UserSettingsForm } from "@/lib/user-settings"
 import type { TradeRiskGuardHistoryTrade } from "@/lib/trade-risk-guard"
 
@@ -30,18 +29,7 @@ function recentTrades(trades: TradeRiskGuardHistoryTrade[]): TradeRiskGuardHisto
   return sortTradesNewestFirst(trades).slice(0, RECENT_SAMPLE)
 }
 
-export function countTradesThisWeek(
-  trades: TradeRiskGuardHistoryTrade[],
-  referenceDate = new Date(),
-): number {
-  const { start, end } = getWeekRange(referenceDate, 0)
-  const startMs = start.getTime()
-  const endMs = end.getTime()
-  return trades.filter((trade) => {
-    const ts = getTradeTimestamp(trade)
-    return ts >= startMs && ts <= endMs
-  }).length
-}
+export { countTradesThisWeek } from "@/lib/user-settings"
 
 function lossStreakWorsening(trades: TradeRiskGuardHistoryTrade[], consecutiveLosses: number): boolean {
   if (consecutiveLosses < 3 || trades.length < 4) return false
