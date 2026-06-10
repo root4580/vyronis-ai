@@ -53,9 +53,12 @@ export function JournalCommandCenter({
   onClearJournalCsvDay,
   onLogTrade,
   headerActions,
+  viewingClosedTradeId = null,
 }: {
   trades: DashboardTradeRow[]
   startingBalance?: number
+  /** When set, pre-trade planned setups are hidden so they do not mix with closed-trade review. */
+  viewingClosedTradeId?: string | null
   plannedSessions: PlannedSession[]
   isLoadingPlanned?: boolean
   deletingSessionId?: string | null
@@ -158,6 +161,7 @@ export function JournalCommandCenter({
 
   const hasPlannedInProgress = plannedSessions.some((s) => s.status === "in_progress")
   const hasTrades = trades.length > 0
+  const showPlannedSetups = plannedSessions.length > 0 && !viewingClosedTradeId
 
   const goPrevMonth = () => {
     const next = shiftMonth(viewYear, viewMonth, -1)
@@ -238,10 +242,10 @@ export function JournalCommandCenter({
 
       {journalMode === "trades" ? (
         <div className="space-y-3">
-          {plannedSessions.length > 0 ? (
+          {showPlannedSetups ? (
             <CollapsibleDashboardSection
-              title="Planned setups"
-              subtitle={hasPlannedInProgress ? "Coach in progress" : undefined}
+              title="Pre-trade plans"
+              subtitle={hasPlannedInProgress ? "Coach in progress" : "Before entry only"}
               defaultOpen={hasPlannedInProgress}
               collapseOnMobile
             >
@@ -297,10 +301,10 @@ export function JournalCommandCenter({
               />
             </CollapsibleDashboardSection>
           ) : null}
-          {plannedSessions.length > 0 ? (
+          {showPlannedSetups ? (
             <CollapsibleDashboardSection
-              title="Planned setups"
-              subtitle={hasPlannedInProgress ? "Coach in progress" : undefined}
+              title="Pre-trade plans"
+              subtitle={hasPlannedInProgress ? "Coach in progress" : "Before entry only"}
               defaultOpen={hasPlannedInProgress}
               collapseOnMobile
             >

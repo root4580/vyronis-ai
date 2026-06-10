@@ -352,7 +352,11 @@ function buildRecommendations(
   if (grades.executionScore < 55) {
     recommendations.push("Wait for M15 confirmation before entry — execution drift was elevated this week.")
   }
-  if (summary.worstSetup) {
+  if (
+    summary.worstSetup &&
+    summary.tradeCount > 1 &&
+    summary.worstSetup !== summary.bestSetup
+  ) {
     recommendations.push(`Reduce or refine ${summary.worstSetup} setups until process quality improves.`)
   }
   if (commentary.executionProblems.some((item) => item.toLowerCase().includes("countertrend"))) {
@@ -473,9 +477,16 @@ function buildJournalLinks(
     (a, b) => getSignedPnL(b.pnl, b.result) - getSignedPnL(a.pnl, a.result),
   )
 
+  const bestTrade = toJournalLink(sorted[0])
+  const worstCandidate = sorted[sorted.length - 1]
+  const worstTrade =
+    sorted.length > 1 && worstCandidate.id !== bestTrade.id
+      ? toJournalLink(worstCandidate)
+      : null
+
   return {
-    bestTrade: toJournalLink(sorted[0]),
-    worstTrade: toJournalLink(sorted[sorted.length - 1]),
+    bestTrade,
+    worstTrade,
     replayTradeIds: feedback
       .filter((row) => weekTrades.some((trade) => trade.id === String(row.trade_id)))
       .map((row) => String(row.trade_id)),

@@ -419,7 +419,8 @@ export function WeeklyDebriefPanel({ onViewTrade, refreshKey = 0 }: WeeklyDebrie
                   </Button>
                 </DashboardInsetPanel>
               )}
-              {journalLinks.worstTrade && (
+              {journalLinks.worstTrade &&
+                journalLinks.worstTrade.id !== journalLinks.bestTrade?.id && (
                 <DashboardInsetPanel className="border-loss/20 bg-loss/[0.04] px-3 py-3">
                   <p className="section-label text-loss/80">Worst trade</p>
                   <p className="mt-1 text-sm font-semibold">{journalLinks.worstTrade.pair}</p>

@@ -251,19 +251,22 @@ export function DashboardHeader({
     return () => clearInterval(interval)
   }, [])
 
+  const isProductHome = pathname === APP_HOME_PATH || pathname === "/"
   const researchLabActive = pathname.startsWith("/research-lab")
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
   const newsActive = pathname.startsWith("/news")
   const warRoomActive = pathname.startsWith("/war-room")
   const practiceRoomActive = pathname.startsWith("/practice-room")
   const councilActive = pathname.startsWith("/council")
-  const analyticsActive = pathname.startsWith("/analytics") || activeTab === "analytics"
+  const analyticsActive =
+    pathname.startsWith("/analytics") || (isProductHome && activeTab === "analytics")
   const coachActive = dockHighlight === "coach"
-  const journalActive = activeTab === "journal" || pathname.startsWith("/journal/")
-  const strategiesActive = activeTab === "strategies"
+  const journalActive =
+    pathname.startsWith("/journal") || (isProductHome && activeTab === "journal")
+  const strategiesActive =
+    pathname.startsWith("/strategy") || (isProductHome && activeTab === "strategies")
   const dashboardActive =
-    (activeTab === "dashboard" && !analyticsActive && !plannerActive && !warRoomActive) ||
-    dockHighlight === "dashboard"
+    dockHighlight === "dashboard" || (isProductHome && activeTab === "dashboard")
 
   const mobileNavItems: Array<{
     id: DashboardTab | "research-lab"
@@ -360,77 +363,85 @@ export function DashboardHeader({
             <span className="vyronis-nav__group-label" aria-hidden="true">
               Today
             </span>
-            <Link
-              href={getDashboardTabHref("dashboard")}
-              className={vyronisNavLinkClass(dashboardActive)}
-            >
-              <LayoutDashboard className="size-3.5" />
-              Dashboard
-            </Link>
-            <Link href={getCouncilHref()} className={vyronisNavLinkClass(councilActive)}>
-              <Sparkles className="size-3.5" />
-              Council
-            </Link>
+            <div className="vyronis-nav__group-links">
+              <Link
+                href={getDashboardTabHref("dashboard")}
+                className={vyronisNavLinkClass(dashboardActive)}
+              >
+                <LayoutDashboard className="size-3.5" />
+                Dashboard
+              </Link>
+              <Link href={getCouncilHref()} className={vyronisNavLinkClass(councilActive)}>
+                <Sparkles className="size-3.5" />
+                Council
+              </Link>
+            </div>
           </div>
 
           <div className="vyronis-nav__group">
             <span className="vyronis-nav__group-label" aria-hidden="true">
               Prepare
             </span>
-            <Link
-              href={getDashboardTabHref("strategies")}
-              className={vyronisNavLinkClass(strategiesActive)}
-            >
-              <ChartCandlestick className="size-3.5" />
-              Strategies
-            </Link>
-            <Link href="/trade-planner" className={vyronisNavLinkClass(plannerActive)}>
-              <Calculator className="size-3.5" />
-              Planner
-            </Link>
-            <Link href={getNewsHref()} className={vyronisNavLinkClass(newsActive)}>
-              <Newspaper className="size-3.5" />
-              News
-            </Link>
+            <div className="vyronis-nav__group-links">
+              <Link
+                href={getDashboardTabHref("strategies")}
+                className={vyronisNavLinkClass(strategiesActive)}
+              >
+                <ChartCandlestick className="size-3.5" />
+                Strategies
+              </Link>
+              <Link href="/trade-planner" className={vyronisNavLinkClass(plannerActive)}>
+                <Calculator className="size-3.5" />
+                Planner
+              </Link>
+              <Link href={getNewsHref()} className={vyronisNavLinkClass(newsActive)}>
+                <Newspaper className="size-3.5" />
+                News
+              </Link>
+            </div>
           </div>
 
           <div className="vyronis-nav__group">
             <span className="vyronis-nav__group-label" aria-hidden="true">
               Trade
             </span>
-            <Link href="/war-room" className={vyronisNavLinkClass(warRoomActive)}>
-              <Crosshair className="size-3.5" />
-              War Room
-            </Link>
-            <Link href={getPracticeRoomHref()} className={vyronisNavLinkClass(practiceRoomActive)}>
-              <NotebookPen className="size-3.5" />
-              Practice
-            </Link>
-            <button
-              type="button"
-              onClick={handleCoachClick}
-              className={vyronisNavLinkClass(coachActive)}
-            >
-              <Brain className="size-3.5" />
-              Coach
-            </button>
+            <div className="vyronis-nav__group-links">
+              <Link href="/war-room" className={vyronisNavLinkClass(warRoomActive)}>
+                <Crosshair className="size-3.5" />
+                War Room
+              </Link>
+              <Link href={getPracticeRoomHref()} className={vyronisNavLinkClass(practiceRoomActive)}>
+                <NotebookPen className="size-3.5" />
+                Practice
+              </Link>
+              <button
+                type="button"
+                onClick={handleCoachClick}
+                className={vyronisNavLinkClass(coachActive)}
+              >
+                <Brain className="size-3.5" />
+                Coach
+              </button>
+            </div>
           </div>
 
           <div className="vyronis-nav__group">
             <span className="vyronis-nav__group-label" aria-hidden="true">
               Review
             </span>
-            <Link href="/analytics" className={vyronisNavLinkClass(analyticsActive)}>
-              <BarChart3 className="size-3.5" />
-              Analytics
-            </Link>
-            <Link
-              href={getDashboardTabHref("journal")}
-              className={vyronisNavLinkClass(journalActive)}
-            >
-              <BookOpen className="size-3.5" />
-              Journal
-            </Link>
+            <div className="vyronis-nav__group-links">
+              <Link href="/analytics" className={vyronisNavLinkClass(analyticsActive)}>
+                <BarChart3 className="size-3.5" />
+                Analytics
+              </Link>
+              <Link
+                href={getDashboardTabHref("journal")}
+                className={vyronisNavLinkClass(journalActive)}
+              >
+                <BookOpen className="size-3.5" />
+                Journal
+              </Link>
+            </div>
           </div>
 
           {researchLabEnabled ? (
@@ -438,10 +449,12 @@ export function DashboardHeader({
               <span className="vyronis-nav__group-label" aria-hidden="true">
                 Lab
               </span>
-              <Link href="/research-lab" className={vyronisNavLinkClass(researchLabActive)}>
-                <FlaskConical className="size-3.5" />
-                Research
-              </Link>
+              <div className="vyronis-nav__group-links">
+                <Link href="/research-lab" className={vyronisNavLinkClass(researchLabActive)}>
+                  <FlaskConical className="size-3.5" />
+                  Research
+                </Link>
+              </div>
             </div>
           ) : null}
         </nav>

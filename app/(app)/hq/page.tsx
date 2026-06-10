@@ -2190,6 +2190,13 @@ function Home() {
       ? accountTrades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / accountTrades.length
       : 1
   const todayTrades = getTodayTrades(accountTrades)
+  const viewingClosedTradeId = useMemo(() => {
+    const tradeId = searchParams.get("trade")?.trim()
+    if (!tradeId) return null
+    const trade = accountTrades.find((row) => String(row.id) === tradeId)
+    if (!trade?.result?.trim()) return null
+    return tradeId
+  }, [searchParams, accountTrades])
 
   useTradingAlerts({
     userId: user?.id,
@@ -2511,6 +2518,7 @@ function Home() {
                 <LazyJournalCommandCenter
                   trades={accountTrades}
                   startingBalance={startingBalance}
+                  viewingClosedTradeId={viewingClosedTradeId}
                   plannedSessions={plannedSessions}
                   isLoadingPlanned={isLoadingPlannedSessions}
                   deletingSessionId={deletingPlannedSessionId}

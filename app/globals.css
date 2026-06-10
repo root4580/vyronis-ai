@@ -778,7 +778,7 @@
 }
 
 .vyronis-nav {
-  @apply flex h-[52px] items-center gap-0;
+  @apply flex h-[56px] items-stretch gap-0;
 }
 
 @media (max-width: 1023px) {
@@ -817,7 +817,7 @@
 }
 
 .vyronis-nav__logo {
-  @apply mr-5 flex shrink-0 items-center gap-2 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40;
+  @apply mr-4 flex shrink-0 items-center self-center gap-2 rounded-[10px] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-glow/40;
 }
 
 .vyronis-nav__logo-icon {
@@ -838,11 +838,16 @@
 }
 
 .vyronis-nav__groups {
-  @apply hidden min-w-0 flex-1 items-center overflow-hidden lg:flex;
+  @apply hidden min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden lg:flex;
+  scrollbar-width: none;
+}
+
+.vyronis-nav__groups::-webkit-scrollbar {
+  display: none;
 }
 
 .vyronis-nav__group {
-  @apply flex h-full shrink-0 items-center gap-0.5 border-r border-white/[0.07] px-3;
+  @apply flex shrink-0 flex-col justify-center gap-0.5 border-r border-white/[0.07] px-2.5;
 }
 
 .vyronis-nav__group:last-child {
@@ -850,12 +855,26 @@
 }
 
 .vyronis-nav__group-label {
-  @apply mr-1 shrink-0 select-none text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)];
+  @apply shrink-0 select-none text-[8px] font-semibold uppercase leading-none tracking-[0.1em] text-[var(--text-muted)];
+}
+
+.vyronis-nav__group-links {
+  @apply flex items-center gap-0.5;
 }
 
 .vyronis-nav__link {
-  @apply flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border-0 bg-transparent px-2 py-1.5 text-[12.5px] text-[var(--text-secondary)] no-underline transition-colors duration-150;
+  @apply flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-md border-0 bg-transparent px-1.5 py-1 text-[12px] text-[var(--text-secondary)] no-underline transition-colors duration-150;
   font: inherit;
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .vyronis-nav__link svg {
+    display: none;
+  }
+
+  .vyronis-nav__link {
+    @apply px-1.5;
+  }
 }
 
 .vyronis-nav__link:hover {
@@ -863,7 +882,7 @@
 }
 
 .vyronis-nav__right {
-  @apply ml-auto flex shrink-0 items-center gap-2 pl-4 md:gap-2.5;
+  @apply ml-auto flex shrink-0 items-center self-center gap-2 pl-3 md:gap-2.5;
 }
 
 .vyronis-nav__status {

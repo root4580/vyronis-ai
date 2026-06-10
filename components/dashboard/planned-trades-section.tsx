@@ -65,6 +65,9 @@ function JournalPlannedCard({
           {session.direction ? ` · ${session.direction}` : ""}
         </span>
         <Badge variant="outline" className="h-5 border-[var(--border-subtle)] text-[10px] text-text-muted">
+          Pre-trade
+        </Badge>
+        <Badge variant="outline" className="h-5 border-[var(--border-subtle)] text-[10px] text-text-muted">
           {statusLabel(session)}
         </Badge>
         {session.ai_recommendation ? (
@@ -77,6 +80,9 @@ function JournalPlannedCard({
         ) : null}
       </div>
 
+      <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted/80">
+        Before entry — not a closed trade review
+      </p>
       <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-text-muted">{session.plan_summary}</p>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
