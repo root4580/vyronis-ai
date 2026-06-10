@@ -59,7 +59,7 @@ export function detectChapterReviewPatterns(trades: ChapterReviewTrade[]): Chapt
   if (ruleBreakLosses.length > 0) {
     patterns.push({
       id: "rule-break-losses",
-      message: `${ruleBreakLosses.length} losing trade${ruleBreakLosses.length === 1 ? "" : "s"} broke your rules. Tighten pre-trade checklist before Chapter continues.`,
+      message: `${ruleBreakLosses.length} losing trade${ruleBreakLosses.length === 1 ? "" : "s"} show a rule gap. Tighten pre-trade checklist before Chapter continues.`,
     })
   }
 

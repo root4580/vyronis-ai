@@ -89,7 +89,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
           <p className="text-[11px] font-semibold">Post-trade review</p>
         </div>
         <p className="text-[12px] leading-relaxed text-muted-foreground/80">
-          Mentor-style review for this closed trade — strategy quality, discipline, and repeatability.
+          Mentor-style review for this closed trade — strategy, execution, psychology, and repeatability.
         </p>
         {error && <p className="text-[11px] text-loss/90">{error}</p>}
         <Button type="button" onClick={() => void handleGenerate()} disabled={isGenerating} className="w-full btn-primary">
@@ -103,6 +103,23 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
   const discipline = feedback.discipline_analysis as StoredDisciplineAnalysis
   const review = discipline.executionReview
   const comparisons = feedback.planned_vs_actual || []
+
+  const scoreCards = review
+    ? [
+        { label: "Strategy", grade: review.strategyGrade, score: review.strategyScore },
+        {
+          label: "Execution",
+          grade: review.executionGrade ?? review.disciplineGrade,
+          score: review.executionScore ?? review.disciplineScore,
+        },
+        {
+          label: "Psychology",
+          grade: review.psychologyGrade ?? "—",
+          score: review.psychologyScore ?? null,
+        },
+        { label: "Overall", grade: review.overallGrade, score: review.finalScore },
+      ]
+    : []
 
   return (
     <DashboardInsetPanel className="glass space-y-4 border-cyan-glow/15 bg-cyan-glow/[0.03]">
@@ -128,12 +145,8 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       {review ? (
         <>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Strategy", grade: review.strategyGrade, score: review.strategyScore },
-              { label: "Discipline", grade: review.disciplineGrade, score: review.disciplineScore },
-              { label: "Final", grade: review.overallGrade, score: review.finalScore },
-            ].map((item) => (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {scoreCards.map((item) => (
               <div
                 key={item.label}
                 className={cn(
@@ -145,7 +158,9 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
                   {item.label}
                 </p>
                 <p className="text-[22px] font-bold leading-none">{item.grade}</p>
-                <p className="mt-1 text-[10px] tabular-nums opacity-80">{item.score}/100</p>
+                {item.score != null ? (
+                  <p className="mt-1 text-[10px] tabular-nums opacity-80">{item.score}/100</p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -174,6 +189,40 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
             </div>
           )}
 
+          {review.rulesFollowed.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">Rules followed</p>
+              <ul className="space-y-1.5">
+                {review.rulesFollowed.map((item) => (
+                  <li key={`${item.rule}-${item.note}`} className="flex gap-2 text-[11px] leading-relaxed text-foreground/85">
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-profit" />
+                    <span>
+                      {item.rule}
+                      {item.note ? ` — ${item.note}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {review.rulesMissed.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">Rules missed</p>
+              <ul className="space-y-1.5">
+                {review.rulesMissed.map((item) => (
+                  <li key={`${item.rule}-${item.note}`} className="flex gap-2 text-[11px] leading-relaxed text-warning-foreground">
+                    <XCircle className="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                      {item.rule}
+                      {item.note ? ` — ${item.note}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {review.ruleGaps.length > 0 && (
             <div className="space-y-2">
               <p className="section-label">Rule gaps</p>
@@ -190,15 +239,42 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
           {review.notVerified.length > 0 && (
             <div className="space-y-2">
-              <p className="section-label">Not verified</p>
+              <p className="section-label">What was not verified</p>
               <div className="flex flex-wrap gap-1.5">
                 {review.notVerified.map((item) => (
                   <span
                     key={item}
                     className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground/80"
                   >
-                    {item}
+                    {item}: Not verified from journal data.
                   </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {review.confirmationReview.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">Structure & liquidity</p>
+              <div className="space-y-1.5">
+                {review.confirmationReview.map((item) => (
+                  <div
+                    key={item.field}
+                    className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 text-[11px]"
+                  >
+                    <span className="text-foreground/85">{item.field}</span>
+                    <span
+                      className={cn(
+                        item.status === "verified"
+                          ? "text-profit"
+                          : item.status === "absent"
+                            ? "text-warning-foreground"
+                            : "text-muted-foreground/75",
+                      )}
+                    >
+                      {item.display ?? item.status}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -217,7 +293,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
           <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5">
             <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">
-              Repeatability
+              Repeatability assessment
             </p>
             <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-foreground/88">
               {review.repeatable ? (
@@ -240,7 +316,7 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
 
       {comparisons.length > 0 && (
         <div className="space-y-2">
-          <p className="section-label">Execution review</p>
+          <p className="section-label">Planned vs actual</p>
           {comparisons.map((item) => (
             <div
               key={item.field}

@@ -1,4 +1,10 @@
+import {
+  COACH_DATA_INTEGRITY_RULES,
+  formatDisciplineScoreForPrompt,
+  formatTopMistakeForPrompt,
+} from "@/lib/coach/coach-trust-rules"
 import type { VyronisCoachTraderContext } from "@/lib/coach/vyronis-coach-trader-context"
+import type { PatternMemoryResult } from "@/lib/trade-coach/pattern-memory"
 
 export const VYRONIS_COACH_IDENTITY = `You are Vyronis AI Coach — a professional trading psychologist and strategy analyst built into Vyronis HQ.
 
@@ -9,6 +15,8 @@ IDENTITY RULES:
 - You speak like a senior prop firm desk mentor — calm, precise, and data-driven.
 - You never give generic advice. Every response must reference the trader's specific data.
 - If you cannot find evidence in the trader's journal to support a claim, do not make the claim.
+
+${COACH_DATA_INTEGRITY_RULES}
 
 PRECISION FLOW RULES (score every setup against these):
 1. HTF Bias — Weekly, Daily, H4 must be aligned
@@ -54,6 +62,7 @@ STRICT RULES FOR RESPONSES:
 export function buildVyronisCoachSystemPrompt(
   trader: VyronisCoachTraderContext,
   lockedVerdict: string,
+  patternMemory?: PatternMemoryResult,
 ): string {
   return `${VYRONIS_COACH_IDENTITY}
 
@@ -65,10 +74,10 @@ TRADER CONTEXT:
 - Preferred session: ${trader.preferred_session}
 - Current streak: ${trader.streak} (${trader.streak_direction})
 - Win rate last 30 trades: ${trader.win_rate}
-- Top mistake: ${trader.top_mistake} (${trader.top_mistake_frequency}% of trades)
+- Top mistake: ${formatTopMistakeForPrompt({ label: trader.top_mistake, frequency: trader.top_mistake_frequency, patternMemory })}
 - Emotional state pattern: ${trader.emotion_pattern}
 - HTF alignment accuracy: ${trader.htf_accuracy}
-- Discipline score: ${trader.discipline_score}/100
+- Discipline score: ${formatDisciplineScoreForPrompt(Number(trader.discipline_score))}
 - Current week P&L: ${trader.week_pnl}
 - Consecutive losses: ${trader.consecutive_losses}
 

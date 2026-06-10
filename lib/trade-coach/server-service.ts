@@ -998,6 +998,7 @@ export async function submitPreTradeAnswer(
       precisionFlow,
       context: updatedContext,
       trader,
+      patternMemory,
     })
 
     const analysis = generatePreTradeAnalysis(updatedContext, responses, maxRisk)

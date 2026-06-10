@@ -69,6 +69,7 @@ import { TradingRulesBanner } from "@/components/dashboard/trading-rules-banner"
 import { CooldownUnlockModal } from "@/components/dashboard/cooldown-unlock-modal"
 import { DEFAULT_DASHBOARD_PREFERENCES, mergeDashboardPreferences, parseDashboardPreferences, type DashboardPreferences } from "@/lib/user-preferences"
 import { FirstRunBanner } from "@/components/dashboard/first-run-banner"
+import { TodaysMissionCard } from "@/components/dashboard/todays-mission-card"
 import { FirstRunSetupModal } from "@/components/dashboard/first-run-setup-modal"
 import { TradeEntryActionSheet } from "@/components/dashboard/trade-entry-action-sheet"
 import { APP_HOME_PATH } from "@/lib/branding"
@@ -2378,6 +2379,11 @@ function Home() {
                     onOpenWarRoom={() => router.push("/war-room")}
                   />
                 ) : null}
+
+                <TodaysMissionCard
+                  settings={settingsForm}
+                  trades={accountTrades}
+                />
 
                 {activeAccount ? (
                   <HqDashboard

@@ -245,7 +245,13 @@ export type PostTradeExecutionReview = {
   finalScore: number
   strategyScore: number
   strategyGrade: PostTradeGrade
+  executionScore: number
+  executionGrade: PostTradeGrade
+  psychologyScore: number
+  psychologyGrade: PostTradeGrade
+  /** @deprecated Use executionScore */
   disciplineScore: number
+  /** @deprecated Use executionGrade */
   disciplineGrade: PostTradeGrade
   postTradeVerdict: string
   executedWell: string[]

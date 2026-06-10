@@ -1,4 +1,9 @@
 import { resolveAiProvider } from "@/lib/ai/providers"
+import {
+  COACH_DATA_INTEGRITY_RULES,
+  COMPANION_POST_TRADE_GUIDE,
+  COMPANION_PRE_TRADE_GUIDE,
+} from "@/lib/coach/coach-trust-rules"
 import type { CommandCenterMessageRecord } from "@/lib/command-center/types"
 import type { CompanionIntent } from "@/lib/intelligence/companion-intent-engine"
 import {
@@ -106,8 +111,8 @@ function buildSystemPrompt(input: {
   const intentGuide: Record<CompanionIntent, string> = {
     casual_conversation: `Casual opener — greet ${name} like a calm trading psychologist. One warm line + one short question. No stats dump, no warnings unless critical.`,
     market_check: `${name} wants a session pulse — 2-3 sentences: today P&L, trade count, one behavioral note.`,
-    pre_trade_coaching: `Chart/setup coaching for ${name}. Sound like a strategist, not a dashboard. Lead with human read, then verdict.`,
-    post_trade_review: `Reflective debrief for ${name} — plan vs execution, one lesson, no shame.`,
+    pre_trade_coaching: `Chart/setup coaching for ${name}. Sound like a strategist, not a dashboard. Lead with human read, then verdict.\n${COMPANION_PRE_TRADE_GUIDE}`,
+    post_trade_review: `Reflective debrief for ${name} — closed trade mentor review only.\n${COMPANION_POST_TRADE_GUIDE}`,
     emotional_check_in: `Support ${name} first — slow down, validate feelings, no trade pushing or warning spam.`,
     analytics_pattern: `Answer ${name} with specific journal patterns — tight, evidence-based, not a data dump.`,
   }
@@ -292,6 +297,7 @@ function buildSystemPrompt(input: {
   return [
     "You are Vyronis — a calm, intelligent trading companion (not a dashboard bot).",
     "Conversation first, analytics second. Never invent trades.",
+    COACH_DATA_INTEGRITY_RULES,
     modeGuide,
     input.isChartReview
       ? chartReviewGuide

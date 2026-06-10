@@ -106,7 +106,11 @@ export function pickJournalDataPoint(
   if (losses >= 3) {
     return `${losses} consecutive losses with ${trader.emotion_pattern.toLowerCase()}`
   }
-  if (Number(trader.top_mistake_frequency) >= 25) {
+  if (
+    patternMemory?.hasEnoughData &&
+    (patternMemory.tradeCount ?? 0) >= 8 &&
+    Number(trader.top_mistake_frequency) >= 25
+  ) {
     return `${trader.top_mistake} on ${trader.top_mistake_frequency}% of recent trades`
   }
   if (patternMemory?.hasEnoughData) {
@@ -147,7 +151,9 @@ export function buildConversationalMessage(input: {
   if (verdict === "CAUTION") {
     const alignmentLine = failedRule
       ? `HTF alignment is partial and your journal flags ${topMistake} as the primary mistake.`
-      : `Your journal flags ${topMistake} on ${trader.top_mistake_frequency}% of trades with partial HTF alignment.`
+      : patternMemory?.hasEnoughData && (patternMemory.tradeCount ?? 0) >= 8
+        ? `Your journal flags ${topMistake} on ${trader.top_mistake_frequency}% of trades with partial HTF alignment.`
+        : "Your journal shows partial HTF alignment — verify bias before sizing up."
     const sizeLine = `Reduce size to ${Math.max(0.25, Number(trader.max_risk.replace("%", "")) / 2).toFixed(2)}% and wait for a clean CHoCH before committing.`
     const limitLine =
       Number(trader.consecutive_losses) >= 2

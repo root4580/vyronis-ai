@@ -1,3 +1,4 @@
+import { MIN_PATTERN_PERCENT_CLAIM_TRADES } from "@/lib/analytics/insight-thresholds"
 import { getRecentLossStreak, type TradeRiskGuardHistoryTrade } from "@/lib/trade-risk-guard"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { getWeekRange } from "@/lib/ai/weekly-debrief-engine"
@@ -52,7 +53,13 @@ function weekPnL(trades: TradeRiskGuardHistoryTrade[]): string {
 
 function topMistake(patternMemory: PatternMemoryResult): { label: string; frequency: string } {
   const mistake = patternMemory.patterns.find((p) => p.category === "mistake")
-  if (!mistake) return { label: "None logged yet", frequency: "0" }
+  if (!mistake) return { label: "None logged yet", frequency: "N/A" }
+  if (!patternMemory.hasEnoughData || patternMemory.tradeCount < MIN_PATTERN_PERCENT_CLAIM_TRADES) {
+    return {
+      label: mistake.message.replace(/\d+.*/, "").trim() || mistake.message,
+      frequency: "N/A",
+    }
+  }
   const match = mistake.message.match(/(\d+)/)
   const count = match?.[1] ?? "0"
   const total = patternMemory.tradeCount || 1
@@ -120,7 +127,10 @@ export function buildVyronisCoachTraderContext(input: {
     htf_accuracy: input.patternMemory?.hasEnoughData
       ? `${Math.max(0, 100 - (warnings.filter((p) => p.category === "countertrend").length * 15))}/100`
       : "Insufficient data",
-    discipline_score: String(input.disciplineScore ?? 70),
+    discipline_score:
+      input.disciplineScore != null && Number.isFinite(input.disciplineScore)
+        ? String(input.disciplineScore)
+        : "N/A",
     week_pnl: weekPnL(trades),
     consecutive_losses: String(getRecentLossStreak(trades)),
     pattern_1_description: patterns[0]?.message ?? "Insufficient journal data",

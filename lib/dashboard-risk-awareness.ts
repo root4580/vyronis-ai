@@ -1,3 +1,4 @@
+import { MIN_EMOTION_INSIGHT_TRADES } from "@/lib/analytics/insight-thresholds"
 import {
   buildDailyRules,
   buildRiskSnapshot,
@@ -188,7 +189,7 @@ export function evaluateDashboardRiskAwareness(
   const priorImpulsiveRate = getImpulsiveRate(priorEmotionWindow)
 
   if (
-    recentEmotionWindow.length >= 3 &&
+    recentEmotionWindow.length >= MIN_EMOTION_INSIGHT_TRADES &&
     recentImpulsiveRate >= 0.5 &&
     recentImpulsiveRate > priorImpulsiveRate + 0.2
   ) {

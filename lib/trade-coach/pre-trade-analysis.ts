@@ -54,7 +54,7 @@ function buildPreTradeInsights(
     insights.push("Risk managed well")
   }
   if (redFlags.some((flag) => flag.id === "rules_break")) {
-    insights.push("You broke your rules")
+    insights.push("Rule gap detected — pre-trade checklist incomplete")
   } else if (responses.rule_check?.toLowerCase() === "yes") {
     insights.push("Good patience — rules acknowledged")
   }

@@ -10,7 +10,7 @@ export type JournalFieldReview = {
 export function fieldStatusLabel(status: JournalFieldStatus): string {
   if (status === "yes") return "Yes"
   if (status === "no") return "No"
-  return "Not provided"
+  return "Not verified"
 }
 
 export function notProvidedNote(field: string): string {
@@ -38,8 +38,8 @@ export function resolveLiquiditySweepStatus(aoiType?: string | null): JournalFie
   return {
     field: "Liquidity sweep",
     status: "not_provided",
-    display: "Not provided",
-    note: notProvidedNote("Liquidity sweep"),
+      display: "Not verified",
+      note: notProvidedNote("Liquidity sweep"),
   }
 }
 
@@ -69,7 +69,7 @@ export function resolveStructureStatus(
   return {
     field,
     status: "not_provided",
-    display: "Not provided",
+    display: "Not verified",
     note: notProvidedNote(field),
   }
 }

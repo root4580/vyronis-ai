@@ -107,12 +107,14 @@ function buildDeepAnalysis(
         ? `Trend alignment ${chart.trendAlignment}/100.`
         : "Upload W/D/H4 charts for EMA stack read.",
     confirmation_quality: visual?.confirmationQuality
-      ? `${visual.confirmationQuality}/100 — BOS ${visual.bosDetected ? "yes" : "no"}, CHoCH ${visual.chochDetected ? "yes" : "no"}.`
+      ? `${visual.confirmationQuality}/100 — BOS ${visual.bosDetected ? "yes" : "not verified"}, CHoCH ${visual.chochDetected ? "yes" : "not verified"} (chart vision).`
       : mtf
         ? `Entry confirmation ${mtf.entry.entryConfirmationScore}/100.`
-        : "Confirmation not scored yet.",
+        : "Not verified from journal data.",
     risk_reward_structure:
-      precisionFlow.rules.find((r) => r.id === "risk_reward")?.note ?? "Define stop and target.",
+      precisionFlow.rules.find((r) => r.id === "risk_reward")?.passed
+        ? (precisionFlow.rules.find((r) => r.id === "risk_reward")?.note ?? "Risk:Reward verified from plan.")
+        : "Risk:Reward: Not verified from journal data.",
     breakout_vs_retest: visual?.liquiditySweepDetected
       ? "Liquidity sweep detected — verify retest before entry."
       : "Treat as structure retest until BOS is confirmed on close.",
@@ -226,8 +228,13 @@ export async function enrichVyronisCoachResponseWithLlm(input: {
   precisionFlow: PrecisionFlowResult
   context: PreTradePlannedContext
   trader: VyronisCoachTraderContext
+  patternMemory?: PatternMemoryResult
 }): Promise<VyronisCoachResponse> {
-  const systemPrompt = buildVyronisCoachSystemPrompt(input.trader, input.base.verdict)
+  const systemPrompt = buildVyronisCoachSystemPrompt(
+    input.trader,
+    input.base.verdict,
+    input.patternMemory,
+  )
   const userPrompt = [
     `Narrate this pre-trade coach read for ${input.context.pair || "the pair"} ${input.context.direction || ""}.`,
     `Precision Flow: ${input.precisionFlow.rulesPassed}/7 rules passed.`,

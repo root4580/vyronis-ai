@@ -118,7 +118,7 @@ export function getTradeDisplayMistakeTags(trade: MistakeTagTrade): DisplayMista
   if (trade.emotion === "Revenge") {
     pushTag(tags, "inferred-revenge", "Revenge Trade", "inferred")
   }
-  if ((trade.risk_percent ?? 1) > 1) {
+  if (trade.risk_percent != null && trade.risk_percent > 1) {
     pushTag(tags, "inferred-overrisk", "Overrisk", "inferred")
   }
   if (!trade.confirmation_signal) {

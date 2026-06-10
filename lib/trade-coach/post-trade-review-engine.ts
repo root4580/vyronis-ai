@@ -27,10 +27,47 @@ const IMPULSIVE_EMOTIONS = new Set(["FOMO", "Revenge", "Euphoric", "Anxious", "F
 export type PostTradeScorecard = {
   strategyScore: number
   strategyGrade: PostTradeGrade
+  executionScore: number
+  executionGrade: PostTradeGrade
+  psychologyScore: number
+  psychologyGrade: PostTradeGrade
+  /** @deprecated Use executionScore */
   disciplineScore: number
+  /** @deprecated Use executionGrade */
   disciplineGrade: PostTradeGrade
   finalScore: number
   finalGrade: PostTradeGrade
+}
+
+type ResolvedRiskPercent = {
+  value: number | null
+  verified: boolean
+  display: string
+  note: string
+}
+
+function resolveRiskPercent(
+  riskPercent: number | null | undefined,
+  maxRiskPerTrade: number,
+): ResolvedRiskPercent {
+  if (riskPercent == null || !Number.isFinite(riskPercent)) {
+    return {
+      value: null,
+      verified: false,
+      display: "Not verified",
+      note: "Risk percentage could not be verified.",
+    }
+  }
+
+  const withinLimit = riskPercent > 0 && riskPercent <= maxRiskPerTrade
+  return {
+    value: riskPercent,
+    verified: true,
+    display: `${riskPercent.toFixed(1)}%`,
+    note: withinLimit
+      ? `Risk logged at ${riskPercent.toFixed(1)}% — within the ${maxRiskPerTrade}% challenge limit.`
+      : `Risk logged at ${riskPercent.toFixed(1)}% — above the ${maxRiskPerTrade}% challenge limit.`,
+  }
 }
 
 function clamp(score: number): number {
@@ -130,9 +167,10 @@ function buildStrategyScore(input: PostTradeCoachInput, rr: ResolvedTradeRiskRew
   return { score: clamp(score), strengths, gaps }
 }
 
-function buildDisciplineScore(
+function buildExecutionScore(
   input: PostTradeCoachInput,
   hasPreTrade: boolean,
+  risk: ResolvedRiskPercent,
 ): {
   score: number
   strengths: string[]
@@ -147,26 +185,26 @@ function buildDisciplineScore(
   const ruleFollowed: PostTradeRuleReview[] = []
   const ruleMissed: PostTradeRuleReview[] = []
 
-  const actualRisk = trade.risk_percent ?? 0
-  const riskWithinChallenge = actualRisk > 0 && actualRisk <= maxRiskPerTrade
-
-  if (riskWithinChallenge) {
-    score += 12
-    ruleFollowed.push({
-      rule: `Risk ≤ ${maxRiskPerTrade}% challenge limit`,
-      status: "followed",
-      note: `Risk logged at ${actualRisk.toFixed(1)}%.`,
-    })
-    strengths.push(`Risk stayed within the ${maxRiskPerTrade}% challenge rule.`)
-  } else if (actualRisk > maxRiskPerTrade) {
-    score -= 10
-    const gap = `Rule gap detected: risk exceeded the current ${maxRiskPerTrade}% challenge limit (${actualRisk.toFixed(1)}% logged).`
-    ruleGaps.push(gap)
-    ruleMissed.push({
-      rule: `Risk ≤ ${maxRiskPerTrade}% challenge limit`,
-      status: "missed",
-      note: gap,
-    })
+  if (risk.verified && risk.value != null) {
+    const riskWithinChallenge = risk.value > 0 && risk.value <= maxRiskPerTrade
+    if (riskWithinChallenge) {
+      score += 12
+      ruleFollowed.push({
+        rule: `Risk ≤ ${maxRiskPerTrade}% challenge limit`,
+        status: "followed",
+        note: risk.note,
+      })
+      strengths.push(`Risk stayed within the ${maxRiskPerTrade}% challenge rule.`)
+    } else if (risk.value > maxRiskPerTrade) {
+      score -= 10
+      const gap = `Rule gap detected: risk exceeded the current ${maxRiskPerTrade}% challenge limit (${risk.display} logged).`
+      ruleGaps.push(gap)
+      ruleMissed.push({
+        rule: `Risk ≤ ${maxRiskPerTrade}% challenge limit`,
+        status: "missed",
+        note: gap,
+      })
+    }
   }
 
   if (trade.rule_followed === true) {
@@ -179,22 +217,13 @@ function buildDisciplineScore(
     strengths.push("Rules followed was marked Yes.")
   } else if (trade.rule_followed === false) {
     score -= 18
-    const gap = "Rule gap detected: rules followed was marked No on this trade."
+    const gap = "Rule gap detected: this trade deviated from your preferred process."
     ruleGaps.push(gap)
     ruleMissed.push({
       rule: "Trading rules",
       status: "missed",
-      note: gap,
+      note: "Rules followed was marked No on this trade.",
     })
-  }
-
-  if (STABLE_EMOTIONS.has(trade.emotion)) {
-    score += 10
-    strengths.push(`Emotion stayed ${trade.emotion.toLowerCase()} through execution.`)
-  }
-  if (IMPULSIVE_EMOTIONS.has(trade.emotion)) {
-    score -= 14
-    ruleGaps.push(`Impulsive emotion logged at entry (${trade.emotion}).`)
   }
 
   if (trade.entry_quality === "impulsive") {
@@ -203,6 +232,9 @@ function buildDisciplineScore(
   } else if (trade.entry_quality === "perfect") {
     score += 6
     strengths.push("Entry quality logged as perfect.")
+  } else if (trade.entry_quality === "early" || trade.entry_quality === "late") {
+    score -= 4
+    ruleGaps.push(`Entry timing logged as ${trade.entry_quality}.`)
   }
 
   const mistakeTags = getTradeDisplayMistakeTags({
@@ -210,9 +242,29 @@ function buildDisciplineScore(
     confirmation_signal: trade.confirmation_signal ?? null,
     mistake_tags: trade.mistake_tags ?? null,
   })
-  score -= Math.min(16, mistakeTags.filter((t) => t.dangerous).length * 6)
-  for (const tag of mistakeTags.slice(0, 2)) {
-    if (tag.dangerous) ruleGaps.push(`Mistake tag: ${tag.label}.`)
+  const executionMistakes = mistakeTags.filter(
+    (tag) => tag.dangerous && !["FOMO", "Revenge Trade"].includes(tag.label),
+  )
+  score -= Math.min(16, executionMistakes.length * 6)
+  for (const tag of executionMistakes.slice(0, 2)) {
+    ruleGaps.push(`Mistake tag: ${tag.label}.`)
+  }
+
+  const movedStop = mistakeTags.some((tag) => tag.label === "Moved Stop")
+  if (movedStop) {
+    score -= 10
+    ruleGaps.push("Set & Forget gap: moved stop logged on this trade.")
+    ruleMissed.push({
+      rule: "Set & Forget",
+      status: "missed",
+      note: "Stop was adjusted after entry — journal shows a moved-stop tag.",
+    })
+  } else if (trade.result && trade.result !== "OPEN") {
+    ruleFollowed.push({
+      rule: "Set & Forget",
+      status: "followed",
+      note: "No moved-stop tag logged on this closed trade.",
+    })
   }
 
   if (!hasPreTrade) {
@@ -236,30 +288,84 @@ function buildDisciplineScore(
   }
 }
 
-function buildPlannedVsActual(input: PostTradeCoachInput): PlannedVsActualComparison[] {
+function buildPsychologyScore(input: PostTradeCoachInput): {
+  score: number
+  strengths: string[]
+  gaps: string[]
+} {
+  const { trade } = input
+  let score = 74
+  const strengths: string[] = []
+  const gaps: string[] = []
+
+  if (STABLE_EMOTIONS.has(trade.emotion)) {
+    score += 10
+    strengths.push(`Pre-trade emotion logged as ${trade.emotion.toLowerCase()}.`)
+  }
+  if (trade.emotion === "Confident") score += 4
+  if (IMPULSIVE_EMOTIONS.has(trade.emotion)) {
+    score -= 14
+    gaps.push(`Pre-trade emotion logged as ${trade.emotion} — impulsive state flagged.`)
+  }
+  if (trade.emotion === "Revenge") score -= 8
+  if (trade.emotion === "FOMO") score -= 6
+
+  if (trade.emotion_after) {
+    if (STABLE_EMOTIONS.has(trade.emotion_after)) {
+      score += 8
+      strengths.push(`Post-trade emotion stayed ${trade.emotion_after.toLowerCase()}.`)
+    } else if (IMPULSIVE_EMOTIONS.has(trade.emotion_after)) {
+      score -= 8
+      gaps.push(`Post-trade emotion logged as ${trade.emotion_after}.`)
+    }
+  }
+
+  const mistakeTags = getTradeDisplayMistakeTags({
+    ...trade,
+    confirmation_signal: trade.confirmation_signal ?? null,
+    mistake_tags: trade.mistake_tags ?? null,
+  })
+  if (mistakeTags.some((tag) => tag.label === "FOMO")) {
+    score -= 8
+    gaps.push("FOMO tagged on this trade.")
+  }
+  if (mistakeTags.some((tag) => tag.label === "Revenge Trade")) {
+    score -= 10
+    gaps.push("Revenge trading tagged on this trade.")
+  }
+  if (mistakeTags.some((tag) => tag.label === "Early Entry")) {
+    score -= 4
+    gaps.push("Patience gap: early entry tagged.")
+  }
+
+  return { score: clamp(score), strengths, gaps }
+}
+
+function buildPlannedVsActual(
+  input: PostTradeCoachInput,
+  risk: ResolvedRiskPercent,
+): PlannedVsActualComparison[] {
   const { trade, preTradeResponses, plannedContext, maxRiskPerTrade } = input
   const hasPreTrade = hasLinkedPreTrade(input)
   const comparisons: PlannedVsActualComparison[] = []
-  const rr = resolveTradeRiskReward(trade)
+  const rr = resolveTradeRiskReward(trade, {
+    plannedRr: preTradeResponses.planned_rr,
+  })
 
   comparisons.push({
     field: "Risk:Reward",
     planned: preTradeResponses.planned_rr || "—",
-    actual: rr.value != null ? rr.display : "Not provided",
-    aligned: rr.passesVyronisMinimum,
+    actual: rr.value != null ? rr.display : "Not verified",
+    aligned: rr.value != null ? rr.passesVyronisMinimum : false,
     note: rr.note,
   })
 
-  const actualRisk = trade.risk_percent ?? 0
   comparisons.push({
     field: "Risk %",
     planned: preTradeResponses.planned_risk || String(maxRiskPerTrade),
-    actual: `${actualRisk.toFixed(1)}%`,
-    aligned: actualRisk > 0 && actualRisk <= maxRiskPerTrade,
-    note:
-      actualRisk > maxRiskPerTrade
-        ? `Risk exceeded the ${maxRiskPerTrade}% challenge limit.`
-        : `Risk stayed within the ${maxRiskPerTrade}% challenge limit.`,
+    actual: risk.verified && risk.value != null ? risk.display : "Not verified",
+    aligned: risk.verified && risk.value != null ? risk.value <= maxRiskPerTrade : false,
+    note: risk.note,
   })
 
   if (hasPreTrade && plannedContext.entry_price) {
@@ -278,11 +384,13 @@ function buildPlannedVsActual(input: PostTradeCoachInput): PlannedVsActualCompar
     field: "Rules followed",
     planned: preTradeResponses.rule_check || (hasPreTrade ? "—" : "Not logged"),
     actual: trade.rule_followed === null ? "Not logged" : trade.rule_followed ? "Yes" : "No",
-    aligned: trade.rule_followed !== false && actualRisk <= maxRiskPerTrade,
+    aligned:
+      trade.rule_followed !== false &&
+      (risk.verified && risk.value != null ? risk.value <= maxRiskPerTrade : true),
     note:
       trade.rule_followed === false
         ? "Rules followed was marked No."
-        : actualRisk > maxRiskPerTrade
+        : risk.verified && risk.value != null && risk.value > maxRiskPerTrade
           ? `Risk challenge gap only — rules followed was ${trade.rule_followed === true ? "Yes" : "not logged"}.`
           : "Rule adherence looked clean on this closed trade.",
   })
@@ -307,11 +415,12 @@ function buildWhatWentWell(
 function buildPostTradeVerdict(input: {
   trade: PostTradeCoachInput["trade"]
   strategyGrade: PostTradeGrade
-  disciplineGrade: PostTradeGrade
+  executionGrade: PostTradeGrade
+  psychologyGrade: PostTradeGrade
   ruleGaps: string[]
   riskGap: string | null
 }): string {
-  const { trade, strategyGrade, disciplineGrade, ruleGaps, riskGap } = input
+  const { trade, strategyGrade, executionGrade, psychologyGrade, ruleGaps, riskGap } = input
   const resultLabel =
     trade.result === "WIN"
       ? "Winning trade."
@@ -326,22 +435,29 @@ function buildPostTradeVerdict(input: {
         ? "Strategy alignment was acceptable."
         : "Strategy alignment had gaps."
 
-  const disciplineLine =
-    disciplineGrade === "A" || disciplineGrade === "A+"
+  const executionLine =
+    executionGrade === "A" || executionGrade === "A+"
       ? "Execution was clean."
-      : disciplineGrade === "B"
+      : executionGrade === "B"
         ? "Execution was mostly clean."
-        : "Execution discipline needs work."
+        : "Execution had gaps to tighten."
+
+  const psychologyLine =
+    psychologyGrade === "A" || psychologyGrade === "A+"
+      ? "Psychology stayed stable."
+      : psychologyGrade === "B"
+        ? "Psychology was acceptable."
+        : "Psychology needs attention before repeating."
 
   const mainIssue =
     riskGap ??
     ruleGaps[0] ??
-    (disciplineGrade === "C" || disciplineGrade === "D"
-      ? "Review discipline before repeating the setup."
+    (executionGrade === "C" || executionGrade === "D"
+      ? "Review execution before repeating the setup."
       : null)
 
   return sanitizePostTradeCopy(
-    [resultLabel, strategyLine, disciplineLine, mainIssue ? `Main discipline issue: ${mainIssue}` : null]
+    [resultLabel, strategyLine, executionLine, psychologyLine, mainIssue ? `Main gap: ${mainIssue}` : null]
       .filter(Boolean)
       .join(" "),
   )
@@ -395,31 +511,37 @@ function buildImproveNextTime(ruleGaps: string[], doctrine: JournalFieldReview[]
 
 function buildRepeatability(input: {
   strategyScore: number
-  disciplineScore: number
+  executionScore: number
+  psychologyScore: number
   ruleGaps: string[]
   rr: ResolvedTradeRiskReward
 }): { repeatable: boolean; reason: string } {
   if (input.ruleGaps.some((g) => g.includes("challenge limit"))) {
     return {
       repeatable: false,
-      reason: "Repeat the setup structure, but only with correct risk and complete pre-trade logging.",
+      reason: "Repeat the setup structure, but only with verified risk and complete pre-trade logging.",
     }
   }
-  if (input.strategyScore >= 76 && input.disciplineScore >= 72 && input.ruleGaps.length <= 1) {
+  if (
+    input.strategyScore >= 76 &&
+    input.executionScore >= 72 &&
+    input.psychologyScore >= 68 &&
+    input.ruleGaps.length <= 1
+  ) {
     return {
       repeatable: true,
-      reason: "Setup structure and execution are repeatable under the Vyronis model.",
+      reason: "Setup structure, execution, and psychology are repeatable under the Vyronis model.",
     }
   }
   if (input.rr.value != null && input.rr.value < 1.5) {
     return {
       repeatable: false,
-      reason: "R:R was too thin to treat this as a repeatable template trade.",
+      reason: "Verified R:R was too thin to treat this as a repeatable template trade.",
     }
   }
   return {
     repeatable: false,
-    reason: "Refine discipline and journal completeness before repeating this exact process.",
+    reason: "Refine execution, psychology, and journal completeness before repeating this exact process.",
   }
 }
 
@@ -431,49 +553,69 @@ export function buildPostTradeReview(input: PostTradeCoachInput): {
   ruleGaps: string[]
   notVerified: JournalFieldReview[]
 } {
-  const rr = resolveTradeRiskReward(input.trade)
+  const risk = resolveRiskPercent(input.trade.risk_percent, input.maxRiskPerTrade)
+  const rr = resolveTradeRiskReward(input.trade, {
+    plannedRr: input.preTradeResponses.planned_rr,
+  })
   const doctrine = buildDoctrineReview(input.trade)
   const hasPreTrade = hasLinkedPreTrade(input)
 
   const strategy = buildStrategyScore(input, rr)
-  const discipline = buildDisciplineScore(input, hasPreTrade)
+  const execution = buildExecutionScore(input, hasPreTrade, risk)
+  const psychology = buildPsychologyScore(input)
 
   const strategyScore = strategy.score
-  const disciplineScore = discipline.score
-  const finalScore = clamp(strategyScore * 0.55 + disciplineScore * 0.45)
+  const executionScore = execution.score
+  const psychologyScore = psychology.score
+  const finalScore = clamp(strategyScore * 0.4 + executionScore * 0.35 + psychologyScore * 0.25)
   const scorecard: PostTradeScorecard = {
     strategyScore,
     strategyGrade: scoreToGrade(strategyScore),
-    disciplineScore,
-    disciplineGrade: scoreToGrade(disciplineScore),
+    executionScore,
+    executionGrade: scoreToGrade(executionScore),
+    psychologyScore,
+    psychologyGrade: scoreToGrade(psychologyScore),
+    disciplineScore: executionScore,
+    disciplineGrade: scoreToGrade(executionScore),
     finalScore,
     finalGrade: scoreToFinalGrade(finalScore),
   }
 
-  const riskGap = discipline.ruleGaps.find((g) => g.includes("challenge limit")) ?? null
+  const ruleGaps = [...execution.ruleGaps, ...psychology.gaps.map(sanitizePostTradeCopy)]
+  const riskGap = execution.ruleGaps.find((g) => g.includes("challenge limit")) ?? null
   const resultQuality = assessResultQuality(
     input.trade,
     strategyScore,
-    disciplineScore,
-    discipline.ruleGaps,
+    executionScore,
+    ruleGaps,
   )
   const repeatability = buildRepeatability({
     strategyScore,
-    disciplineScore,
-    ruleGaps: discipline.ruleGaps,
+    executionScore,
+    psychologyScore,
+    ruleGaps,
     rr,
   })
 
   const postTradeVerdict = buildPostTradeVerdict({
     trade: input.trade,
     strategyGrade: scorecard.strategyGrade,
-    disciplineGrade: scorecard.disciplineGrade,
-    ruleGaps: discipline.ruleGaps,
+    executionGrade: scorecard.executionGrade,
+    psychologyGrade: scorecard.psychologyGrade,
+    ruleGaps,
     riskGap,
   })
 
-  const whatWentWell = buildWhatWentWell(strategy.strengths, discipline.strengths, input.trade)
-  const notVerified = doctrine.filter((d) => d.status === "not_provided")
+  const whatWentWell = buildWhatWentWell(
+    [...strategy.strengths, ...psychology.strengths],
+    execution.strengths,
+    input.trade,
+  )
+  const notVerified = [
+    ...doctrine.filter((d) => d.status === "not_provided"),
+    ...(risk.verified ? [] : [{ field: "Risk %", status: "not_provided" as const, display: "Not verified", note: risk.note }]),
+    ...(rr.value != null ? [] : [{ field: "Risk:Reward", status: "not_provided" as const, display: "Not verified", note: rr.note }]),
+  ]
 
   const executionReview: PostTradeExecutionReview = {
     coachMode: "post_trade",
@@ -481,15 +623,19 @@ export function buildPostTradeReview(input: PostTradeCoachInput): {
     finalScore: scorecard.finalScore,
     strategyScore: scorecard.strategyScore,
     strategyGrade: scorecard.strategyGrade,
+    executionScore: scorecard.executionScore,
+    executionGrade: scorecard.executionGrade,
+    psychologyScore: scorecard.psychologyScore,
+    psychologyGrade: scorecard.psychologyGrade,
     disciplineScore: scorecard.disciplineScore,
     disciplineGrade: scorecard.disciplineGrade,
     postTradeVerdict,
     executedWell: whatWentWell,
-    rulesFollowed: discipline.ruleFollowed,
-    rulesMissed: discipline.ruleMissed,
-    ruleGaps: discipline.ruleGaps,
-    biggestMistake: discipline.ruleGaps[0] ?? null,
-    improveNextTime: buildImproveNextTime(discipline.ruleGaps, doctrine),
+    rulesFollowed: execution.ruleFollowed,
+    rulesMissed: execution.ruleMissed,
+    ruleGaps,
+    biggestMistake: ruleGaps[0] ?? null,
+    improveNextTime: buildImproveNextTime(ruleGaps, doctrine),
     resultQuality: resultQuality.quality,
     resultQualityNote: resultQuality.note,
     repeatable: repeatability.repeatable,
@@ -516,9 +662,9 @@ export function buildPostTradeReview(input: PostTradeCoachInput): {
   return {
     scorecard,
     executionReview,
-    plannedVsActual: buildPlannedVsActual(input),
+    plannedVsActual: buildPlannedVsActual(input, risk),
     whatWentWell,
-    ruleGaps: discipline.ruleGaps,
+    ruleGaps,
     notVerified,
   }
 }

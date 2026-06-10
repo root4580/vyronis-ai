@@ -11,13 +11,16 @@ import type {
 function buildCoachingInsights(input: PostTradeCoachInput, ruleGaps: string[]): CoachInsightLabel[] {
   const insights: CoachInsightLabel[] = []
   const { trade, maxRiskPerTrade } = input
-  const actualRisk = trade.risk_percent ?? 0
+  const actualRisk = trade.risk_percent
 
-  if (actualRisk > 0 && actualRisk <= maxRiskPerTrade) {
+  if (actualRisk != null && actualRisk > 0 && actualRisk <= maxRiskPerTrade) {
     insights.push("Risk within challenge limit")
   }
-  if (actualRisk > maxRiskPerTrade) {
+  if (actualRisk != null && actualRisk > maxRiskPerTrade) {
     insights.push(`Risk gap: above ${maxRiskPerTrade}% challenge limit`)
+  }
+  if (actualRisk == null) {
+    insights.push("Risk percentage could not be verified")
   }
 
   if (trade.rule_followed === true) insights.push("Rules marked followed")
@@ -40,9 +43,12 @@ export function generatePostTradeCoachFeedback(
     strengths: executionReview.executedWell,
     weaknesses: executionReview.ruleGaps.map(sanitizePostTradeCopy),
     ruleAdherence:
-      executionReview.disciplineGrade === "A" || executionReview.disciplineGrade === "A+"
+      executionReview.executionGrade === "A" ||
+      executionReview.executionGrade === "A+" ||
+      executionReview.disciplineGrade === "A" ||
+      executionReview.disciplineGrade === "A+"
         ? "strong"
-        : executionReview.disciplineGrade === "B"
+        : executionReview.executionGrade === "B" || executionReview.disciplineGrade === "B"
           ? "mixed"
           : "weak",
     emotionalControl: ["FOMO", "Revenge", "Euphoric", "Anxious", "Fearful"].includes(input.trade.emotion)
@@ -53,7 +59,7 @@ export function generatePostTradeCoachFeedback(
   }
 
   const coachingSummary = sanitizePostTradeCopy(
-    `Post-trade review · ${input.trade.pair} ${input.trade.result} · Strategy ${executionReview.strategyGrade} (${executionReview.strategyScore}) · Discipline ${executionReview.disciplineGrade} (${executionReview.disciplineScore}) · Final ${executionReview.overallGrade} (${executionReview.finalScore}). ${executionReview.postTradeVerdict}`,
+    `Post-trade review · ${input.trade.pair} ${input.trade.result} · Strategy ${executionReview.strategyGrade} · Execution ${executionReview.executionGrade ?? executionReview.disciplineGrade} · Psychology ${executionReview.psychologyGrade ?? "—"} · Overall ${executionReview.overallGrade}. ${executionReview.postTradeVerdict}`,
   )
 
   const feedbackPoints = [

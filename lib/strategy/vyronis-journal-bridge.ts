@@ -132,9 +132,7 @@ export function buildVyronisTradeInputFromJournalForm(
           ? "verified"
           : aoiType === "none"
             ? "absent"
-            : aoiType
-              ? "verified"
-              : "unverified",
+            : "unverified",
     },
     structure: {
       shift: structureShift,

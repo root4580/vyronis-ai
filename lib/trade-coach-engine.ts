@@ -1,3 +1,8 @@
+import {
+  MIN_BEHAVIOR_EVENT_COUNT,
+  MIN_JOURNAL_INSIGHT_TRADES,
+  MIN_PATTERN_PERCENT_CLAIM_TRADES,
+} from "@/lib/analytics/insight-thresholds"
 import { calculateStateScore } from "@/lib/coach/state-score-engine"
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { getRecentLossStreak } from "@/lib/trade-risk-guard"
@@ -359,13 +364,14 @@ function analyzeFomoAfterWins(trades: CoachTrade[]): CoachInsight | null {
     }
   }
 
-  if (fomoAfterWins === 0) return null
+  if (fomoAfterWins < MIN_BEHAVIOR_EVENT_COUNT) return null
+  if (trades.length < MIN_PATTERN_PERCENT_CLAIM_TRADES) return null
 
   return {
     id: "fomo-after-wins",
     type: "warning",
     category: "fomo",
-    message: `FOMO detected after consecutive wins (${fomoAfterWins} trade${fomoAfterWins > 1 ? "s" : ""}).`,
+    message: `FOMO logged after consecutive wins on ${fomoAfterWins} closed trades in your journal.`,
     priority: 88,
   }
 }
@@ -396,9 +402,11 @@ function analyzeDiscipline(trades: CoachTrade[], maxRiskPerTrade: number): Coach
   const taggedTrades = trades.filter((t) => parseMistakeTags(t.mistake_tags).length > 0).length
   const degraded = processIsDegraded(trades, maxRiskPerTrade)
 
-  if (brokenRules.length >= 2) {
+  if (brokenRules.length >= 2 && trades.length >= MIN_JOURNAL_INSIGHT_TRADES) {
     const brokenLosses = brokenRules.filter(isLoss).length
-    const brokenLossShare = Math.round((brokenLosses / Math.max(1, trades.filter(isLoss).length)) * 100)
+    const lossCount = trades.filter(isLoss).length
+    if (lossCount >= MIN_BEHAVIOR_EVENT_COUNT) {
+    const brokenLossShare = Math.round((brokenLosses / lossCount) * 100)
 
     if (brokenLossShare >= 40) {
       return {
@@ -410,6 +418,7 @@ function analyzeDiscipline(trades: CoachTrade[], maxRiskPerTrade: number): Coach
         ),
         priority: 86,
       }
+    }
     }
   }
 
@@ -532,7 +541,8 @@ function analyzeDirectionBias(trades: CoachTrade[]): CoachInsight | null {
 
 function analyzeRevengeTrading(trades: CoachTrade[]): CoachInsight | null {
   const revengeTrades = trades.filter((t) => t.emotion === "Revenge")
-  if (revengeTrades.length < 1) return null
+  if (revengeTrades.length < MIN_BEHAVIOR_EVENT_COUNT) return null
+  if (trades.length < MIN_PATTERN_PERCENT_CLAIM_TRADES) return null
 
   const revengeLossRate = Math.round((revengeTrades.filter(isLoss).length / revengeTrades.length) * 100)
 
@@ -540,7 +550,7 @@ function analyzeRevengeTrading(trades: CoachTrade[]): CoachInsight | null {
     id: "revenge-trading",
     type: "warning",
     category: "emotion",
-    message: `Revenge trading detected (${revengeTrades.length} trade${revengeTrades.length > 1 ? "s" : ""}) — ${revengeLossRate}% ended in losses.`,
+    message: `Revenge emotion logged on ${revengeTrades.length} journal trades — ${revengeLossRate}% of those closed as losses.`,
     priority: 94,
   }
 }

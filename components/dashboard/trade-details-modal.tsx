@@ -355,8 +355,12 @@ export function TradeDetailsModal({
                 />
                 <MetricTile
                   label="Risk"
-                  value={`${(trade.risk_percent ?? 1).toFixed(1)}%`}
-                  valueClassName={(trade.risk_percent ?? 1) > 1 ? "text-loss" : "text-foreground/90"}
+                  value={trade.risk_percent != null ? `${trade.risk_percent.toFixed(1)}%` : "Not verified"}
+                  valueClassName={
+                    trade.risk_percent != null && trade.risk_percent > 1
+                      ? "text-loss"
+                      : "text-foreground/90"
+                  }
                 />
                 <MetricTile
                   label="Setup"
