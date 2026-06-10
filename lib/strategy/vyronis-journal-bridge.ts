@@ -22,6 +22,7 @@ export type VyronisJournalEvaluationRecord = VyronisEvaluation & {
   improvement: string | null
   passSummary: string
   failSummary: string
+  postTradeVerdict: string | null
   rrBelowMinimum: boolean
   riskReward: number | null
   scoringSystem: typeof VYRONIS_STRATEGY_SCORING
@@ -52,7 +53,8 @@ function mapSession(session: string | null | undefined): VyronisSession {
 function structureFromConfirmation(type: string): VyronisStructureShift {
   if (type === "choch") return "choch"
   if (type === "bos") return "bos"
-  return "none"
+  if (type === "none") return "none"
+  return "unverified"
 }
 
 function engulfingFromConfirmation(type: string): VyronisEngulfingType {
@@ -84,8 +86,8 @@ export function buildVyronisTradeInputFromJournalForm(
   const weekly = parseBias(form.weekly_bias) ?? "neutral"
   const daily = parseBias(form.daily_bias) ?? "neutral"
   const h4 = parseBias(form.h4_bias) ?? "neutral"
-  const aoiType = form.aoi_type || "demand"
-  const confirmationType = form.confirmation_type || "none"
+  const aoiType = form.aoi_type?.trim() ?? ""
+  const confirmationType = form.confirmation_type?.trim() ?? ""
   const entryQuality = form.entry_quality || "perfect"
   const direction = tradeDirection(form.direction)
 
@@ -104,7 +106,9 @@ export function buildVyronisTradeInputFromJournalForm(
             ? ["EMA retest"]
             : confirmationType === "none"
               ? []
-              : [confirmationType.toUpperCase()],
+              : confirmationType
+                ? [confirmationType.toUpperCase()]
+                : undefined,
   }
 
   return {
@@ -116,13 +120,21 @@ export function buildVyronisTradeInputFromJournalForm(
       tradeDirection: direction,
     },
     aoi: {
-      reached: Boolean(form.aoi_type),
-      qualityScore: aoiQualityScore(aoiType, entryQuality),
+      reached: Boolean(aoiType),
+      qualityScore: aoiQualityScore(aoiType || "demand", entryQuality),
       invalidationClear: entryQuality !== "impulsive",
     },
     liquidity: {
-      sweepDetected: aoiType === "liquidity_sweep" || confirmationType === "break_retest",
+      sweepDetected: aoiType === "liquidity_sweep",
       alignedWithDirection: direction !== "neutral",
+      verificationStatus:
+        aoiType === "liquidity_sweep"
+          ? "verified"
+          : aoiType === "none"
+            ? "absent"
+            : aoiType
+              ? "verified"
+              : "unverified",
     },
     structure: {
       shift: structureShift,
@@ -159,7 +171,80 @@ function deriveMainMistake(
   return null
 }
 
-function deriveImprovement(evaluation: VyronisEvaluation, rrBelowMinimum: boolean): string {
+function derivePostTradeVyronisVerdict(
+  evaluation: VyronisEvaluation,
+  form: TradeFormState,
+  rrBelowMinimum: boolean,
+  maxRiskPercent: number,
+): string {
+  const riskPct = form.risk_percent ? parseFloat(form.risk_percent) : null
+  const riskGap =
+    riskPct != null && riskPct > maxRiskPercent
+      ? `Main discipline issue: risk was ${riskPct}%, above the current ${maxRiskPercent}% challenge rule.`
+      : null
+
+  if (form.result === "WIN") {
+    if (evaluation.grade === "A" || evaluation.grade === "A+") {
+      return sanitizeVyronisPostTradeCopy(
+        [
+          "Winning trade.",
+          "Strategy alignment was strong.",
+          riskGap ? "Execution was mostly clean." : "Execution was clean.",
+          riskGap,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      )
+    }
+    if (evaluation.hardSkip || evaluation.grade === "Skip") {
+      return "Winning trade, but doctrine gaps were present. Do not let the profit reinforce shortcuts."
+    }
+    return [
+      "Winning trade.",
+      "Strategy alignment was acceptable.",
+      riskGap ?? "Review journal completeness before repeating the setup.",
+    ].join(" ")
+  }
+
+  if (evaluation.hardSkip || evaluation.grade === "Skip") {
+    return "Closed loss against doctrine — review what broke down before repeating the setup."
+  }
+  if (rrBelowMinimum) {
+    return "Closed trade with weak R:R asymmetry — plan stronger reward before repeating."
+  }
+  return evaluation.reasons[0]
+    ? `Closed trade. ${evaluation.reasons[0]}`
+    : "Closed trade — review strategy and discipline separately before repeating."
+}
+
+function sanitizeVyronisPostTradeCopy(text: string): string {
+  return text
+    .replace(/reduce size[^.!?]*/gi, "tighten risk discipline on the next repetition")
+    .replace(/wait for (another )?confirmation[^.!?]*/gi, "log confirmation quality more completely next time")
+    .trim()
+}
+
+function deriveImprovement(
+  evaluation: VyronisEvaluation,
+  rrBelowMinimum: boolean,
+  isClosedTrade: boolean,
+): string {
+  if (isClosedTrade) {
+    if (evaluation.hardSkip || evaluation.grade === "Skip") {
+      return "Execution completed against doctrine — note what broke down and correct it on the next similar setup."
+    }
+    if (rrBelowMinimum) {
+      return "R:R was below Vyronis minimum on this trade — plan stronger asymmetry before repeating the setup."
+    }
+    if (evaluation.grade === "B") {
+      return "Outcome is logged — tighten confirmation quality and entry timing on the next repetition."
+    }
+    if (evaluation.reasons.length > 0) {
+      return `Repeat what worked: ${evaluation.reasons[0]}`
+    }
+    return "Solid journal capture — keep logging doctrine fields to sharpen post-trade reviews."
+  }
+
   if (evaluation.hardSkip) {
     return "Wait for HTF alignment and a calm/confident emotional state before risking capital."
   }
@@ -216,13 +301,31 @@ export function evaluateVyronisJournalTrade(
 
   const { passSummary, failSummary } = buildPassFailSummary(evaluation)
 
+  const isClosedTrade = Boolean(form.result?.trim())
+
   return {
     ...evaluation,
     doctrineVersion: VYRONIS_CORE_DOCTRINE_VERSION,
     mainMistake: deriveMainMistake(evaluation, form),
-    improvement: deriveImprovement(evaluation, rrBelowMinimum),
-    passSummary,
-    failSummary,
+    improvement: deriveImprovement(
+      evaluation,
+      rrBelowMinimum,
+      isClosedTrade,
+    ),
+    passSummary: isClosedTrade
+      ? sanitizeVyronisPostTradeCopy(passSummary)
+      : passSummary,
+    failSummary: isClosedTrade
+      ? sanitizeVyronisPostTradeCopy(failSummary)
+      : failSummary,
+    postTradeVerdict: isClosedTrade
+      ? derivePostTradeVyronisVerdict(
+          evaluation,
+          form,
+          rrBelowMinimum,
+          options.maxRiskPercent,
+        )
+      : null,
     rrBelowMinimum,
     riskReward: options.riskReward,
     scoringSystem: VYRONIS_STRATEGY_SCORING,

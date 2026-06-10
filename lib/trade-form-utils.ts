@@ -89,12 +89,16 @@ export function calculateTradeRiskReward(trade: {
 export function getTradeRiskReward(trade: {
   direction: string
   risk_reward?: number | null
+  rr?: number | null
   entry_price?: number | null
   stop_loss?: number | null
   take_profit?: number | null
 }): number | null {
   if (trade.risk_reward != null && Number.isFinite(trade.risk_reward) && trade.risk_reward > 0) {
     return trade.risk_reward
+  }
+  if (trade.rr != null && Number.isFinite(trade.rr) && trade.rr > 0) {
+    return trade.rr
   }
   return calculateTradeRiskReward(trade)
 }

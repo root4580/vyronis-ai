@@ -11,14 +11,23 @@ type VyronisScoreResultPanelProps = {
   evaluation: VyronisJournalEvaluationRecord
   compact?: boolean
   className?: string
+  /** When true, labels reflect a completed trade review instead of pre-entry guidance. */
+  isClosedTrade?: boolean
 }
 
 export function VyronisScoreResultPanel({
   evaluation,
   compact = false,
   className,
+  isClosedTrade = false,
 }: VyronisScoreResultPanelProps) {
   const passed = !evaluation.hardSkip && evaluation.grade !== "Skip"
+  const verdictText = isClosedTrade
+    ? evaluation.postTradeVerdict ??
+      (passed
+        ? "Closed trade with acceptable doctrine alignment."
+        : "Closed trade with doctrine or discipline gaps to review.")
+    : evaluation.recommendation.replace("_", " ")
 
   return (
     <DashboardInsetPanel
@@ -56,10 +65,20 @@ export function VyronisScoreResultPanel({
           ) : (
             <AlertTriangle className="size-3.5 shrink-0 text-loss" />
           )}
-          Recommendation: <span className="uppercase">{evaluation.recommendation.replace("_", " ")}</span>
+          {isClosedTrade ? "Post-trade verdict" : "Recommendation"}
+        </p>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-foreground/88">
+          {isClosedTrade ? verdictText : null}
+          {!isClosedTrade ? (
+            <span className="uppercase">{evaluation.recommendation.replace("_", " ")}</span>
+          ) : null}
         </p>
         <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/85">
-          {passed ? evaluation.passSummary : evaluation.failSummary}
+          {isClosedTrade
+            ? evaluation.improvement
+            : passed
+              ? evaluation.passSummary
+              : evaluation.failSummary}
         </p>
       </div>
 
@@ -108,7 +127,9 @@ export function VyronisScoreResultPanel({
       {evaluation.rrBelowMinimum && (
         <p className="flex items-center gap-1.5 text-[11px] text-warning-foreground">
           <AlertTriangle className="size-3.5 shrink-0" />
-          R:R below 1:2 — Vyronis warns before you size up.
+          {isClosedTrade
+            ? "R:R below 1:2 on this closed trade — review asymmetry before repeating the setup."
+            : "R:R below 1:2 — Vyronis warns before you size up."}
         </p>
       )}
     </DashboardInsetPanel>

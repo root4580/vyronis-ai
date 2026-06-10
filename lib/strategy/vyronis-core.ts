@@ -200,8 +200,18 @@ export function evaluateLiquiditySweep(input: VyronisTradeInput): VyronisCompone
   const reasons: string[] = []
   const warnings: string[] = []
 
+  if (liquidity.verificationStatus === "unverified") {
+    return {
+      points: 2,
+      maxPoints,
+      reasons: ["Liquidity sweep: Not verified from journal data."],
+      warnings: [],
+      passed: true,
+    }
+  }
+
   if (!liquidity.sweepDetected) {
-    warnings.push("No liquidity sweep detected before entry.")
+    warnings.push("Liquidity sweep: marked absent in journal.")
     return { points: 0, maxPoints, reasons, warnings, passed: false }
   }
 
@@ -223,8 +233,19 @@ export function evaluateStructureShift(input: VyronisTradeInput): VyronisCompone
   const warnings = [...liquidity.warnings]
   let points = 0
 
+  if (structure.shift === "unverified") {
+    points += Math.min(liquidity.points, Math.round(maxPoints * 0.25))
+    return {
+      points: Math.min(maxPoints, Math.round(maxPoints * 0.45)),
+      maxPoints,
+      reasons: ["Structure confirmation not verified in journal."],
+      warnings: [],
+      passed: true,
+    }
+  }
+
   if (structure.shift === "none") {
-    warnings.push("No CHoCH or BOS confirmation logged.")
+    warnings.push("CHoCH/BOS: marked absent in journal.")
     points += liquidity.points
     return {
       points: Math.min(maxPoints, Math.round(points * 0.35)),
@@ -349,8 +370,13 @@ export function evaluateRrValidation(input: VyronisTradeInput): VyronisComponent
 
   const rr = risk.riskReward
   if (rr == null) {
-    warnings.push("Risk-reward not provided — cannot validate Vyronis RR rule.")
-    return { points: 0, maxPoints, reasons, warnings, passed: false }
+    return {
+      points: Math.round(maxPoints * 0.35),
+      maxPoints,
+      reasons: ["Risk:Reward: Not verified from journal data."],
+      warnings: [],
+      passed: true,
+    }
   }
 
   if (rr >= 3) {

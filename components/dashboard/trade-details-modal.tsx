@@ -676,7 +676,7 @@ export function TradeDetailsModal({
 
             <aside className="space-y-4">
               {vyronisEvaluation && (
-                <VyronisScoreResultPanel evaluation={vyronisEvaluation} compact />
+                <VyronisScoreResultPanel evaluation={vyronisEvaluation} compact isClosedTrade />
               )}
 
               <TradeIntelligencePanel

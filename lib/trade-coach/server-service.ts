@@ -51,6 +51,7 @@ import {
   generatePostTradeCoachFeedback,
   mergePlannedContext,
 } from "@/lib/trade-coach/post-trade-analysis"
+import { isClosedTrade } from "@/lib/trade-coach/trade-coach-mode"
 import type {
   CoachSessionHistoryItem,
   PlannedCoachSessionItem,
@@ -1168,6 +1169,10 @@ export async function generateAndSaveCoachFeedback(
     throw new Error(tradeError?.message || "Trade not found")
   }
 
+  if (!isClosedTrade({ result: trade.result })) {
+    throw new Error("Post-trade coach requires a closed trade with result logged.")
+  }
+
   const linkedSession = await getLinkedSessionForTrade(supabase, userId, tradeId)
   const preTradeResponses = linkedSession
     ? extractPreTradeResponses(linkedSession.messages)
@@ -1207,12 +1212,20 @@ export async function generateAndSaveCoachFeedback(
       trade_date: trade.trade_date,
       created_at: trade.created_at,
       confirmation_signal: trade.confirmation_signal,
+      confirmation_type: trade.confirmation_type,
+      aoi_type: trade.aoi_type,
+      entry_quality: trade.entry_quality,
       trade_notes: trade.trade_notes,
       mistake_tags: trade.mistake_tags,
       entry_price: trade.entry_price,
       stop_loss: trade.stop_loss,
       take_profit: trade.take_profit,
       risk_reward: trade.risk_reward,
+      rr: trade.rr ?? null,
+      weekly_bias: trade.weekly_bias ?? null,
+      daily_bias: trade.daily_bias ?? null,
+      h4_bias: trade.h4_bias ?? null,
+      close_reason: trade.close_reason ?? null,
     },
     preTradeResponses,
     plannedContext,
@@ -1229,6 +1242,7 @@ export async function generateAndSaveCoachFeedback(
     discipline_analysis: {
       ...analysis.disciplineAnalysis,
       coachingInsights: analysis.coachingInsights,
+      executionReview: analysis.executionReview,
     },
     coaching_summary: analysis.coachingSummary,
     feedback_points: analysis.feedbackPoints,

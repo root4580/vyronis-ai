@@ -195,6 +195,7 @@ export type DisciplineAnalysis = {
   ruleAdherence: "strong" | "mixed" | "weak"
   emotionalControl: "stable" | "mixed" | "risky"
   coachingInsights?: CoachInsightLabel[]
+  executionReview?: PostTradeExecutionReview
 }
 
 export type TradeCoachFeedbackRecord = {
@@ -215,6 +216,57 @@ export type TradeCoachSessionWithMessages = TradeCoachSessionRecord & {
   messages: TradeCoachMessageRecord[]
 }
 
+export type PostTradeGrade = "A+" | "A" | "B" | "C" | "D"
+
+export type ConfirmationVerificationStatus = "verified" | "not_verified" | "absent"
+
+export type PostTradeConfirmationReview = {
+  field: string
+  status: ConfirmationVerificationStatus
+  note: string
+  display?: string
+}
+
+export type PostTradeRuleReview = {
+  rule: string
+  status: "followed" | "missed" | "not_logged"
+  note: string
+}
+
+export type PostTradeResultQuality =
+  | "good_execution"
+  | "lucky_win"
+  | "weak_execution_good_result"
+  | "weak_execution"
+
+export type PostTradeExecutionReview = {
+  coachMode: "post_trade"
+  overallGrade: PostTradeGrade
+  finalScore: number
+  strategyScore: number
+  strategyGrade: PostTradeGrade
+  disciplineScore: number
+  disciplineGrade: PostTradeGrade
+  postTradeVerdict: string
+  executedWell: string[]
+  rulesFollowed: PostTradeRuleReview[]
+  rulesMissed: PostTradeRuleReview[]
+  ruleGaps: string[]
+  biggestMistake: string | null
+  improveNextTime: string[]
+  resultQuality: PostTradeResultQuality
+  resultQualityNote: string
+  repeatable: boolean
+  repeatableReason: string
+  confirmationReview: PostTradeConfirmationReview[]
+  notVerified: string[]
+  riskReward: {
+    value: number | null
+    display: string
+    note: string
+  }
+}
+
 export type PostTradeCoachInput = {
   trade: {
     id: string
@@ -232,12 +284,20 @@ export type PostTradeCoachInput = {
     trade_date?: string | null
     created_at?: string
     confirmation_signal?: string | null
+    confirmation_type?: string | null
+    aoi_type?: string | null
+    entry_quality?: string | null
     trade_notes?: string | null
     mistake_tags?: string | null
     entry_price?: number | null
     stop_loss?: number | null
     take_profit?: number | null
     risk_reward?: number | null
+    rr?: number | null
+    weekly_bias?: string | null
+    daily_bias?: string | null
+    h4_bias?: string | null
+    close_reason?: string | null
   }
   preTradeResponses: Record<string, string>
   plannedContext: PreTradePlannedContext
@@ -245,6 +305,8 @@ export type PostTradeCoachInput = {
 }
 
 export type PostTradeCoachResult = {
+  coachMode: "post_trade"
+  executionReview: PostTradeExecutionReview
   plannedVsActual: PlannedVsActualComparison[]
   disciplineAnalysis: DisciplineAnalysis
   coachingSummary: string

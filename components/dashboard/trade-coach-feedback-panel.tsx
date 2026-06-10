@@ -1,12 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Brain, Loader2, RefreshCw, Sparkles } from "lucide-react"
+import { Brain, CheckCircle2, Loader2, RefreshCw, Sparkles, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { fetchCoachFeedback, generateCoachFeedback } from "@/lib/trade-coach/api-client"
-import type { TradeCoachFeedbackRecord } from "@/lib/trade-coach/types"
+import type {
+  PostTradeExecutionReview,
+  TradeCoachFeedbackRecord,
+} from "@/lib/trade-coach/types"
 import { cn } from "@/lib/utils"
 
 type TradeCoachFeedbackPanelProps = {
@@ -14,8 +17,17 @@ type TradeCoachFeedbackPanelProps = {
   refreshKey?: number
 }
 
-type DisciplineAnalysisWithInsights = TradeCoachFeedbackRecord["discipline_analysis"] & {
+type StoredDisciplineAnalysis = TradeCoachFeedbackRecord["discipline_analysis"] & {
   coachingInsights?: string[]
+  executionReview?: PostTradeExecutionReview
+}
+
+const GRADE_STYLES: Record<string, string> = {
+  "A+": "text-profit border-profit/30 bg-profit/[0.1]",
+  A: "text-profit border-profit/25 bg-profit/[0.08]",
+  B: "text-cyan-glow border-cyan-glow/25 bg-cyan-glow/[0.08]",
+  C: "text-warning-foreground border-warning/25 bg-warning/[0.08]",
+  D: "text-loss border-loss/25 bg-loss/[0.08]",
 }
 
 export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachFeedbackPanelProps) {
@@ -30,7 +42,6 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
     async function loadFeedback() {
       setIsLoading(true)
       setError(null)
-
       try {
         const existing = await fetchCoachFeedback(tradeId)
         if (!cancelled) setFeedback(existing)
@@ -44,7 +55,6 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
     }
 
     void loadFeedback()
-
     return () => {
       cancelled = true
     }
@@ -53,7 +63,6 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
   async function handleGenerate() {
     setIsGenerating(true)
     setError(null)
-
     try {
       const generated = await generateCoachFeedback(tradeId)
       setFeedback(generated)
@@ -77,40 +86,32 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
       <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-cyan-glow" />
-          <p className="text-[11px] font-semibold">Coach review</p>
+          <p className="text-[11px] font-semibold">Post-trade review</p>
         </div>
         <p className="text-[12px] leading-relaxed text-muted-foreground/80">
-          Generate a plan vs outcome review and discipline analysis for this trade.
+          Mentor-style review for this closed trade — strategy quality, discipline, and repeatability.
         </p>
         {error && <p className="text-[11px] text-loss/90">{error}</p>}
-        <Button
-          type="button"
-          onClick={() => void handleGenerate()}
-          disabled={isGenerating}
-          className="w-full btn-primary"
-        >
+        <Button type="button" onClick={() => void handleGenerate()} disabled={isGenerating} className="w-full btn-primary">
           {isGenerating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-          Generate coach review
+          Generate post-trade review
         </Button>
       </DashboardInsetPanel>
     )
   }
 
-  const discipline = feedback.discipline_analysis as DisciplineAnalysisWithInsights
-  const coachingInsights =
-    discipline.coachingInsights?.length
-      ? discipline.coachingInsights
-      : feedback.feedback_points?.slice(0, 4) ?? []
+  const discipline = feedback.discipline_analysis as StoredDisciplineAnalysis
+  const review = discipline.executionReview
   const comparisons = feedback.planned_vs_actual || []
 
   return (
-    <DashboardInsetPanel className="glass space-y-3 border-cyan-glow/15 bg-cyan-glow/[0.03]">
+    <DashboardInsetPanel className="glass space-y-4 border-cyan-glow/15 bg-cyan-glow/[0.03]">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-cyan-glow" />
           <div>
-            <p className="text-[11px] font-semibold">Coach review</p>
-            <p className="text-[10px] text-muted-foreground/70">Plan vs outcome analysis</p>
+            <p className="text-[11px] font-semibold">Post-trade review</p>
+            <p className="text-[10px] text-muted-foreground/70">Completed trade mentor review</p>
           </div>
         </div>
         <Button
@@ -125,51 +126,121 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="section-label">Discipline score</span>
-          <span
-            className={cn(
-              "text-xl font-bold tabular-nums",
-              feedback.discipline_score >= 75
-                ? "text-profit"
-                : feedback.discipline_score >= 50
-                  ? "text-warning-foreground"
-                  : "text-loss",
-            )}
-          >
-            {feedback.discipline_score}
-          </span>
-        </div>
-        <Progress value={feedback.discipline_score} className="h-2 bg-white/[0.06]" />
-      </div>
-
-      <p className="text-[12px] leading-relaxed text-foreground/90">{feedback.coaching_summary}</p>
-
-      {coachingInsights.length > 0 && (
-        <div className="space-y-2">
-          <p className="section-label">Coaching insights</p>
-          <div className="flex flex-wrap gap-1.5">
-            {coachingInsights.map((insight) => (
-              <span
-                key={insight}
+      {review ? (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Strategy", grade: review.strategyGrade, score: review.strategyScore },
+              { label: "Discipline", grade: review.disciplineGrade, score: review.disciplineScore },
+              { label: "Final", grade: review.overallGrade, score: review.finalScore },
+            ].map((item) => (
+              <div
+                key={item.label}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[10px] font-medium",
-                  insight.includes("broke") || insight.includes("FOMO") || insight.includes("Revenge") || insight.includes("Euphoric")
-                    ? "border-warning/25 bg-warning/[0.08] text-warning-foreground"
-                    : "border-profit/20 bg-profit/[0.06] text-profit/90",
+                  "rounded-xl border px-3 py-2.5 text-center",
+                  GRADE_STYLES[item.grade] ?? GRADE_STYLES.B,
                 )}
               >
-                {insight}
-              </span>
+                <p className="text-[8px] font-semibold uppercase tracking-[0.14em] opacity-75">
+                  {item.label}
+                </p>
+                <p className="text-[22px] font-bold leading-none">{item.grade}</p>
+                <p className="mt-1 text-[10px] tabular-nums opacity-80">{item.score}/100</p>
+              </div>
             ))}
           </div>
-        </div>
+          <Progress value={review.finalScore} className="h-2 bg-white/[0.06]" />
+
+          <div className="rounded-xl border border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-glow/80">
+              Post-trade verdict
+            </p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/90">
+              {review.postTradeVerdict}
+            </p>
+          </div>
+
+          {review.executedWell.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">What went well</p>
+              <ul className="space-y-1.5">
+                {review.executedWell.map((item) => (
+                  <li key={item} className="flex gap-2 text-[11px] leading-relaxed text-foreground/85">
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-profit" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {review.ruleGaps.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">Rule gaps</p>
+              <ul className="space-y-1.5">
+                {review.ruleGaps.map((item) => (
+                  <li key={item} className="flex gap-2 text-[11px] leading-relaxed text-warning-foreground">
+                    <XCircle className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {review.notVerified.length > 0 && (
+            <div className="space-y-2">
+              <p className="section-label">Not verified</p>
+              <div className="flex flex-wrap gap-1.5">
+                {review.notVerified.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground/80"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {review.improveNextTime.length > 0 && (
+            <div className="rounded-lg border border-cyan-glow/20 bg-cyan-glow/[0.05] px-3 py-2.5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-cyan-glow/80">
+                One improvement next time
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-foreground/85">
+                {review.improveNextTime[0]}
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">
+              Repeatability
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-foreground/88">
+              {review.repeatable ? (
+                <CheckCircle2 className="size-3.5 text-profit" />
+              ) : (
+                <XCircle className="size-3.5 text-warning-foreground" />
+              )}
+              {review.repeatable ? "Repeatable with discipline" : "Not yet repeatable"}
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/75">
+              {review.repeatableReason}
+            </p>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground/70">{review.riskReward.note}</p>
+        </>
+      ) : (
+        <p className="text-[12px] leading-relaxed text-foreground/90">{feedback.coaching_summary}</p>
       )}
 
       {comparisons.length > 0 && (
         <div className="space-y-2">
-          <p className="section-label">Planned vs actual</p>
+          <p className="section-label">Execution review</p>
           {comparisons.map((item) => (
             <div
               key={item.field}
@@ -188,31 +259,9 @@ export function TradeCoachFeedbackPanel({ tradeId, refreshKey = 0 }: TradeCoachF
               </div>
               <p className="mt-1 text-muted-foreground/75">Plan: {item.planned}</p>
               <p className="text-muted-foreground/75">Actual: {item.actual}</p>
-              {item.note && (
-                <p className="mt-1 text-[10px] text-muted-foreground/65">{item.note}</p>
-              )}
+              {item.note ? <p className="mt-1 text-[10px] text-muted-foreground/65">{item.note}</p> : null}
             </div>
           ))}
-        </div>
-      )}
-
-      {feedback.feedback_points?.length > 0 && (
-        <div className="space-y-2">
-          <p className="section-label">Coaching points</p>
-          <ul className="space-y-1.5">
-            {feedback.feedback_points.map((point, index) => (
-              <li key={`${point}-${index}`} className="text-[11px] leading-relaxed text-muted-foreground/85">
-                • {point}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {discipline && (
-        <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground/75">
-          <div>Rule adherence: {discipline.ruleAdherence}</div>
-          <div>Emotional control: {discipline.emotionalControl}</div>
         </div>
       )}
 

@@ -25,7 +25,7 @@ export type VyronisDirection = "long" | "short" | "neutral"
 
 export type VyronisBiasDirection = "bullish" | "bearish" | "neutral"
 
-export type VyronisStructureShift = "choch" | "bos" | "none"
+export type VyronisStructureShift = "choch" | "bos" | "none" | "unverified"
 
 export type VyronisEngulfingType = "bullish" | "bearish" | "none"
 
@@ -69,6 +69,8 @@ export type VyronisLiquidityInput = {
   sweepDetected: boolean
   /** Sweep aligns with trade direction (e.g. sell-side liquidity taken before long) */
   alignedWithDirection?: boolean
+  /** When unverified, journal left the field blank — do not penalize as absent */
+  verificationStatus?: "verified" | "unverified" | "absent"
 }
 
 export type VyronisStructureInput = {
