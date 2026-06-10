@@ -63,6 +63,7 @@ import type {
   TradeCoachSessionWithMessages,
 } from "@/lib/trade-coach/types"
 import { buildPlannedCoachSessionItem } from "@/lib/trade-coach/planned-context"
+import { plannedCoachSessionIdsToPurge } from "@/lib/trade-coach/planned-session-expiry"
 import {
   buildTradeQualityInput,
   fetchQualityContext,
@@ -1300,6 +1301,60 @@ export async function getPendingCoachSession(
   return (data as TradeCoachSessionRecord) || null
 }
 
+function plannedSessionsAccountFilter(
+  accountId?: string | null,
+  legacyAccountId?: string | null,
+): string | null {
+  if (!accountId) return null
+  return legacyAccountId && accountId === legacyAccountId
+    ? `account_id.eq.${accountId},account_id.is.null`
+    : `account_id.eq.${accountId}`
+}
+
+/** Delete unlinked planned coach sessions after their Sunday-start trading week ends. */
+export async function purgeExpiredPlannedCoachSessions(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId?: string | null,
+  legacyAccountId?: string | null,
+): Promise<number> {
+  let query = supabase
+    .from("trade_coach_sessions")
+    .select("id, created_at, planned_context")
+    .eq("user_id", userId)
+    .is("trade_id", null)
+    .in("status", ["in_progress", "completed"])
+    .limit(200)
+
+  const accountFilter = plannedSessionsAccountFilter(accountId, legacyAccountId)
+  if (accountFilter) {
+    query = query.or(accountFilter)
+  }
+
+  const { data, error } = await query
+  throwIfMissing(error)
+  if (error || !data?.length) return 0
+
+  const ids = plannedCoachSessionIdsToPurge(data)
+  if (ids.length === 0) return 0
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("trade_coach_sessions")
+    .delete()
+    .in("id", ids)
+    .eq("user_id", userId)
+    .is("trade_id", null)
+    .select("id")
+
+  throwIfMissing(deleteError)
+  if (deleteError) {
+    console.error("purgeExpiredPlannedCoachSessions:", deleteError)
+    return 0
+  }
+
+  return deleted?.length ?? 0
+}
+
 export async function listPlannedCoachSessions(
   supabase: SupabaseClient,
   userId: string,
@@ -1307,6 +1362,12 @@ export async function listPlannedCoachSessions(
   accountId?: string | null,
   legacyAccountId?: string | null,
 ): Promise<PlannedCoachSessionItem[]> {
+  try {
+    await purgeExpiredPlannedCoachSessions(supabase, userId, accountId, legacyAccountId)
+  } catch (purgeError) {
+    console.error("purgeExpiredPlannedCoachSessions (non-fatal):", purgeError)
+  }
+
   let query = supabase
     .from("trade_coach_sessions")
     .select("id, status, planned_context, created_at, updated_at, account_id")
@@ -1316,12 +1377,9 @@ export async function listPlannedCoachSessions(
     .order("updated_at", { ascending: false })
     .limit(limit)
 
-  if (accountId) {
-    query = query.or(
-      legacyAccountId && accountId === legacyAccountId
-        ? `account_id.eq.${accountId},account_id.is.null`
-        : `account_id.eq.${accountId}`,
-    )
+  const accountFilter = plannedSessionsAccountFilter(accountId, legacyAccountId)
+  if (accountFilter) {
+    query = query.or(accountFilter)
   }
 
   const { data: sessions, error } = await query
