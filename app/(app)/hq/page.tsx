@@ -39,6 +39,7 @@ import {
 } from "@/lib/trade-coach/api-client"
 import { syncTradeLearningMemory } from "@/lib/learning/api-client"
 import { fetchMt5ScreenshotAutofill } from "@/lib/journal/api-client"
+import { mt5AutofillHasExtractedFields } from "@/lib/journal/mt5-screenshot-vision-engine"
 import { tradeFormPatchFromMt5Autofill } from "@/lib/journal/mt5-trade-form-autofill"
 import {
   buildEmptyPlannedContext,
@@ -292,6 +293,7 @@ function Home() {
   const loadedDashboardUserRef = useRef<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isMt5Autofilling, setIsMt5Autofilling] = useState(false)
+  const [mt5AutofillSignal, setMt5AutofillSignal] = useState(0)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [screenshotViewer, setScreenshotViewer] = useState<{ url: string | null; label: string } | null>(null)
@@ -564,15 +566,10 @@ function Home() {
     const url = await uploadTradeImage(file)
     if (!url) return
 
+    const pairHint = form.pair || undefined
+    const directionHint = form.direction || undefined
     setForm((prev) => ({ ...prev, screenshot_url: url }))
-    if (!editingTrade) {
-      void applyMt5ScreenshotAutofill(url, form.pair || undefined)
-    } else {
-      toast({
-        title: "Screenshot uploaded",
-        description: "Tap Autofill from MT5 to update fields from the screenshot.",
-      })
-    }
+    await applyMt5ScreenshotAutofill(url, { pairHint, directionHint })
   }
 
   async function handleReflectionChartUpload(file: File) {
@@ -629,17 +626,21 @@ function Home() {
     })
   }
 
-  async function applyMt5ScreenshotAutofill(imageUrl: string, pairHint?: string) {
+  async function applyMt5ScreenshotAutofill(
+    imageUrl: string,
+    hints?: { pairHint?: string; directionHint?: string },
+  ) {
     setIsMt5Autofilling(true)
     try {
       const autofill = await fetchMt5ScreenshotAutofill({
         imageUrl,
-        pairHint,
+        pairHint: hints?.pairHint,
+        directionHint: hints?.directionHint,
       })
 
-      if (!autofill.available) {
+      if (!mt5AutofillHasExtractedFields(autofill)) {
         toast({
-          title: "Screenshot saved — autofill skipped",
+          title: "Screenshot saved — could not read MT5 fields",
           description: autofill.summary,
           variant: "destructive",
         })
@@ -651,6 +652,7 @@ function Home() {
         screenshot_url: imageUrl,
         ...tradeFormPatchFromMt5Autofill(autofill, prev),
       }))
+      setMt5AutofillSignal((current) => current + 1)
 
       const filled: string[] = []
       if (autofill.pair) filled.push(autofill.pair)
@@ -658,7 +660,11 @@ function Home() {
       if (autofill.entry_price != null) filled.push("entry")
       if (autofill.stop_loss != null) filled.push("SL")
       if (autofill.take_profit != null) filled.push("TP")
+      if (autofill.close_price != null) filled.push("close")
       if (autofill.profit != null || autofill.result) filled.push("P&L")
+      if (autofill.trade_date) filled.push("date")
+      if (autofill.session) filled.push("session")
+      if (autofill.volume_lots != null) filled.push("lots")
 
       toast({
         title: "MT5 autofill applied",
@@ -688,7 +694,10 @@ function Home() {
       })
       return
     }
-    await applyMt5ScreenshotAutofill(imageUrl, form.pair || undefined)
+    await applyMt5ScreenshotAutofill(imageUrl, {
+      pairHint: form.pair || undefined,
+      directionHint: form.direction || undefined,
+    })
   }
   
   function handleDragOver(e: React.DragEvent) {
@@ -2629,6 +2638,7 @@ function Home() {
         }
         onMt5Autofill={() => void handleMt5ScreenshotAutofill()}
         isMt5Autofilling={isMt5Autofilling}
+        mt5AutofillSignal={mt5AutofillSignal}
         onOpenCoach={() =>
           void handleOpenCoach(buildPlannedContextFromForm(form, maxRiskPerTrade))
         }

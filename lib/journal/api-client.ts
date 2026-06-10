@@ -91,6 +91,7 @@ export async function confirmJournalImport(options: {
 export async function fetchMt5ScreenshotAutofill(input: {
   imageUrl: string
   pairHint?: string
+  directionHint?: string
 }): Promise<import("@/lib/journal/mt5-screenshot-vision-types").Mt5ScreenshotAutofill> {
   const response = await fetch("/api/journal/mt5-screenshot-autofill", {
     method: "POST",

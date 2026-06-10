@@ -76,6 +76,9 @@ export function tradeFormPatchFromMt5Autofill(
   if (autofill.trade_date) patch.trade_date = autofill.trade_date
   const session = resolveSession(autofill.session)
   if (session) patch.session = session
+  if (autofill.volume_lots != null && autofill.volume_lots > 0) {
+    patch.lots = autofill.volume_lots.toFixed(2)
+  }
 
   return patch
 }

@@ -50,7 +50,7 @@ function normalizeSource(raw: unknown): Mt5ScreenshotSource {
   return "unknown"
 }
 
-function buildMt5VisionPrompt(pairHint?: string): string {
+function buildMt5VisionPrompt(hints?: { pair?: string; direction?: string }): string {
   return [
     "You extract trade execution fields from MetaTrader 5 (MT5) screenshots — desktop terminal or mobile app.",
     "Mobile MT5 often shows a deal/position sheet: symbol (e.g. GBPCAD), buy/sell + lots, Opening price, Closing price, S/L, T/P, Profit, ticket #, timestamps.",
@@ -71,7 +71,8 @@ function buildMt5VisionPrompt(pairHint?: string): string {
     "- Profit is signed (negative = loss). Map result: profit>0 WIN, profit<0 LOSS, ~0 BREAKEVEN",
     "- Do NOT guess session — leave session null; server converts MT5 time to EST.",
     "",
-    pairHint ? `Trader hint pair: ${pairHint}` : "",
+    hints?.pair ? `Trader hint pair: ${hints.pair}` : "",
+    hints?.direction ? `Trader hint direction: ${hints.direction}` : "",
     "If a field is not clearly visible, return null — do not invent prices.",
     "Distinguish open position vs closed history row when possible.",
     "",
@@ -137,7 +138,36 @@ function applyEstSession(autofill: Mt5ScreenshotAutofill): Mt5ScreenshotAutofill
   }
 }
 
-function parsePayload(raw: string, pairHint?: string): Mt5ScreenshotAutofill {
+function resolveDirection(
+  raw: unknown,
+  directionHint?: string,
+): "BUY" | "SELL" | "" {
+  const fromVision = normalizeDirection(raw)
+  if (fromVision) return fromVision
+  const hint = String(directionHint || "").toUpperCase()
+  if (hint === "BUY" || hint === "SELL") return hint
+  return ""
+}
+
+export function mt5AutofillHasExtractedFields(autofill: Mt5ScreenshotAutofill): boolean {
+  return Boolean(
+    autofill.pair ||
+      autofill.direction ||
+      autofill.entry_price != null ||
+      autofill.stop_loss != null ||
+      autofill.take_profit != null ||
+      autofill.close_price != null ||
+      autofill.profit != null ||
+      autofill.result ||
+      autofill.trade_date ||
+      autofill.volume_lots != null,
+  )
+}
+
+function parsePayload(
+  raw: string,
+  hints?: { pair?: string; direction?: string },
+): Mt5ScreenshotAutofill {
   let parsed: AiPayload = {}
   try {
     parsed = JSON.parse(raw) as AiPayload
@@ -146,11 +176,19 @@ function parsePayload(raw: string, pairHint?: string): Mt5ScreenshotAutofill {
   }
 
   const profit = parseSignedMoney(parsed.profit)
-  const pair = normalizePair(parsed.pair, pairHint)
-  const direction = normalizeDirection(parsed.direction)
+  const pair = normalizePair(parsed.pair, hints?.pair)
+  const direction = resolveDirection(parsed.direction, hints?.direction)
 
   const base: Mt5ScreenshotAutofill = {
-    available: Boolean(pair && direction),
+    available: Boolean(
+      pair &&
+        (direction ||
+          profit != null ||
+          parsed.entry_price != null ||
+          parsed.stop_loss != null ||
+          parsed.take_profit != null ||
+          parsed.close_price != null),
+    ),
     source: normalizeSource(parsed.source),
     pair,
     direction,
@@ -176,7 +214,10 @@ function parsePayload(raw: string, pairHint?: string): Mt5ScreenshotAutofill {
   return applyEstSession(base)
 }
 
-async function analyzeWithOpenAi(imageUrl: string, pairHint?: string): Promise<Mt5ScreenshotAutofill> {
+async function analyzeWithOpenAi(
+  imageUrl: string,
+  hints?: { pair?: string; direction?: string },
+): Promise<Mt5ScreenshotAutofill> {
   const openai = getOpenAiClient()
   if (!openai) throw new Error("OPENAI_API_KEY is not configured")
 
@@ -191,7 +232,7 @@ async function analyzeWithOpenAi(imageUrl: string, pairHint?: string): Promise<M
       {
         role: "user",
         content: [
-          { type: "text", text: buildMt5VisionPrompt(pairHint) },
+          { type: "text", text: buildMt5VisionPrompt(hints) },
           { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
         ],
       },
@@ -200,19 +241,25 @@ async function analyzeWithOpenAi(imageUrl: string, pairHint?: string): Promise<M
 
   const content = completion.choices[0]?.message?.content
   if (!content) throw new Error("Vision returned an empty response")
-  return parsePayload(content, pairHint)
+  return parsePayload(content, hints)
 }
 
 export async function analyzeMt5TradeScreenshot(input: {
   imageUrl: string
   pairHint?: string
+  directionHint?: string
 }): Promise<Mt5ScreenshotAutofill> {
   const imageUrl = input.imageUrl?.trim()
   if (!imageUrl) throw new Error("imageUrl is required")
 
+  const hints = {
+    pair: input.pairHint?.trim(),
+    direction: input.directionHint?.trim(),
+  }
+
   if (isOpenAiConfigured()) {
     try {
-      return await analyzeWithOpenAi(imageUrl, input.pairHint)
+      return await analyzeWithOpenAi(imageUrl, hints)
     } catch (error) {
       console.error("MT5 screenshot OpenAI vision error:", error)
     }
@@ -221,8 +268,8 @@ export async function analyzeMt5TradeScreenshot(input: {
   return {
     available: false,
     source: "unknown",
-    pair: normalizePair(null, input.pairHint),
-    direction: "",
+    pair: normalizePair(null, hints.pair),
+    direction: resolveDirection(null, hints.direction),
     entry_price: null,
     stop_loss: null,
     take_profit: null,

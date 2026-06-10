@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       imageUrl?: string
       pairHint?: string
+      directionHint?: string
     }
 
     const imageUrl = body.imageUrl?.trim()
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     const autofill = await analyzeMt5TradeScreenshot({
       imageUrl,
       pairHint: body.pairHint?.trim(),
+      directionHint: body.directionHint?.trim(),
     })
 
     return NextResponse.json({ autofill })

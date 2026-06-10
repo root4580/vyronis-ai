@@ -109,6 +109,8 @@ type AddTradeModalProps = {
   onRepeatLast?: () => void
   onMt5Autofill?: () => void
   isMt5Autofilling?: boolean
+  /** Increments after a successful MT5 vision autofill — expands log setup fields. */
+  mt5AutofillSignal?: number
   journalMode?: TradeJournalMode
   onJournalModeChange?: (mode: TradeJournalMode) => void
   existingStrategyNames?: string[]
@@ -248,6 +250,7 @@ export function AddTradeModal({
   onRepeatLast,
   onMt5Autofill,
   isMt5Autofilling = false,
+  mt5AutofillSignal = 0,
   journalMode = "log",
   onJournalModeChange,
   existingStrategyNames = [],
@@ -268,6 +271,9 @@ export function AddTradeModal({
   const showLogFlow = isLog || isEdit
   const showChecklist = isPlan || isEdit
   const showVyronisPrimary = isPlan || isEdit
+  const showLogMt5Execution =
+    isLog &&
+    Boolean(form.screenshot_url || isMt5Autofilling || form.entry_price || form.stop_loss || form.take_profit)
   const riskReward = useMemo(() => calculateRiskReward(form), [form])
   const positionSize = useMemo(
     () => calculatePositionSize(form, startingBalance),
@@ -323,6 +329,11 @@ export function AddTradeModal({
   useEffect(() => {
     setMatchDismissed(false)
   }, [form.pair, form.trade_date])
+
+  useEffect(() => {
+    if (!open || !isLog || mt5AutofillSignal <= 0) return
+    setLogSetupOpen(true)
+  }, [open, isLog, mt5AutofillSignal])
 
   const matchedPlans = useMemo(
     () =>
@@ -673,6 +684,31 @@ export function AddTradeModal({
             />
             )}
 
+            {showLogMt5Execution ? (
+              <section className="add-trade-section space-y-3">
+                <SectionLabel>Execution from MT5</SectionLabel>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {[
+                    { key: "entry_price" as const, label: "Entry" },
+                    { key: "stop_loss" as const, label: "Stop" },
+                    { key: "take_profit" as const, label: "Target" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="space-y-1.5">
+                      <FieldLabel>{label}</FieldLabel>
+                      <Input
+                        type="number"
+                        step="0.00001"
+                        value={form[key]}
+                        onChange={(e) => onFormChange({ [key]: e.target.value })}
+                        className="add-trade-input h-9 tabular-nums"
+                        placeholder="0.00000"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             {isLog && (
               <DashboardInsetPanel className="overflow-hidden border-white/[0.08] p-0">
                 <button
@@ -690,24 +726,26 @@ export function AddTradeModal({
                 </button>
                 {logSetupOpen && (
                   <div className="space-y-4 border-t border-white/[0.06] px-3 pb-3 sm:px-4 sm:pb-4">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      {[
-                        { key: "entry_price" as const, label: "Entry" },
-                        { key: "stop_loss" as const, label: "Stop" },
-                        { key: "take_profit" as const, label: "Target" },
-                      ].map(({ key, label }) => (
-                        <div key={key} className="space-y-1.5">
-                          <FieldLabel>{label}</FieldLabel>
-                          <Input
-                            type="number"
-                            step="0.00001"
-                            value={form[key]}
-                            onChange={(e) => onFormChange({ [key]: e.target.value })}
-                            className="add-trade-input h-9 tabular-nums"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    {!showLogMt5Execution ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {[
+                          { key: "entry_price" as const, label: "Entry" },
+                          { key: "stop_loss" as const, label: "Stop" },
+                          { key: "take_profit" as const, label: "Target" },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="space-y-1.5">
+                            <FieldLabel>{label}</FieldLabel>
+                            <Input
+                              type="number"
+                              step="0.00001"
+                              value={form[key]}
+                              onChange={(e) => onFormChange({ [key]: e.target.value })}
+                              className="add-trade-input h-9 tabular-nums"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <VyronisCoreModelFields
                       form={form}
                       onFormChange={onFormChange}
@@ -950,6 +988,12 @@ export function AddTradeModal({
                   </Button>
                 ) : null}
               </div>
+              {isMt5Autofilling ? (
+                <DashboardInsetPanel className="flex items-center gap-2 border-cyan-glow/20 bg-cyan-glow/[0.06] px-3 py-2.5">
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-cyan-glow/30 border-t-cyan-glow" />
+                  <p className="text-[11px] text-cyan-glow">Reading MT5 screenshot and filling fields…</p>
+                </DashboardInsetPanel>
+              ) : null}
               {form.screenshot_url ? (
                 <>
                   <div className="sm:hidden">
@@ -983,6 +1027,20 @@ export function AddTradeModal({
                     >
                       <X className="size-4 text-muted-foreground" />
                     </button>
+                    <label className="absolute bottom-2 right-2 cursor-pointer rounded-lg border border-cyan-glow/25 bg-background/85 px-2 py-1 text-[10px] font-medium text-cyan-glow hover:bg-cyan-glow/[0.08]">
+                      Replace
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        className="hidden"
+                        disabled={isUploading || isMt5Autofilling}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          e.target.value = ""
+                          if (file) onScreenshotUpload(file)
+                        }}
+                      />
+                    </label>
                     <Badge className="absolute bottom-2 left-2 border-profit/30 bg-background/80 text-profit">
                       Screenshot attached
                     </Badge>
