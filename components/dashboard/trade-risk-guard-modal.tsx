@@ -86,7 +86,7 @@ export function TradeRiskGuardModal({
                 </h2>
                 {pairLabel ? (
                   <p className="mt-1 text-[11px] text-muted-foreground/70">
-                    Reviewing {pairLabel} before journal save
+                    Reviewing {pairLabel} before you score this setup
                   </p>
                 ) : null}
               </div>

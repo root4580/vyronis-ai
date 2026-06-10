@@ -1,4 +1,5 @@
 import type { TradeFormState } from "@/lib/trade-form-config"
+import type { TradeJournalMode } from "@/lib/trade-journal-mode"
 import { detectCoachRedFlags } from "@/lib/trade-coach/red-flags"
 import { buildPlannedContextFromForm } from "@/lib/trade-coach/planned-context"
 import { isDangerousMistakeLabel, normalizeMistakeLabel } from "@/lib/mistake-tags"
@@ -51,6 +52,16 @@ export type TradeRiskGuardInput = {
   startingBalance: number
   historicalTrades: TradeRiskGuardHistoryTrade[]
   editingTradeId?: string | null
+  /** Pre-entry guard runs only for planned setup scoring — not post-trade logging. */
+  journalMode?: TradeJournalMode
+}
+
+const CLEAR_GUARD_RESULT: TradeRiskGuardResult = {
+  severity: "clear",
+  flags: [],
+  headline: "Execution looks aligned",
+  coachNote: "",
+  requiresConfirmation: false,
 }
 
 const IMPULSIVE_EMOTIONS = new Set(["FOMO", "Revenge", "Euphoric", "Anxious", "Fearful", "Greed"])
@@ -157,6 +168,11 @@ function buildCoachNote(severity: TradeRiskGuardSeverity, flags: TradeRiskGuardF
 }
 
 export function evaluateTradeRiskGuard(input: TradeRiskGuardInput): TradeRiskGuardResult {
+  const journalMode = input.journalMode ?? "log"
+  if (journalMode !== "plan") {
+    return CLEAR_GUARD_RESULT
+  }
+
   const { form, settings, startingBalance, historicalTrades, editingTradeId } = input
   const flags: TradeRiskGuardFlag[] = []
   const history = getHistoryExcludingEdit(historicalTrades, editingTradeId)

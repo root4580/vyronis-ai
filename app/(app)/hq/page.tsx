@@ -1690,6 +1690,7 @@ function Home() {
     const resolvedSettings = normalizeUserSettings(userSettings ?? settingsForm)
     const guard = evaluateTradeRiskGuard({
       form,
+      journalMode: editingTrade ? "edit" : tradeJournalMode,
       settings: resolvedSettings,
       startingBalance:
         activeAccount?.starting_balance ??
