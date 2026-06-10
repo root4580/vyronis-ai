@@ -290,7 +290,7 @@ function buildPreTradePlanEvent(input: BuildExecutionReplayInput): ExecutionRepl
     `Pair: ${ctx?.pair || trade.pair} · ${ctx?.direction || trade.direction}`,
     `Strategy: ${ctx?.strategy_name || trade.strategy_name || "—"}`,
     `Setup: ${ctx?.setup || trade.setup || "—"}`,
-    `Planned risk: ${responses.planned_risk || ctx?.risk_percent || `${trade.risk_percent ?? 1}%`}`,
+    `Planned risk: ${responses.planned_risk || ctx?.risk_percent || (trade.risk_percent != null ? `${trade.risk_percent}%` : "Not verified")}`,
     `Planned emotion: ${responses.emotional_state || ctx?.emotion || trade.emotion}`,
   ]
 

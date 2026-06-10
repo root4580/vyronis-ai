@@ -1,5 +1,6 @@
 import { parseMistakeTags } from "@/lib/trade-form-config"
 import { createInitialTradeForm, type TradeFormState } from "@/lib/trade-form-config"
+import { formatRiskPercentForForm } from "@/lib/trade-form-utils"
 
 /** Marker stored in trade_notes for analytics — repeat-last quick log */
 export const REPEAT_LOG_NOTE_MARKER = "[vyronis-repeat-last]"
@@ -53,7 +54,7 @@ export function buildRepeatTradeDraft(source: RepeatLogSourceTrade): TradeFormSt
     direction: source.direction,
     setup: source.setup || base.setup,
     strategy_name: source.strategy_name || "",
-    risk_percent: String(source.risk_percent ?? 1),
+    risk_percent: formatRiskPercentForForm(source.risk_percent),
     rule_followed: source.rule_followed !== false,
     session: source.session || "",
     screenshot_url: source.screenshot_url || "",

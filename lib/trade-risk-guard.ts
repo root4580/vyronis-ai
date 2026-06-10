@@ -177,7 +177,7 @@ export function evaluateTradeRiskGuard(input: TradeRiskGuardInput): TradeRiskGua
   const flags: TradeRiskGuardFlag[] = []
   const history = getHistoryExcludingEdit(historicalTrades, editingTradeId)
   const tradeDate = form.trade_date || new Date().toISOString().split("T")[0]
-  const riskPercent = form.risk_percent ? parseFloat(form.risk_percent) : 1
+  const riskPercent = form.risk_percent ? parseFloat(form.risk_percent) : null
   const maxRisk = settings.max_risk_per_trade
 
   const plannedContext = buildPlannedContextFromForm(form, maxRisk)
@@ -221,7 +221,10 @@ export function evaluateTradeRiskGuard(input: TradeRiskGuardInput): TradeRiskGua
     )
   }
 
-  const riskViolation = getTradeRiskViolation(riskPercent, maxRisk)
+  const riskViolation =
+    riskPercent != null && Number.isFinite(riskPercent)
+      ? getTradeRiskViolation(riskPercent, maxRisk)
+      : null
   if (riskViolation) {
     pushFlag(flags, {
       id: "oversized-risk",

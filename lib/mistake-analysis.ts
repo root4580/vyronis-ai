@@ -148,7 +148,7 @@ const BEHAVIOR_DEFS: BehaviorDef[] = [
     id: "overrisking",
     label: "Overrisking",
     dangerous: true,
-    matches: (t) => (t.risk_percent ?? 1) > 1 || hasTag(t, "Oversized"),
+    matches: (t) => (t.risk_percent != null && t.risk_percent > 1) || hasTag(t, "Oversized"),
   },
   {
     id: "counter-trend",

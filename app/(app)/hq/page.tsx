@@ -46,6 +46,10 @@ import {
   buildPlannedContextFromForm,
   buildTradeFormFromPlannedSession,
 } from "@/lib/trade-coach/planned-context"
+import {
+  formatRiskPercentForForm,
+  parseRiskPercentForPersist,
+} from "@/lib/trade-form-utils"
 import type { PlannedCoachSessionItem, PreTradePlannedContext } from "@/lib/trade-coach/types"
 import {
   createInitialTradeForm,
@@ -1090,7 +1094,11 @@ function Home() {
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("log")
-    setForm(createInitialTradeForm())
+    setForm(
+      createInitialTradeForm({
+        risk_percent: String(settingsForm.max_risk_per_trade),
+      }),
+    )
     setIsModalOpen(true)
 
     const tab = parseTabSearchParam(searchParams.get("tab")) ?? activeTab
@@ -1100,7 +1108,7 @@ function Home() {
     }
     const next = params.toString() ? `${APP_HOME_PATH}?${params.toString()}` : APP_HOME_PATH
     router.replace(next)
-  }, [activeTab, router, searchParams])
+  }, [activeTab, router, searchParams, settingsForm.max_risk_per_trade])
 
   useEffect(() => {
     const coachPair = searchParams.get("coachPair")?.trim()
@@ -1782,7 +1790,7 @@ function Home() {
       emotion: form.emotion || "Calm",
       setup: form.setup || "A+ Setup",
       strategy_name: form.strategy_name || null,
-      risk_percent: form.risk_percent ? parseFloat(form.risk_percent) : 1,
+      risk_percent: parseRiskPercentForPersist(form.risk_percent),
       rule_followed: form.rule_followed,
       user_id: activeUserId,
       account_id: activeAccountId ?? undefined,
@@ -1936,7 +1944,11 @@ function Home() {
             : `${form.pair} ${form.direction} — Vyronis ${vyronisEvaluation.grade} (${vyronisEvaluation.score}/100).`,
         variant: usedFallbackSave ? "destructive" : "default",
       })
-      setForm(createInitialTradeForm())
+      setForm(
+        createInitialTradeForm({
+          risk_percent: String(settingsForm.max_risk_per_trade),
+        }),
+      )
       setEditingTrade(null)
       setTradeJournalMode("log")
       setLinkedPlan(null)
@@ -1976,9 +1988,14 @@ function Home() {
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("log")
-    setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
+    setForm(
+      createInitialTradeForm({
+        ...(tradeDate ? { trade_date: tradeDate } : {}),
+        risk_percent: String(settingsForm.max_risk_per_trade),
+      }),
+    )
     setIsModalOpen(true)
-  }, [guardTradingAction])
+  }, [guardTradingAction, settingsForm.max_risk_per_trade])
 
   const openPlanTrade = useCallback((tradeDate?: string) => {
     if (!guardTradingAction()) return
@@ -1986,9 +2003,14 @@ function Home() {
     setEditingTrade(null)
     setConvertSessionId(null)
     setTradeJournalMode("plan")
-    setForm(createInitialTradeForm(tradeDate ? { trade_date: tradeDate } : undefined))
+    setForm(
+      createInitialTradeForm({
+        ...(tradeDate ? { trade_date: tradeDate } : {}),
+        risk_percent: String(settingsForm.max_risk_per_trade),
+      }),
+    )
     setIsModalOpen(true)
-  }, [guardTradingAction])
+  }, [guardTradingAction, settingsForm.max_risk_per_trade])
 
   const openTradeEntrySheet = useCallback(() => {
     setTradeEntrySheetOpen(true)
@@ -2053,7 +2075,7 @@ function Home() {
       emotion_after: trade.emotion_after || "",
       setup: trade.setup,
       strategy_name: trade.strategy_name || "",
-      risk_percent: (trade.risk_percent || 1).toString(),
+      risk_percent: formatRiskPercentForForm(trade.risk_percent),
       rule_followed: trade.rule_followed !== false,
       trade_date: trade.trade_date || new Date().toISOString().split("T")[0],
       higher_timeframe: trade.higher_timeframe || "",
@@ -2164,7 +2186,11 @@ function Home() {
     setPostSaveDiscipline(null)
     setRiskGuardOpen(false)
     setRiskGuardResult(null)
-    setForm(createInitialTradeForm())
+    setForm(
+      createInitialTradeForm({
+        risk_percent: String(settingsForm.max_risk_per_trade),
+      }),
+    )
   }
 
   // Calculate live analytics from trades (scoped to active account)
@@ -2196,10 +2222,12 @@ function Home() {
   const accountBalance = startingBalance + totalPnL
   const winCount = accountTrades.filter((t) => t.result === "WIN").length
   const winRate = accountTrades.length > 0 ? Math.round((winCount / accountTrades.length) * 100) : 0
+  const tradesWithVerifiedRisk = accountTrades.filter((t) => t.risk_percent != null)
   const avgRisk =
-    accountTrades.length > 0
-      ? accountTrades.reduce((sum, t) => sum + (t.risk_percent || 1), 0) / accountTrades.length
-      : 1
+    tradesWithVerifiedRisk.length > 0
+      ? tradesWithVerifiedRisk.reduce((sum, t) => sum + (t.risk_percent ?? 0), 0) /
+        tradesWithVerifiedRisk.length
+      : settingsForm.max_risk_per_trade
   const todayTrades = getTodayTrades(accountTrades)
   const viewingClosedTradeId = useMemo(() => {
     const tradeId = searchParams.get("trade")?.trim()

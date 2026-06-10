@@ -6,6 +6,18 @@ export function parseOptionalNumber(value: string | null | undefined): number | 
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** Parse risk % from form input — returns null when blank or invalid (never fabricate 1%). */
+export function parseRiskPercentForPersist(raw?: string | null): number | null {
+  const value = parseOptionalNumber(raw ?? null)
+  if (value == null || value <= 0) return null
+  return value
+}
+
+export function formatRiskPercentForForm(value?: number | null): string {
+  if (value == null || !Number.isFinite(value)) return ""
+  return String(value)
+}
+
 export function calculateRiskReward(form: Pick<TradeFormState, "direction" | "entry_price" | "stop_loss" | "take_profit">): number | null {
   const entry = parseFloat(form.entry_price)
   const stop = parseFloat(form.stop_loss)

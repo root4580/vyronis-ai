@@ -161,7 +161,7 @@ export function createInitialTradeForm(overrides?: Partial<TradeFormState>): Tra
     emotion_after: "",
     setup: "A+ Setup",
     strategy_name: "",
-    risk_percent: "1",
+    risk_percent: "",
     rule_followed: true,
     trade_date: new Date().toISOString().split("T")[0],
     session: "",
