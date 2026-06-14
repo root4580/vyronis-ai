@@ -1,4 +1,4 @@
-import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
+import { getTradingWeekStartKey } from "@/lib/trading/trading-week"
 
 export type PlannedSessionExpiryRow = {
   id: string
@@ -8,21 +8,21 @@ export type PlannedSessionExpiryRow = {
   } | null
 }
 
-/** Sunday-start forex week for a session (trade_date when set, else created_at). */
+/** Sunday 5:00 PM ET forex week for a session (trade_date when set, else created_at). */
 export function resolvePlannedSessionWeekStart(input: {
   trade_date?: string | null
   created_at: string
 }): string {
   const tradeDate = input.trade_date?.trim().split("T")[0]
   if (tradeDate && /^\d{4}-\d{2}-\d{2}$/.test(tradeDate)) {
-    return getWeekStartSunday(new Date(`${tradeDate}T12:00:00`))
+    return getTradingWeekStartKey(new Date(`${tradeDate}T12:00:00`))
   }
-  return getWeekStartSunday(new Date(input.created_at))
+  return getTradingWeekStartKey(new Date(input.created_at))
 }
 
-/** True when the session's trading week ended (we are in a later Sunday-start week). */
+/** True when the session's trading week ended (we are in a later forex week). */
 export function isPastTradingWeek(weekStart: string, referenceDate = new Date()): boolean {
-  const currentWeekStart = getWeekStartSunday(referenceDate)
+  const currentWeekStart = getTradingWeekStartKey(referenceDate)
   return weekStart < currentWeekStart
 }
 

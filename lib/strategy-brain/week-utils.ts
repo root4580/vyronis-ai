@@ -1,23 +1,17 @@
 import { TRADE_PAIRS } from "@/lib/trade-form-config"
+import {
+  getTradingWeekBoundsFromStartKey,
+  getTradingWeekStartKey,
+} from "@/lib/trading/trading-week"
 
-/** Week starts Sunday (forex Sunday planning convention). */
+/** Week starts Sunday 5:00 PM ET (forex open). */
 
 export function getWeekStartSunday(date = new Date()): string {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = day
-  d.setDate(d.getDate() - diff)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10)
+  return getTradingWeekStartKey(date, 0)
 }
 
 export function formatWeekLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T12:00:00`)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-  const fmt = (dt: Date) =>
-    dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-  return `${fmt(start)} – ${fmt(end)}`
+  return getTradingWeekBoundsFromStartKey(weekStart).label
 }
 
 /** Same symbols as journal / trade log — majors, crosses, metals, indices. */

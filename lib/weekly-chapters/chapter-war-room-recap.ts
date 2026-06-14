@@ -1,30 +1,17 @@
-import { getWeekStartSunday } from "@/lib/strategy-brain/week-utils"
 import type { BiasDirection, WeeklyPlanWithPairs } from "@/lib/strategy-brain/types"
 import type { ChapterReviewTrade, ChapterWarRoomPairRecap, ChapterWarRoomRecap } from "@/lib/weekly-chapters/types"
-import { toWeekStartISO } from "@/lib/weekly-chapters/week-utils"
 
 export function normalizePairSymbol(pair: string): string {
   return pair.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
 }
 
-/** War Room stores Sunday week_start; chapter summaries use Monday-based week_start. */
+/** War Room and chapter reviews share the same Sunday 5:00 PM ET week key. */
 export function warRoomWeekStartCandidates(chapterWeekStart: string): string[] {
-  const monday = new Date(`${chapterWeekStart}T12:00:00`)
-  const sunday = new Date(monday)
-  sunday.setDate(sunday.getDate() - 1)
-
-  return [
-    sunday.toISOString().slice(0, 10),
-    chapterWeekStart,
-    getWeekStartSunday(monday),
-  ].filter((value, index, values) => values.indexOf(value) === index)
+  return [chapterWeekStart]
 }
 
 export function chapterWeekStartFromWarRoomWeek(warRoomWeekStart: string): string {
-  const sunday = new Date(`${warRoomWeekStart}T12:00:00`)
-  const monday = new Date(sunday)
-  monday.setDate(monday.getDate() + 1)
-  return toWeekStartISO(monday)
+  return warRoomWeekStart
 }
 
 function isLongDirection(direction: string): boolean {

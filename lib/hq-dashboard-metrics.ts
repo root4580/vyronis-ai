@@ -1,24 +1,18 @@
 import type { DashboardTradeRow } from "@/components/dashboard/trading-components"
+import {
+  getTradingWeekBounds,
+  isTradeInTradingWeek,
+} from "@/lib/trading/trading-week"
 import { getSignedPnL } from "@/lib/trade-utils"
 
 export function getWeekTradeBounds(now = new Date()): { start: Date; end: Date } {
-  const start = new Date(now)
-  const day = start.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() + diff)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 7)
+  const { start, end } = getTradingWeekBounds(now, 0)
   return { start, end }
 }
 
 export function isTradeInWeek(trade: DashboardTradeRow, now = new Date()): boolean {
-  const raw = trade.trade_date || trade.created_at?.split("T")[0]
-  if (!raw) return false
-  const date = new Date(`${raw}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return false
-  const { start, end } = getWeekTradeBounds(now)
-  return date >= start && date < end
+  const { start, end } = getTradingWeekBounds(now, 0)
+  return isTradeInTradingWeek(trade, start, end)
 }
 
 export function computeWeekPnL(trades: DashboardTradeRow[], now = new Date()): number {

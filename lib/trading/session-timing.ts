@@ -96,7 +96,16 @@ export function utcInstantToEstClock(utcInstant: Date): EstClock {
 
 /** EST-based session detection from an EST wall clock (hours/minutes in New York). */
 export function detectTradingSessionFromEstClock(est: EstClock): TradingSessionInfo {
-  if (est.dayOfWeek === 0 || est.dayOfWeek === 6) {
+  const forexCloseFriday = 17 * 60
+  const forexOpenSunday = 17 * 60
+
+  if (est.dayOfWeek === 6) {
+    return { name: "Weekend", isActive: false }
+  }
+  if (est.dayOfWeek === 0 && est.totalMinutes < forexOpenSunday) {
+    return { name: "Weekend", isActive: false }
+  }
+  if (est.dayOfWeek === 5 && est.totalMinutes >= forexCloseFriday) {
     return { name: "Weekend", isActive: false }
   }
 

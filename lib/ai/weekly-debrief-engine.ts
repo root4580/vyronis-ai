@@ -2,6 +2,7 @@ import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import { buildStrategyPerformance } from "@/lib/strategy-performance"
 import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 import type { TradeQualityGrade } from "@/lib/trade-coach/trade-quality-engine"
+import { getTradingWeekBounds } from "@/lib/trading/trading-week"
 import { getSignedPnL } from "@/lib/trade-utils"
 import type {
   BuildWeeklyDebriefInput,
@@ -34,22 +35,7 @@ function gradeFromScore(score: number): TradeQualityGrade {
 }
 
 export function getWeekRange(referenceDate = new Date(), weekOffset = 0): WeekRange {
-  const date = new Date(referenceDate)
-  date.setHours(12, 0, 0, 0)
-  date.setDate(date.getDate() + weekOffset * 7)
-
-  const day = date.getDay()
-  const mondayOffset = day === 0 ? -6 : 1 - day
-  const start = new Date(date)
-  start.setDate(date.getDate() + mondayOffset)
-  start.setHours(0, 0, 0, 0)
-
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  end.setHours(23, 59, 59, 999)
-
-  const label = `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
-
+  const { start, end, label } = getTradingWeekBounds(referenceDate, weekOffset)
   return { start, end, label }
 }
 

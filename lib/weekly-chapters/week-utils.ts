@@ -1,4 +1,9 @@
 import { getWeekTradeBounds } from "@/lib/hq-dashboard-metrics"
+import {
+  getTradingWeekBoundsFromStartKey,
+  getTradingWeekStartKey,
+  isTradeInTradingWeek,
+} from "@/lib/trading/trading-week"
 
 export function toWeekStartISO(date: Date): string {
   const { start } = getWeekTradeBounds(date)
@@ -28,14 +33,8 @@ export function isTradeInWeekStart(
   trade: { trade_date: string | null; created_at: string | null },
   weekStart: string,
 ): boolean {
-  const raw = trade.trade_date || trade.created_at?.split("T")[0]
-  if (!raw) return false
-  const date = new Date(`${raw}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return false
-  const start = parseWeekStart(weekStart)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 7)
-  return date >= start && date < end
+  const { start, end } = getTradingWeekBoundsFromStartKey(weekStart)
+  return isTradeInTradingWeek(trade, start, end)
 }
 
 export function isMondayMorning(now = new Date()): boolean {
@@ -43,7 +42,9 @@ export function isMondayMorning(now = new Date()): boolean {
 }
 
 export function isSundayEvening(now = new Date()): boolean {
-  return now.getDay() === 0 && now.getHours() >= 18
+  const { start } = getTradingWeekBoundsFromStartKey(getTradingWeekStartKey(now))
+  const msUntilOpen = start.getTime() - now.getTime()
+  return msUntilOpen > 0 && msUntilOpen <= 6 * 60 * 60 * 1000
 }
 
 export function computeChapterNumber(originWeekStart: string, weekStart: string): number {
