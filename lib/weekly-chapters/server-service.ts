@@ -14,7 +14,7 @@ import {
 } from "@/lib/weekly-chapters/key-lesson"
 import { computeWeeklyChapterPaperStats } from "@/lib/weekly-chapters/paper-stats"
 import type { ChapterTradeRow, WeeklyChapterDashboard, WeeklySummaryRecord } from "@/lib/weekly-chapters/types"
-import { isTradeInWeekStart, resolveOriginWeekStart, toWeekStartISO, computeChapterNumber, disciplineGradeFromScore } from "@/lib/weekly-chapters/week-utils"
+import { isTradeInWeekStart, resolveOriginWeekStart, toWeekStartISO, computeChapterNumber, disciplineGradeFromScore, getNextWeekStartISO } from "@/lib/weekly-chapters/week-utils"
 import { generateWeeklyReviewForUser } from "@/lib/weekly-review/server-service"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 
@@ -287,9 +287,7 @@ export async function autoClosePastWeeks(
         paperTrades,
       })
     }
-    const d = new Date(`${week}T12:00:00`)
-    d.setDate(d.getDate() + 7)
-    week = d.toISOString().slice(0, 10)
+    week = getNextWeekStartISO(week)
   }
 }
 

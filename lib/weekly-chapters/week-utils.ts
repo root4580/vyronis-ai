@@ -1,13 +1,13 @@
-import { getWeekTradeBounds } from "@/lib/hq-dashboard-metrics"
 import {
+  getTradingWeekBounds,
   getTradingWeekBoundsFromStartKey,
   getTradingWeekStartKey,
   isTradeInTradingWeek,
+  isTradingWeekStartSunday,
 } from "@/lib/trading/trading-week"
 
 export function toWeekStartISO(date: Date): string {
-  const { start } = getWeekTradeBounds(date)
-  return start.toISOString().slice(0, 10)
+  return getTradingWeekStartKey(date, 0)
 }
 
 export function parseWeekStart(value: string): Date {
@@ -15,9 +15,13 @@ export function parseWeekStart(value: string): Date {
 }
 
 export function getPreviousWeekStartISO(weekStart: string): string {
-  const date = parseWeekStart(weekStart)
-  date.setDate(date.getDate() - 7)
-  return date.toISOString().slice(0, 10)
+  const { start } = getTradingWeekBoundsFromStartKey(weekStart)
+  return getTradingWeekBounds(start, -1).weekStartKey
+}
+
+export function getNextWeekStartISO(weekStart: string): string {
+  const { start } = getTradingWeekBoundsFromStartKey(weekStart)
+  return getTradingWeekBounds(start, 1).weekStartKey
 }
 
 export function formatWeekOfLabel(weekStart: string): string {
@@ -46,6 +50,8 @@ export function isSundayEvening(now = new Date()): boolean {
   const msUntilOpen = start.getTime() - now.getTime()
   return msUntilOpen > 0 && msUntilOpen <= 6 * 60 * 60 * 1000
 }
+
+export { isTradingWeekStartSunday } from "@/lib/trading/trading-week"
 
 export function computeChapterNumber(originWeekStart: string, weekStart: string): number {
   const origin = parseWeekStart(originWeekStart).getTime()

@@ -121,7 +121,7 @@ export async function fetchWeeklyReviewForWeek(
   weekOffset = 0,
 ): Promise<WeeklyReviewRecord | null> {
   const weekRange = getWeekRange(new Date(), weekOffset)
-  const weekStart = weekRange.start.toISOString().slice(0, 10)
+  const weekStart = weekRange.weekStartKey
 
   const { data, error } = await supabase
     .from("weekly_reviews")

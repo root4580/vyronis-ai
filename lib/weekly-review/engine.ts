@@ -229,8 +229,8 @@ export function buildWeeklyReviewReport(input: BuildWeeklyReviewInput): WeeklyRe
   > = {
     version: 1,
     weekLabel: weekRange.label,
-    weekStart: weekRange.start.toISOString().slice(0, 10),
-    weekEnd: weekRange.end.toISOString().slice(0, 10),
+    weekStart: weekRange.weekStartKey,
+    weekEnd: weekRange.weekEndKey,
     hasData: weekTrades.length > 0,
     tradeCount: weekTrades.length,
     winRate: weekTrades.length > 0 ? Math.round((wins / weekTrades.length) * 100) : 0,

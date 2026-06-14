@@ -19,6 +19,7 @@ import {
 import { weeklyReviewRowToReport } from "@/lib/weekly-review/engine"
 import type { LeakEngineInput } from "@/lib/behavior"
 import type { WeeklyReviewReport } from "@/lib/weekly-review/types"
+import { getTradingWeekStartKey } from "@/lib/trading/trading-week"
 
 type WeeklyReviewPanelProps = {
   refreshKey?: number
@@ -207,13 +208,5 @@ export function WeeklyReviewPanel({
 }
 
 function previewWeekStart(weekOffset: number): string {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setDate(date.getDate() + weekOffset * 7)
-  const day = date.getDay()
-  const mondayOffset = day === 0 ? -6 : 1 - day
-  const start = new Date(date)
-  start.setDate(date.getDate() + mondayOffset)
-  start.setHours(0, 0, 0, 0)
-  return start.toISOString().slice(0, 10)
+  return getTradingWeekStartKey(new Date(), weekOffset)
 }

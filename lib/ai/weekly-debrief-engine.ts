@@ -2,7 +2,11 @@ import { buildMistakeAnalysis } from "@/lib/mistake-analysis"
 import { buildStrategyPerformance } from "@/lib/strategy-performance"
 import type { PatternMemoryPattern } from "@/lib/trade-coach/pattern-memory"
 import type { TradeQualityGrade } from "@/lib/trade-coach/trade-quality-engine"
-import { getTradingWeekBounds } from "@/lib/trading/trading-week"
+import {
+  getTradingWeekBounds,
+  TRADING_WEEK_DAY_LABELS,
+  tradingWeekDayIndex,
+} from "@/lib/trading/trading-week"
 import { getSignedPnL } from "@/lib/trade-utils"
 import type {
   BuildWeeklyDebriefInput,
@@ -20,7 +24,6 @@ import type {
 
 const IMPULSIVE_EMOTIONS = new Set(["FOMO", "Revenge", "Euphoric", "Anxious", "Fearful", "Greed"])
 const STABLE_EMOTIONS = new Set(["Calm", "Confident", "Disciplined"])
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value))
@@ -35,8 +38,11 @@ function gradeFromScore(score: number): TradeQualityGrade {
 }
 
 export function getWeekRange(referenceDate = new Date(), weekOffset = 0): WeekRange {
-  const { start, end, label } = getTradingWeekBounds(referenceDate, weekOffset)
-  return { start, end, label }
+  const { start, end, weekStartKey, weekEndKey, label } = getTradingWeekBounds(
+    referenceDate,
+    weekOffset,
+  )
+  return { start, end, weekStartKey, weekEndKey, label }
 }
 
 export function getTradeTimestamp(trade: WeeklyDebriefTrade): number {
@@ -362,33 +368,26 @@ function buildRecommendations(
   return [...new Set(recommendations)].slice(0, 5)
 }
 
-function dayIndexForTrade(trade: WeeklyDebriefTrade, weekStart: Date): number {
-  const ts = getTradeTimestamp(trade)
-  const day = new Date(ts)
-  day.setHours(12, 0, 0, 0)
-  const start = new Date(weekStart)
-  start.setHours(0, 0, 0, 0)
-  return clamp(Math.floor((day.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)), 0, 6)
-}
-
 function buildVisualizations(
   weekTrades: WeeklyDebriefTrade[],
   feedback: BuildWeeklyDebriefInput["feedback"],
   coachSessions: BuildWeeklyDebriefInput["coachSessions"],
   weekStart: Date,
 ): WeeklyDebriefVisualizations {
-  const disciplineGraph: WeeklyTrendPoint[] = WEEKDAY_LABELS.map((label) => ({ label, value: 0 }))
-  const emotionalStabilityGraph: WeeklyTrendPoint[] = WEEKDAY_LABELS.map((label) => ({
+  const weekStartKey = getTradingWeekBounds(weekStart, 0).weekStartKey
+  const disciplineGraph: WeeklyTrendPoint[] = TRADING_WEEK_DAY_LABELS.map((label) => ({ label, value: 0 }))
+  const emotionalStabilityGraph: WeeklyTrendPoint[] = TRADING_WEEK_DAY_LABELS.map((label) => ({
     label,
     value: 0,
   }))
-  const qualityScoreTrend: WeeklyTrendPoint[] = WEEKDAY_LABELS.map((label) => ({ label, value: 0 }))
-  const disciplineCounts = Array(7).fill(0)
-  const emotionCounts = Array(7).fill(0)
-  const qualityCounts = Array(7).fill(0)
+  const qualityScoreTrend: WeeklyTrendPoint[] = TRADING_WEEK_DAY_LABELS.map((label) => ({ label, value: 0 }))
+  const disciplineCounts = Array(TRADING_WEEK_DAY_LABELS.length).fill(0)
+  const emotionCounts = Array(TRADING_WEEK_DAY_LABELS.length).fill(0)
+  const qualityCounts = Array(TRADING_WEEK_DAY_LABELS.length).fill(0)
 
   for (const trade of weekTrades) {
-    const index = dayIndexForTrade(trade, weekStart)
+    const index = tradingWeekDayIndex(trade, weekStartKey)
+    if (index == null) continue
     const row = feedback.find((item) => String(item.trade_id) === trade.id)
     if (row) {
       disciplineGraph[index].value += row.discipline_score
@@ -404,7 +403,7 @@ function buildVisualizations(
     }
   }
 
-  for (let i = 0; i < 7; i += 1) {
+  for (let i = 0; i < TRADING_WEEK_DAY_LABELS.length; i += 1) {
     if (disciplineCounts[i] > 0) disciplineGraph[i].value = Math.round(disciplineGraph[i].value / disciplineCounts[i])
     if (emotionCounts[i] > 0) {
       emotionalStabilityGraph[i].value = Math.round(emotionalStabilityGraph[i].value / emotionCounts[i])

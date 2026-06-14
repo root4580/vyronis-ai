@@ -28,8 +28,12 @@ export type TradingWeekBounds = {
   start: Date
   end: Date
   weekStartKey: string
+  weekEndKey: string
   label: string
 }
+
+/** Active trading days in order — Sunday through Friday (no Saturday). */
+export const TRADING_WEEK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri"] as const
 
 const OPEN_MINUTES = 17 * 60
 const CLOSE_MINUTES = 16 * 60 + 59
@@ -156,7 +160,36 @@ function formatTradingWeekLabel(
 ): string {
   const startLabel = formatEtDateLabel(start)
   const endLabel = formatEtDateLabel(end)
-  return `${startLabel} 5:00 PM – ${endLabel} 4:59 PM ET`
+  return `Sun ${startLabel} – Fri ${endLabel} · opens 5:00 PM ET, closes 4:59 PM ET`
+}
+
+/** Map a trade to Sun=0 … Fri=5 within the forex week; Saturday returns null. */
+export function tradingWeekDayIndex(
+  trade: { trade_date?: string | null; created_at?: string | null },
+  weekStartKey: string,
+): number | null {
+  const raw = trade.trade_date || trade.created_at
+  if (!raw) return null
+
+  const tradeParts = getEtParts(new Date(raw))
+  const [startYear, startMonth, startDay] = weekStartKey.split("-").map(Number)
+  const startAnchor = instantFromEtWallClock({
+    year: startYear,
+    month: startMonth,
+    day: startDay,
+    hour: 12,
+    minute: 0,
+  })
+  const tradeAnchor = instantFromEtWallClock({
+    year: tradeParts.year,
+    month: tradeParts.month,
+    day: tradeParts.day,
+    hour: 12,
+    minute: 0,
+  })
+  const dayOffset = Math.round((tradeAnchor.getTime() - startAnchor.getTime()) / 86_400_000)
+  if (dayOffset < 0 || dayOffset > 5) return null
+  return dayOffset
 }
 
 function resolveTradingWeekStartParts(reference: EtDateTimeParts): EtDateTimeParts {
@@ -231,8 +264,15 @@ export function getTradingWeekBounds(
     start,
     end,
     weekStartKey: etDateKey(startParts),
+    weekEndKey: etDateKey(endParts),
     label: formatTradingWeekLabel(startParts, endParts),
   }
+}
+
+/** True on Sunday at or after 5:00 PM ET when the forex week opens. */
+export function isTradingWeekStartSunday(now = new Date()): boolean {
+  const parts = getEtParts(now)
+  return parts.dayOfWeek === 0 && parts.hour * 60 + parts.minute >= OPEN_MINUTES
 }
 
 export function getTradingWeekBoundsFromStartKey(weekStartKey: string): TradingWeekBounds {

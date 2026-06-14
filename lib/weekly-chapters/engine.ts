@@ -19,6 +19,7 @@ import {
   getPreviousWeekStartISO,
   isMondayMorning,
   isSundayEvening,
+  isTradingWeekStartSunday,
   toWeekStartISO,
 } from "@/lib/weekly-chapters/week-utils"
 
@@ -66,9 +67,11 @@ export function buildWeeklyChapterDashboard(input: {
   }
 
   let mondayMessage: string | null = null
-  if (isMondayMorning(now)) {
-    const name = input.traderFirstName?.trim() || "Trader"
-    mondayMessage = `Good morning ${name}. Chapter ${chapterNumber} begins today. Your edge is intact. The market is ready. Are you?`
+  const name = input.traderFirstName?.trim() || "Trader"
+  if (isTradingWeekStartSunday(now)) {
+    mondayMessage = `Good evening ${name}. Chapter ${chapterNumber} opens now — your week runs Sunday through Friday. Your edge is intact. The market is ready. Are you?`
+  } else if (isMondayMorning(now)) {
+    mondayMessage = `Good morning ${name}. Chapter ${chapterNumber} continues. Your edge is intact. The market is ready. Are you?`
   }
 
   let toughWeekReminder: string | null = null

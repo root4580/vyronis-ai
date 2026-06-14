@@ -74,8 +74,8 @@ export function buildPersistedWeeklyReview(input: {
 
   return {
     review_type: "weekly",
-    week_start: weekRange.start.toISOString().slice(0, 10),
-    week_end: weekRange.end.toISOString().slice(0, 10),
+    week_start: weekRange.weekStartKey,
+    week_end: weekRange.weekEndKey,
     summary,
     recurring_mistakes: debrief.summary.mostRepeatedMistake
       ? [debrief.summary.mostRepeatedMistake]

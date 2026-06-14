@@ -150,5 +150,7 @@ export type BuildWeeklyDebriefInput = {
 export type WeekRange = {
   start: Date
   end: Date
+  weekStartKey: string
+  weekEndKey: string
   label: string
 }

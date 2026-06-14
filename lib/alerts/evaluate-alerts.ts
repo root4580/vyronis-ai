@@ -47,8 +47,7 @@ export function getLatestLossTradeId(trades: TradeRiskGuardHistoryTrade[]): stri
 }
 
 export function getWeekKey(referenceDate = new Date()): string {
-  const { start } = getWeekRange(referenceDate, 0)
-  return start.toISOString().slice(0, 10)
+  return getWeekRange(referenceDate, 0).weekStartKey
 }
 
 export function formatWeekLabel(referenceDate = new Date()): string {

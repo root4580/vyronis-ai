@@ -1,4 +1,5 @@
 import { getWeekTradeBounds } from "@/lib/hq-dashboard-metrics"
+import { isTradeInTradingWeek } from "@/lib/trading/trading-week"
 import { getSignedPnL } from "@/lib/trade-utils"
 import type { SettingsTrade } from "@/lib/user-settings"
 import {
@@ -17,15 +18,11 @@ function isTradeInCurrentWeek(
   trade: Pick<SettingsTrade, "trade_date" | "created_at">,
   now = new Date(),
 ): boolean {
-  const raw = trade.trade_date || trade.created_at?.split("T")[0]
-  if (!raw) return false
-  const date = new Date(`${raw}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return false
   const { start, end } = getWeekTradeBounds(now)
-  return date >= start && date < end
+  return isTradeInTradingWeek(trade, start, end)
 }
 
-/** Live trades that count toward this week's rules (Monday 00:00 → next Monday). */
+/** Live trades that count toward this week's rules (Sunday 5:00 PM ET → Friday 4:59 PM ET). */
 export function filterTradesForRulesWeek(
   trades: TradingRulesTradeRow[],
   referenceDate = new Date(),

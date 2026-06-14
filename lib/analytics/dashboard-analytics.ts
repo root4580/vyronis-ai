@@ -13,6 +13,7 @@ import { resolveStoredSetupScore } from "@/lib/trade-coach/setup-score-engine"
 import { getTradeRiskReward } from "@/lib/trade-form-utils"
 import { getSignedPnL } from "@/lib/trade-utils"
 import { getTradeTimestamp } from "@/lib/user-settings"
+import { getTradingWeekStartKey } from "@/lib/trading/trading-week"
 
 const SETUP_BUCKET_COLORS: Record<SetupDisplayBucket, string> = {
   "A+": "oklch(0.72 0.14 195)",
@@ -114,13 +115,9 @@ function buildEquityCurve(
 }
 
 function getWeekStartKey(trade: AnalyticsTradeRow): string {
-  const date = new Date(trade.trade_date || trade.created_at)
-  const day = date.getDay()
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(date)
-  monday.setDate(diff)
-  monday.setHours(0, 0, 0, 0)
-  return monday.toISOString().slice(0, 10)
+  const raw = trade.trade_date || trade.created_at
+  if (!raw) return ""
+  return getTradingWeekStartKey(new Date(raw), 0)
 }
 
 function buildWeeklyTrend(trades: AnalyticsTradeRow[]): WeeklyTrendPoint[] {
