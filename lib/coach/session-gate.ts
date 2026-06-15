@@ -69,6 +69,8 @@ function loggedSessionAlignsWithDetected(
 export function evaluateSessionGate(input: {
   loggedSession?: string | null
   now?: Date
+  /** Pre-trade War Room planning — don't hard-fail outside London/NY window. */
+  planningMode?: boolean
 }): {
   passed: boolean
   note: string
@@ -91,7 +93,17 @@ export function evaluateSessionGate(input: {
     failureReason = `Logged session "${loggedSession}" does not match live ${clock.name}.`
   }
 
-  const passed = allowedActive && alignment !== false
+  const passed =
+    allowedActive && alignment !== false
+      ? true
+      : input.planningMode && alignment !== false
+        ? true
+        : false
+
+  const planningNote =
+    input.planningMode && alignment !== false && (!allowedActive || !isAllowedEntrySession(clock.name))
+      ? `War Room plan — execute during London/NY (${clock.name} now).`
+      : null
 
   const currentTimeLabel = `${estTime} · ${clock.name}`
 
@@ -110,9 +122,10 @@ export function evaluateSessionGate(input: {
   }
 
   const note = passed
-    ? `Live session ${clock.name} (${estTime}) — inside London/NY window.${
-        loggedSession ? ` Logged: ${loggedSession}.` : ""
-      }`
+    ? planningNote ??
+        `Live session ${clock.name} (${estTime}) — inside London/NY window.${
+          loggedSession ? ` Logged: ${loggedSession}.` : ""
+        }`
     : failureReason ??
       `Outside trading session — ${currentTimeLabel}. Allowed: ${allowedSessions}.`
 

@@ -348,8 +348,9 @@ export function TradeCoachPanel({
       playbook: playbookMatch,
       mtf: mtfAnalysis,
       precisionFlow: coachAnalysis?.precisionFlow,
+      planningMode: embedded,
     })
-  }, [vyronisCoach, session?.planned_context, playbookMatch, mtfAnalysis, coachAnalysis?.precisionFlow])
+  }, [vyronisCoach, session?.planned_context, playbookMatch, mtfAnalysis, coachAnalysis?.precisionFlow, embedded])
 
   const moodCheckInComplete = hasMoodCheckIn(responses)
   const canShowCoachVerdict = Boolean(coachExecutionVerdict && moodCheckInComplete)

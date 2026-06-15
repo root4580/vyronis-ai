@@ -176,6 +176,7 @@ export function resolveCoachExecutionVerdict(input: {
   precisionFlow?: PrecisionFlowResult | null
   discipline?: CoachDisciplineInput | null
   now?: Date
+  planningMode?: boolean
 }): CoachExecutionVerdict {
   const mtf = input.mtf ?? input.context?.mtf_analysis ?? input.context?.chart_analysis?.mtf ?? null
   const playbook =
@@ -186,6 +187,7 @@ export function resolveCoachExecutionVerdict(input: {
     playbook,
     mtf,
     now: input.now,
+    planningMode: input.planningMode ?? false,
   })
   const setupScore = resolveSetupQualityScore({ playbook, mtf })
   const grade = setupQualityGradeFromScore(setupScore)

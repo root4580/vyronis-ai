@@ -114,10 +114,12 @@ function evaluateAoiValid(
 function evaluateSessionValid(
   context: PreTradePlannedContext,
   now?: Date,
+  planningMode = false,
 ): { rule: EntryGateRule; debug: SessionGateDebug } {
   const gate = evaluateSessionGate({
     loggedSession: context.session ?? null,
     now,
+    planningMode,
   })
   logSessionGateDebug(gate.debug)
 
@@ -247,6 +249,8 @@ export function evaluateEntryGate(input: {
   playbook?: StrategyPlaybookMatchResult | null
   mtf?: MtfAnalysisResult | null
   now?: Date
+  /** Pre-trade War Room — session gate advisory outside London/NY hours. */
+  planningMode?: boolean
 }): EntryGateResult {
   const context = input.context ?? ({} as PreTradePlannedContext)
   const mtf =
@@ -254,7 +258,7 @@ export function evaluateEntryGate(input: {
   const playbook =
     input.playbook ?? context.playbook_match ?? mtf?.playbookMatch ?? null
 
-  const sessionEval = evaluateSessionValid(context, input.now)
+  const sessionEval = evaluateSessionValid(context, input.now, input.planningMode ?? false)
   const rules: EntryGateRule[] = [
     evaluateHtfBias(context, mtf, playbook),
     evaluateAoiValid(context, playbook),

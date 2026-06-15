@@ -159,6 +159,7 @@ export function buildVyronisCoachResponse(input: {
   const executionVerdict = resolveCoachExecutionVerdict({
     context,
     precisionFlow,
+    planningMode: true,
   })
 
   return {

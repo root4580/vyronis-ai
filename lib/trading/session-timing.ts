@@ -1,3 +1,5 @@
+import { getEtParts } from "@/lib/trading/trading-week"
+
 export type TradingSessionInfo = {
   name: string
   isActive: boolean
@@ -72,7 +74,7 @@ export function getSessionClockAccentTheme(clock: SessionClockInfo): SessionVisu
   return getSessionVisualTheme(clock.name)
 }
 
-/** Fixed EST offset used across dashboard session logic (matches existing header). */
+/** Fixed EST offset used only by {@link estWallInstant} test helper. */
 const EST_UTC_OFFSET_HOURS = -5
 
 const SESSION_PROBE_MS = 60_000
@@ -87,31 +89,34 @@ export type EstClock = {
 }
 
 export function utcInstantToEstClock(utcInstant: Date): EstClock {
-  const utcMs = utcInstant.getTime() + utcInstant.getTimezoneOffset() * 60000
-  const est = new Date(utcMs + 3600000 * EST_UTC_OFFSET_HOURS)
-  const hours = est.getHours()
-  const minutes = est.getMinutes()
-  return { hours, minutes, totalMinutes: hours * 60 + minutes, dayOfWeek: est.getDay() }
+  const parts = getEtParts(utcInstant)
+  return {
+    hours: parts.hour,
+    minutes: parts.minute,
+    totalMinutes: parts.hour * 60 + parts.minute,
+    dayOfWeek: parts.dayOfWeek,
+  }
 }
 
-/** EST-based session detection from an EST wall clock (hours/minutes in New York). */
-export function detectTradingSessionFromEstClock(est: EstClock): TradingSessionInfo {
+function isForexMarketOpen(est: EstClock): boolean {
   const forexCloseFriday = 17 * 60
   const forexOpenSunday = 17 * 60
 
-  if (est.dayOfWeek === 6) {
-    return { name: "Weekend", isActive: false }
-  }
-  if (est.dayOfWeek === 0 && est.totalMinutes < forexOpenSunday) {
-    return { name: "Weekend", isActive: false }
-  }
-  if (est.dayOfWeek === 5 && est.totalMinutes >= forexCloseFriday) {
+  if (est.dayOfWeek === 6) return false
+  if (est.dayOfWeek === 0 && est.totalMinutes < forexOpenSunday) return false
+  if (est.dayOfWeek === 5 && est.totalMinutes >= forexCloseFriday) return false
+  return true
+}
+
+/** EST-based session detection from an America/New_York wall clock. */
+export function detectTradingSessionFromEstClock(est: EstClock): TradingSessionInfo {
+  if (!isForexMarketOpen(est)) {
     return { name: "Weekend", isActive: false }
   }
 
   const totalMinutes = est.totalMinutes
 
-  const asiaStart = 19 * 60
+  const asiaStart = 17 * 60
   const asiaEnd = 4 * 60
   const londonStart = 3 * 60
   const londonEnd = 12 * 60
