@@ -13,7 +13,7 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
     reason === "expired"
       ? "This link has expired. Request a new verification or password reset email."
       : reason === "exchange_failed"
-        ? "We could not verify this link. It may have expired or already been used — request a new email."
+        ? "We could not verify this link. It may have expired, already been used, or opened before our email fix — request a new verification email and use the latest link."
       : reason === "access_denied"
         ? "Sign-in was cancelled or the link is no longer valid."
         : "Something went wrong during sign-in or email confirmation."
