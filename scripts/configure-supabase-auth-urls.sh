@@ -23,9 +23,11 @@ fi
 
 # Supabase stores redirect allow list as newline-separated URIs.
 URI_ALLOW_LIST=$(
-  printf '%s\n%s\n%s\n%s' \
+  printf '%s\n%s\n%s\n%s\n%s\n%s' \
+    "${SITE_URL}/auth/confirm" \
     "${SITE_URL}/auth/callback" \
     "${SITE_URL}/auth/reset-password" \
+    "http://localhost:3000/auth/confirm" \
     "http://localhost:3000/auth/callback" \
     "http://localhost:3000/auth/reset-password"
 )

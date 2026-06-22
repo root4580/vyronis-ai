@@ -20,7 +20,7 @@ export function getAuthCallbackUrl(nextPath?: string | null): string {
 }
 
 export function getSignupEmailRedirectUrl(): string {
-  return getAuthCallbackUrl(APP_HOME_PATH)
+  return `${getAuthSiteOrigin()}/auth/confirm`
 }
 
 /** Supabase appends ?code= to this URL; must be in Auth redirect allow list. */

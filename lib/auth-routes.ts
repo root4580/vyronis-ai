@@ -28,6 +28,7 @@ export const AUTH_ENTRY_PATHS = [
 
 export const AUTH_PUBLIC_PATHS = [
   ...AUTH_ENTRY_PATHS,
+  "/auth/confirm",
   "/auth/reset-password",
   "/auth/callback",
   "/auth/error",
