@@ -37,8 +37,8 @@ export function buildWeeklyChapterDashboard(input: {
 }): WeeklyChapterDashboard {
   const now = input.referenceDate ?? new Date()
   const weekStart = input.currentWeekStart ?? toWeekStartISO(now)
-  const chapterNumber = computeChapterNumber(input.originWeekStart, weekStart)
   const currentWeekSummary = input.summaries.find((summary) => summary.week_start === weekStart)
+  const chapterNumber = computeChapterNumber(input.originWeekStart, weekStart)
   const disciplineScore =
     input.disciplineScore ?? currentWeekSummary?.discipline_score ?? null
   const disciplineGrade =

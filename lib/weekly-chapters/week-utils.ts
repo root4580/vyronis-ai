@@ -54,25 +54,43 @@ export function isSundayEvening(now = new Date()): boolean {
 export { isTradingWeekStartSunday } from "@/lib/trading/trading-week"
 
 export function computeChapterNumber(originWeekStart: string, weekStart: string): number {
-  const origin = parseWeekStart(originWeekStart).getTime()
-  const current = parseWeekStart(weekStart).getTime()
-  const weeks = Math.round((current - origin) / (7 * 24 * 60 * 60 * 1000))
-  return Math.max(1, weeks + 1)
+  if (weekStart <= originWeekStart) return 1
+
+  let chapter = 1
+  let cursor = originWeekStart
+  while (cursor < weekStart) {
+    cursor = getNextWeekStartISO(cursor)
+    chapter += 1
+    if (chapter > 520) break
+  }
+  return chapter
 }
 
+/** First trading week for this account — not calendar age since signup. */
 export function resolveOriginWeekStart(
   trades: Array<{ trade_date: string | null; created_at: string | null }>,
-  accountCreatedAt?: string | null,
+  options?: {
+    summaries?: Array<{ week_start: string }>
+    referenceDate?: Date
+  },
 ): string {
   let earliest: string | null = null
+
   for (const trade of trades) {
     const raw = trade.trade_date || trade.created_at?.split("T")[0]
     if (!raw) continue
-    if (!earliest || raw < earliest) earliest = raw
+    const week = toWeekStartISO(parseWeekStart(raw))
+    if (!earliest || week < earliest) earliest = week
   }
-  if (earliest) return toWeekStartISO(parseWeekStart(earliest))
-  if (accountCreatedAt) return toWeekStartISO(new Date(accountCreatedAt))
-  return toWeekStartISO(new Date())
+
+  for (const summary of options?.summaries ?? []) {
+    const week = summary.week_start.slice(0, 10)
+    if (!earliest || week < earliest) earliest = week
+  }
+
+  if (earliest) return earliest
+
+  return toWeekStartISO(options?.referenceDate ?? new Date())
 }
 
 export function disciplineGradeFromScore(score: number | null): string | null {

@@ -182,12 +182,16 @@ export async function generateWeeklySummaryForWeek(
     originWeekStart?: string
     persistReview?: boolean
     paperTrades?: PaperTradeRecord[]
+    existingSummaries?: WeeklySummaryRecord[]
   },
 ): Promise<WeeklySummaryRecord> {
   const account = await getTradingAccount(supabase, userId, accountId)
   const maxTrades = options?.maxTradesPerWeek ?? account?.max_trades_per_week ?? 2
   const originWeekStart =
-    options?.originWeekStart ?? resolveOriginWeekStart(trades, account?.created_at ?? null)
+    options?.originWeekStart ??
+    resolveOriginWeekStart(trades, {
+      summaries: options?.existingSummaries,
+    })
   const weekStats = computeWeekTradeStats(trades, weekStart)
   const chapterNumber = computeChapterNumber(originWeekStart, weekStart)
   const disciplineScore = options?.disciplineScore ?? null
@@ -285,6 +289,7 @@ export async function autoClosePastWeeks(
       await generateWeeklySummaryForWeek(supabase, userId, accountId, legacyAccountId, week, trades, {
         originWeekStart,
         paperTrades,
+        existingSummaries: existing,
       })
     }
     week = getNextWeekStartISO(week)
@@ -303,11 +308,12 @@ export async function getWeeklyChapterDashboard(
 ): Promise<WeeklyChapterDashboard> {
   const legacyAccountId = await resolveLegacyTradeAccountId(supabase, userId)
   const account = await getTradingAccount(supabase, userId, accountId)
-  const [trades, paperTrades] = await Promise.all([
+  const [trades, paperTrades, summaries] = await Promise.all([
     fetchChapterTrades(supabase, userId, accountId, legacyAccountId),
     fetchChapterPaperTrades(supabase, userId, accountId, legacyAccountId),
+    listWeeklySummaries(supabase, userId, accountId, legacyAccountId),
   ])
-  const originWeekStart = resolveOriginWeekStart(trades, account?.created_at ?? null)
+  const originWeekStart = resolveOriginWeekStart(trades, { summaries })
 
   await autoClosePastWeeks(
     supabase,
@@ -319,12 +325,17 @@ export async function getWeeklyChapterDashboard(
     paperTrades,
   )
 
-  const summaries = await listWeeklySummaries(supabase, userId, accountId, legacyAccountId)
+  const summariesAfterClose = await listWeeklySummaries(
+    supabase,
+    userId,
+    accountId,
+    legacyAccountId,
+  )
 
   return buildWeeklyChapterDashboard({
     trades,
     paperTrades,
-    summaries,
+    summaries: summariesAfterClose,
     originWeekStart,
     maxTradesPerWeek: account?.max_trades_per_week ?? 2,
     traderFirstName: options?.traderFirstName,

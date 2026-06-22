@@ -504,7 +504,7 @@ export async function getChapterReview(
     fetchCoachSessionsForAccount(supabase, userId, accountId),
   ])
 
-  const originWeekStart = resolveOriginWeekStart(chapterTrades, account?.created_at ?? null)
+  const originWeekStart = resolveOriginWeekStart(chapterTrades, { summaries })
   let summary = summaries.find((row) => row.week_start === weekStart) ?? null
 
   const paperStats =
