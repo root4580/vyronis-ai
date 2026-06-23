@@ -4,6 +4,8 @@ import type { ScannerSignalRow } from "@/lib/scanner/types"
 import type { ScannerLiveSignal } from "@/lib/scanner/signal-types"
 import { rowToLiveSignal } from "@/lib/scanner/map-signal-row"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const supabase = await createClient()
   const {

@@ -59,7 +59,12 @@ export function useScannerSignals(): ScannerSignalsState & {
 
       setRemovingId(id)
       try {
-        const res = await fetch(`/api/scanner/signals/${id}`, { method: "DELETE" })
+        const res = await fetch("/api/scanner/signals/remove", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ signalId: id }),
+        })
         const body = (await res.json().catch(() => ({}))) as { error?: string }
         if (!res.ok) {
           return { ok: false, error: body.error ?? "Could not remove signal." }

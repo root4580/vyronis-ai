@@ -106,7 +106,7 @@ export function SignalDetailsPanel({ signal, onRemove, removing = false }: Signa
             getSetupScoreGlowClass(classification),
           )}
         />
-        <div className="relative flex flex-wrap items-center gap-2">
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
           <h2 className="text-base font-semibold text-foreground/95">{signal.pair}</h2>
           <span
             className={cn(
@@ -125,7 +125,7 @@ export function SignalDetailsPanel({ signal, onRemove, removing = false }: Signa
           >
             {signalStatusLabel(signal.status)}
           </span>
-          <span className="ml-auto text-[10px] tabular-nums text-cyan-glow">
+          <span className="text-[10px] tabular-nums text-cyan-glow">
             {signal.confidence}% confidence
           </span>
           {onRemove ? (
@@ -133,9 +133,13 @@ export function SignalDetailsPanel({ signal, onRemove, removing = false }: Signa
               type="button"
               variant="outline"
               size="sm"
-              className="ml-2 h-7 border-loss/25 text-[10px] text-loss hover:bg-loss/10 hover:text-loss"
+              className="relative z-20 ml-auto h-7 shrink-0 border-loss/25 text-[10px] text-loss hover:bg-loss/10 hover:text-loss"
               disabled={removing}
-              onClick={onRemove}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onRemove()
+              }}
             >
               {removing ? (
                 <Loader2 className="mr-1 size-3 animate-spin" />
