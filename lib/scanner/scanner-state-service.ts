@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { Mt5WebhookError } from "@/lib/mt5/webhook-server-service"
+import { recordMt5Ping } from "@/lib/mt5/ping-service"
 import type {
   Mt5ScannerStatePayload,
   ScannerPairStateRow,
@@ -85,6 +86,13 @@ export async function ingestMt5ScannerState(
     }
     upserted++
   }
+
+  await recordMt5Ping(
+    supabase,
+    userId,
+    { ping: true, ea_version: "scanner-v1.31" },
+    `A+ Scanner watchlist sync OK (${upserted} pairs).`,
+  )
 
   return { upserted, scanned_at: scannedAt }
 }

@@ -15,6 +15,8 @@ export type Mt5SettingsPayload = {
   apiKey: string
   enabled: boolean
   webhookUrl: string
+  scannerUrl: string
+  scannerStateUrl: string
   pingUrl: string
   echoUrl: string
   connection: Mt5ConnectionState
@@ -57,6 +59,8 @@ async function buildMt5SettingsResponse(
     apiKey,
     enabled,
     webhookUrl: `${base}/api/webhooks/mt5/trades`,
+    scannerUrl: `${base}/api/webhooks/mt5/scanner`,
+    scannerStateUrl: `${base}/api/webhooks/mt5/scanner/state`,
     pingUrl: `${base}/api/webhooks/mt5/ping`,
     echoUrl: `${base}/api/webhooks/mt5/echo`,
     connection: deriveMt5ConnectionState({ ...sync, settingsEnabled: enabled }),

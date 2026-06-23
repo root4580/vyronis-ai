@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { Mt5WebhookError } from "@/lib/mt5/webhook-server-service"
 import { resolveUserByMt5ApiKey } from "@/lib/mt5/webhook-server-service"
+import { recordMt5Ping } from "@/lib/mt5/ping-service"
 import type {
   Mt5ScannerWebhookPayload,
   ScannerSignalGrade,
@@ -121,6 +122,13 @@ export async function ingestMt5ScannerSignal(
       throw new Mt5WebhookError(updateError.message, 500)
     }
 
+    await recordMt5Ping(
+      supabase,
+      userId,
+      { ping: true, ea_version: "scanner-v1.31" },
+      `A+ Scanner signal ${grade} · ${pair}.`,
+    )
+
     return {
       setup_id: setupId,
       signal_id: existing.id,
@@ -141,6 +149,13 @@ export async function ingestMt5ScannerSignal(
     }
     throw new Mt5WebhookError(error.message, 500)
   }
+
+  await recordMt5Ping(
+    supabase,
+    userId,
+    { ping: true, ea_version: "scanner-v1.31" },
+    `A+ Scanner signal ${grade} · ${pair}.`,
+  )
 
   return {
     setup_id: setupId,

@@ -58,7 +58,7 @@ const CONNECTION_META: Record<
   waiting: {
     label: "Waiting for MT5",
     dotClass: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.45)]",
-    description: "Paste API key in EA — URL must match Vyronis host below",
+    description: "Attach Vyronis_APlus_Scanner with API key — pings on start",
   },
   error: {
     label: "Sync error",
@@ -156,7 +156,10 @@ export function Mt5ConnectionPanel({
   const ConnectionIcon =
     connection === "connected" ? PlugZap : connection === "error" ? Unplug : Plug
 
-  const lastActivity = settings?.lastSyncAt ?? settings?.lastPingAt
+  const scannerUrl =
+    settings.scannerUrl ?? settings.webhookUrl.replace("/trades", "/scanner")
+  const scannerStateUrl =
+    settings.scannerStateUrl ?? `${scannerUrl}/state`
 
   return (
     <DashboardCard interactive className={cn("glass-card", className)}>
@@ -245,13 +248,30 @@ export function Mt5ConnectionPanel({
               )}
             </DashboardInsetPanel>
 
-            <DashboardInsetPanel className="px-3 py-2 space-y-1">
+            <DashboardInsetPanel className="px-3 py-2 space-y-2">
               <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
-                EA must use this URL
+                EA webhook URLs
               </p>
-              <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
-                {settings.webhookUrl}
-              </p>
+              <div className="space-y-1.5">
+                <div>
+                  <p className="text-[9px] text-muted-foreground/55">A+ Scanner (signals)</p>
+                  <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
+                    {settings.scannerUrl}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/55">A+ Scanner (watchlist state)</p>
+                  <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
+                    {settings.scannerStateUrl}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-muted-foreground/55">Trade sync (closed trades)</p>
+                  <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
+                    {settings.webhookUrl}
+                  </p>
+                </div>
+              </div>
             </DashboardInsetPanel>
 
             {settings.diagnostics?.map((line) => (

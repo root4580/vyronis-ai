@@ -3,18 +3,11 @@
 //| Attach ONCE to any chart. Scans all configured pairs.              |
 //+------------------------------------------------------------------+
 #property copyright "Vyronis AI"
-#property version   "1.30"
-#property description "Precision Flow scanner v1.3 — W+D+H4 bias, AOI, A/A+ only"
+#property version   "1.31"
+#property description "Precision Flow scanner v1.31 — broker suffix + live bias sync"
 // REQUIRES in MQL5/Include/: VyronisScannerLib.mqh + all VyronisScanner*.mqh + VyronisTradeWebhook.mqh
 
 #include <VyronisScannerLib.mqh>
-
-// Forward declarations (MQL5 strict compile)
-bool ScannerParseSymbols(const string csv, string &out[]);
-void ScannerRunSymbol(const string symbol, const int row_index, const string session_label, const bool in_session);
-void ScannerRefreshPanel();
-void ScannerSyncStateToVyronis();
-string ScannerDeriveStateUrl(const string signal_url);
 
 input string InpVyronisScannerUrl = "https://vyronishq.com/api/webhooks/mt5/scanner";
 input string InpVyronisStateUrl   = "";
@@ -22,6 +15,7 @@ input string InpVyronisApiKey     = "";
 input string InpSymbols           = "EURUSD,GBPUSD,AUDUSD,NZDUSD,USDCHF,USDCAD,EURJPY,GBPJPY,CHFJPY,GBPCAD,GBPNZD,EURNZD,AUDJPY,CADJPY,EURCAD";
 input int    InpTimerSeconds      = 30;
 input bool   InpScanOnNewM15Bar   = true;
+input bool   InpAutoBrokerSuffix  = true;
 input bool   InpSyncState         = true;
 input bool   InpVerboseLog        = true;
 
@@ -33,105 +27,63 @@ int      g_alert_count = 0;
 datetime g_last_state_sync = 0;
 
 //+------------------------------------------------------------------+
-int OnInit()
-{
-   if(StringLen(InpVyronisApiKey) < 16)
-   {
-      Alert("Vyronis Scanner: paste API key from Vyronis Account Settings -> MT5 auto-sync");
-      return INIT_PARAMETERS_INCORRECT;
-   }
-
-   if(StringFind(InpVyronisScannerUrl, "http") != 0)
-   {
-      Alert("Vyronis Scanner: invalid webhook URL");
-      return INIT_PARAMETERS_INCORRECT;
-   }
-
-   g_state_url = (StringLen(InpVyronisStateUrl) > 8)
-      ? InpVyronisStateUrl
-      : ScannerDeriveStateUrl(InpVyronisScannerUrl);
-
-   if(!ScannerParseSymbols(InpSymbols, g_symbols))
-   {
-      Alert("Vyronis Scanner: no valid symbols in InpSymbols");
-      return INIT_PARAMETERS_INCORRECT;
-   }
-
-   ArrayResize(g_last_m15_bar, ArraySize(g_symbols));
-   ArrayResize(g_panel_rows, ArraySize(g_symbols));
-   ArrayInitialize(g_last_m15_bar, 0);
-
-   for(int i = 0; i < ArraySize(g_symbols); i++)
-   {
-      SymbolSelect(g_symbols[i], true);
-      g_panel_rows[i].symbol = g_symbols[i];
-      g_panel_rows[i].bias_text = "-";
-      g_panel_rows[i].session_text = "Off";
-      g_panel_rows[i].state_text = "IDLE";
-      g_panel_rows[i].grade_text = "Skip";
-      g_panel_rows[i].zone_text = "None";
-      g_panel_rows[i].last_scan = 0;
-      g_panel_rows[i].phase = PHASE_IDLE;
-      g_panel_rows[i].display_state = DISPLAY_IDLE;
-      g_panel_rows[i].weekly_bias = BIAS_NEUTRAL;
-      g_panel_rows[i].daily_bias = BIAS_NEUTRAL;
-      g_panel_rows[i].h4_bias = BIAS_NEUTRAL;
-      g_panel_rows[i].score = 0;
-      g_panel_rows[i].direction = -1;
-   }
-
-   EventSetTimer(MathMax(5, InpTimerSeconds));
-   ScannerRefreshPanel();
-   Print("Vyronis A+ Scanner v1.3: monitoring ", ArraySize(g_symbols), " pairs");
-   return INIT_SUCCEEDED;
-}
-
-//+------------------------------------------------------------------+
-void OnDeinit(const int reason)
-{
-   EventKillTimer();
-   Comment("");
-}
-
-//+------------------------------------------------------------------+
-void OnTimer()
-{
-   const ENUM_SCANNER_SESSION session = ScannerGetActiveSessionGMT();
-   const string sessionLabel = ScannerSessionLabel(session);
-   const bool inSession = (session != SESSION_NONE);
-
-   for(int i = 0; i < ArraySize(g_symbols); i++)
-   {
-      const string symbol = g_symbols[i];
-      g_panel_rows[i].last_scan = TimeGMT();
-      g_panel_rows[i].session_text = inSession ? sessionLabel : "Off";
-
-      if(InpScanOnNewM15Bar)
-      {
-         const datetime barTime = iTime(symbol, PERIOD_M15, 0);
-         if(barTime == g_last_m15_bar[i])
-            continue;
-         g_last_m15_bar[i] = barTime;
-      }
-
-      ScannerRunSymbol(symbol, i, sessionLabel, inSession);
-   }
-
-   ScannerRefreshPanel();
-
-   if(InpSyncState && TimeGMT() - g_last_state_sync >= MathMax(5, InpTimerSeconds))
-   {
-      ScannerSyncStateToVyronis();
-      g_last_state_sync = TimeGMT();
-   }
-}
-
-//+------------------------------------------------------------------+
 string ScannerDeriveStateUrl(const string signal_url)
 {
    if(StringFind(signal_url, "/scanner") >= 0)
       return signal_url + "/state";
    return signal_url + "/state";
+}
+
+//+------------------------------------------------------------------+
+void ScannerSetDisplayState(
+   const int row_index,
+   const ENUM_SCANNER_DISPLAY_STATE state,
+   const ENUM_SCANNER_PHASE phase,
+   const string state_text
+)
+{
+   g_panel_rows[row_index].display_state = state;
+   g_panel_rows[row_index].phase = phase;
+   g_panel_rows[row_index].state_text = state_text;
+}
+
+//+------------------------------------------------------------------+
+void ScannerApplyBiasToRow(
+   const string symbol,
+   const int row_index,
+   const ScannerBiasResult &bias
+)
+{
+   g_panel_rows[row_index].symbol = symbol;
+   g_panel_rows[row_index].weekly_bias = bias.weekly;
+   g_panel_rows[row_index].daily_bias = bias.daily;
+   g_panel_rows[row_index].h4_bias = bias.h4;
+   g_panel_rows[row_index].direction = bias.direction;
+   g_panel_rows[row_index].bias_text =
+      ScannerBiasToString(bias.weekly) + "/"
+      + ScannerBiasToString(bias.daily) + "/"
+      + ScannerBiasToString(bias.h4);
+}
+
+//+------------------------------------------------------------------+
+bool ScannerParseSymbols(const string csv, string &out[])
+{
+   string parts[];
+   const int n = StringSplit(csv, ',', parts);
+   ArrayResize(out, 0);
+   for(int i = 0; i < n; i++)
+   {
+      string sym = parts[i];
+      StringTrimLeft(sym);
+      StringTrimRight(sym);
+      if(StringLen(sym) < 3) continue;
+      if(InpAutoBrokerSuffix)
+         sym = ScannerResolveBrokerSymbol(sym);
+      int sz = ArraySize(out);
+      ArrayResize(out, sz + 1);
+      out[sz] = sym;
+   }
+   return ArraySize(out) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -149,38 +101,6 @@ void ScannerSyncStateToVyronis()
 }
 
 //+------------------------------------------------------------------+
-bool ScannerParseSymbols(const string csv, string &out[])
-{
-   string parts[];
-   const int n = StringSplit(csv, ',', parts);
-   ArrayResize(out, 0);
-   for(int i = 0; i < n; i++)
-   {
-      string sym = parts[i];
-      StringTrimLeft(sym);
-      StringTrimRight(sym);
-      if(StringLen(sym) < 3) continue;
-      int sz = ArraySize(out);
-      ArrayResize(out, sz + 1);
-      out[sz] = sym;
-   }
-   return ArraySize(out) > 0;
-}
-
-//+------------------------------------------------------------------+
-void ScannerSetDisplayState(
-   const int row_index,
-   const ENUM_SCANNER_DISPLAY_STATE state,
-   const ENUM_SCANNER_PHASE phase,
-   const string state_text
-)
-{
-   g_panel_rows[row_index].display_state = state;
-   g_panel_rows[row_index].phase = phase;
-   g_panel_rows[row_index].state_text = state_text;
-}
-
-//+------------------------------------------------------------------+
 void ScannerRunSymbol(
    const string symbol,
    const int row_index,
@@ -189,14 +109,7 @@ void ScannerRunSymbol(
 )
 {
    ScannerBiasResult bias = ScannerEvaluateBias(symbol);
-   g_panel_rows[row_index].weekly_bias = bias.weekly;
-   g_panel_rows[row_index].daily_bias = bias.daily;
-   g_panel_rows[row_index].h4_bias = bias.h4;
-   g_panel_rows[row_index].direction = bias.direction;
-   g_panel_rows[row_index].bias_text =
-      ScannerBiasToString(bias.weekly) + "/"
-      + ScannerBiasToString(bias.daily) + "/"
-      + ScannerBiasToString(bias.h4);
+   ScannerApplyBiasToRow(symbol, row_index, bias);
    g_panel_rows[row_index].zone_text = "None";
    g_panel_rows[row_index].score = 0;
    g_panel_rows[row_index].grade_text = "Skip";
@@ -287,6 +200,128 @@ void ScannerRunSymbol(
 void ScannerRefreshPanel()
 {
    ScannerUpdateChartPanel(g_panel_rows, g_alert_count, ScannerGetActiveSessionGMT());
+}
+
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   if(StringLen(InpVyronisApiKey) < 16)
+   {
+      Alert("Vyronis Scanner: paste API key from Vyronis Account Settings -> MT5 auto-sync");
+      return INIT_PARAMETERS_INCORRECT;
+   }
+
+   if(StringFind(InpVyronisScannerUrl, "http") != 0)
+   {
+      Alert("Vyronis Scanner: invalid webhook URL");
+      return INIT_PARAMETERS_INCORRECT;
+   }
+
+   g_state_url = (StringLen(InpVyronisStateUrl) > 8)
+      ? InpVyronisStateUrl
+      : ScannerDeriveStateUrl(InpVyronisScannerUrl);
+
+   if(!ScannerParseSymbols(InpSymbols, g_symbols))
+   {
+      Alert("Vyronis Scanner: no valid symbols in InpSymbols");
+      return INIT_PARAMETERS_INCORRECT;
+   }
+
+   ArrayResize(g_last_m15_bar, ArraySize(g_symbols));
+   ArrayResize(g_panel_rows, ArraySize(g_symbols));
+   ArrayInitialize(g_last_m15_bar, 0);
+
+   for(int i = 0; i < ArraySize(g_symbols); i++)
+   {
+      SymbolSelect(g_symbols[i], true);
+      g_panel_rows[i].symbol = g_symbols[i];
+      g_panel_rows[i].bias_text = "-";
+      g_panel_rows[i].session_text = "Off";
+      g_panel_rows[i].state_text = "IDLE";
+      g_panel_rows[i].grade_text = "Skip";
+      g_panel_rows[i].zone_text = "None";
+      g_panel_rows[i].last_scan = 0;
+      g_panel_rows[i].phase = PHASE_IDLE;
+      g_panel_rows[i].display_state = DISPLAY_IDLE;
+      g_panel_rows[i].weekly_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].daily_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].h4_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].score = 0;
+      g_panel_rows[i].direction = -1;
+   }
+
+   EventSetTimer(MathMax(5, InpTimerSeconds));
+   ScannerRefreshPanel();
+
+   int pingStatus = 0;
+   string pingBody = "";
+   if(VyronisSendConnectionPing(InpVyronisScannerUrl, InpVyronisApiKey, pingStatus, pingBody))
+   {
+      if(InpVerboseLog)
+         Print("Vyronis Scanner ping OK HTTP=", pingStatus);
+   }
+   else if(InpVerboseLog)
+      Print("Vyronis Scanner ping FAIL HTTP=", pingStatus, " ", pingBody);
+
+   Print("Vyronis A+ Scanner v1.31: monitoring ", ArraySize(g_symbols), " pairs");
+   return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   EventKillTimer();
+   Comment("");
+}
+
+//+------------------------------------------------------------------+
+void OnTimer()
+{
+   const ENUM_SCANNER_SESSION session = ScannerGetActiveSessionGMT();
+   const string sessionLabel = ScannerSessionLabel(session);
+   const bool inSession = (session != SESSION_NONE);
+
+   for(int i = 0; i < ArraySize(g_symbols); i++)
+   {
+      const string symbol = g_symbols[i];
+      g_panel_rows[i].last_scan = TimeGMT();
+      g_panel_rows[i].session_text = inSession ? sessionLabel : "Off";
+
+      const ScannerBiasResult bias = ScannerEvaluateBias(symbol);
+      ScannerApplyBiasToRow(symbol, i, bias);
+
+      if(!inSession || !bias.aligned)
+      {
+         ScannerSetDisplayState(i, DISPLAY_IDLE, PHASE_IDLE, "IDLE");
+         g_panel_rows[i].grade_text = "Skip";
+         g_panel_rows[i].zone_text = "None";
+         g_panel_rows[i].score = 0;
+         continue;
+      }
+
+      bool runFullScan = true;
+      if(InpScanOnNewM15Bar)
+      {
+         const datetime barTime = iTime(symbol, PERIOD_M15, 0);
+         if(barTime == g_last_m15_bar[i])
+            runFullScan = false;
+         else
+            g_last_m15_bar[i] = barTime;
+      }
+
+      if(!runFullScan)
+         continue;
+
+      ScannerRunSymbol(symbol, i, sessionLabel, inSession);
+   }
+
+   ScannerRefreshPanel();
+
+   if(InpSyncState && TimeGMT() - g_last_state_sync >= MathMax(5, InpTimerSeconds))
+   {
+      ScannerSyncStateToVyronis();
+      g_last_state_sync = TimeGMT();
+   }
 }
 
 //+------------------------------------------------------------------+

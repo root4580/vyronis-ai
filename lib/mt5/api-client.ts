@@ -4,6 +4,8 @@ export type Mt5SettingsResponse = {
   apiKey: string
   enabled: boolean
   webhookUrl: string
+  scannerUrl: string
+  scannerStateUrl: string
   pingUrl: string
   echoUrl: string
   connection: Mt5ConnectionState

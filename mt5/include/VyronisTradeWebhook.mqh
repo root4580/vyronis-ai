@@ -403,7 +403,11 @@ bool VyronisPushClosedDeal(
 string VyronisDerivePingUrl(const string webhookUrl)
 {
    string url = webhookUrl;
+   StringReplace(url, "/api/webhooks/mt5/scanner/state", "/api/webhooks/mt5/ping");
+   StringReplace(url, "/api/webhooks/mt5/scanner", "/api/webhooks/mt5/ping");
    StringReplace(url, "/api/webhooks/mt5/trades", "/api/webhooks/mt5/ping");
+   if(url == webhookUrl)
+      StringReplace(url, "/scanner", "/ping");
    if(url == webhookUrl)
       StringReplace(url, "/trades", "/ping");
    return url;
