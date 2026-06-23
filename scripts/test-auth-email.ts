@@ -9,6 +9,7 @@ import {
   getPasswordResetRedirectUrl,
   getResendCooldown,
   getSignupEmailRedirectUrl,
+  buildTokenHashCallbackUrl,
   getVerifyEmailPageUrl,
 } from "../lib/auth-email"
 import { formatAuthError, isEmailNotConfirmedError } from "../lib/auth-errors"
@@ -34,5 +35,10 @@ assert.match(
 assert.equal(isEmailNotConfirmedError("Email not confirmed"), true)
 
 assert.match(getVerifyEmailPageUrl("a@b.com"), /verify-email\?email=a%40b.com/)
+
+assert.match(
+  buildTokenHashCallbackUrl("abc123", "signup"),
+  /^https:\/\/vyronishq\.com\/auth\/callback\?token_hash=abc123&type=signup$/,
+)
 
 console.log("✓ auth email tests passed")

@@ -200,6 +200,52 @@ export async function handleAuthCallback(request: NextRequest): Promise<AuthCall
 
   const supabase = await createRouteHandlerClient()
 
+  // Prefer token_hash for email links — no PKCE verifier required (works on any device).
+  if (tokenHash) {
+    console.info("[auth/callback] using verifyOtp", {
+      tokenHashLength: tokenHash.length,
+      type,
+    })
+
+    let lastError = "verifyOtp failed."
+    for (const otpType of verificationTypeOrder(type)) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: otpType,
+      })
+
+      if (!error && data.session?.user) {
+        await bootstrapNewUserRecords(supabase, data.session.user.id)
+        console.info("[auth/callback] verifyOtp ok", { otpType })
+        return { ok: true, redirectPath: next }
+      }
+
+      lastError = error?.message ?? lastError
+      console.warn("[auth/callback] verifyOtp attempt failed", {
+        otpType,
+        message: error?.message,
+        name: error?.name,
+        status: error?.status,
+      })
+
+      const lower = lastError.toLowerCase()
+      if (lower.includes("expired") || lower.includes("already been used")) {
+        break
+      }
+    }
+
+    console.error("[auth/callback] verifyOtp exhausted", lastError)
+    return {
+      ok: false,
+      redirectPath: authErrorRedirect("exchange_failed", lastError, {
+        method: "token_hash",
+        type: type ?? "",
+      }),
+      supabaseError: lastError,
+      method: "token_hash",
+    }
+  }
+
   if (code) {
     console.info("[auth/callback] using exchangeCodeForSession", {
       codeLength: code.length,
@@ -213,13 +259,16 @@ export async function handleAuthCallback(request: NextRequest): Promise<AuthCall
         name: error.name,
         status: error.status,
       })
+      const detail = error.message.toLowerCase().includes("pkce")
+        ? `${error.message} Request a new verification email and open the latest link.`
+        : error.message
       return {
         ok: false,
-        redirectPath: authErrorRedirect("exchange_failed", error.message, {
+        redirectPath: authErrorRedirect("exchange_failed", detail, {
           method: "code",
           type: type ?? "",
         }),
-        supabaseError: error.message,
+        supabaseError: detail,
         method: "code",
       }
     }
@@ -234,46 +283,11 @@ export async function handleAuthCallback(request: NextRequest): Promise<AuthCall
     return { ok: true, redirectPath: next }
   }
 
-  console.info("[auth/callback] using verifyOtp", {
-    tokenHashLength: tokenHash?.length ?? 0,
-    type,
-  })
-
-  let lastError = "verifyOtp failed."
-  for (const otpType of verificationTypeOrder(type)) {
-    const { data, error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash!,
-      type: otpType,
-    })
-
-    if (!error && data.session?.user) {
-      await bootstrapNewUserRecords(supabase, data.session.user.id)
-      console.info("[auth/callback] verifyOtp ok", { otpType })
-      return { ok: true, redirectPath: next }
-    }
-
-    lastError = error?.message ?? lastError
-    console.warn("[auth/callback] verifyOtp attempt failed", {
-      otpType,
-      message: error?.message,
-      name: error?.name,
-      status: error?.status,
-    })
-
-    const lower = lastError.toLowerCase()
-    if (lower.includes("expired") || lower.includes("already been used")) {
-      break
-    }
-  }
-
-  console.error("[auth/callback] verifyOtp exhausted", lastError)
+  const detail = "Callback URL has no code or token_hash query parameter."
   return {
     ok: false,
-    redirectPath: authErrorRedirect("exchange_failed", lastError, {
-      method: "token_hash",
-      type: type ?? "",
-    }),
-    supabaseError: lastError,
-    method: "token_hash",
+    redirectPath: authErrorRedirect("missing_params", detail, { method: "missing" }),
+    supabaseError: detail,
+    method: "missing",
   }
 }

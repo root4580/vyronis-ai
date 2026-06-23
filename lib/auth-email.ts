@@ -23,6 +23,17 @@ export function getSignupEmailRedirectUrl(): string {
   return getAuthCallbackUrl()
 }
 
+/** Device-safe email link — uses token_hash + verifyOtp (no PKCE verifier required). */
+export function buildTokenHashCallbackUrl(
+  tokenHash: string,
+  type?: string | null,
+): string {
+  const params = new URLSearchParams()
+  params.set("token_hash", tokenHash)
+  params.set("type", (type?.trim() || "signup").toLowerCase())
+  return `${getAuthSiteOrigin()}/auth/callback?${params.toString()}`
+}
+
 /** Supabase appends ?code= to this URL; must be in Auth redirect allow list. */
 export function getPasswordResetRedirectUrl(): string {
   return `${getAuthSiteOrigin()}/auth/reset-password`

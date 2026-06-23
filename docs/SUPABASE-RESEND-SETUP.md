@@ -96,7 +96,7 @@ Supabase **Custom SMTP** (section 2) is still recommended so Supabase-native res
 | Issue | Fix |
 |-------|-----|
 | No email | Resend SMTP enabled? Domain verified? Check Supabase Auth logs |
-| Confirm link fails / can't log in | Site URL must be `https://vyronishq.com`; add all redirect URLs above; re-paste `confirm-signup.html` using `{{ .ConfirmationURL }}` (not a hardcoded link) |
+| Confirm link fails / can't log in | Use `token_hash` links to `/auth/callback` in email templates — **not** `{{ .ConfirmationURL }}` (PKCE `code` links fail on mobile). Re-paste `confirm-signup.html` from repo. |
 | Link goes to wrong URL | Set `NEXT_PUBLIC_APP_URL` on Vercel Production + redeploy |
 | “Email not confirmed” on login | Use `/auth/verify-email` to resend |
 | Rate limited | Wait 60s between resends; Supabase/Resend rate limits apply |

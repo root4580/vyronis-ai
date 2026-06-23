@@ -1,5 +1,5 @@
 import { isResendConfigured } from "@/lib/alerts/resend-config"
-import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
+import { buildTokenHashCallbackUrl, getSignupEmailRedirectUrl } from "@/lib/auth-email"
 import { sendAuthConfirmationEmail } from "@/lib/email/auth-confirmation-email"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
 
@@ -56,7 +56,13 @@ export async function deliverSignupConfirmationEmail(
     return { sent: false, via: "none", error: error.message }
   }
 
-  const confirmUrl = data.properties?.action_link
+  const tokenHash = data.properties?.hashed_token?.trim()
+  const verificationType = data.properties?.verification_type?.trim() || (password ? "signup" : "magiclink")
+
+  const confirmUrl = tokenHash
+    ? buildTokenHashCallbackUrl(tokenHash, verificationType)
+    : null
+
   if (!confirmUrl) {
     return { sent: false, via: "none", error: "Could not generate confirmation link." }
   }
