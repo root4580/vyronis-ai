@@ -14,7 +14,7 @@ type ScannerSignalsState = {
 
 export function useScannerSignals(): ScannerSignalsState & {
   refetch: () => void
-  removeSignal: (id: string) => Promise<boolean>
+  removeSignal: (id: string) => Promise<{ ok: boolean; error?: string }>
 } {
   const [signals, setSignals] = useState<ScannerLiveSignal[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,17 +52,22 @@ export function useScannerSignals(): ScannerSignalsState & {
   }, [])
 
   const removeSignal = useCallback(
-    async (id: string): Promise<boolean> => {
-      if (source !== "live") return false
+    async (id: string): Promise<{ ok: boolean; error?: string }> => {
+      if (source !== "live") {
+        return { ok: false, error: "Remove is only available for live MT5 signals." }
+      }
 
       setRemovingId(id)
       try {
         const res = await fetch(`/api/scanner/signals/${id}`, { method: "DELETE" })
-        if (!res.ok) return false
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) {
+          return { ok: false, error: body.error ?? "Could not remove signal." }
+        }
         setSignals((prev) => prev.filter((s) => s.id !== id))
-        return true
+        return { ok: true }
       } catch {
-        return false
+        return { ok: false, error: "Network error — try again." }
       } finally {
         setRemovingId(null)
       }

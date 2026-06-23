@@ -30,6 +30,7 @@ import { MOCK_STRATEGY_RULES, MOCK_WATCHLIST } from "@/lib/scanner/mock-data"
 import type { ScannerLiveSignal, ScannerRuleStatus } from "@/lib/scanner/signal-types"
 import { scannerGradeToBadgeClassification } from "@/lib/scanner/scoring"
 import { useScannerSignals } from "@/hooks/use-scanner-signals"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 function ruleStatusIcon(status: ScannerRuleStatus) {
@@ -58,10 +59,20 @@ function signalStatusClass(status: ScannerLiveSignal["status"]): string {
 
 export function APlusScannerWorkspace() {
   const { signals, loading, source, tableMissing, removingId, removeSignal } = useScannerSignals()
+  const { toast } = useToast()
   const [selectedSignalId, setSelectedSignalId] = useState("")
 
   async function handleRemoveSignal(id: string) {
-    await removeSignal(id)
+    const result = await removeSignal(id)
+    if (result.ok) {
+      toast({ title: "Signal removed" })
+      return
+    }
+    toast({
+      title: "Could not remove signal",
+      description: result.error,
+      variant: "destructive",
+    })
   }
 
   useEffect(() => {
@@ -219,59 +230,63 @@ export function APlusScannerWorkspace() {
                   const selected = signal.id === selectedSignal?.id
                   const badgeClass = scannerGradeToBadgeClassification(signal.grade)
                   return (
-                    <button
+                    <div
                       key={signal.id}
-                      type="button"
-                      onClick={() => setSelectedSignalId(signal.id)}
                       className={cn(
-                        "dashboard-inset-panel flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
+                        "dashboard-inset-panel flex w-full items-center gap-3 px-3 py-3 transition-colors",
                         selected
                           ? "border-cyan-glow/30 bg-cyan-glow/[0.06]"
                           : "hover:border-white/[0.12] hover:bg-white/[0.03]",
                       )}
                     >
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground/95">
-                            {signal.pair}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-[11px] font-bold",
-                              signal.direction === "BUY" ? "text-profit" : "text-loss",
-                            )}
-                          >
-                            {signal.direction}
-                          </span>
-                          <SetupScoreBadge
-                            classification={badgeClass}
-                            score={signal.score}
-                            size="sm"
-                            showScore
-                          />
-                          <span className="text-[10px] font-medium text-foreground/80">
-                            {signal.grade}
-                          </span>
-                          <span
-                            className={cn(
-                              "rounded-md px-1.5 py-0.5 text-[9px] font-medium",
-                              signalStatusClass(signal.status),
-                            )}
-                          >
-                            {signalStatusLabel(signal)}
-                          </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSignalId(signal.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[13px] font-semibold text-foreground/95">
+                              {signal.pair}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[11px] font-bold",
+                                signal.direction === "BUY" ? "text-profit" : "text-loss",
+                              )}
+                            >
+                              {signal.direction}
+                            </span>
+                            <SetupScoreBadge
+                              classification={badgeClass}
+                              score={signal.score}
+                              size="sm"
+                              showScore
+                            />
+                            <span className="text-[10px] font-medium text-foreground/80">
+                              {signal.grade}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-md px-1.5 py-0.5 text-[9px] font-medium",
+                                signalStatusClass(signal.status),
+                              )}
+                            >
+                              {signalStatusLabel(signal)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground/75">{signal.setup}</p>
+                          <p className="text-[10px] text-muted-foreground/55">
+                            {signal.session} · {signal.detectedAt} · R:R {signal.riskReward}
+                          </p>
                         </div>
-                        <p className="text-[11px] text-muted-foreground/75">{signal.setup}</p>
-                        <p className="text-[10px] text-muted-foreground/55">
-                          {signal.session} · {signal.detectedAt} · R:R {signal.riskReward}
-                        </p>
-                      </div>
-                      <ChevronRight
-                        className={cn(
-                          "size-4 shrink-0",
-                          selected ? "text-cyan-glow" : "text-muted-foreground/40",
-                        )}
-                      />
+                        <ChevronRight
+                          className={cn(
+                            "size-4 shrink-0",
+                            selected ? "text-cyan-glow" : "text-muted-foreground/40",
+                          )}
+                        />
+                      </button>
                       {source === "live" ? (
                         <Button
                           type="button"
@@ -280,10 +295,7 @@ export function APlusScannerWorkspace() {
                           className="size-7 shrink-0 text-muted-foreground hover:text-loss"
                           disabled={removingId === signal.id}
                           title="Remove signal"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            void handleRemoveSignal(signal.id)
-                          }}
+                          onClick={() => void handleRemoveSignal(signal.id)}
                         >
                           {removingId === signal.id ? (
                             <Loader2 className="size-3.5 animate-spin" />
@@ -292,7 +304,7 @@ export function APlusScannerWorkspace() {
                           )}
                         </Button>
                       ) : null}
-                    </button>
+                    </div>
                   )
                 })
               )}
