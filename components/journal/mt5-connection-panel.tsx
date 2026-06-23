@@ -157,9 +157,10 @@ export function Mt5ConnectionPanel({
     connection === "connected" ? PlugZap : connection === "error" ? Unplug : Plug
 
   const scannerUrl =
-    settings.scannerUrl ?? settings.webhookUrl.replace("/trades", "/scanner")
+    settings?.scannerUrl ?? settings?.webhookUrl.replace("/trades", "/scanner")
   const scannerStateUrl =
-    settings.scannerStateUrl ?? `${scannerUrl}/state`
+    settings?.scannerStateUrl ?? `${scannerUrl}/state`
+  const lastActivity = settings?.lastSyncAt ?? settings?.lastPingAt
 
   return (
     <DashboardCard interactive className={cn("glass-card", className)}>
@@ -256,13 +257,13 @@ export function Mt5ConnectionPanel({
                 <div>
                   <p className="text-[9px] text-muted-foreground/55">A+ Scanner (signals)</p>
                   <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
-                    {settings.scannerUrl}
+                    {scannerUrl}
                   </p>
                 </div>
                 <div>
                   <p className="text-[9px] text-muted-foreground/55">A+ Scanner (watchlist state)</p>
                   <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-glow/85">
-                    {settings.scannerStateUrl}
+                    {scannerStateUrl}
                   </p>
                 </div>
                 <div>
