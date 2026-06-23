@@ -26,6 +26,7 @@ import {
   type Mt5SettingsResponse,
 } from "@/lib/mt5/api-client"
 import { cn } from "@/lib/utils"
+import { formatExactMt5Money } from "@/lib/mt5/live-balance"
 
 function formatLastSync(iso: string | null): string {
   if (!iso) return "Never"
@@ -210,7 +211,7 @@ export function Mt5ConnectionPanel({
                 <p className="text-[10px] text-muted-foreground/60">
                   {settings.broker ?? "—"}
                   {settings.balance != null
-                    ? ` · $${settings.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                    ? ` · ${formatExactMt5Money(settings.balance)}`
                     : ""}
                 </p>
                 {settings.balance != null ? (

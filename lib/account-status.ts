@@ -190,11 +190,20 @@ export function evaluateAccountStatus(input: {
   settings?: UserSettingsForm | null
   referenceDate?: Date
   timeZone?: string
+  /** Exact MT5 ACCOUNT_BALANCE when fresh — overrides journal-derived balance. */
+  mt5LiveBalance?: number | null
 }): AccountStatusSnapshot {
   const settings = normalizeUserSettings(input.settings ?? DEFAULT_USER_SETTINGS)
   const startingBalance = input.account.starting_balance
   const referenceDate = input.referenceDate ?? new Date()
-  const { accountBalance, totalPnL } = computeBalanceFromTradeLog(input.trades, startingBalance)
+  const { accountBalance: journalBalance, totalPnL } = computeBalanceFromTradeLog(
+    input.trades,
+    startingBalance,
+  )
+  const accountBalance =
+    input.mt5LiveBalance != null && Number.isFinite(input.mt5LiveBalance)
+      ? Math.round(input.mt5LiveBalance * 100) / 100
+      : journalBalance
 
   const drawdownPercent = getDrawdownPercent(startingBalance, accountBalance)
   const maxDrawdownPercent = input.account.max_drawdown_pct

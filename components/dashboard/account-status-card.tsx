@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { AlertTriangle, Settings, Wallet } from "lucide-react"
 import type { DashboardTradeRow } from "@/components/dashboard/trading-components"
-import { formatAccountMoney } from "@/lib/accounts/profit-target"
+import { formatAccountMoney, formatLiveAccountMoney } from "@/lib/accounts/profit-target"
 import { getAccountAccentStyles } from "@/lib/accounts/account-theme"
 import type { TradingAccountRecord } from "@/lib/accounts/types"
 import {
@@ -14,11 +14,19 @@ import {
 import { DEFAULT_USER_SETTINGS, type UserSettingsForm } from "@/lib/user-settings"
 import { cn } from "@/lib/utils"
 
+import {
+  formatExactMt5Money,
+  resolveMt5LiveBalance,
+} from "@/lib/mt5/live-balance"
+
 type AccountStatusCardProps = {
   trades: DashboardTradeRow[]
   account: TradingAccountRecord
   settings?: UserSettingsForm | null
   onOpenSettings?: () => void
+  mt5Balance?: number | null
+  mt5LastPingAt?: string | null
+  mt5LastSyncAt?: string | null
   className?: string
 }
 
@@ -92,21 +100,32 @@ export function AccountStatusCard({
   account,
   settings,
   onOpenSettings,
+  mt5Balance = null,
+  mt5LastPingAt = null,
+  mt5LastSyncAt = null,
   className,
 }: AccountStatusCardProps) {
+  const mt5LiveBalance = resolveMt5LiveBalance(mt5Balance, mt5LastPingAt, mt5LastSyncAt)
+  const mt5Synced = mt5LiveBalance != null
+
   const status = useMemo(
     () =>
       evaluateAccountStatus({
         trades,
         account,
         settings,
+        mt5LiveBalance,
       }),
-    [trades, account, settings],
+    [trades, account, settings, mt5LiveBalance],
   )
 
   const styles = STATUS_STYLES[status.ruleStatus]
   const money = (value: number) => formatAccountMoney(value, status.currency)
+  const exactMoney = (value: number) => formatExactMt5Money(value, status.currency)
+  const liveMoney = (value: number) =>
+    formatLiveAccountMoney(value, { currency: status.currency, totalPnL: status.totalPnL })
   const accent = getAccountAccentStyles(account)
+  const displayBalance = status.accountBalance
 
   return (
     <section aria-label="Account status" className={cn("hq-surface-card flex flex-col p-3.5", className)}>
@@ -161,16 +180,23 @@ export function AccountStatusCard({
       </div>
 
       <div className="mb-3 rounded-[var(--radius-sm)] border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
-        <p className="text-[10px] uppercase tracking-[0.1em] text-text-muted">Balance snapshot</p>
+        <p className="text-[10px] uppercase tracking-[0.1em] text-text-muted">
+          Balance snapshot{mt5Synced ? " · MT5 live" : ""}
+        </p>
         <p className="mt-1.5 text-[15px] font-semibold tabular-nums leading-tight text-text-primary sm:text-[17px]">
-          {money(status.accountBalance)}
+          {mt5Synced ? exactMoney(displayBalance) : liveMoney(displayBalance)}
           <span className="mx-1.5 text-[13px] font-normal text-text-muted">/</span>
           <span className="text-[13px] font-medium text-profit sm:text-[15px]">
             Target {money(status.targetBalance)}
           </span>
         </p>
+        {mt5Synced ? (
+          <p className="mt-1 text-[10px] text-cyan-glow/85">
+            Exact MT5 balance · account {mt5LastPingAt ? "synced recently" : ""}
+          </p>
+        ) : null}
         <p className="mt-1 text-[10px] text-text-muted">
-          Drawdown floor {money(status.minBalance)} · Starting {money(status.startingBalance)} (locked)
+          Drawdown floor {money(status.minBalance)} · Starting {liveMoney(status.startingBalance)} (locked)
         </p>
       </div>
 
@@ -192,7 +218,7 @@ export function AccountStatusCard({
               status.accountBalance >= status.startingBalance ? "text-profit" : "text-loss",
             )}
           >
-            {money(status.accountBalance)}
+            {mt5Synced ? exactMoney(displayBalance) : liveMoney(displayBalance)}
           </span>
         </div>
         <div className="flex justify-between gap-2">
@@ -251,7 +277,9 @@ export function AccountStatusCard({
       </div>
 
       <p className="mt-auto pt-2.5 text-[10px] leading-relaxed text-text-muted/70">
-        Balance from logged trades. Account size stays at your starting balance.
+        {mt5Synced
+          ? "Balance synced with MT5 on ping/trade close. Journal P&L keeps Vyronis in line with your terminal."
+          : "Balance from logged trades. Connect MT5 to sync live account balance."}
       </p>
     </section>
   )

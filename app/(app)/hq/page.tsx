@@ -98,6 +98,7 @@ import {
 } from "@/components/dashboard/user-profile-card"
 import { ConnectedDashboardChrome } from "@/components/dashboard/connected-dashboard-chrome"
 import { formatPnL, getPnLTextClass, getSignedPnL, normalizePnL, normalizeTradeResultForDb } from "@/lib/trade-utils"
+import { resolveAccountBalance } from "@/lib/mt5/live-balance"
 import { calculateRiskReward, parseOptionalNumber } from "@/lib/trade-form-utils"
 import { clearLocalAuthSession, redirectToLogin, signOutWithTimeout } from "@/lib/auth-sign-out"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
@@ -2219,7 +2220,13 @@ function Home() {
     !userProfile?.first_name?.trim() &&
     !userProfile?.last_name?.trim()
   const totalPnL = accountTrades.reduce((sum, t) => sum + getSignedPnL(t.pnl, t.result), 0)
-  const accountBalance = startingBalance + totalPnL
+  const { balance: accountBalance } = resolveAccountBalance({
+    startingBalance,
+    totalPnL,
+    mt5Balance: userSettings?.mt5_balance,
+    mt5LastPingAt: userSettings?.mt5_last_ping_at,
+    mt5LastSyncAt: userSettings?.mt5_last_sync_at,
+  })
   const winCount = accountTrades.filter((t) => t.result === "WIN").length
   const winRate = accountTrades.length > 0 ? Math.round((winCount / accountTrades.length) * 100) : 0
   const tradesWithVerifiedRisk = accountTrades.filter((t) => t.risk_percent != null)
@@ -2243,6 +2250,24 @@ function Home() {
     settings: settingsForm,
     startingBalance,
   })
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    const refreshMt5AndAccounts = () => {
+      if (document.visibilityState !== "visible") return
+      void fetchUserSettings(user.id)
+      void loadAccounts()
+    }
+
+    const interval = setInterval(refreshMt5AndAccounts, 60_000)
+    window.addEventListener("focus", refreshMt5AndAccounts)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", refreshMt5AndAccounts)
+    }
+  }, [user?.id, loadAccounts])
 
   // Calculate violation stats
   const tradesWithViolations = accountTrades.map((t) => ({
@@ -2436,6 +2461,9 @@ function Home() {
                     }}
                     onViewTrade={(trade) => router.push(getTradeReplayHref(trade.id))}
                     onOpenSettings={() => setIsSettingsOpen(true)}
+                    mt5Balance={userSettings?.mt5_balance ?? null}
+                    mt5LastPingAt={userSettings?.mt5_last_ping_at ?? null}
+                    mt5LastSyncAt={userSettings?.mt5_last_sync_at ?? null}
                   />
                 ) : null}
 

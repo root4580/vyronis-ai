@@ -17,6 +17,12 @@ export type UserSettingsRecord = {
   preferred_session?: string
   dashboard_preferences?: DashboardPreferences | null
   research_lab_enabled?: boolean
+  mt5_webhook_enabled?: boolean
+  mt5_balance?: number | null
+  mt5_last_ping_at?: string | null
+  mt5_last_sync_at?: string | null
+  mt5_account_login?: string | null
+  mt5_broker?: string | null
   updated_at?: string
 }
 

@@ -134,6 +134,7 @@ async function maybeSyncBalanceFromMt5Payload(
       .from("user_settings")
       .update({
         mt5_balance: balance,
+        mt5_last_ping_at: new Date().toISOString(),
         mt5_account_login:
           payload.account_login != null ? String(payload.account_login).trim() : null,
         mt5_broker: payload.broker?.trim() || null,

@@ -49,6 +49,9 @@ type HqDashboardProps = {
   onOpenSettings?: () => void
   tradingRulesSnapshot?: TradingRulesSnapshot | null
   traderFirstName?: string | null
+  mt5Balance?: number | null
+  mt5LastPingAt?: string | null
+  mt5LastSyncAt?: string | null
   className?: string
 }
 
@@ -108,6 +111,9 @@ export function HqDashboard({
   onOpenSettings,
   tradingRulesSnapshot,
   traderFirstName,
+  mt5Balance = null,
+  mt5LastPingAt = null,
+  mt5LastSyncAt = null,
   className,
 }: HqDashboardProps) {
   const [weekPlan, setWeekPlan] = useState<WeeklyPlanWithPairs | null>(null)
@@ -260,6 +266,9 @@ export function HqDashboard({
         account={activeAccount}
         settings={settings}
         onOpenSettings={onOpenSettings}
+        mt5Balance={mt5Balance}
+        mt5LastPingAt={mt5LastPingAt}
+        mt5LastSyncAt={mt5LastSyncAt}
         className="md:hidden"
       />
 
@@ -312,6 +321,9 @@ export function HqDashboard({
           account={activeAccount}
           settings={settings}
           onOpenSettings={onOpenSettings}
+          mt5Balance={mt5Balance}
+          mt5LastPingAt={mt5LastPingAt}
+          mt5LastSyncAt={mt5LastSyncAt}
           className="hidden md:flex"
         />
       </div>

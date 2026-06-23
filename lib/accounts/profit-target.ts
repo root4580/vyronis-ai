@@ -52,3 +52,29 @@ export function formatAccountMoney(amount: number, currency = "USD"): string {
     return `$${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   }
 }
+
+/** Shows cents when balance moved or P&L is non-zero — avoids $100,000 masking -$0.22. */
+export function formatLiveAccountMoney(
+  amount: number,
+  options?: { currency?: string; totalPnL?: number },
+): string {
+  const currency = options?.currency ?? "USD"
+  const totalPnL = options?.totalPnL ?? 0
+  const hasCents = Math.abs(amount % 1) > 0.004
+  const showDecimals =
+    hasCents || (Math.abs(totalPnL) > 0.004 && Math.abs(totalPnL) < 50_000)
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: showDecimals ? 2 : 0,
+      maximumFractionDigits: showDecimals ? 2 : 0,
+    }).format(amount)
+  } catch {
+    return `$${amount.toLocaleString(undefined, {
+      minimumFractionDigits: showDecimals ? 2 : 0,
+      maximumFractionDigits: showDecimals ? 2 : 0,
+    })}`
+  }
+}

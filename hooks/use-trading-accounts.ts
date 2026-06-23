@@ -87,6 +87,26 @@ export function useTradingAccounts({
   }, [loadAccounts])
 
   useEffect(() => {
+    if (!userId) return
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        void loadAccounts()
+      }
+    }
+
+    window.addEventListener("focus", refresh)
+    document.addEventListener("visibilitychange", refresh)
+    const interval = setInterval(refresh, 60_000)
+
+    return () => {
+      window.removeEventListener("focus", refresh)
+      document.removeEventListener("visibilitychange", refresh)
+      clearInterval(interval)
+    }
+  }, [userId, loadAccounts])
+
+  useEffect(() => {
     if (accounts.length === 0 || !onPreferencesChangeRef.current) return
 
     const preferredId = dashboardPreferencesRef.current?.activeAccountId ?? null

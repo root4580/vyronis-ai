@@ -168,7 +168,7 @@ export async function reconcileVyronisBalanceFromMt5(
     synced: true,
     accountId: account?.id,
     startingBalance: newStartingBalance,
-    accountBalance: roundMoney(accountBalance),
+    accountBalance: roundMoney(mt5Balance),
     totalPnL: roundMoney(totalPnL),
   }
 }
