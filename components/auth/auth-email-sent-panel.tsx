@@ -77,6 +77,7 @@ export function AuthEmailSentPanel({
 
     if (error) {
       setResendError(error)
+      setResendSuccess(false)
       return
     }
 

@@ -46,7 +46,7 @@ export async function deliverSignupConfirmationEmail(
         options: { redirectTo },
       })
     : await admin.auth.admin.generateLink({
-        type: "magiclink",
+        type: "invite",
         email: trimmed,
         options: { redirectTo },
       })
@@ -57,7 +57,8 @@ export async function deliverSignupConfirmationEmail(
   }
 
   const tokenHash = data.properties?.hashed_token?.trim()
-  const verificationType = data.properties?.verification_type?.trim() || (password ? "signup" : "magiclink")
+  const verificationType =
+    data.properties?.verification_type?.trim() || (password ? "signup" : "invite")
 
   const confirmUrl = tokenHash
     ? buildTokenHashCallbackUrl(tokenHash, verificationType)

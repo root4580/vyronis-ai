@@ -122,6 +122,11 @@ export default function SignUpPage() {
   async function resendSignupEmail() {
     const trimmedEmail = email.trim()
     const result = await sendConfirmationViaApi(trimmedEmail)
+    if (result.error) {
+      setDeliveryWarning(result.error)
+    } else {
+      setDeliveryWarning(null)
+    }
     return { error: result.error }
   }
 
@@ -140,6 +145,7 @@ export default function SignUpPage() {
             description="Open the link in your email to activate your account and access your trading dashboard."
             resendLabel="Resend verification email"
             resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
+            deliveryWarning={deliveryWarning}
             deliveryWarning={deliveryWarning}
             onResend={resendSignupEmail}
           />
