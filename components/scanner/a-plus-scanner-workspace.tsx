@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Eye,
   Zap,
   ChevronRight,
+  Loader2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -23,15 +24,10 @@ import {
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { SignalDetailsPanel } from "@/components/scanner/signal-details-panel"
 import { getDashboardHomeHref } from "@/lib/dashboard-nav"
-import {
-  DEFAULT_SELECTED_SIGNAL_ID,
-  MOCK_LIVE_SIGNALS,
-  MOCK_STRATEGY_RULES,
-  MOCK_WATCHLIST,
-  type ScannerLiveSignal,
-  type ScannerRuleStatus,
-} from "@/lib/scanner/mock-data"
-import { scannerGradeToSetupClassification } from "@/lib/scanner/scoring"
+import { MOCK_STRATEGY_RULES, MOCK_WATCHLIST } from "@/lib/scanner/mock-data"
+import type { ScannerLiveSignal, ScannerRuleStatus } from "@/lib/scanner/signal-types"
+import { scannerGradeToBadgeClassification } from "@/lib/scanner/scoring"
+import { useScannerSignals } from "@/hooks/use-scanner-signals"
 import { cn } from "@/lib/utils"
 
 function ruleStatusIcon(status: ScannerRuleStatus) {
@@ -48,7 +44,7 @@ function biasClass(bias: string): string {
 
 function signalStatusLabel(signal: ScannerLiveSignal): string {
   if (signal.status === "active") return "Active"
-  if (signal.status === "watching") return "Watching"
+  if (signal.status === "watching") return "Watchlist"
   return "Expired"
 }
 
@@ -59,15 +55,26 @@ function signalStatusClass(status: ScannerLiveSignal["status"]): string {
 }
 
 export function APlusScannerWorkspace() {
-  const [selectedSignalId, setSelectedSignalId] = useState(DEFAULT_SELECTED_SIGNAL_ID)
+  const { signals, loading, source, tableMissing } = useScannerSignals()
+  const [selectedSignalId, setSelectedSignalId] = useState("")
+
+  useEffect(() => {
+    if (signals.length === 0) {
+      setSelectedSignalId("")
+      return
+    }
+    if (!signals.some((s) => s.id === selectedSignalId)) {
+      setSelectedSignalId(signals[0].id)
+    }
+  }, [signals, selectedSignalId])
 
   const selectedSignal = useMemo(
-    () => MOCK_LIVE_SIGNALS.find((s) => s.id === selectedSignalId) ?? MOCK_LIVE_SIGNALS[0],
-    [selectedSignalId],
+    () => signals.find((s) => s.id === selectedSignalId) ?? signals[0],
+    [signals, selectedSignalId],
   )
 
-  const activeCount = MOCK_LIVE_SIGNALS.filter((s) => s.status === "active").length
-  const aPlusCount = MOCK_LIVE_SIGNALS.filter((s) => s.grade === "A+").length
+  const activeCount = signals.filter((s) => s.status === "active").length
+  const aPlusCount = signals.filter((s) => s.grade === "A+ Sniper").length
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
@@ -83,14 +90,23 @@ export function APlusScannerWorkspace() {
           <div>
             <h1 className="text-lg font-medium text-text-primary">A+ Scanner</h1>
             <p className="mt-0.5 text-[12px] text-text-muted">
-              Precision Flow scoring — HTF alignment, zone, sweep, structure, confirmation, session, R:R.
+              Precision Flow — D+H4 bias, sweep, H4 FVG, M15 CHoCH, engulf/rejection, R:R ≥ 1:2.
             </p>
           </div>
           <Badge
             variant="outline"
-            className="w-fit border-cyan-glow/25 bg-cyan-glow/[0.06] text-[10px] text-cyan-glow"
+            className={cn(
+              "w-fit text-[10px]",
+              source === "live"
+                ? "border-profit/25 bg-profit/10 text-profit"
+                : "border-cyan-glow/25 bg-cyan-glow/[0.06] text-cyan-glow",
+            )}
           >
-            Preview · mock EUR/USD, GBP/CAD, GBP/NZD
+            {source === "live"
+              ? "Live · MT5 scanner"
+              : tableMissing
+                ? "Preview · run migration 047"
+                : "Preview · mock data"}
           </Badge>
         </div>
       </header>
@@ -151,16 +167,6 @@ export function APlusScannerWorkspace() {
                         {item.dailyBias}
                       </span>
                     </span>
-                    <span
-                      className={cn(
-                        "rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
-                        item.aoiReady
-                          ? "bg-cyan-glow/10 text-cyan-glow"
-                          : "bg-white/[0.04] text-muted-foreground",
-                      )}
-                    >
-                      {item.aoiReady ? "AOI ready" : "AOI pending"}
-                    </span>
                   </div>
                 </DashboardInsetPanel>
               ))}
@@ -186,71 +192,84 @@ export function APlusScannerWorkspace() {
                       variant="outline"
                       className="border-cyan-glow/25 bg-cyan-glow/10 text-[10px] text-cyan-glow"
                     >
-                      {aPlusCount} A+
+                      {aPlusCount} A+ Sniper
                     </Badge>
                   ) : null}
                 </div>
               }
             />
             <DashboardCardBody className="space-y-2">
-              {MOCK_LIVE_SIGNALS.map((signal) => {
-                const selected = signal.id === selectedSignal?.id
-                const classification = scannerGradeToSetupClassification(signal.grade)
-                return (
-                  <button
-                    key={signal.id}
-                    type="button"
-                    onClick={() => setSelectedSignalId(signal.id)}
-                    className={cn(
-                      "dashboard-inset-panel flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
-                      selected
-                        ? "border-cyan-glow/30 bg-cyan-glow/[0.06]"
-                        : "hover:border-white/[0.12] hover:bg-white/[0.03]",
-                    )}
-                  >
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-semibold text-foreground/95">
-                          {signal.pair}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[11px] font-bold",
-                            signal.direction === "BUY" ? "text-profit" : "text-loss",
-                          )}
-                        >
-                          {signal.direction}
-                        </span>
-                        <SetupScoreBadge
-                          classification={classification}
-                          score={signal.score}
-                          size="sm"
-                          showScore
-                        />
-                        <span
-                          className={cn(
-                            "rounded-md px-1.5 py-0.5 text-[9px] font-medium",
-                            signalStatusClass(signal.status),
-                          )}
-                        >
-                          {signalStatusLabel(signal)}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground/75">{signal.setup}</p>
-                      <p className="text-[10px] text-muted-foreground/55">
-                        {signal.session} · {signal.detectedAt} · {signal.confidence}% conf · R:R{" "}
-                        {signal.riskReward}
-                      </p>
-                    </div>
-                    <ChevronRight
+              {loading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-[12px] text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading signals…
+                </div>
+              ) : signals.length === 0 ? (
+                <p className="py-8 text-center text-[12px] text-muted-foreground">
+                  No signals yet. Attach Vyronis_APlus_Scanner on MT5 during London or NY session.
+                </p>
+              ) : (
+                signals.map((signal) => {
+                  const selected = signal.id === selectedSignal?.id
+                  const badgeClass = scannerGradeToBadgeClassification(signal.grade)
+                  return (
+                    <button
+                      key={signal.id}
+                      type="button"
+                      onClick={() => setSelectedSignalId(signal.id)}
                       className={cn(
-                        "size-4 shrink-0",
-                        selected ? "text-cyan-glow" : "text-muted-foreground/40",
+                        "dashboard-inset-panel flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
+                        selected
+                          ? "border-cyan-glow/30 bg-cyan-glow/[0.06]"
+                          : "hover:border-white/[0.12] hover:bg-white/[0.03]",
                       )}
-                    />
-                  </button>
-                )
-              })}
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground/95">
+                            {signal.pair}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[11px] font-bold",
+                              signal.direction === "BUY" ? "text-profit" : "text-loss",
+                            )}
+                          >
+                            {signal.direction}
+                          </span>
+                          <SetupScoreBadge
+                            classification={badgeClass}
+                            score={signal.score}
+                            size="sm"
+                            showScore
+                          />
+                          <span className="text-[10px] font-medium text-foreground/80">
+                            {signal.grade}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-md px-1.5 py-0.5 text-[9px] font-medium",
+                              signalStatusClass(signal.status),
+                            )}
+                          >
+                            {signalStatusLabel(signal)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/75">{signal.setup}</p>
+                        <p className="text-[10px] text-muted-foreground/55">
+                          {signal.session} · {signal.detectedAt} · R:R {signal.riskReward}
+                        </p>
+                      </div>
+                      <ChevronRight
+                        className={cn(
+                          "size-4 shrink-0",
+                          selected ? "text-cyan-glow" : "text-muted-foreground/40",
+                        )}
+                      />
+                    </button>
+                  )
+                })
+              )}
             </DashboardCardBody>
           </DashboardCard>
 

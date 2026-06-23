@@ -1,0 +1,1 @@
+-- Run supabase/047-scanner-signals.sql in Supabase SQL Editor.

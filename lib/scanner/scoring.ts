@@ -1,6 +1,8 @@
+import type { SetupClassification } from "@/lib/trade-coach/setup-score-engine"
+
 export type ScannerBias = "Bullish" | "Bearish" | "Neutral"
 
-export type ScannerGrade = "A+" | "A" | "B" | "C" | "Skip"
+export type ScannerGrade = "A+ Sniper" | "A Strong" | "B Watchlist" | "Skip"
 
 export type ScannerLiquiditySweepStatus = "Confirmed" | "Pending" | "None"
 
@@ -19,6 +21,7 @@ export type ScannerSetupFactors = {
   sessionAlignment: boolean
   session: string
   riskRewardRatio: number
+  bosBonus?: boolean
 }
 
 export type ScannerScoreFactorId =
@@ -50,10 +53,10 @@ export type ScannerScoreResult = {
 
 const FACTOR_WEIGHTS: Record<ScannerScoreFactorId, { label: string; max: number }> = {
   dailyH4Alignment: { label: "Daily / H4 alignment", max: 18 },
-  validZone: { label: "Valid zone", max: 14 },
+  validZone: { label: "Valid FVG zone", max: 14 },
   liquiditySweep: { label: "Liquidity sweep", max: 14 },
-  chochBos: { label: "CHoCH / BOS", max: 14 },
-  engulfingConfirmation: { label: "Engulfing confirmation", max: 12 },
+  chochBos: { label: "CHoCH (BOS bonus)", max: 10 },
+  engulfingConfirmation: { label: "Engulf / rejection", max: 12 },
   sessionAlignment: { label: "Session alignment", max: 14 },
   riskReward: { label: "R:R ≥ 1:2", max: 14 },
 }
@@ -64,10 +67,9 @@ function biasSupportsDirection(bias: ScannerBias, direction: "BUY" | "SELL"): bo
 }
 
 function scoreFromGrade(total: number): ScannerGrade {
-  if (total >= 90) return "A+"
-  if (total >= 80) return "A"
-  if (total >= 70) return "B"
-  if (total >= 60) return "C"
+  if (total >= 90) return "A+ Sniper"
+  if (total >= 80) return "A Strong"
+  if (total >= 70) return "B Watchlist"
   return "Skip"
 }
 
@@ -142,18 +144,22 @@ function scoreLiquiditySweep(
 function scoreChochBos(
   setup: ScannerSetupFactors,
 ): Pick<ScannerScoreFactor, "points" | "met" | "reason"> {
-  const { max } = FACTOR_WEIGHTS.chochBos
+  const baseMax = FACTOR_WEIGHTS.chochBos.max
   if (setup.chochBos === "CHoCH" || setup.chochBos === "BOS") {
+    let points = baseMax
+    if (setup.bosBonus || setup.chochBos === "BOS") points += 8
     return {
-      points: max,
+      points: Math.min(18, points),
       met: true,
-      reason: `${setup.chochBos} confirmed on entry timeframe.`,
+      reason: setup.bosBonus
+        ? "CHoCH confirmed — BOS bonus applied."
+        : `${setup.chochBos} confirmed on entry timeframe.`,
     }
   }
   if (setup.chochBos === "Pending") {
-    return { points: 6, met: false, reason: "Structure shift building — no clean break yet." }
+    return { points: 4, met: false, reason: "Structure shift building — no clean CHoCH yet." }
   }
-  return { points: 0, met: false, reason: "No CHoCH or BOS on entry TF." }
+  return { points: 0, met: false, reason: "No CHoCH on entry TF." }
 }
 
 function scoreEngulfing(
@@ -167,7 +173,7 @@ function scoreEngulfing(
       reason: `${setup.confirmationType} closed in trade direction.`,
     }
   }
-  return { points: 0, met: false, reason: "No engulfing confirmation candle yet." }
+  return { points: 0, met: false, reason: "No engulfing or rejection candle yet." }
 }
 
 function scoreSession(
@@ -194,10 +200,14 @@ function scoreRiskReward(
   const { max } = FACTOR_WEIGHTS.riskReward
   const rr = setup.riskRewardRatio
   if (rr >= 2) {
+    const bonus = rr >= 3 ? 2 : 0
     return {
-      points: max,
+      points: max + bonus,
       met: true,
-      reason: `R:R 1:${rr.toFixed(1)} meets minimum 1:2 rule.`,
+      reason:
+        bonus > 0
+          ? `R:R 1:${rr.toFixed(1)} — meets 1:2 with 1:3+ bonus.`
+          : `R:R 1:${rr.toFixed(1)} meets minimum 1:2 rule.`,
     }
   }
   if (rr >= 1.5) {
@@ -266,8 +276,20 @@ export function formatRiskReward(ratio: number): string {
   return `1:${ratio.toFixed(1)}`
 }
 
-export function scannerGradeToSetupClassification(
-  grade: ScannerGrade,
-): "A+" | "A" | "B" | "C" | "Skip" {
+export function scannerGradeToBadgeClassification(grade: ScannerGrade): SetupClassification {
+  if (grade === "A+ Sniper") return "A+"
+  if (grade === "A Strong") return "A"
+  if (grade === "B Watchlist") return "B"
+  return "Skip"
+}
+
+export function scannerGradeToSetupClassification(grade: ScannerGrade): ScannerGrade {
   return grade
+}
+
+export function scannerGradeShortLabel(grade: ScannerGrade): string {
+  if (grade === "A+ Sniper") return "A+"
+  if (grade === "A Strong") return "A"
+  if (grade === "B Watchlist") return "B"
+  return "—"
 }

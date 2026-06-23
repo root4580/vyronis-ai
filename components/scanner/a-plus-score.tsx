@@ -9,7 +9,7 @@ import {
   getSetupScoreGlowClass,
 } from "@/components/dashboard/setup-score-badge"
 import type { ScannerScoreResult } from "@/lib/scanner/scoring"
-import { scannerGradeToSetupClassification } from "@/lib/scanner/scoring"
+import { scannerGradeToBadgeClassification } from "@/lib/scanner/scoring"
 import { cn } from "@/lib/utils"
 
 type APlusScoreProps = {
@@ -27,7 +27,7 @@ function factorTone(points: number, maxPoints: number): string {
 }
 
 export function APlusScore({ scoring, confidence, compact = false, className }: APlusScoreProps) {
-  const classification = scannerGradeToSetupClassification(scoring.grade)
+  const classification = scannerGradeToBadgeClassification(scoring.grade)
 
   return (
     <DashboardInsetPanel
@@ -50,7 +50,7 @@ export function APlusScore({ scoring, confidence, compact = false, className }: 
           <div>
             <p className="text-[10px] font-medium text-foreground/85">A+ Score</p>
             <p className="text-[10px] text-muted-foreground/70">
-              {getSetupClassificationLabel(classification)}
+              {scoring.grade} · {getSetupClassificationLabel(classification)}
             </p>
           </div>
         </div>

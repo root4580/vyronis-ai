@@ -7,8 +7,8 @@ import {
   SetupScoreBadge,
   getSetupScoreGlowClass,
 } from "@/components/dashboard/setup-score-badge"
-import type { ScannerLiveSignal } from "@/lib/scanner/mock-data"
-import { scannerGradeToSetupClassification } from "@/lib/scanner/scoring"
+import type { ScannerLiveSignal } from "@/lib/scanner/signal-types"
+import { scannerGradeToBadgeClassification } from "@/lib/scanner/scoring"
 import { cn } from "@/lib/utils"
 
 type SignalDetailsPanelProps = {
@@ -61,7 +61,7 @@ export function SignalDetailsPanel({ signal }: SignalDetailsPanelProps) {
     )
   }
 
-  const classification = scannerGradeToSetupClassification(signal.grade)
+  const classification = scannerGradeToBadgeClassification(signal.grade)
 
   const detailRows: { label: string; value: string; valueClass?: string }[] = [
     { label: "Pair", value: signal.pair },
@@ -70,21 +70,23 @@ export function SignalDetailsPanel({ signal }: SignalDetailsPanelProps) {
       value: signal.direction,
       valueClass: signal.direction === "BUY" ? "text-profit" : "text-loss",
     },
+    { label: "Grade", value: signal.grade },
     { label: "Daily bias", value: signal.dailyBias, valueClass: biasClass(signal.dailyBias) },
     { label: "H4 bias", value: signal.h4Bias, valueClass: biasClass(signal.h4Bias) },
     { label: "Zone type", value: signal.zoneType },
     {
-      label: "Liquidity sweep",
-      value: signal.liquiditySweepStatus,
+      label: "Sweep",
+      value: signal.sweepLabel ?? signal.liquiditySweepStatus,
       valueClass: sweepTone(signal.liquiditySweepStatus),
     },
     {
-      label: "CHoCH / BOS",
-      value: signal.chochBosStatus,
+      label: "CHoCH",
+      value: signal.chochLabel ?? signal.chochBosStatus,
       valueClass: structureTone(signal.chochBosStatus),
     },
     { label: "Confirmation", value: signal.confirmationType },
-    { label: "R:R ratio", value: signal.riskReward, valueClass: "text-cyan-glow tabular-nums" },
+    { label: "R:R", value: signal.riskReward, valueClass: "text-cyan-glow tabular-nums" },
+    { label: "Session", value: signal.session },
   ]
 
   return (
