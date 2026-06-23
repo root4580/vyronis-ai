@@ -13,6 +13,7 @@ type AuthEmailSentPanelProps = {
   resendLabel: string
   resendStorageKey: string
   resendSuccessMessage?: string
+  deliveryWarning?: string | null
   onResend: () => Promise<{ error: string | null }>
   backHref?: string
   backLabel?: string
@@ -25,6 +26,7 @@ export function AuthEmailSentPanel({
   resendLabel,
   resendStorageKey,
   resendSuccessMessage = "Verification email sent again.",
+  deliveryWarning = null,
   onResend,
   backHref = "/auth/login",
   backLabel = "Back to Login",
@@ -94,6 +96,8 @@ export function AuthEmailSentPanel({
       <p className="text-[11px] leading-relaxed text-muted-foreground/65">
         Check spam and promotions. Delivery can take up to 5 minutes.
       </p>
+
+      {deliveryWarning ? <AuthErrorBanner message={deliveryWarning} /> : null}
 
       {resendError && <AuthErrorBanner message={resendError} />}
       {resendSuccess && (

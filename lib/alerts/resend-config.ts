@@ -24,6 +24,7 @@ type EmailPayload = {
   to: string
   subject: string
   html: string
+  from?: string
 }
 
 function logSkippedEmail(payload: EmailPayload, reason: string): void {
@@ -52,7 +53,7 @@ export async function sendResendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: config.from,
+      from: input.from?.trim() || config.from,
       to: [input.to],
       subject: input.subject,
       html: input.html,
@@ -62,7 +63,22 @@ export async function sendResendEmail(
   if (!response.ok) {
     const body = await response.text().catch(() => "")
     console.error("Resend email failed:", response.status, body)
-    return { sent: false, skippedReason: `Resend error ${response.status}` }
+    let detail = `Resend error ${response.status}`
+    try {
+      const parsed = JSON.parse(body) as { message?: string; name?: string }
+      if (parsed.message) {
+        detail = parsed.message
+      } else if (parsed.name) {
+        detail = parsed.name
+      }
+    } catch {
+      if (body.trim()) detail = body.trim().slice(0, 280)
+    }
+    if (response.status === 403 && config.from.includes("resend.dev")) {
+      detail +=
+        " Verify vyronishq.com in Resend and set EMAIL_FROM=Vyronis HQ <alerts@vyronishq.com> on Vercel."
+    }
+    return { sent: false, skippedReason: detail }
   }
 
   return { sent: true }

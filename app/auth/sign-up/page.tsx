@@ -14,16 +14,30 @@ import {
 import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
 import { APP_HOME_PATH } from "@/lib/branding"
 import { formatAuthError } from "@/lib/auth-errors"
-import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+import { isDuplicateSignupUser } from "@/lib/auth-signup-utils"
 
 const RESEND_KEY_PREFIX = "vyronis-auth-signup-sent:"
+
+async function sendConfirmationViaApi(email: string, password?: string) {
+  const res = await fetch("/api/auth/send-confirmation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!body.ok) {
+    return { error: body.error ?? "Could not send confirmation email." }
+  }
+  return { error: null }
+}
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [deliveryWarning, setDeliveryWarning] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const supabase = useMemo(() => createClient(), [])
@@ -53,6 +67,7 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setDeliveryWarning(null)
 
     const trimmedEmail = email.trim()
 
@@ -71,13 +86,18 @@ export default function SignUpPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: trimmedEmail,
       password,
-      options: {
-        emailRedirectTo: getSignupEmailRedirectUrl(),
-      },
     })
 
     if (signUpError) {
       setError(formatAuthError(signUpError.message))
+      setLoading(false)
+      return
+    }
+
+    if (isDuplicateSignupUser(data.user)) {
+      setError(
+        "An account with this email already exists. Sign in or reset your password — a new verification email is not sent for duplicate sign-ups.",
+      )
       setLoading(false)
       return
     }
@@ -89,6 +109,11 @@ export default function SignUpPage() {
       return
     }
 
+    const delivery = await sendConfirmationViaApi(trimmedEmail, password)
+    if (delivery.error) {
+      setDeliveryWarning(delivery.error)
+    }
+
     window.localStorage.setItem(`${RESEND_KEY_PREFIX}${trimmedEmail}`, String(Date.now()))
     setSuccess(true)
     setLoading(false)
@@ -96,15 +121,8 @@ export default function SignUpPage() {
 
   async function resendSignupEmail() {
     const trimmedEmail = email.trim()
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
-      email: trimmedEmail,
-      options: {
-        emailRedirectTo: getSignupEmailRedirectUrl(),
-      },
-    })
-
-    return { error: resendError ? formatAuthError(resendError.message) : null }
+    const result = await sendConfirmationViaApi(trimmedEmail)
+    return { error: result.error }
   }
 
   if (success) {
@@ -118,10 +136,11 @@ export default function SignUpPage() {
         >
           <AuthEmailSentPanel
             email={email.trim()}
-            title="Verification email sent"
+            title={deliveryWarning ? "Account created — email may be delayed" : "Verification email sent"}
             description="Open the link in your email to activate your account and access your trading dashboard."
             resendLabel="Resend verification email"
             resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
+            deliveryWarning={deliveryWarning}
             onResend={resendSignupEmail}
           />
         </AuthShell>

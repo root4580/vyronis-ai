@@ -1,10 +1,9 @@
 "use client"
 
-import { Suspense, useMemo, useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Mail } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import {
   AuthErrorBanner,
   AuthField,
@@ -12,10 +11,21 @@ import {
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
 import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
-import { formatAuthError } from "@/lib/auth-errors"
-import { getSignupEmailRedirectUrl } from "@/lib/auth-email"
 
 const RESEND_KEY_PREFIX = "vyronis-auth-signup-sent:"
+
+async function sendConfirmationViaApi(email: string) {
+  const res = await fetch("/api/auth/send-confirmation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!body.ok) {
+    return { error: body.error ?? "Could not send confirmation email." }
+  }
+  return { error: null }
+}
 
 function VerifyEmailForm() {
   const searchParams = useSearchParams()
@@ -25,22 +35,9 @@ function VerifyEmailForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
-  const supabase = useMemo(() => createClient(), [])
 
   async function resendVerification(targetEmail: string) {
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
-      email: targetEmail,
-      options: {
-        emailRedirectTo: getSignupEmailRedirectUrl(),
-      },
-    })
-
-    if (resendError) {
-      return { error: formatAuthError(resendError.message) }
-    }
-
-    return { error: null }
+    return sendConfirmationViaApi(targetEmail)
   }
 
   async function handleSubmit(e: React.FormEvent) {

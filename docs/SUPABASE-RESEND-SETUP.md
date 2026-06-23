@@ -58,17 +58,20 @@ Subjects:
 - Enable **Confirm email** for production sign-ups.
 - For closed beta you may disable temporarily if testers are blocked.
 
-## 6. Vercel env (app — not Resend)
+## 6. Vercel env (app)
 
-Resend credentials live **only in Supabase SMTP**, not in Next.js env.
+Signup confirmation emails are also sent via **Resend API** (`POST /api/auth/send-confirmation`) as a fallback when Supabase default SMTP is unreliable.
 
 | Variable | Required |
 |----------|----------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes |
 | `NEXT_PUBLIC_APP_URL` | Yes — `https://vyronishq.com` |
+| `RESEND_API_KEY` | Yes for app-delivered signup emails |
+| `AUTH_EMAIL_FROM` | Recommended — `Vyronis HQ <noreply@vyronishq.com>` after domain verified |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes — generates secure confirmation links server-side |
 
-The app uses `NEXT_PUBLIC_APP_URL` for all `emailRedirectTo` / `redirectTo` values so preview deploys do not break email links.
+Supabase **Custom SMTP** (section 2) is still recommended so Supabase-native resends work too.
 
 ## 7. App auth routes
 
