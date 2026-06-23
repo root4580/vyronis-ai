@@ -213,6 +213,11 @@ export function Mt5ConnectionPanel({
                     ? ` · $${settings.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                     : ""}
                 </p>
+                {settings.balance != null ? (
+                  <p className="mt-1 text-[10px] text-cyan-glow/75">
+                    MT5 balance syncs to your Vyronis account balance on ping and trade close.
+                  </p>
+                ) : null}
               </DashboardInsetPanel>
             )}
 

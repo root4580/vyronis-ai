@@ -16,6 +16,7 @@ import {
   logPipelineStage,
 } from "@/lib/mt5/pipeline-log"
 import { runMt5PostIngestPipeline } from "@/lib/mt5/post-ingest-pipeline"
+import { reconcileVyronisBalanceFromMt5 } from "@/lib/mt5/balance-sync"
 import { recordMt5Sync } from "@/lib/mt5/sync-status"
 
 export class Mt5WebhookError extends Error {
@@ -110,6 +111,36 @@ async function fetchExistingTradeId(
   }
 
   return data?.id ?? null
+}
+
+async function maybeSyncBalanceFromMt5Payload(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: Mt5TradeWebhookPayload,
+): Promise<void> {
+  const balance =
+    payload.balance != null && Number.isFinite(Number(payload.balance))
+      ? Number(payload.balance)
+      : null
+  if (balance == null || balance <= 0) return
+
+  const sync = await reconcileVyronisBalanceFromMt5(supabase, userId, balance, {
+    accountLogin: payload.account_login != null ? String(payload.account_login) : null,
+    broker: payload.broker,
+  })
+
+  if (sync.synced) {
+    await supabase
+      .from("user_settings")
+      .update({
+        mt5_balance: balance,
+        mt5_account_login:
+          payload.account_login != null ? String(payload.account_login).trim() : null,
+        mt5_broker: payload.broker?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+  }
 }
 
 async function assertResearchStrategy(
@@ -334,6 +365,7 @@ async function upsertTrade(
       ticket,
       message,
     })
+    await maybeSyncBalanceFromMt5Payload(supabase, user.user_id, payload)
     return baseResult
   }
 
@@ -343,6 +375,7 @@ async function upsertTrade(
     ticket,
     message: duplicate ? message : "Trade saved with AI analysis.",
   })
+  await maybeSyncBalanceFromMt5Payload(supabase, user.user_id, payload)
   return baseResult
 }
 

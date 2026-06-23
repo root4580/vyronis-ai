@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { reconcileVyronisBalanceFromMt5 } from "@/lib/mt5/balance-sync"
 
 export type Mt5PingPayload = {
   api_key?: string
@@ -59,6 +60,23 @@ export async function recordMt5Ping(
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
+  }
+
+  if (balance != null) {
+    const sync = await reconcileVyronisBalanceFromMt5(supabase, userId, balance, {
+      accountLogin: login,
+      broker,
+    })
+    if (sync.synced) {
+      console.log("[MT5 Ping] balance reconciled", {
+        userId,
+        mt5_balance: balance,
+        starting_balance: sync.startingBalance,
+        vyronis_balance: sync.accountBalance,
+      })
+    } else if (sync.reason) {
+      console.warn("[MT5 Ping] balance reconcile skipped:", sync.reason)
+    }
   }
 }
 

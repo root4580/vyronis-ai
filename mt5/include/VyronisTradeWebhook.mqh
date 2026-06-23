@@ -234,6 +234,7 @@ string VyronisBuildClosedTradeJson(
    json += "\"comment\":\"" + VyronisJsonEscape(comment) + "\",";
    json += "\"account_login\":\"" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN)) + "\",";
    json += "\"broker\":\"" + VyronisJsonEscape(AccountInfoString(ACCOUNT_SERVER)) + "\",";
+   json += StringFormat("\"balance\":%.2f,", AccountInfoDouble(ACCOUNT_BALANCE));
    json += "\"replace\":" + (replaceExisting ? "true" : "false");
    json += "}";
 

@@ -61,6 +61,7 @@ export function normalizeMt5WebhookRecord(raw: Record<string, unknown>): Mt5Trad
     comment: pickString(raw, ["comment", "notes"]),
     account_login: pickString(raw, ["account_login", "account", "login"]),
     broker: pickString(raw, ["broker", "server"]),
+    balance: pickNumber(raw, ["balance", "account_balance", "equity"]),
     research_strategy_id: pickString(raw, ["research_strategy_id", "strategy_id"]),
     replace: pickBoolean(raw, "replace"),
   }

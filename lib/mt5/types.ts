@@ -18,6 +18,8 @@ export type Mt5TradeWebhookPayload = {
   comment?: string
   account_login?: string | number
   broker?: string
+  balance?: number
+  equity?: number
   research_strategy_id?: string
   replace?: boolean
 }
