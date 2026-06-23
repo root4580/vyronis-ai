@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:auth": "npx tsx scripts/test-auth-email.ts",
+    "test:auth-callback": "npx tsx scripts/test-auth-callback.ts",
     "test:research": "npx tsx scripts/test-research-mt5-csv.ts",
     "test:journal": "npx tsx scripts/test-journal-trade-date.ts",
     "verify:journal-import": "npx tsx scripts/verify-journal-csv-import.ts",

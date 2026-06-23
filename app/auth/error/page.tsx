@@ -1,22 +1,29 @@
 import Link from "next/link"
 import { ArrowRight, Mail } from "lucide-react"
-import { AuthShell } from "@/components/auth/auth-shell"
+import { AuthErrorBanner, AuthShell } from "@/components/auth/auth-shell"
 
 type AuthErrorPageProps = {
-  searchParams: Promise<{ reason?: string }>
+  searchParams: Promise<{
+    reason?: string
+    detail?: string
+    method?: string
+    type?: string
+  }>
 }
 
 export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps) {
-  const { reason } = await searchParams
+  const { reason, detail, method, type } = await searchParams
 
-  const message =
+  const fallbackMessage =
     reason === "expired"
       ? "This link has expired. Request a new verification or password reset email."
-      : reason === "exchange_failed"
-        ? "We could not verify this link. It may have expired, already been used, or opened before our email fix — request a new verification email and use the latest link."
       : reason === "access_denied"
         ? "Sign-in was cancelled or the link is no longer valid."
-        : "Something went wrong during sign-in or email confirmation."
+        : reason === "missing_params"
+          ? "This link is incomplete. Request a new verification email."
+          : "Something went wrong during sign-in or email confirmation."
+
+  const message = detail?.trim() ? detail.trim() : fallbackMessage
 
   return (
     <AuthShell
@@ -24,7 +31,22 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
       subtitle="We could not complete sign-in"
       accent="loss"
     >
-      <p className="text-center text-sm leading-relaxed text-muted-foreground">{message}</p>
+      <div className="space-y-3">
+        <AuthErrorBanner message={message} />
+        {detail?.trim() ? (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-amber-200/90">
+            <p className="font-medium text-amber-300">Debug (temporary)</p>
+            <p className="mt-1 break-all font-mono text-[10px] text-foreground/80">{detail}</p>
+            {(method || type || reason) && (
+              <p className="mt-2 text-muted-foreground">
+                {reason ? `reason=${reason}` : null}
+                {method ? ` · method=${method}` : null}
+                {type ? ` · type=${type}` : null}
+              </p>
+            )}
+          </div>
+        ) : null}
+      </div>
       <div className="mt-6 space-y-2">
         <Link
           href="/auth/login"

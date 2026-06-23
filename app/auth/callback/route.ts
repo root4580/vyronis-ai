@@ -1,26 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { handleAuthCallback } from "@/lib/auth-callback-server"
 
-/** Server redirect only — session is established on /auth/confirm (mobile-safe). */
+/** Server-side PKCE / OTP exchange — Supabase recommended App Router pattern. */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl
-  const authError = searchParams.get("error")
-  const errorDescription = searchParams.get("error_description")
-  const type = searchParams.get("type")
+  const result = await handleAuthCallback(request)
 
-  if (authError) {
-    const reason = errorDescription?.toLowerCase().includes("expired") ? "expired" : authError
-    return NextResponse.redirect(`${origin}/auth/error?reason=${encodeURIComponent(reason)}`)
+  if (!result.ok) {
+    console.error("[auth/callback] verification failed", {
+      method: result.method,
+      supabaseError: result.supabaseError,
+    })
   }
 
-  if (type === "recovery") {
-    const query = searchParams.toString()
-    return NextResponse.redirect(`${origin}/auth/reset-password${query ? `?${query}` : ""}`)
-  }
-
-  const hasAuthParams = searchParams.has("code") || searchParams.has("token_hash")
-  if (hasAuthParams) {
-    return NextResponse.redirect(`${origin}/auth/confirm?${searchParams.toString()}`)
-  }
-
-  return NextResponse.redirect(`${origin}/auth/error?reason=missing_params`)
+  const target = new URL(result.redirectPath, request.nextUrl.origin)
+  return NextResponse.redirect(target)
 }

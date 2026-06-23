@@ -31,7 +31,11 @@ Recommended sender: `Vyronis AI <noreply@yourdomain.com>`
 |-------|--------|
 | **Site URL** | `https://vyronishq.com` |
 | **Redirect URLs** | `https://vyronishq.com/auth/callback` |
+| | `https://vyronishq.com/auth/confirm` |
+| | `https://vyronishq.com/auth/reset-password` |
 | | `http://localhost:3000/auth/callback` |
+| | `http://localhost:3000/auth/confirm` |
+| | `http://localhost:3000/auth/reset-password` |
 
 ## 4. Email templates
 
@@ -74,7 +78,8 @@ The app uses `NEXT_PUBLIC_APP_URL` for all `emailRedirectTo` / `redirectTo` valu
 | `/auth/verify-email` | Resend verification |
 | `/auth/forgot-password` | Request reset link |
 | `/auth/reset-password` | Set new password after email link |
-| `/auth/callback` | Supabase code exchange |
+| `/auth/callback` | **Server-side** `exchangeCodeForSession` / `verifyOtp` (recommended) |
+| `/auth/confirm` | Legacy forwarder → `/auth/callback` when query params present |
 
 ## 8. Verify delivery
 
@@ -88,6 +93,7 @@ The app uses `NEXT_PUBLIC_APP_URL` for all `emailRedirectTo` / `redirectTo` valu
 | Issue | Fix |
 |-------|-----|
 | No email | Resend SMTP enabled? Domain verified? Check Supabase Auth logs |
+| Confirm link fails / can't log in | Site URL must be `https://vyronishq.com`; add all redirect URLs above; re-paste `confirm-signup.html` using `{{ .ConfirmationURL }}` (not a hardcoded link) |
 | Link goes to wrong URL | Set `NEXT_PUBLIC_APP_URL` on Vercel Production + redeploy |
 | “Email not confirmed” on login | Use `/auth/verify-email` to resend |
 | Rate limited | Wait 60s between resends; Supabase/Resend rate limits apply |
