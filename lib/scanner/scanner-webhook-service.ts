@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { Mt5WebhookError } from "@/lib/mt5/webhook-server-service"
 import { resolveUserByMt5ApiKey } from "@/lib/mt5/webhook-server-service"
 import { recordMt5Ping } from "@/lib/mt5/ping-service"
+import { maybeSendScannerSetupAlert } from "@/lib/scanner/scanner-alert-service"
 import type {
   Mt5ScannerWebhookPayload,
   ScannerSignalGrade,
@@ -134,6 +135,7 @@ export async function ingestMt5ScannerSignal(
       signal_id: existing.id,
       duplicate: true,
       status,
+      email_skipped: "Duplicate setup.",
     }
   }
 
@@ -157,11 +159,23 @@ export async function ingestMt5ScannerSignal(
     `A+ Scanner signal ${grade} · ${pair}.`,
   )
 
+  const emailResult = await maybeSendScannerSetupAlert(
+    supabase,
+    userId,
+    raw,
+    grade,
+    pair,
+    direction,
+    false,
+  )
+
   return {
     setup_id: setupId,
     signal_id: data.id,
     duplicate: false,
     status,
+    email_sent: emailResult.sent,
+    email_skipped: emailResult.skippedReason,
   }
 }
 

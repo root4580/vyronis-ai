@@ -62,6 +62,8 @@ export type ScannerWebhookResult = {
   signal_id: string
   duplicate: boolean
   status: ScannerSignalStatus
+  email_sent?: boolean
+  email_skipped?: string
 }
 
 export type ScannerSignalRow = {

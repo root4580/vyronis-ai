@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Loader2,
   Trash2,
+  Bell,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -82,6 +83,28 @@ export function APlusScannerWorkspace() {
   } = useScannerWatchlist()
   const { toast } = useToast()
   const [selectedSignalId, setSelectedSignalId] = useState("")
+  const [testingAlert, setTestingAlert] = useState(false)
+
+  async function handleTestPhoneAlert() {
+    setTestingAlert(true)
+    try {
+      const res = await fetch("/api/scanner/test-alert", { method: "POST" })
+      const body = (await res.json().catch(() => ({}))) as { message?: string; error?: string }
+      if (!res.ok) {
+        toast({
+          title: "Could not send test alert",
+          description: body.error ?? "Try again.",
+          variant: "destructive",
+        })
+        return
+      }
+      toast({ title: "Test alert sent", description: body.message })
+    } catch {
+      toast({ title: "Network error", variant: "destructive" })
+    } finally {
+      setTestingAlert(false)
+    }
+  }
 
   async function handleRemoveSignal(id: string) {
     const result = await removeSignal(id)
@@ -170,6 +193,30 @@ export function APlusScannerWorkspace() {
           </DashboardInsetPanel>
         ))}
       </div>
+
+      <DashboardInsetPanel className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-2.5">
+          <Bell className="mt-0.5 size-4 shrink-0 text-cyan-glow/80" />
+          <div>
+            <p className="text-[12px] font-medium text-foreground/90">Phone alerts (A / A+ only)</p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground/70">
+              Email sent to your Vyronis account when a new A or A+ setup is detected. Turn on mail
+              notifications on your phone to get instant pings.
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 border-white/[0.08] text-[11px]"
+          disabled={testingAlert}
+          onClick={() => void handleTestPhoneAlert()}
+        >
+          {testingAlert ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
+          Send test alert
+        </Button>
+      </DashboardInsetPanel>
 
       <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
         <div className="space-y-4 lg:col-span-4">
