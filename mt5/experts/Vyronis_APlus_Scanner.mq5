@@ -5,18 +5,14 @@
 #property copyright "Vyronis AI"
 #property version   "1.00"
 #property description "Precision Flow scanner — A+ Sniper alerts + Vyronis webhook"
+// REQUIRES in MQL5/Include/: VyronisScannerLib.mqh + all VyronisScanner*.mqh + VyronisTradeWebhook.mqh
 
-#include <VyronisScannerTypes.mqh>
-#include <VyronisSession.mqh>
-#include <VyronisStructure.mqh>
-#include <VyronisLiquidity.mqh>
-#include <VyronisFvg.mqh>
-#include <VyronisConfirm.mqh>
-#include <VyronisRisk.mqh>
-#include <VyronisScore.mqh>
-#include <VyronisScannerState.mqh>
-#include <VyronisScannerWebhook.mqh>
-#include <VyronisScannerPanel.mqh>
+#include <VyronisScannerLib.mqh>
+
+// Forward declarations (MQL5 strict compile)
+bool ScannerParseSymbols(const string csv, string &out[]);
+void ScannerRunSymbol(const string symbol, const int row_index, const string session_label, const bool in_session);
+void ScannerRefreshPanel();
 
 input string InpVyronisScannerUrl = "https://vyronishq.com/api/webhooks/mt5/scanner";
 input string InpVyronisApiKey     = "";
@@ -36,7 +32,7 @@ int OnInit()
 {
    if(StringLen(InpVyronisApiKey) < 16)
    {
-      Alert("Vyronis Scanner: paste API key from Vyronis → Account Settings → MT5 auto-sync");
+      Alert("Vyronis Scanner: paste API key from Vyronis Account Settings -> MT5 auto-sync");
       return INIT_PARAMETERS_INCORRECT;
    }
 
@@ -60,7 +56,7 @@ int OnInit()
    {
       SymbolSelect(g_symbols[i], true);
       g_panel_rows[i].symbol = g_symbols[i];
-      g_panel_rows[i].bias_text = "—";
+      g_panel_rows[i].bias_text = "-";
       g_panel_rows[i].session_text = "Off";
       g_panel_rows[i].state_text = "IDLE";
       g_panel_rows[i].grade_text = "Skip";

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
-import { extractMt5ApiKey, readMt5WebhookBody } from "@/lib/mt5/payload-parser"
 import { Mt5WebhookError } from "@/lib/mt5/webhook-server-service"
 import type { Mt5ScannerWebhookPayload } from "@/lib/scanner/types"
 import {
@@ -8,12 +7,26 @@ import {
   resolveUserByMt5ApiKey,
 } from "@/lib/scanner/scanner-webhook-service"
 
+function extractScannerApiKey(
+  request: NextRequest,
+  raw: Record<string, unknown>,
+): string | null {
+  const headerKey =
+    request.headers.get("x-api-key")?.trim() ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+    null
+  if (headerKey) return headerKey
+  const bodyKey = raw.api_key ?? raw.apiKey
+  if (typeof bodyKey === "string" && bodyKey.trim()) return bodyKey.trim()
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID().slice(0, 8)
 
   try {
-    const body = await readMt5WebhookBody(request)
-    const apiKey = extractMt5ApiKey(request, body)
+    const raw = (await request.json()) as Record<string, unknown>
+    const apiKey = extractScannerApiKey(request, raw)
 
     if (!apiKey) {
       throw new Mt5WebhookError(
@@ -27,7 +40,7 @@ export async function POST(request: NextRequest) {
     const result = await ingestMt5ScannerSignal(
       supabase,
       user.user_id,
-      body as unknown as Mt5ScannerWebhookPayload,
+      raw as unknown as Mt5ScannerWebhookPayload,
     )
 
     console.log(`[MT5 Scanner] ${requestId} ok`, result)

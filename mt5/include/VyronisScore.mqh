@@ -80,8 +80,10 @@ ScannerSignal ScannerEvaluateSignal(
    MqlDateTime dt;
    TimeToStruct(TimeGMT(), dt);
    string sessionKey = (session_label == "London") ? "LON" : "NY";
+   string monStr = (dt.mon < 10) ? ("0" + IntegerToString(dt.mon)) : IntegerToString(dt.mon);
+   string dayStr = (dt.day < 10) ? ("0" + IntegerToString(dt.day)) : IntegerToString(dt.day);
    signal.setup_id = symbol + "-" + ScannerDirectionToString(bias.direction) + "-"
-      + IntegerToString(dt.year) + IntegerToString(dt.mon, 2, '0') + IntegerToString(dt.day, 2, '0')
+      + IntegerToString(dt.year) + monStr + dayStr
       + "-" + sessionKey + "-" + DoubleToString(sweep.level, (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS))
       + "-" + fvg.id;
 
