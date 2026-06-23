@@ -1,3 +1,14 @@
+import {
+  formatRiskReward,
+  scoreScannerSetup,
+  type ScannerBias,
+  type ScannerChochBosStatus,
+  type ScannerGrade,
+  type ScannerLiquiditySweepStatus,
+  type ScannerScoreResult,
+  type ScannerSetupFactors,
+} from "@/lib/scanner/scoring"
+
 export type ScannerRuleStatus = "pass" | "warn" | "fail"
 
 export type ScannerStrategyRule = {
@@ -10,29 +21,82 @@ export type ScannerStrategyRule = {
 export type ScannerWatchlistPair = {
   id: string
   pair: string
-  weeklyBias: "Bullish" | "Bearish" | "Neutral"
-  dailyBias: "Bullish" | "Bearish" | "Neutral"
+  weeklyBias: ScannerBias
+  dailyBias: ScannerBias
   session: string
   aoiReady: boolean
 }
 
-export type ScannerSignalGrade = "A+" | "A" | "B"
+export type ScannerSignalStatus = "active" | "watching" | "expired"
 
 export type ScannerLiveSignal = {
   id: string
   pair: string
   direction: "BUY" | "SELL"
-  grade: ScannerSignalGrade
+  grade: ScannerGrade
+  score: number
+  confidence: number
+  scoring: ScannerScoreResult
   setup: string
   session: string
   detectedAt: string
-  status: "active" | "watching" | "expired"
+  status: ScannerSignalStatus
   entry: number
   stopLoss: number
   takeProfit: number
   riskReward: string
-  confluences: string[]
+  riskRewardRatio: number
+  dailyBias: ScannerBias
+  h4Bias: ScannerBias
+  zoneType: string
+  liquiditySweepStatus: ScannerLiquiditySweepStatus
+  chochBosStatus: ScannerChochBosStatus
+  confirmationType: string
   notes: string
+}
+
+type RawScannerSignal = {
+  id: string
+  pair: string
+  direction: "BUY" | "SELL"
+  setup: string
+  session: string
+  detectedAt: string
+  status: ScannerSignalStatus
+  entry: number
+  stopLoss: number
+  takeProfit: number
+  notes: string
+  factors: ScannerSetupFactors
+}
+
+function buildSignal(raw: RawScannerSignal): ScannerLiveSignal {
+  const scoring = scoreScannerSetup(raw.factors)
+  return {
+    id: raw.id,
+    pair: raw.pair,
+    direction: raw.direction,
+    grade: scoring.grade,
+    score: scoring.score,
+    confidence: scoring.confidence,
+    scoring,
+    setup: raw.setup,
+    session: raw.session,
+    detectedAt: raw.detectedAt,
+    status: raw.status,
+    entry: raw.entry,
+    stopLoss: raw.stopLoss,
+    takeProfit: raw.takeProfit,
+    riskRewardRatio: raw.factors.riskRewardRatio,
+    riskReward: formatRiskReward(raw.factors.riskRewardRatio),
+    dailyBias: raw.factors.dailyBias,
+    h4Bias: raw.factors.h4Bias,
+    zoneType: raw.factors.zoneType,
+    liquiditySweepStatus: raw.factors.liquiditySweep,
+    chochBosStatus: raw.factors.chochBos,
+    confirmationType: raw.factors.confirmationType,
+    notes: raw.notes,
+  }
 }
 
 export const MOCK_STRATEGY_RULES: ScannerStrategyRule[] = [
@@ -84,12 +148,20 @@ export const MOCK_WATCHLIST: ScannerWatchlistPair[] = [
     aoiReady: true,
   },
   {
-    id: "gbpusd",
-    pair: "GBP/USD",
+    id: "gbpcad",
+    pair: "GBP/CAD",
     weeklyBias: "Bullish",
-    dailyBias: "Neutral",
-    session: "NY",
+    dailyBias: "Bullish",
+    session: "London–NY",
     aoiReady: true,
+  },
+  {
+    id: "gbpnzd",
+    pair: "GBP/NZD",
+    weeklyBias: "Neutral",
+    dailyBias: "Neutral",
+    session: "Asia",
+    aoiReady: false,
   },
   {
     id: "xauusd",
@@ -97,73 +169,96 @@ export const MOCK_WATCHLIST: ScannerWatchlistPair[] = [
     weeklyBias: "Bullish",
     dailyBias: "Bullish",
     session: "London–NY",
-    aoiReady: false,
-  },
-  {
-    id: "usdjpy",
-    pair: "USD/JPY",
-    weeklyBias: "Neutral",
-    dailyBias: "Bearish",
-    session: "Asia",
     aoiReady: true,
   },
 ]
 
-export const MOCK_LIVE_SIGNALS: ScannerLiveSignal[] = [
+const RAW_SIGNALS: RawScannerSignal[] = [
   {
-    id: "sig-1",
+    id: "sig-eurusd",
     pair: "EUR/USD",
     direction: "SELL",
-    grade: "A+",
-    setup: "London liquidity sweep → H4 supply",
+    setup: "London liquidity sweep → H4 supply rejection",
     session: "London",
     detectedAt: "08:42 ET",
     status: "active",
     entry: 1.1462,
     stopLoss: 1.1484,
     takeProfit: 1.1416,
-    riskReward: "1:2.1",
-    confluences: [
-      "Weekly bearish structure",
-      "Daily lower high",
-      "H4 supply zone retest",
-      "M15 bearish BOS",
-    ],
     notes:
-      "Price swept Asia highs into H4 supply. Wait for M15 close below internal low before entry.",
+      "Price swept Asia highs into H4 supply. M15 bearish engulfing closed — A+ geometry.",
+    factors: {
+      direction: "SELL",
+      dailyBias: "Bearish",
+      h4Bias: "Bearish",
+      validZone: true,
+      zoneType: "H4 Supply",
+      liquiditySweep: "Confirmed",
+      chochBos: "BOS",
+      engulfingConfirmation: true,
+      confirmationType: "Bearish engulfing (M15)",
+      sessionAlignment: true,
+      session: "London",
+      riskRewardRatio: 2.1,
+    },
   },
   {
-    id: "sig-2",
-    pair: "GBP/USD",
+    id: "sig-gbpcad",
+    pair: "GBP/CAD",
     direction: "BUY",
-    grade: "A",
-    setup: "NY open discount → bullish OB",
-    session: "NY",
-    detectedAt: "09:15 ET",
+    setup: "NY pullback into H4 demand — CHoCH pending engulfing",
+    session: "London–NY",
+    detectedAt: "09:18 ET",
     status: "watching",
-    entry: 1.2748,
-    stopLoss: 1.2726,
-    takeProfit: 1.2792,
-    riskReward: "1:2.0",
-    confluences: ["Daily bullish bias", "H4 demand hold", "M15 bullish CHoCH"],
-    notes: "Watching for pullback into 1.2745–1.2750 OB. Skip if NY CPI volatility spikes.",
+    entry: 1.8245,
+    stopLoss: 1.8218,
+    takeProfit: 1.8299,
+    notes:
+      "Watching for bullish engulfing at demand. Skip if CAD news spikes spread.",
+    factors: {
+      direction: "BUY",
+      dailyBias: "Bullish",
+      h4Bias: "Bullish",
+      validZone: true,
+      zoneType: "H4 Demand",
+      liquiditySweep: "Pending",
+      chochBos: "CHoCH",
+      engulfingConfirmation: false,
+      confirmationType: "None yet",
+      sessionAlignment: true,
+      session: "London–NY",
+      riskRewardRatio: 2.0,
+    },
   },
   {
-    id: "sig-3",
-    pair: "XAU/USD",
-    direction: "BUY",
-    grade: "B",
-    setup: "Range low sweep (incomplete HTF)",
-    session: "London",
-    detectedAt: "07:58 ET",
+    id: "sig-gbpnzd",
+    pair: "GBP/NZD",
+    direction: "SELL",
+    setup: "Range mid — no HTF edge, weak session",
+    session: "Asia",
+    detectedAt: "06:05 ET",
     status: "expired",
-    entry: 3342.5,
-    stopLoss: 3334.0,
-    takeProfit: 3359.5,
-    riskReward: "1:2.0",
-    confluences: ["H4 demand touch", "M15 liquidity grab"],
-    notes: "Expired — price ran without retest. Re-scan on next H1 close.",
+    entry: 2.1782,
+    stopLoss: 2.1815,
+    takeProfit: 2.1732,
+    notes: "Skip — no daily/H4 alignment and R:R below rule. Re-scan after London open.",
+    factors: {
+      direction: "SELL",
+      dailyBias: "Neutral",
+      h4Bias: "Neutral",
+      validZone: false,
+      zoneType: "No zone",
+      liquiditySweep: "None",
+      chochBos: "None",
+      engulfingConfirmation: false,
+      confirmationType: "None",
+      sessionAlignment: false,
+      session: "Asia",
+      riskRewardRatio: 1.5,
+    },
   },
 ]
+
+export const MOCK_LIVE_SIGNALS: ScannerLiveSignal[] = RAW_SIGNALS.map(buildSignal)
 
 export const DEFAULT_SELECTED_SIGNAL_ID = MOCK_LIVE_SIGNALS[0]?.id ?? ""
