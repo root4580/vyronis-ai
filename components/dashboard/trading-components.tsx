@@ -41,6 +41,7 @@ import {
   X,
   FlaskConical,
   NotebookPen,
+  Radar,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -107,6 +108,7 @@ import {
   getDashboardTabHref,
   getCouncilHref,
   getNewsHref,
+  getScannerHref,
   getPracticeRoomHref,
   parseTabSearchParam,
 } from "@/lib/dashboard-nav"
@@ -255,6 +257,7 @@ export function DashboardHeader({
   const researchLabActive = pathname.startsWith("/research-lab")
   const plannerActive = pathname.startsWith("/trade-planner") || dockHighlight === "planner"
   const newsActive = pathname.startsWith("/news")
+  const scannerActive = pathname.startsWith("/scanner")
   const warRoomActive = pathname.startsWith("/war-room")
   const practiceRoomActive = pathname.startsWith("/practice-room")
   const councilActive = pathname.startsWith("/council")
@@ -397,6 +400,10 @@ export function DashboardHeader({
               <Link href={getNewsHref()} className={vyronisNavLinkClass(newsActive)}>
                 <Newspaper className="size-3.5" />
                 News
+              </Link>
+              <Link href={getScannerHref()} className={vyronisNavLinkClass(scannerActive)}>
+                <Radar className="size-3.5" />
+                Scanner
               </Link>
             </div>
           </div>

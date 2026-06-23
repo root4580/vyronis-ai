@@ -10,6 +10,7 @@ import {
   Moon,
   Newspaper,
   NotebookPen,
+  Radar,
   Settings,
   Sparkles,
   X,
@@ -20,6 +21,7 @@ import {
   getJournalCloseHref,
   getNewsHref,
   getPracticeRoomHref,
+  getScannerHref,
 } from "@/lib/dashboard-nav"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +35,7 @@ type DashboardMobileMoreSheetProps = {
 const MORE_LINKS = [
   { href: getJournalCloseHref(), label: "Close the day", icon: Moon },
   { href: getNewsHref(), label: "News", icon: Newspaper },
+  { href: getScannerHref(), label: "A+ Scanner", icon: Radar },
   { href: getCouncilHref(), label: "AI Council", icon: Sparkles },
   { href: "/war-room", label: "War Room", icon: Crosshair },
   { href: getPracticeRoomHref(), label: "Practice Room", icon: NotebookPen },

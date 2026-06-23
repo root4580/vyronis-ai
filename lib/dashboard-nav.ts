@@ -45,6 +45,11 @@ export function getNewsHref(): string {
   return "/news"
 }
 
+/** A+ Scanner — Precision Flow setup scanner. */
+export function getScannerHref(): string {
+  return "/scanner"
+}
+
 /** End-of-day journal close — improve tomorrow, rules, focus. */
 export function getJournalCloseHref(): string {
   return "/journal/close"
