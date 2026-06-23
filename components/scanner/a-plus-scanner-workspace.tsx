@@ -201,7 +201,8 @@ export function APlusScannerWorkspace() {
             <p className="text-[12px] font-medium text-foreground/90">Phone alerts (A / A+ only)</p>
             <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground/70">
               Email sent to your Vyronis account when a new A or A+ setup is detected. Turn on mail
-              notifications on your phone to get instant pings.
+              notifications on your phone to get instant pings. Requires{" "}
+              <span className="text-foreground/60">vyronishq.com</span> verified in Resend.
             </p>
           </div>
         </div>

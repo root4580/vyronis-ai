@@ -146,7 +146,6 @@ export default function SignUpPage() {
             resendLabel="Resend verification email"
             resendStorageKey={`${RESEND_KEY_PREFIX}${email.trim()}`}
             deliveryWarning={deliveryWarning}
-            deliveryWarning={deliveryWarning}
             onResend={resendSignupEmail}
           />
         </AuthShell>

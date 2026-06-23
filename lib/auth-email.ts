@@ -34,9 +34,9 @@ export function buildTokenHashCallbackUrl(
   return `${getAuthSiteOrigin()}/auth/callback?${params.toString()}`
 }
 
-/** Supabase appends ?code= to this URL; must be in Auth redirect allow list. */
+/** Server callback for password recovery — must match email template + generateLink redirectTo. */
 export function getPasswordResetRedirectUrl(): string {
-  return `${getAuthSiteOrigin()}/auth/reset-password`
+  return `${getAuthSiteOrigin()}/auth/callback?type=recovery`
 }
 
 export function getVerifyEmailPageUrl(email?: string): string {

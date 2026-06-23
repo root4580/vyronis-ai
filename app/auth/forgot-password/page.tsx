@@ -1,10 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Mail } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { getPasswordResetRedirectUrl } from "@/lib/auth-email"
 import { AuthPageFrame } from "@/components/auth/auth-page-frame"
 import {
   AuthErrorBanner,
@@ -13,33 +11,44 @@ import {
   AuthSubmitButton,
 } from "@/components/auth/auth-shell"
 import { AuthEmailSentPanel } from "@/components/auth/auth-email-sent-panel"
-import { formatAuthError } from "@/lib/auth-errors"
 
 const RESEND_KEY_PREFIX = "vyronis-auth-reset-sent:"
+
+async function sendResetEmailViaApi(targetEmail: string) {
+  const res = await fetch("/api/auth/send-password-reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: targetEmail }),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!body.ok) {
+    return { error: body.error ?? "Could not send password reset email." }
+  }
+  return { error: null }
+}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [deliveryWarning, setDeliveryWarning] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
-  const supabase = useMemo(() => createClient(), [])
 
   async function sendResetEmail(targetEmail: string) {
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-      redirectTo: getPasswordResetRedirectUrl(),
-    })
-
-    if (resetError) {
-      return { error: formatAuthError(resetError.message) }
+    const result = await sendResetEmailViaApi(targetEmail)
+    if (result.error) {
+      setDeliveryWarning(result.error)
+    } else {
+      setDeliveryWarning(null)
     }
-
-    return { error: null }
+    return result
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setDeliveryWarning(null)
 
     const trimmed = email.trim()
     if (!trimmed) {
@@ -72,11 +81,12 @@ export default function ForgotPasswordPage() {
         >
           <AuthEmailSentPanel
             email={trimmed}
-            title="Password reset email sent"
-            description="Open the link on this device to set a new password. The link expires in about one hour."
+            title={deliveryWarning ? "Reset requested — email may be delayed" : "Password reset email sent"}
+            description="Open the link on your phone or computer to set a new password. The link expires in about one hour."
             resendLabel="Resend reset link"
             resendSuccessMessage="Password reset email sent again."
             resendStorageKey={`${RESEND_KEY_PREFIX}${trimmed}`}
+            deliveryWarning={deliveryWarning}
             onResend={() => sendResetEmail(trimmed)}
           />
         </AuthShell>

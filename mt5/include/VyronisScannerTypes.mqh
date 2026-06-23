@@ -5,7 +5,7 @@
 #define VYRONIS_SCANNER_TYPES_MQH
 
 #define VYRONIS_SCANNER_PREFIX "VYRONIS_SCAN_"
-#define VYRONIS_SCANNER_VERSION "1.30"
+#define VYRONIS_SCANNER_VERSION "1.31"
 
 enum ENUM_SCANNER_GRADE
 {
@@ -248,6 +248,67 @@ double ScannerPipSize(const string symbol)
    if(StringFind(symbol, "JPY") >= 0)
       return (digits >= 3) ? 0.001 : 0.01;
    return (digits >= 4) ? 0.0001 : 0.00001;
+}
+
+string ScannerSymbolCore(const string symbol)
+{
+   string core = symbol;
+   StringReplace(core, ".sim", "");
+   StringReplace(core, ".r", "");
+   StringReplace(core, ".pro", "");
+   StringReplace(core, ".i", "");
+   if(StringLen(core) > 6 && StringGetCharacter(core, StringLen(core) - 1) == 'm')
+      core = StringSubstr(core, 0, StringLen(core) - 1);
+   return core;
+}
+
+bool ScannerSymbolHasHistory(const string symbol)
+{
+   return iBars(symbol, PERIOD_D1) > 5;
+}
+
+string ScannerResolveBrokerSymbol(const string input)
+{
+   string base = input;
+   StringTrimLeft(base);
+   StringTrimRight(base);
+   if(StringLen(base) < 3) return base;
+
+   const string core = ScannerSymbolCore(base);
+   string candidates[];
+   ArrayResize(candidates, 0);
+
+   string list[];
+   ArrayResize(list, 7);
+   list[0] = base;
+   list[1] = core;
+   list[2] = core + ".sim";
+   list[3] = core + ".r";
+   list[4] = core + ".pro";
+   list[5] = core + ".i";
+   list[6] = core + "m";
+
+   for(int j = 0; j < 7; j++)
+   {
+      bool dup = false;
+      for(int k = 0; k < ArraySize(candidates); k++)
+      {
+         if(candidates[k] == list[j]) { dup = true; break; }
+      }
+      if(dup || StringLen(list[j]) < 3) continue;
+      int n = ArraySize(candidates);
+      ArrayResize(candidates, n + 1);
+      candidates[n] = list[j];
+   }
+
+   for(int i = 0; i < ArraySize(candidates); i++)
+   {
+      const string sym = candidates[i];
+      if(StringLen(sym) < 3) continue;
+      if(SymbolSelect(sym, true) && ScannerSymbolHasHistory(sym))
+         return sym;
+   }
+   return base;
 }
 
 #endif // VYRONIS_SCANNER_TYPES_MQH

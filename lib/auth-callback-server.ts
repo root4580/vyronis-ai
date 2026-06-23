@@ -139,23 +139,6 @@ export async function handleAuthCallback(request: NextRequest): Promise<AuthCall
     const recoveryCode = searchParams.get("code")
     const recoveryHash = searchParams.get("token_hash")
 
-    if (recoveryCode) {
-      const { error } = await supabase.auth.exchangeCodeForSession(recoveryCode)
-      if (error) {
-        console.error("[auth/callback] recovery exchangeCodeForSession failed", error.message)
-        return {
-          ok: false,
-          redirectPath: authErrorRedirect("exchange_failed", error.message, {
-            method: "code",
-            type: "recovery",
-          }),
-          supabaseError: error.message,
-          method: "code",
-        }
-      }
-      return { ok: true, redirectPath: "/auth/reset-password" }
-    }
-
     if (recoveryHash) {
       const { error } = await supabase.auth.verifyOtp({
         token_hash: recoveryHash,
@@ -171,6 +154,26 @@ export async function handleAuthCallback(request: NextRequest): Promise<AuthCall
           }),
           supabaseError: error.message,
           method: "token_hash",
+        }
+      }
+      return { ok: true, redirectPath: "/auth/reset-password" }
+    }
+
+    if (recoveryCode) {
+      const { error } = await supabase.auth.exchangeCodeForSession(recoveryCode)
+      if (error) {
+        console.error("[auth/callback] recovery exchangeCodeForSession failed", error.message)
+        const detail = error.message.toLowerCase().includes("pkce")
+          ? `${error.message} Request a new reset email and open the latest link.`
+          : error.message
+        return {
+          ok: false,
+          redirectPath: authErrorRedirect("exchange_failed", detail, {
+            method: "code",
+            type: "recovery",
+          }),
+          supabaseError: detail,
+          method: "code",
         }
       }
       return { ok: true, redirectPath: "/auth/reset-password" }
