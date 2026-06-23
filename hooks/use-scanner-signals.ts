@@ -9,13 +9,18 @@ type ScannerSignalsState = {
   loading: boolean
   source: "live" | "mock"
   tableMissing: boolean
+  removingId: string | null
 }
 
-export function useScannerSignals(): ScannerSignalsState & { refetch: () => void } {
+export function useScannerSignals(): ScannerSignalsState & {
+  refetch: () => void
+  removeSignal: (id: string) => Promise<boolean>
+} {
   const [signals, setSignals] = useState<ScannerLiveSignal[]>([])
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<"live" | "mock">("live")
   const [tableMissing, setTableMissing] = useState(false)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
   const fetchSignals = useCallback(async () => {
     setLoading(true)
@@ -46,13 +51,32 @@ export function useScannerSignals(): ScannerSignalsState & { refetch: () => void
     }
   }, [])
 
+  const removeSignal = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (source !== "live") return false
+
+      setRemovingId(id)
+      try {
+        const res = await fetch(`/api/scanner/signals/${id}`, { method: "DELETE" })
+        if (!res.ok) return false
+        setSignals((prev) => prev.filter((s) => s.id !== id))
+        return true
+      } catch {
+        return false
+      } finally {
+        setRemovingId(null)
+      }
+    },
+    [source],
+  )
+
   useEffect(() => {
     void fetchSignals()
     const interval = setInterval(() => void fetchSignals(), 60_000)
     return () => clearInterval(interval)
   }, [fetchSignals])
 
-  return { signals, loading, source, tableMissing, refetch: fetchSignals }
+  return { signals, loading, source, tableMissing, removingId, refetch: fetchSignals, removeSignal }
 }
 
 export const DEFAULT_SELECTED_SIGNAL_ID = ""

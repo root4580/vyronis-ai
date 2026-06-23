@@ -13,7 +13,9 @@ import {
   Zap,
   ChevronRight,
   Loader2,
+  Trash2,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   DashboardCard,
@@ -55,8 +57,12 @@ function signalStatusClass(status: ScannerLiveSignal["status"]): string {
 }
 
 export function APlusScannerWorkspace() {
-  const { signals, loading, source, tableMissing } = useScannerSignals()
+  const { signals, loading, source, tableMissing, removingId, removeSignal } = useScannerSignals()
   const [selectedSignalId, setSelectedSignalId] = useState("")
+
+  async function handleRemoveSignal(id: string) {
+    await removeSignal(id)
+  }
 
   useEffect(() => {
     if (signals.length === 0) {
@@ -266,6 +272,26 @@ export function APlusScannerWorkspace() {
                           selected ? "text-cyan-glow" : "text-muted-foreground/40",
                         )}
                       />
+                      {source === "live" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-loss"
+                          disabled={removingId === signal.id}
+                          title="Remove signal"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void handleRemoveSignal(signal.id)
+                          }}
+                        >
+                          {removingId === signal.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      ) : null}
                     </button>
                   )
                 })
@@ -276,7 +302,15 @@ export function APlusScannerWorkspace() {
           <DashboardCard className="glass-card">
             <DashboardCardHeader title="Signal Details" icon={Zap} />
             <DashboardCardBody>
-              <SignalDetailsPanel signal={selectedSignal ?? null} />
+              <SignalDetailsPanel
+                signal={selectedSignal ?? null}
+                onRemove={
+                  source === "live" && selectedSignal
+                    ? () => void handleRemoveSignal(selectedSignal.id)
+                    : undefined
+                }
+                removing={Boolean(selectedSignal && removingId === selectedSignal.id)}
+              />
             </DashboardCardBody>
           </DashboardCard>
         </div>

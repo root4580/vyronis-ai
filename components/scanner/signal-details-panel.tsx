@@ -1,6 +1,7 @@
 "use client"
 
-import { CheckCircle2, AlertTriangle } from "lucide-react"
+import { CheckCircle2, AlertTriangle, Trash2, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { DashboardInsetPanel } from "@/components/dashboard/dashboard-primitives"
 import { APlusScore } from "@/components/scanner/a-plus-score"
 import {
@@ -13,6 +14,8 @@ import { cn } from "@/lib/utils"
 
 type SignalDetailsPanelProps = {
   signal: ScannerLiveSignal | null
+  onRemove?: () => void
+  removing?: boolean
 }
 
 function biasClass(bias: string): string {
@@ -54,7 +57,7 @@ function DetailRow({ label, value, valueClass }: { label: string; value: string;
   )
 }
 
-export function SignalDetailsPanel({ signal }: SignalDetailsPanelProps) {
+export function SignalDetailsPanel({ signal, onRemove, removing = false }: SignalDetailsPanelProps) {
   if (!signal) {
     return (
       <p className="text-[12px] text-muted-foreground/70">Select a signal from the list above.</p>
@@ -125,6 +128,23 @@ export function SignalDetailsPanel({ signal }: SignalDetailsPanelProps) {
           <span className="ml-auto text-[10px] tabular-nums text-cyan-glow">
             {signal.confidence}% confidence
           </span>
+          {onRemove ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-2 h-7 border-loss/25 text-[10px] text-loss hover:bg-loss/10 hover:text-loss"
+              disabled={removing}
+              onClick={onRemove}
+            >
+              {removing ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1 size-3" />
+              )}
+              Remove
+            </Button>
+          ) : null}
         </div>
         <p className="relative mt-1.5 text-[12px] text-muted-foreground/80">{signal.setup}</p>
       </div>
