@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //| Vyronis_APlus_Scanner.mq5 — Precision Flow A+ setup scanner       |
-//| Attach ONCE to any chart. Scans 6 pairs. Alert only.              |
+//| Attach ONCE to any chart. Scans all configured pairs.              |
 //+------------------------------------------------------------------+
 #property copyright "Vyronis AI"
-#property version   "1.00"
-#property description "Precision Flow scanner — A+ Sniper alerts + Vyronis webhook"
+#property version   "1.30"
+#property description "Precision Flow scanner v1.3 — W+D+H4 bias, AOI, A/A+ only"
 // REQUIRES in MQL5/Include/: VyronisScannerLib.mqh + all VyronisScanner*.mqh + VyronisTradeWebhook.mqh
 
 #include <VyronisScannerLib.mqh>
@@ -13,19 +13,24 @@
 bool ScannerParseSymbols(const string csv, string &out[]);
 void ScannerRunSymbol(const string symbol, const int row_index, const string session_label, const bool in_session);
 void ScannerRefreshPanel();
+void ScannerSyncStateToVyronis();
+string ScannerDeriveStateUrl(const string signal_url);
 
 input string InpVyronisScannerUrl = "https://vyronishq.com/api/webhooks/mt5/scanner";
+input string InpVyronisStateUrl   = "";
 input string InpVyronisApiKey     = "";
-input string InpSymbols           = "EURUSD,AUDUSD,GBPCAD,GBPNZD,CHFJPY,USDCHF";
+input string InpSymbols           = "EURUSD,GBPUSD,AUDUSD,NZDUSD,USDCHF,USDCAD,EURJPY,GBPJPY,CHFJPY,GBPCAD,GBPNZD,EURNZD,AUDJPY,CADJPY,EURCAD";
 input int    InpTimerSeconds      = 30;
 input bool   InpScanOnNewM15Bar   = true;
-input bool   InpPublishWatchlist  = true;
+input bool   InpSyncState         = true;
 input bool   InpVerboseLog        = true;
 
 string   g_symbols[];
+string   g_state_url = "";
 datetime g_last_m15_bar[];
 SymbolPanelRow g_panel_rows[];
 int      g_alert_count = 0;
+datetime g_last_state_sync = 0;
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -41,6 +46,10 @@ int OnInit()
       Alert("Vyronis Scanner: invalid webhook URL");
       return INIT_PARAMETERS_INCORRECT;
    }
+
+   g_state_url = (StringLen(InpVyronisStateUrl) > 8)
+      ? InpVyronisStateUrl
+      : ScannerDeriveStateUrl(InpVyronisScannerUrl);
 
    if(!ScannerParseSymbols(InpSymbols, g_symbols))
    {
@@ -60,13 +69,20 @@ int OnInit()
       g_panel_rows[i].session_text = "Off";
       g_panel_rows[i].state_text = "IDLE";
       g_panel_rows[i].grade_text = "Skip";
+      g_panel_rows[i].zone_text = "None";
       g_panel_rows[i].last_scan = 0;
       g_panel_rows[i].phase = PHASE_IDLE;
+      g_panel_rows[i].display_state = DISPLAY_IDLE;
+      g_panel_rows[i].weekly_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].daily_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].h4_bias = BIAS_NEUTRAL;
+      g_panel_rows[i].score = 0;
+      g_panel_rows[i].direction = -1;
    }
 
    EventSetTimer(MathMax(5, InpTimerSeconds));
    ScannerRefreshPanel();
-   Print("Vyronis A+ Scanner: monitoring ", ArraySize(g_symbols), " pairs");
+   Print("Vyronis A+ Scanner v1.3: monitoring ", ArraySize(g_symbols), " pairs");
    return INIT_SUCCEEDED;
 }
 
@@ -94,10 +110,7 @@ void OnTimer()
       {
          const datetime barTime = iTime(symbol, PERIOD_M15, 0);
          if(barTime == g_last_m15_bar[i])
-         {
-            ScannerRefreshPanel();
             continue;
-         }
          g_last_m15_bar[i] = barTime;
       }
 
@@ -105,6 +118,34 @@ void OnTimer()
    }
 
    ScannerRefreshPanel();
+
+   if(InpSyncState && TimeGMT() - g_last_state_sync >= MathMax(5, InpTimerSeconds))
+   {
+      ScannerSyncStateToVyronis();
+      g_last_state_sync = TimeGMT();
+   }
+}
+
+//+------------------------------------------------------------------+
+string ScannerDeriveStateUrl(const string signal_url)
+{
+   if(StringFind(signal_url, "/scanner") >= 0)
+      return signal_url + "/state";
+   return signal_url + "/state";
+}
+
+//+------------------------------------------------------------------+
+void ScannerSyncStateToVyronis()
+{
+   int status = 0;
+   string response = "";
+   if(ScannerPostStateSync(g_state_url, InpVyronisApiKey, g_panel_rows, status, response))
+   {
+      if(InpVerboseLog)
+         Print("Vyronis Scanner state sync OK HTTP=", status);
+   }
+   else if(InpVerboseLog)
+      Print("Vyronis Scanner state sync FAIL HTTP=", status, " ", response);
 }
 
 //+------------------------------------------------------------------+
@@ -127,6 +168,19 @@ bool ScannerParseSymbols(const string csv, string &out[])
 }
 
 //+------------------------------------------------------------------+
+void ScannerSetDisplayState(
+   const int row_index,
+   const ENUM_SCANNER_DISPLAY_STATE state,
+   const ENUM_SCANNER_PHASE phase,
+   const string state_text
+)
+{
+   g_panel_rows[row_index].display_state = state;
+   g_panel_rows[row_index].phase = phase;
+   g_panel_rows[row_index].state_text = state_text;
+}
+
+//+------------------------------------------------------------------+
 void ScannerRunSymbol(
    const string symbol,
    const int row_index,
@@ -135,90 +189,77 @@ void ScannerRunSymbol(
 )
 {
    ScannerBiasResult bias = ScannerEvaluateBias(symbol);
-   g_panel_rows[row_index].bias_text = ScannerBiasToString(bias.daily) + "/" + ScannerBiasToString(bias.h4);
+   g_panel_rows[row_index].weekly_bias = bias.weekly;
+   g_panel_rows[row_index].daily_bias = bias.daily;
+   g_panel_rows[row_index].h4_bias = bias.h4;
+   g_panel_rows[row_index].direction = bias.direction;
+   g_panel_rows[row_index].bias_text =
+      ScannerBiasToString(bias.weekly) + "/"
+      + ScannerBiasToString(bias.daily) + "/"
+      + ScannerBiasToString(bias.h4);
+   g_panel_rows[row_index].zone_text = "None";
+   g_panel_rows[row_index].score = 0;
+   g_panel_rows[row_index].grade_text = "Skip";
 
    if(!in_session || !bias.aligned)
    {
-      g_panel_rows[row_index].phase = PHASE_IDLE;
-      g_panel_rows[row_index].state_text = "IDLE";
-      g_panel_rows[row_index].grade_text = "Skip";
+      ScannerSetDisplayState(row_index, DISPLAY_IDLE, PHASE_IDLE, "IDLE");
       return;
    }
 
-   g_panel_rows[row_index].phase = PHASE_BIAS_OK;
-   g_panel_rows[row_index].state_text = "BIAS_OK";
+   ScannerSetDisplayState(row_index, DISPLAY_BUILDING, PHASE_BIAS_OK, "BIAS_OK");
 
    ScannerSweepResult sweep;
    if(!ScannerDetectSweep(symbol, bias.direction, sweep))
-   {
-      g_panel_rows[row_index].grade_text = "Skip";
       return;
-   }
 
    if(ScannerIsNewSweep(symbol, sweep.level))
       GlobalVariableDel(ScannerStateKey(symbol, "POSTED_HASH"));
 
-   g_panel_rows[row_index].phase = PHASE_SWEPT;
-   g_panel_rows[row_index].state_text = "SWEPT";
+   ScannerSetDisplayState(row_index, DISPLAY_BUILDING, PHASE_SWEPT, "SWEPT");
 
-   ScannerFvgResult fvg = ScannerFindActiveFvg(symbol, bias.direction, sweep.bar_time);
-   if(!fvg.valid || !ScannerPriceReactingInFvg(symbol, fvg))
-   {
-      g_panel_rows[row_index].grade_text = "Skip";
+   ScannerAoiResult aoi = ScannerFindActiveAoi(symbol, bias.direction, sweep.bar_time);
+   if(!aoi.valid)
       return;
-   }
 
-   g_panel_rows[row_index].phase = PHASE_IN_FVG;
-   g_panel_rows[row_index].state_text = "IN_FVG";
+   g_panel_rows[row_index].zone_text = aoi.zone_type;
+   ScannerSetDisplayState(row_index, DISPLAY_BUILDING, PHASE_IN_FVG, "IN_AOI");
 
    ScannerChochResult choch = ScannerDetectChoch(symbol, bias.direction, sweep.bar_time);
    if(!choch.choch)
-   {
-      g_panel_rows[row_index].grade_text = "Skip";
       return;
-   }
 
-   g_panel_rows[row_index].phase = PHASE_CHOCH;
-   g_panel_rows[row_index].state_text = "CHOCH";
+   ScannerSetDisplayState(row_index, DISPLAY_WAITING, PHASE_CHOCH, "CHOCH");
 
    ScannerConfirmResult confirm = ScannerDetectConfirm(symbol, bias.direction, choch.bar_time);
    if(!confirm.valid)
-   {
-      g_panel_rows[row_index].grade_text = "Skip";
       return;
-   }
 
-   g_panel_rows[row_index].phase = PHASE_CONFIRMED;
-   g_panel_rows[row_index].state_text = "CONFIRMED";
+   ScannerSetDisplayState(row_index, DISPLAY_CONFIRMED, PHASE_CONFIRMED, "CONFIRMED");
 
    ScannerRiskResult risk = ScannerBuildRisk(symbol, bias.direction, sweep, confirm);
    if(!risk.meets_min_rr)
-   {
-      g_panel_rows[row_index].grade_text = "Skip";
       return;
-   }
 
    ScannerSignal signal = ScannerEvaluateSignal(
-      symbol, session_label, bias, sweep, fvg, choch, confirm, risk, in_session
+      symbol, session_label, bias, sweep, aoi, choch, confirm, risk, in_session
    );
 
-   g_panel_rows[row_index].phase = PHASE_SCORED;
-   g_panel_rows[row_index].state_text = "SCORED";
+   g_panel_rows[row_index].score = signal.score;
    g_panel_rows[row_index].grade_text = signal.grade_label;
+   ScannerSetDisplayState(row_index, DISPLAY_CONFIRMED, PHASE_SCORED, "SCORED");
 
-   if(signal.grade == GRADE_SKIP) return;
+   if(signal.grade == GRADE_SKIP || signal.grade == GRADE_B_WATCHLIST)
+      return;
+
+   ScannerSetDisplayState(row_index, DISPLAY_ALERTED, PHASE_SCORED, "ALERTED");
 
    const string postedKey = ScannerStateKey(symbol, "POSTED_HASH");
    const int postHash = ScannerStringHash(signal.setup_id);
    const bool alreadyPosted = GlobalVariableCheck(postedKey)
       && (int)GlobalVariableGet(postedKey) == postHash;
 
-   const bool publishWebhook =
-      !alreadyPosted
-      && (signal.grade == GRADE_A_PLUS_SNIPER
-         || (InpPublishWatchlist && (signal.grade == GRADE_A_STRONG || signal.grade == GRADE_B_WATCHLIST)));
-
-   if(publishWebhook)
+   if(!alreadyPosted && ScannerShouldPublishSignal(signal.grade))
    {
       int status = 0;
       string response = "";

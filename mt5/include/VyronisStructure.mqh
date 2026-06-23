@@ -77,20 +77,27 @@ ENUM_SCANNER_BIAS ScannerBiasFromSwings(const double &highs[], const double &low
 ScannerBiasResult ScannerEvaluateBias(const string symbol)
 {
    ScannerBiasResult result;
+   result.weekly = BIAS_NEUTRAL;
    result.daily = BIAS_NEUTRAL;
    result.h4 = BIAS_NEUTRAL;
    result.aligned = false;
    result.direction = -1;
 
-   double dHighs[], dLows[], hHighs[], hLows[];
+   double wHighs[], wLows[], dHighs[], dLows[], hHighs[], hLows[];
+   if(!ScannerCollectSwings(symbol, PERIOD_W1, 20, wHighs, wLows)) return result;
    if(!ScannerCollectSwings(symbol, PERIOD_D1, 30, dHighs, dLows)) return result;
    if(!ScannerCollectSwings(symbol, PERIOD_H4, 60, hHighs, hLows)) return result;
 
+   result.weekly = ScannerBiasFromSwings(wHighs, wLows);
    result.daily = ScannerBiasFromSwings(dHighs, dLows);
    result.h4 = ScannerBiasFromSwings(hHighs, hLows);
-   result.aligned = (result.daily == result.h4 && result.daily != BIAS_NEUTRAL);
+
+   result.aligned = (result.weekly == result.daily
+      && result.daily == result.h4
+      && result.weekly != BIAS_NEUTRAL);
+
    if(result.aligned)
-      result.direction = (result.daily == BIAS_BULLISH) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+      result.direction = (result.weekly == BIAS_BULLISH) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    return result;
 }
 

@@ -20,8 +20,15 @@ export type ScannerWatchlistPair = {
   pair: string
   weeklyBias: ScannerBias
   dailyBias: ScannerBias
+  h4Bias: ScannerBias
   session: string
-  aoiReady: boolean
+  scanState: string
+  grade: string
+  zoneType: string
+  score: number
+  direction: "BUY" | "SELL" | null
+  lastScanAt?: string
+  aoiReady?: boolean
 }
 
 export type ScannerSignalStatus = "active" | "watching" | "expired"
@@ -43,6 +50,7 @@ export type ScannerLiveSignal = {
   takeProfit: number
   riskReward: string
   riskRewardRatio: number
+  weeklyBias: ScannerBias
   dailyBias: ScannerBias
   h4Bias: ScannerBias
   zoneType: string

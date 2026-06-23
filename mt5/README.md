@@ -29,14 +29,21 @@ Demo-only strategy for Research Lab CSV import (`experts/Vyronis_LondonBreakout_
 
 For live journal sync, use **VyronisTradeSync** instead of CSV.
 
-## Vyronis_APlus_Scanner (setup alerts)
+## Vyronis_APlus_Scanner (setup alerts) — v1.3
 
-Precision Flow scanner — session, bias, FVG, liquidity, M15 confirmation, A+ scoring.
+Precision Flow scanner — W+D+H4 bias, FVG/OB/Supply/Demand AOI, liquidity, M15 confirmation, A/A+ only.
 
 | File | Role |
 |------|------|
-| `experts/Vyronis_APlus_Scanner.mq5` | Attach once — scans 6 pairs, alerts + webhook |
-| `include/VyronisScanner*.mqh` | Session, structure, FVG, liquidity, score, webhook, panel |
+| `experts/Vyronis_APlus_Scanner.mq5` | Attach once — scans 15 pairs, state sync + A/A+ webhook |
+| `include/VyronisScanner*.mqh` | Session, structure, zones, liquidity, score, webhook, panel |
+| `include/VyronisZones.mqh` | FVG + Order Block + Supply/Demand AOI detection |
+
+**Migrations:** `047-scanner-signals.sql` + `049-scanner-pair-state.sql`
+
+**Webhooks:**
+- `POST /api/webhooks/mt5/scanner` — A/A+ live signals only
+- `POST /api/webhooks/mt5/scanner/state` — per-pair watchlist sync (every 30s)
 
 **Full setup:** [docs/MT5-SCANNER-EA.md](../docs/MT5-SCANNER-EA.md) (deployment + testing)
 

@@ -55,6 +55,7 @@ function formatDetectedAt(iso: string): string {
 export function rowToLiveSignal(row: ScannerSignalRow): ScannerLiveSignal {
   const dailyBias = parseBias(row.daily_bias)
   const h4Bias = parseBias(row.h4_bias)
+  const weeklyBias = parseBias(row.weekly_bias ?? row.daily_bias)
   const grade = normalizeGrade(row.grade)
   const riskRewardRatio = Number(row.risk_reward)
 
@@ -91,6 +92,7 @@ export function rowToLiveSignal(row: ScannerSignalRow): ScannerLiveSignal {
     takeProfit: Number(row.take_profit ?? 0),
     riskRewardRatio,
     riskReward: formatRiskReward(riskRewardRatio),
+    weeklyBias,
     dailyBias,
     h4Bias,
     zoneType: row.zone_type,

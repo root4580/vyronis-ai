@@ -32,12 +32,12 @@ function gradeToStatus(
   grade: ScannerSignalGrade | "Skip",
   explicit?: ScannerSignalStatus,
 ): ScannerSignalStatus | null {
-  if (grade === "Skip") return null
+  if (grade === "Skip" || grade === "B Watchlist") return null
   if (explicit === "active" || explicit === "watchlist" || explicit === "expired") {
-    return explicit
+    return explicit === "watchlist" ? null : explicit
   }
-  if (grade === "A+ Sniper") return "active"
-  return "watchlist"
+  if (grade === "A+ Sniper" || grade === "A Strong") return "active"
+  return null
 }
 
 function parseDetectedAt(value?: string): string {
@@ -83,6 +83,7 @@ export async function ingestMt5ScannerSignal(
     direction,
     grade,
     score: Math.round(score),
+    weekly_bias: raw.weekly_bias ?? raw.daily_bias ?? "Neutral",
     daily_bias: raw.daily_bias ?? "Neutral",
     h4_bias: raw.h4_bias ?? "Neutral",
     zone_type: raw.zone_type ?? "FVG",

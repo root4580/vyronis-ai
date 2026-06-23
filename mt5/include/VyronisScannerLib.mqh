@@ -10,6 +10,7 @@
 #include <VyronisStructure.mqh>
 #include <VyronisLiquidity.mqh>
 #include <VyronisFvg.mqh>
+#include <VyronisZones.mqh>
 #include <VyronisConfirm.mqh>
 #include <VyronisRisk.mqh>
 #include <VyronisScore.mqh>

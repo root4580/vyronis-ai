@@ -5,7 +5,7 @@
 #define VYRONIS_SCANNER_TYPES_MQH
 
 #define VYRONIS_SCANNER_PREFIX "VYRONIS_SCAN_"
-#define VYRONIS_SCANNER_VERSION "1.00"
+#define VYRONIS_SCANNER_VERSION "1.30"
 
 enum ENUM_SCANNER_GRADE
 {
@@ -56,8 +56,18 @@ enum ENUM_SCANNER_PHASE
    PHASE_SCORED = 6
 };
 
+enum ENUM_SCANNER_DISPLAY_STATE
+{
+   DISPLAY_IDLE = 0,
+   DISPLAY_BUILDING = 1,
+   DISPLAY_WAITING = 2,
+   DISPLAY_CONFIRMED = 3,
+   DISPLAY_ALERTED = 4
+};
+
 struct ScannerBiasResult
 {
+   ENUM_SCANNER_BIAS weekly;
    ENUM_SCANNER_BIAS daily;
    ENUM_SCANNER_BIAS h4;
    bool              aligned;
@@ -80,6 +90,16 @@ struct ScannerFvgResult
    double   bottom;
    datetime formed_at;
    string   id;
+};
+
+struct ScannerAoiResult
+{
+   bool     valid;
+   double   top;
+   double   bottom;
+   datetime formed_at;
+   string   id;
+   string   zone_type;
 };
 
 struct ScannerChochResult
@@ -114,6 +134,7 @@ struct ScannerSignal
    ENUM_SCANNER_GRADE grade;
    string            grade_label;
    int               score;
+   ENUM_SCANNER_BIAS weekly_bias;
    ENUM_SCANNER_BIAS daily_bias;
    ENUM_SCANNER_BIAS h4_bias;
    string            zone_type;
@@ -129,13 +150,20 @@ struct ScannerSignal
 
 struct SymbolPanelRow
 {
-   string            symbol;
-   string            bias_text;
-   string            session_text;
-   string            state_text;
-   string            grade_text;
-   datetime          last_scan;
-   ENUM_SCANNER_PHASE phase;
+   string                    symbol;
+   string                    bias_text;
+   string                    session_text;
+   string                    state_text;
+   string                    grade_text;
+   string                    zone_text;
+   datetime                  last_scan;
+   ENUM_SCANNER_PHASE        phase;
+   ENUM_SCANNER_DISPLAY_STATE display_state;
+   ENUM_SCANNER_BIAS         weekly_bias;
+   ENUM_SCANNER_BIAS         daily_bias;
+   ENUM_SCANNER_BIAS         h4_bias;
+   int                       score;
+   int                       direction;
 };
 
 string ScannerBiasToString(const ENUM_SCANNER_BIAS bias)
@@ -159,11 +187,35 @@ string ScannerPhaseToString(const ENUM_SCANNER_PHASE phase)
    {
       case PHASE_BIAS_OK: return "BIAS_OK";
       case PHASE_SWEPT: return "SWEPT";
-      case PHASE_IN_FVG: return "IN_FVG";
+      case PHASE_IN_FVG: return "IN_AOI";
       case PHASE_CHOCH: return "CHOCH";
       case PHASE_CONFIRMED: return "CONFIRMED";
       case PHASE_SCORED: return "SCORED";
       default: return "IDLE";
+   }
+}
+
+string ScannerDisplayStateToString(const ENUM_SCANNER_DISPLAY_STATE state)
+{
+   switch(state)
+   {
+      case DISPLAY_BUILDING: return "Building";
+      case DISPLAY_WAITING: return "Waiting Confirmation";
+      case DISPLAY_CONFIRMED: return "Confirmed";
+      case DISPLAY_ALERTED: return "Alerted";
+      default: return "Idle";
+   }
+}
+
+string ScannerDisplayStateToApi(const ENUM_SCANNER_DISPLAY_STATE state)
+{
+   switch(state)
+   {
+      case DISPLAY_BUILDING: return "building";
+      case DISPLAY_WAITING: return "waiting_confirmation";
+      case DISPLAY_CONFIRMED: return "confirmed";
+      case DISPLAY_ALERTED: return "alerted";
+      default: return "idle";
    }
 }
 

@@ -20,7 +20,8 @@ export async function GET() {
     .from("scanner_signals")
     .select("*")
     .eq("user_id", user.id)
-    .in("status", ["active", "watchlist"])
+    .eq("status", "active")
+    .in("grade", ["A+ Sniper", "A Strong", "A+", "A"])
     .order("detected_at", { ascending: false })
     .limit(50)
 

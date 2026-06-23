@@ -12,31 +12,38 @@ void ScannerUpdateChartPanel(
    const ENUM_SCANNER_SESSION active_session
 )
 {
+   int building = 0, waiting = 0, alerted = 0;
+   for(int i = 0; i < ArraySize(rows); i++)
+   {
+      if(rows[i].display_state == DISPLAY_BUILDING) building++;
+      else if(rows[i].display_state == DISPLAY_WAITING) waiting++;
+      else if(rows[i].display_state == DISPLAY_ALERTED) alerted++;
+   }
+
    string panel = "=== Vyronis A+ Scanner v" + VYRONIS_SCANNER_VERSION + " ===\n";
    panel += "Session: " + ScannerSessionLabel(active_session);
+   panel += " | Pairs: " + IntegerToString(ArraySize(rows));
+   panel += " | Building: " + IntegerToString(building);
+   panel += " | Waiting: " + IntegerToString(waiting);
+   panel += " | A/A+: " + IntegerToString(alerted);
    panel += " | Alerts: " + IntegerToString(alert_count) + "\n";
-   panel += "────────────────────────────────────────\n";
-   panel += "Pair      Bias           Sess    State       Scan(GMT)  Grade\n";
-   panel += "────────────────────────────────────────\n";
+   panel += "────────────────────────────────────────────────────\n";
+   panel += "Pair      W/D/H4 Bias         State              Grade\n";
+   panel += "────────────────────────────────────────────────────\n";
 
    for(int i = 0; i < ArraySize(rows); i++)
    {
-      string scanTime = (rows[i].last_scan > 0)
-         ? TimeToString(rows[i].last_scan, TIME_MINUTES)
-         : "—";
       panel += StringFormat(
-         "%-8s  %-14s %-6s  %-10s  %-9s  %s\n",
+         "%-8s  %-18s  %-18s  %s\n",
          rows[i].symbol,
          rows[i].bias_text,
-         rows[i].session_text,
-         rows[i].state_text,
-         scanTime,
+         ScannerDisplayStateToString(rows[i].display_state),
          rows[i].grade_text
       );
    }
 
-   panel += "────────────────────────────────────────\n";
-   panel += "A+ Sniper = MT5 alert | A/B = Vyronis watchlist";
+   panel += "────────────────────────────────────────────────────\n";
+   panel += "A/A+ = Live Signals | Building = Watchlist on Vyronis";
    Comment(panel);
 }
 

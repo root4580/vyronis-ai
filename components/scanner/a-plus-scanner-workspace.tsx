@@ -26,10 +26,11 @@ import {
 import { SetupScoreBadge } from "@/components/dashboard/setup-score-badge"
 import { SignalDetailsPanel } from "@/components/scanner/signal-details-panel"
 import { getDashboardHomeHref } from "@/lib/dashboard-nav"
-import { MOCK_STRATEGY_RULES, MOCK_WATCHLIST } from "@/lib/scanner/mock-data"
+import { MOCK_STRATEGY_RULES } from "@/lib/scanner/mock-data"
 import type { ScannerLiveSignal, ScannerRuleStatus } from "@/lib/scanner/signal-types"
 import { scannerGradeToBadgeClassification } from "@/lib/scanner/scoring"
 import { useScannerSignals } from "@/hooks/use-scanner-signals"
+import { useScannerWatchlist } from "@/hooks/use-scanner-watchlist"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,20 @@ function ruleStatusIcon(status: ScannerRuleStatus) {
 function biasClass(bias: string): string {
   if (bias === "Bullish") return "text-profit"
   if (bias === "Bearish") return "text-loss"
+  return "text-muted-foreground"
+}
+
+function scanStateClass(state: string): string {
+  if (state === "Building") return "bg-cyan-glow/10 text-cyan-glow"
+  if (state === "Waiting Confirmation") return "bg-amber-400/15 text-amber-300"
+  if (state === "Confirmed") return "bg-profit/10 text-profit"
+  if (state === "Alerted") return "bg-profit/15 text-profit font-medium"
+  return "bg-muted-foreground/10 text-muted-foreground"
+}
+
+function gradeClass(grade: string): string {
+  if (grade === "A+ Sniper" || grade === "A+") return "text-cyan-glow"
+  if (grade === "A Strong" || grade === "A") return "text-profit"
   return "text-muted-foreground"
 }
 
@@ -59,6 +74,12 @@ function signalStatusClass(status: ScannerLiveSignal["status"]): string {
 
 export function APlusScannerWorkspace() {
   const { signals, loading, source, tableMissing, removingId, removeSignal } = useScannerSignals()
+  const {
+    pairs: watchlist,
+    stats,
+    loading: watchlistLoading,
+    source: watchlistSource,
+  } = useScannerWatchlist()
   const { toast } = useToast()
   const [selectedSignalId, setSelectedSignalId] = useState("")
 
@@ -92,6 +113,14 @@ export function APlusScannerWorkspace() {
 
   const activeCount = signals.filter((s) => s.status === "active").length
   const aPlusCount = signals.filter((s) => s.grade === "A+ Sniper").length
+  const aStrongCount = signals.filter((s) => s.grade === "A Strong").length
+
+  const statCards = [
+    { label: "Pairs Scanned", value: stats.totalScanned, icon: Eye },
+    { label: "Building", value: stats.building, icon: Radar },
+    { label: "Waiting Confirmation", value: stats.waitingConfirmation, icon: ListChecks },
+    { label: "Active A/A+", value: stats.activeSignals, icon: Zap },
+  ]
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
@@ -107,7 +136,7 @@ export function APlusScannerWorkspace() {
           <div>
             <h1 className="text-lg font-medium text-text-primary">A+ Scanner</h1>
             <p className="mt-0.5 text-[12px] text-text-muted">
-              Precision Flow — D+H4 bias, sweep, H4 FVG, M15 CHoCH, engulf/rejection, R:R ≥ 1:2.
+              Precision Flow — W+D+H4 bias, sweep, H4 AOI, M15 CHoCH, engulf/rejection, R:R ≥ 1:2.
             </p>
           </div>
           <Badge
@@ -127,6 +156,20 @@ export function APlusScannerWorkspace() {
           </Badge>
         </div>
       </header>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((card) => (
+          <DashboardInsetPanel key={card.label} className="flex items-center gap-3 px-4 py-3">
+            <card.icon className="size-4 shrink-0 text-cyan-glow/80" />
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                {card.label}
+              </p>
+              <p className="text-lg font-semibold text-foreground/95">{card.value}</p>
+            </div>
+          </DashboardInsetPanel>
+        ))}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
         <div className="space-y-4 lg:col-span-4">
@@ -156,37 +199,77 @@ export function APlusScannerWorkspace() {
               icon={Eye}
               badge={
                 <Badge variant="outline" className="text-[10px]">
-                  {MOCK_WATCHLIST.length} pairs
+                  {watchlistLoading ? "…" : `${watchlist.length} pairs`}
                 </Badge>
               }
             />
             <DashboardCardBody className="space-y-2">
-              {MOCK_WATCHLIST.map((item) => (
-                <DashboardInsetPanel
-                  key={item.id}
-                  className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="text-[13px] font-semibold text-foreground/95">{item.pair}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/65">{item.session}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                    <span>
-                      W{" "}
-                      <span className={cn("font-medium", biasClass(item.weeklyBias))}>
-                        {item.weeklyBias}
+              {watchlistLoading ? (
+                <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading watchlist…
+                </div>
+              ) : watchlist.length === 0 ? (
+                <p className="py-6 text-center text-[12px] text-muted-foreground">
+                  No scan data yet. Enable state sync on MT5 scanner v1.3.
+                </p>
+              ) : (
+                watchlist.map((item) => (
+                  <DashboardInsetPanel
+                    key={item.id}
+                    className="flex flex-col gap-2 px-3 py-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[13px] font-semibold text-foreground/95">{item.pair}</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground/65">
+                          {item.session}
+                          {item.zoneType !== "None" ? ` · ${item.zoneType}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-medium",
+                          scanStateClass(item.scanState),
+                        )}
+                      >
+                        {item.scanState}
                       </span>
-                    </span>
-                    <span className="text-muted-foreground/40">·</span>
-                    <span>
-                      D{" "}
-                      <span className={cn("font-medium", biasClass(item.dailyBias))}>
-                        {item.dailyBias}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px]">
+                      <span>
+                        W{" "}
+                        <span className={cn("font-medium", biasClass(item.weeklyBias))}>
+                          {item.weeklyBias}
+                        </span>
                       </span>
-                    </span>
-                  </div>
-                </DashboardInsetPanel>
-              ))}
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>
+                        D{" "}
+                        <span className={cn("font-medium", biasClass(item.dailyBias))}>
+                          {item.dailyBias}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>
+                        H4{" "}
+                        <span className={cn("font-medium", biasClass(item.h4Bias))}>
+                          {item.h4Bias}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className={cn("font-medium", gradeClass(item.grade))}>
+                        {item.grade}
+                      </span>
+                    </div>
+                  </DashboardInsetPanel>
+                ))
+              )}
+              {watchlistSource === "mock" ? (
+                <p className="text-center text-[10px] text-muted-foreground/55">
+                  Preview data — run migration 049 for live watchlist
+                </p>
+              ) : null}
             </DashboardCardBody>
           </DashboardCard>
         </div>
@@ -212,6 +295,14 @@ export function APlusScannerWorkspace() {
                       {aPlusCount} A+ Sniper
                     </Badge>
                   ) : null}
+                  {aStrongCount > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="border-profit/25 bg-profit/10 text-[10px] text-profit"
+                    >
+                      {aStrongCount} A Strong
+                    </Badge>
+                  ) : null}
                 </div>
               }
             />
@@ -223,7 +314,7 @@ export function APlusScannerWorkspace() {
                 </div>
               ) : signals.length === 0 ? (
                 <p className="py-8 text-center text-[12px] text-muted-foreground">
-                  No signals yet. Attach Vyronis_APlus_Scanner on MT5 during London or NY session.
+                  No A/A+ signals yet. Quality setups only — some days will be zero.
                 </p>
               ) : (
                 signals.map((signal) => {

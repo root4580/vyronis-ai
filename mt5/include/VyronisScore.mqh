@@ -10,8 +10,8 @@ bool ScannerPassesHardGates(
    const bool in_session,
    const ScannerBiasResult &bias,
    const ScannerSweepResult &sweep,
-   const ScannerFvgResult &fvg,
-   const bool in_fvg,
+   const ScannerAoiResult &aoi,
+   const bool in_aoi,
    const ScannerChochResult &choch,
    const ScannerConfirmResult &confirm,
    const ScannerRiskResult &risk
@@ -20,7 +20,7 @@ bool ScannerPassesHardGates(
    if(!in_session) return false;
    if(!bias.aligned) return false;
    if(!sweep.valid) return false;
-   if(!fvg.valid || !in_fvg) return false;
+   if(!aoi.valid || !in_aoi) return false;
    if(!choch.choch) return false;
    if(!confirm.valid) return false;
    if(!risk.meets_min_rr) return false;
@@ -40,7 +40,7 @@ ScannerSignal ScannerEvaluateSignal(
    const string session_label,
    const ScannerBiasResult &bias,
    const ScannerSweepResult &sweep,
-   const ScannerFvgResult &fvg,
+   const ScannerAoiResult &aoi,
    const ScannerChochResult &choch,
    const ScannerConfirmResult &confirm,
    const ScannerRiskResult &risk,
@@ -51,9 +51,10 @@ ScannerSignal ScannerEvaluateSignal(
    signal.symbol = symbol;
    signal.pair_display = ScannerFormatPairDisplay(symbol);
    signal.direction = bias.direction;
+   signal.weekly_bias = bias.weekly;
    signal.daily_bias = bias.daily;
    signal.h4_bias = bias.h4;
-   signal.zone_type = "FVG";
+   signal.zone_type = aoi.valid ? aoi.zone_type : "None";
    signal.sweep_label = ScannerSweepSourceToString(sweep.source);
    signal.choch_label = choch.choch ? "Confirmed" : "None";
    signal.confirmation_type = confirm.label;
@@ -65,7 +66,7 @@ ScannerSignal ScannerEvaluateSignal(
    signal.score = 0;
    signal.setup_id = "";
 
-   if(!ScannerPassesHardGates(in_session, bias, sweep, fvg, true, choch, confirm, risk))
+   if(!ScannerPassesHardGates(in_session, bias, sweep, aoi, true, choch, confirm, risk))
       return signal;
 
    int score = 18 + 14 + 14 + 14 + 10 + 12 + 14;
@@ -85,7 +86,7 @@ ScannerSignal ScannerEvaluateSignal(
    signal.setup_id = symbol + "-" + ScannerDirectionToString(bias.direction) + "-"
       + IntegerToString(dt.year) + monStr + dayStr
       + "-" + sessionKey + "-" + DoubleToString(sweep.level, (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS))
-      + "-" + fvg.id;
+      + "-" + aoi.id;
 
    signal.risk = risk;
    return signal;
