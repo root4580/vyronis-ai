@@ -107,11 +107,11 @@ export function deriveMt5ConnectionState(
   const ageMs = Date.now() - new Date(lastActivity).getTime()
   const online = ageMs < OFFLINE_MS
 
-  if (snapshot.lastSyncStatus === "error" && online) return "error"
-  if ((snapshot.lastSyncStatus === "ok" || snapshot.lastSyncStatus === "duplicate") && online) {
-    return "connected"
+  if (!online) {
+    if (ageMs < 48 * 60 * 60 * 1000) return "waiting"
+    return "waiting"
   }
-  if (snapshot.lastPingAt && online) return "connected"
-  if (ageMs < 48 * 60 * 60 * 1000) return "waiting"
-  return "waiting"
+
+  if (snapshot.lastSyncStatus === "error") return "error"
+  return "connected"
 }

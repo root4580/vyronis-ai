@@ -25,6 +25,7 @@ datetime g_last_m15_bar[];
 SymbolPanelRow g_panel_rows[];
 int      g_alert_count = 0;
 datetime g_last_state_sync = 0;
+int      g_timer_ticks = 0;
 
 //+------------------------------------------------------------------+
 string ScannerDeriveStateUrl(const string signal_url)
@@ -277,6 +278,7 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTimer()
 {
+   g_timer_ticks++;
    const ENUM_SCANNER_SESSION session = ScannerGetActiveSessionGMT();
    const string sessionLabel = ScannerSessionLabel(session);
    const bool inSession = (session != SESSION_NONE);
@@ -321,6 +323,20 @@ void OnTimer()
    {
       ScannerSyncStateToVyronis();
       g_last_state_sync = TimeGMT();
+   }
+
+   const int pingEvery = MathMax(1, 120 / MathMax(5, InpTimerSeconds));
+   if(g_timer_ticks % pingEvery == 0)
+   {
+      int pingStatus = 0;
+      string pingBody = "";
+      if(VyronisSendConnectionPing(InpVyronisScannerUrl, InpVyronisApiKey, pingStatus, pingBody))
+      {
+         if(InpVerboseLog)
+            Print("Vyronis Scanner keepalive ping OK HTTP=", pingStatus);
+      }
+      else if(InpVerboseLog)
+         Print("Vyronis Scanner keepalive ping FAIL HTTP=", pingStatus, " ", pingBody);
    }
 }
 

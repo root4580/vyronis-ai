@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getAppBaseUrl } from "@/lib/env"
+import { createServiceRoleClient } from "@/lib/supabase/admin"
 import {
   deriveMt5ConnectionState,
   fetchMt5SyncSnapshot,
@@ -36,6 +37,26 @@ function isMissingTableError(message: string): boolean {
   return /mt5_webhook|does not exist|PGRST205/i.test(message)
 }
 
+const SCANNER_ONLINE_MS = 10 * 60 * 1000
+
+async function fetchScannerLastActivity(userId: string): Promise<string | null> {
+  try {
+    const admin = createServiceRoleClient()
+    const { data, error } = await admin
+      .from("scanner_pair_state")
+      .select("last_scan_at")
+      .eq("user_id", userId)
+      .order("last_scan_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error || !data?.last_scan_at) return null
+    return data.last_scan_at as string
+  } catch {
+    return null
+  }
+}
+
 async function buildMt5SettingsResponse(
   supabase: SupabaseClient,
   userId: string,
@@ -43,12 +64,36 @@ async function buildMt5SettingsResponse(
   enabled: boolean,
   baseUrl: string = getAppBaseUrl(),
 ): Promise<Mt5SettingsPayload> {
-  const sync = await fetchMt5SyncSnapshot(supabase, userId)
+  const admin = createServiceRoleClient()
+  const sync = await fetchMt5SyncSnapshot(admin, userId)
   const base = baseUrl
   const diagnostics: string[] = []
-  if (!sync.lastSyncAt && !sync.lastPingAt) {
+
+  let lastSyncAt = sync.lastSyncAt
+  let lastSyncMessage = sync.lastSyncMessage
+  let lastSyncStatus = sync.lastSyncStatus
+
+  const scannerAt = await fetchScannerLastActivity(userId)
+  if (scannerAt) {
+    const ageMs = Date.now() - new Date(scannerAt).getTime()
+    if (ageMs < SCANNER_ONLINE_MS) {
+      const scannerNewer =
+        !lastSyncAt || new Date(scannerAt).getTime() > new Date(lastSyncAt).getTime()
+      if (scannerNewer) {
+        lastSyncAt = scannerAt
+        lastSyncMessage = `A+ Scanner watchlist sync active.`
+        lastSyncStatus = "ok"
+      }
+    }
+  }
+
+  if (!lastSyncAt && !sync.lastPingAt) {
     diagnostics.push(
-      "No MT5 traffic yet. EA WebRequest URL must match webhook host (localhost vs production).",
+      "No MT5 traffic yet. Attach Vyronis_APlus_Scanner with API key and whitelist https://vyronishq.com in MT5 WebRequest.",
+    )
+  } else if (!sync.lastSyncAt && !sync.lastPingAt && scannerAt) {
+    diagnostics.push(
+      "Scanner watchlist is syncing but run supabase/024-mt5-sync-status.sql for full MT5 status columns.",
     )
   }
   if (!sync.webhookEnabled && enabled) {
@@ -63,12 +108,17 @@ async function buildMt5SettingsResponse(
     scannerStateUrl: `${base}/api/webhooks/mt5/scanner/state`,
     pingUrl: `${base}/api/webhooks/mt5/ping`,
     echoUrl: `${base}/api/webhooks/mt5/echo`,
-    connection: deriveMt5ConnectionState({ ...sync, settingsEnabled: enabled }),
-    lastSyncAt: sync.lastSyncAt,
+    connection: deriveMt5ConnectionState({
+      ...sync,
+      lastSyncAt,
+      lastSyncStatus,
+      settingsEnabled: enabled,
+    }),
+    lastSyncAt,
     lastPingAt: sync.lastPingAt,
-    lastSyncStatus: sync.lastSyncStatus,
+    lastSyncStatus,
     lastSyncTicket: sync.lastSyncTicket,
-    lastSyncMessage: sync.lastSyncMessage,
+    lastSyncMessage,
     accountLogin: sync.accountLogin,
     broker: sync.broker,
     balance: sync.balance,
