@@ -8,6 +8,7 @@ import {
 } from "@/lib/trade-coach/pattern-memory"
 import type { PlannedVsActualComparison, PreTradePlannedContext } from "@/lib/trade-coach/types"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
+import { fetchAllRowsPaginated } from "@/lib/trades/fetch-all-paginated"
 
 function isMissingTableError(error: { message?: string; code?: string } | null) {
   if (!error) return false
@@ -39,19 +40,23 @@ export async function GET() {
     const maxRiskPerTrade =
       settings?.max_risk_per_trade ?? DEFAULT_USER_SETTINGS.max_risk_per_trade
 
-    const { data: trades, error: tradesError } = await supabase
-      .from("trades")
-      .select(
-        "id, direction, result, pnl, emotion, emotion_after, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at",
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    const { rows: trades, error: tradesError } = await fetchAllRowsPaginated<PatternMemoryTrade>(
+      (from, to) =>
+        supabase
+          .from("trades")
+          .select(
+            "id, direction, result, pnl, emotion, emotion_after, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at",
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .range(from, to),
+    )
 
     if (tradesError) {
       throw new Error(tradesError.message)
     }
 
-    const tradeRows = (trades || []) as PatternMemoryTrade[]
+    const tradeRows = trades
 
     const { data: feedbackRows, error: feedbackError } = await supabase
       .from("trade_coach_feedback")

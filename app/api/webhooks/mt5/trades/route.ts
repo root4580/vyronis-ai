@@ -24,7 +24,14 @@ export async function POST(request: NextRequest) {
     const body = await readMt5WebhookBody(request)
 
     if (debugLogOnly) {
-      console.log(`[MT5 Webhook] ${requestId} debug body:`, JSON.stringify(body))
+      // Do not log the full raw payload — it can contain account numbers,
+      // symbols, and trade details that shouldn't end up in provider logs.
+      // Log only shape/metadata useful for debugging connectivity.
+      const summary =
+        "trades" in body && Array.isArray(body.trades)
+          ? { keys: Object.keys(body), tradeCount: body.trades.length }
+          : { keys: Object.keys(body) }
+      console.log(`[MT5 Webhook] ${requestId} debug body received`, summary)
     }
     const apiKey = extractMt5ApiKey(request, body)
 

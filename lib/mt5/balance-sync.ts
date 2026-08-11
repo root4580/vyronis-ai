@@ -9,6 +9,7 @@ import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
 import { computeBalanceFromTradeLog } from "@/lib/account-status"
 import type { SettingsTrade } from "@/lib/user-settings"
 import { getSignedPnL } from "@/lib/trade-utils"
+import { fetchAllRowsPaginated } from "@/lib/trades/fetch-all-paginated"
 
 export type Mt5BalanceSyncResult = {
   synced: boolean
@@ -103,24 +104,33 @@ export async function reconcileVyronisBalanceFromMt5(
     }
   }
 
-  const { data: tradeRows, error: tradesError } = await supabase
-    .from("trades")
-    .select("pnl, result, account_id, trade_date, created_at")
-    .eq("user_id", userId)
-    .or(journalTradesOrFilter())
+  const { rows: tradeRows, error: tradesErrorMessage } = await fetchAllRowsPaginated<{
+    pnl: number | null
+    result: string | null
+    account_id: string | null
+    trade_date: string | null
+    created_at: string
+  }>((from, to) =>
+    supabase
+      .from("trades")
+      .select("pnl, result, account_id, trade_date, created_at")
+      .eq("user_id", userId)
+      .or(journalTradesOrFilter())
+      .range(from, to),
+  )
 
-  if (tradesError) {
-    return { synced: false, reason: tradesError.message }
+  if (tradesErrorMessage) {
+    return { synced: false, reason: tradesErrorMessage.message }
   }
 
   const legacyAccountId = resolveLegacyTradeAccountId(accounts)
   const scopedTrades = account
     ? filterRowsForAccount(
-        (tradeRows ?? []).map(mapTradeRow),
+        tradeRows.map(mapTradeRow),
         account.id,
         legacyAccountId,
       )
-    : (tradeRows ?? []).map(mapTradeRow)
+    : tradeRows.map(mapTradeRow)
 
   const totalPnL = scopedTrades.reduce(
     (sum, trade) => sum + getSignedPnL(trade.pnl, trade.result),

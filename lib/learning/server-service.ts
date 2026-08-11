@@ -33,6 +33,7 @@ import type {
   LearningTradeRow,
   TradeMemoryRecord,
 } from "@/lib/learning/types"
+import { fetchAllRowsPaginated } from "@/lib/trades/fetch-all-paginated"
 
 export function isMissingLearningTableError(error: { message?: string; code?: string } | null) {
   if (!error) return false
@@ -44,16 +45,19 @@ export function isMissingLearningTableError(error: { message?: string; code?: st
 }
 
 async function loadTrades(supabase: SupabaseClient, userId: string): Promise<LearningTradeRow[]> {
-  const { data, error } = await supabase
-    .from("trades")
-    .select(
-      "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url, entry_timeframe, higher_timeframe, confirmation_timeframe, risk_reward, trade_notes",
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+  const { rows, error } = await fetchAllRowsPaginated<LearningTradeRow>((from, to) =>
+    supabase
+      .from("trades")
+      .select(
+        "id, pair, direction, result, pnl, emotion, emotion_after, setup, strategy_name, session, risk_percent, rule_followed, mistake_tags, confirmation_signal, trade_date, created_at, screenshot_url, entry_timeframe, higher_timeframe, confirmation_timeframe, risk_reward, trade_notes",
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(from, to),
+  )
 
   if (error) throw new Error(error.message)
-  return (data || []) as LearningTradeRow[]
+  return rows
 }
 
 async function loadFeedback(

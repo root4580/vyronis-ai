@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type RefCallback } from "react"
-import { ArrowRight, Shield, Sparkles, Target } from "lucide-react"
+import { ArrowRight, Shield, Sparkles, Target, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -66,6 +66,11 @@ export function FirstRunSetupModal({
 
   const steps = [
     {
+      title: "How Vyronis works",
+      description: "A 60-second rundown before we set up your account.",
+      icon: Zap,
+    },
+    {
       title: "Account size",
       description: "Set your prop firm or personal account size so risk math stays accurate.",
       icon: Target,
@@ -126,6 +131,33 @@ export function FirstRunSetupModal({
 
         <div className="relative space-y-4 overflow-y-auto px-4 py-4 md:px-6">
           {step === 0 ? (
+            <div className="space-y-3">
+              <DashboardInsetPanel className="border-cyan-glow/15 bg-cyan-glow/[0.04] px-3 py-3">
+                <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+                  Vyronis works as a simple loop: plan your setup in <strong>War Room</strong>, execute
+                  the trade, then <strong>journal</strong> the result. Your dashboard, analytics, and AI
+                  coach all build from that first logged trade — there&apos;s nothing to configure beyond
+                  the three quick settings on the next steps.
+                </p>
+              </DashboardInsetPanel>
+              <ol className="space-y-2 text-[11px] text-muted-foreground/80">
+                <li className="flex gap-2">
+                  <span className="font-semibold text-cyan-glow/85">1.</span>
+                  Open War Room and plan a setup (pair, direction, thesis).
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-cyan-glow/85">2.</span>
+                  Execute the trade on your broker/prop platform as usual.
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-semibold text-cyan-glow/85">3.</span>
+                  Log the result in your journal — Vyronis scores it and starts coaching from there.
+                </li>
+              </ol>
+            </div>
+          ) : null}
+
+          {step === 1 ? (
             <div className="space-y-2">
               <Label className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/80">
                 Prop firm / account type
@@ -157,7 +189,7 @@ export function FirstRunSetupModal({
             </div>
           ) : null}
 
-          {step === 1 ? (
+          {step === 2 ? (
             <div className="space-y-2">
               <Label className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/80">
                 Max risk per trade (%)
@@ -182,7 +214,7 @@ export function FirstRunSetupModal({
             </div>
           ) : null}
 
-          {step === 2 ? (
+          {step === 3 ? (
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/80">

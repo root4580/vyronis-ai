@@ -4,6 +4,7 @@ import type {
   WeeklyDebriefFeedback,
   WeeklyDebriefTrade,
 } from "@/lib/ai/weekly-debrief-types"
+import { fetchAllRowsPaginated } from "@/lib/trades/fetch-all-paginated"
 
 export function isMissingWeeklyDataTableError(
   error: { message?: string; code?: string } | null,
@@ -35,28 +36,37 @@ export async function loadWeeklyDebriefTrades(
   const basicSelect =
     "id, pair, direction, result, pnl, emotion, setup, strategy_name, session, trade_date, created_at"
 
-  const extendedResult = await supabase
-    .from("trades")
-    .select(extendedSelect)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+  const extended = await fetchAllRowsPaginated<WeeklyDebriefTrade>((from, to) =>
+    supabase
+      .from("trades")
+      .select(extendedSelect)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(from, to),
+  )
 
-  if (!extendedResult.error) {
-    return (extendedResult.data || []) as WeeklyDebriefTrade[]
+  if (!extended.error) {
+    return extended.rows
   }
 
-  if (!isMissingColumnError(extendedResult.error)) {
-    throw new Error(extendedResult.error.message)
+  if (!isMissingColumnError(extended.error)) {
+    throw new Error(extended.error.message)
   }
 
-  const fallback = await supabase
-    .from("trades")
-    .select(basicSelect)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+  const fallback = await fetchAllRowsPaginated<WeeklyDebriefTrade>((from, to) =>
+    supabase
+      .from("trades")
+      .select(basicSelect)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(from, to) as unknown as PromiseLike<{
+      data: WeeklyDebriefTrade[] | null
+      error: { message: string; code?: string } | null
+    }>,
+  )
 
   if (fallback.error) throw new Error(fallback.error.message)
-  return (fallback.data || []) as WeeklyDebriefTrade[]
+  return fallback.rows
 }
 
 export async function loadWeeklyDebriefFeedback(

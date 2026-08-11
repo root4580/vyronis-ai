@@ -28,7 +28,9 @@
     "generate:og-image": "npx tsx scripts/generate-og-image.ts",
     "test:e2e": "playwright test",
     "test:coach-verdicts": "npx tsx scripts/test-coach-verdict-scenarios.ts",
-    "test:session-gate": "npx tsx scripts/test-session-gate.ts"
+    "test:session-gate": "npx tsx scripts/test-session-gate.ts",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -97,6 +99,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vitest": "^3.0.0"
   }
 }
