@@ -1,12 +1,8 @@
-import * as Sentry from "@sentry/nextjs"
-
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.VERCEL_ENV || process.env.NODE_ENV,
-  // Only trace/replay a slice of sessions to control cost; errors are always captured.
-  tracesSampleRate: 0.1,
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 0.1,
-  integrations: [Sentry.replayIntegration()],
-  enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
-})
+// UNUSED — superseded by instrumentation-client.ts at the project root.
+//
+// This file is the old Sentry convention that only got loaded via
+// @sentry/nextjs's withSentryConfig webpack plugin. We removed that wrapper
+// (it conflicts with Next 16's Turbopack production builds), so this file is
+// never imported by anything and does nothing. Client-side Sentry init now
+// lives in instrumentation-client.ts, which Next.js loads automatically
+// regardless of bundler. Safe to delete this file if you want to clean it up.
