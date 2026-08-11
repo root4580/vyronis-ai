@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit"
 import {
   extractMt5ApiKey,
   readMt5WebhookBody,
@@ -20,6 +21,15 @@ export async function POST(request: NextRequest) {
     request.nextUrl.searchParams.get("mode") === "echo"
 
   try {
+    const supabase = createServiceRoleClient()
+    const rateLimit = await checkRateLimit(supabase, `mt5-webhook:${getClientIp(request)}`, {
+      maxRequests: 60,
+      windowSeconds: 60,
+    })
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit)
+    }
+
     console.log(`[MT5 Webhook] ${requestId} received${debugLogOnly ? " (debug=log)" : ""}`)
     const body = await readMt5WebhookBody(request)
 
@@ -42,7 +52,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createServiceRoleClient()
     const user = await resolveUserByMt5ApiKey(supabase, apiKey)
     console.log(`[MT5 Webhook] ${requestId} auth ok user=${user.user_id}`)
 

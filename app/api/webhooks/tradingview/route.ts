@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server"
 import { createServiceRoleClient } from "@/lib/supabase/admin"
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit"
 import { readTradingViewRequestBody } from "@/lib/tradingview/payload-parser"
 import { runTradingViewChartVisionEnrichment } from "@/lib/tradingview/schedule-chart-vision"
 import {
@@ -10,13 +11,21 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServiceRoleClient()
+    const rateLimit = await checkRateLimit(
+      supabase,
+      `tradingview-webhook:${getClientIp(request)}`,
+      { maxRequests: 60, windowSeconds: 60 },
+    )
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit)
+    }
+
     const payload = await readTradingViewRequestBody(request)
     const rawPayload =
       payload && typeof payload === "object"
         ? (payload as unknown as Record<string, unknown>)
         : {}
-
-    const supabase = createServiceRoleClient()
     const { result, chartVision } = await ingestTradingViewAlert(supabase, payload, {
       ...rawPayload,
       received_content_type: request.headers.get("content-type"),

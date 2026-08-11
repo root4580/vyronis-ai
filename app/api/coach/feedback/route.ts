@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/admin"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import {
   generateAndSaveCoachFeedback,
   getCoachFeedbackForTrade,
@@ -52,6 +54,15 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const rateLimit = await checkRateLimit(
+      createServiceRoleClient(),
+      `coach-feedback:${user.id}`,
+      { maxRequests: 20, windowSeconds: 60 },
+    )
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit)
     }
 
     const body = (await request.json()) as { tradeId?: string }

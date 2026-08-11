@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/admin"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { resolveActiveAccountId } from "@/lib/accounts/server-active-account"
 import { COUNCIL_AGENT_IDS, normalizeCouncilAgentId } from "@/lib/council/agent-ids"
 import type { CouncilAgentId } from "@/lib/council/types"
@@ -18,6 +20,15 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const rateLimit = await checkRateLimit(
+      createServiceRoleClient(),
+      `council-respond:${user.id}`,
+      { maxRequests: 20, windowSeconds: 60 },
+    )
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit)
     }
 
     const body = (await request.json()) as {
