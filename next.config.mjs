@@ -1,5 +1,3 @@
-import { withSentryConfig } from "@sentry/nextjs"
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -10,16 +8,11 @@ const nextConfig = {
   },
 }
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Skip Sentry's build-time steps (source map upload) entirely when not configured,
-  // so local/dev builds without Sentry env vars are unaffected.
-  disableLogger: true,
-  widenClientFileUpload: false,
-  sourcemaps: {
-    disable: !process.env.SENTRY_AUTH_TOKEN,
-  },
-})
+// Note: intentionally NOT wrapping with @sentry/nextjs's withSentryConfig.
+// That helper injects a webpack config for source-map upload, which conflicts
+// with Next 16's Turbopack production builds (crashes the build worker).
+// Error capturing itself doesn't need it — that's handled by
+// sentry.client/server/edge.config.ts + instrumentation.ts. Revisit wrapping
+// this once a Sentry SDK version with solid Turbopack build support lands,
+// or if source-map upload (SENTRY_AUTH_TOKEN) becomes a priority.
+export default nextConfig
