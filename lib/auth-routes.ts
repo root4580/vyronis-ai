@@ -13,7 +13,6 @@ export const PROTECTED_PATHS = [
   "/war-room",
   "/trade-planner",
   "/strategy-brain",
-  "/evolution",
   "/journal",
 ] as const
 

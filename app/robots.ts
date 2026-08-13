@@ -18,7 +18,6 @@ export default function robots(): MetadataRoute.Robots {
           "/research-lab",
           "/war-room",
           "/strategy-brain",
-          "/evolution",
           "/journal",
           "/api/",
           "/auth/callback",
