@@ -14,6 +14,12 @@ export const PROTECTED_PATHS = [
   "/trade-planner",
   "/strategy-brain",
   "/journal",
+  // New simplified 5-tab redesign (rolling out alongside the routes above).
+  "/home",
+  "/plan",
+  "/trade",
+  "/review",
+  "/settings",
 ] as const
 
 export const PUBLIC_MARKETING_PATHS = ["/"] as const
