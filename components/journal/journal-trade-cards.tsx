@@ -2,6 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react"
 import type { DashboardTradeRow } from "@/components/dashboard/trading-components"
+import { VyronisGradeBadge } from "@/components/dashboard/vyronis-grade-badge"
 import { formatRiskReward, getTradeRiskReward } from "@/lib/trade-form-utils"
 import { computePlanDisciplineForTrade } from "@/lib/trade-planner/plan-discipline-aggregate"
 import { formatPlanDeviationSummary } from "@/lib/trade-planner/deviation-summary"
@@ -125,6 +126,13 @@ export function JournalTradeCards({
                   >
                     {discipline.grade} · {discipline.score}
                   </span>
+                ) : null}
+                {trade.setup_classification ? (
+                  <VyronisGradeBadge
+                    grade={trade.setup_classification}
+                    score={trade.setup_score ?? undefined}
+                    size="sm"
+                  />
                 ) : null}
               </button>
               <div className="ml-auto flex shrink-0 items-center gap-0.5">

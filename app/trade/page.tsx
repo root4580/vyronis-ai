@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { Suspense, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { FileUp, ClipboardCheck, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { ScreenshotViewerModal } from "@/components/dashboard/screenshot-viewer-
 import { TradeRiskGuardModal } from "@/components/dashboard/trade-risk-guard-modal"
 import { VyronisScoreResultModal } from "@/components/dashboard/vyronis-score-result-modal"
 import { collectStrategyNamesFromTrades } from "@/components/dashboard/strategy-name-select"
+import { PracticeRoomWorkspace } from "@/components/journal/practice-room-workspace"
 import { CommandCenterBridge } from "@/components/command-center/command-center-bridge"
 import { CommandCenterLauncher } from "@/components/command-center/command-center-launcher"
 import { VyronisCommandCenter } from "@/components/command-center/vyronis-command-center"
@@ -30,7 +31,38 @@ import { useTradeJournal } from "@/hooks/use-trade-journal"
 import { formatPnL, getPnLTextClass } from "@/lib/trade-utils"
 import { DEFAULT_USER_SETTINGS } from "@/lib/user-settings"
 import { APP_HOME_PATH } from "@/lib/branding"
+import { cn } from "@/lib/utils"
 import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
+
+type JournalViewMode = "live" | "practice"
+
+function TradeViewModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: JournalViewMode
+  onChange: (mode: JournalViewMode) => void
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-white/[0.02] p-1">
+      {(["live", "practice"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-[12px] font-medium capitalize transition-colors",
+            mode === option
+              ? "bg-cyan-glow/[0.14] text-cyan-glow"
+              : "text-text-muted hover:text-text-primary",
+          )}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Trade tab — full parity with app/(app)/hq/page.tsx's "journal" tab
@@ -38,15 +70,17 @@ import type { PreTradePlannedContext } from "@/lib/trade-coach/types"
  * sessions, risk guard, Vyronis scoring). Both pages now share the same
  * hooks/use-trade-journal.ts hook instead of two copies of this logic.
  *
- * Not yet ported here (still only on the old /hq journal tab and
- * /practice-room): the Live/Practice toggle, a "strategy match" column on
- * the trade list, and Practice Room's paper-trade flow — planned as a
- * fast-follow once this core flow is verified live.
+ * Also includes a Live/Practice toggle: "Practice" swaps in the same
+ * PracticeRoomWorkspace used by the old standalone /practice-room route
+ * (paper trades, fully isolated from live P&L and rule enforcement).
+ * The trade list's Vyronis grade badge doubles as the "strategy match"
+ * indicator (components/journal/journal-trade-cards.tsx, shared with /hq).
  */
-export default function TradePage() {
+function TradePageContent() {
   const router = useRouter()
   const chrome = useDashboardChrome({ loginNextPath: "/trade" })
   const { toast } = useToast()
+  const [viewMode, setViewMode] = useState<JournalViewMode>("live")
   const data = useHomeDashboardData({
     supabase: chrome.supabase,
     userId: chrome.user?.id,
@@ -129,81 +163,92 @@ export default function TradePage() {
         fab={null}
       >
         <section className="dashboard-section">
-          <p className="dashboard-section-title">Trade</p>
-          <p className="max-w-2xl text-sm text-muted-foreground/75">
-            Log, review, and edit your trades.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="dashboard-section-title">Trade</p>
+              <p className="max-w-2xl text-sm text-muted-foreground/75">
+                {viewMode === "live"
+                  ? "Log, review, and edit your trades."
+                  : "Paper trades — isolated from live P&L and rule enforcement."}
+              </p>
+            </div>
+            <TradeViewModeToggle mode={viewMode} onChange={setViewMode} />
+          </div>
         </section>
 
-        <div className="dashboard-stagger space-y-3">
-          <RiskGuardBanner trades={data.accountTrades} settings={data.settingsForm} startingBalance={startingBalance} />
+        {viewMode === "practice" ? (
+          <PracticeRoomWorkspace accountId={chrome.activeAccountId} rulesSnapshot={chrome.tradingRules.snapshot} />
+        ) : (
+          <div className="dashboard-stagger space-y-3">
+            <RiskGuardBanner trades={data.accountTrades} settings={data.settingsForm} startingBalance={startingBalance} />
 
-          <CollapsibleDashboardSection
-            id="weekly-debrief-panel"
-            title="Weekly debrief"
-            subtitle="Execution week — trades, coach sessions, corrective focus"
-            defaultOpen={false}
-            collapseOnMobile
-          >
-            <LazyWeeklyDebriefPanel
-              onViewTrade={(tradeId) => {
-                const trade = data.accountTrades.find((t) => t.id === tradeId)
-                if (trade) journal.setSelectedTrade(trade)
-              }}
+            <CollapsibleDashboardSection
+              id="weekly-debrief-panel"
+              title="Weekly debrief"
+              subtitle="Execution week — trades, coach sessions, corrective focus"
+              defaultOpen={false}
+              collapseOnMobile
+            >
+              <LazyWeeklyDebriefPanel
+                onViewTrade={(tradeId) => {
+                  const trade = data.accountTrades.find((t) => t.id === tradeId)
+                  if (trade) journal.setSelectedTrade(trade)
+                }}
+              />
+            </CollapsibleDashboardSection>
+
+            <LazyJournalCommandCenter
+              trades={data.accountTrades}
+              startingBalance={startingBalance}
+              viewingClosedTradeId={null}
+              plannedSessions={journal.plannedSessions}
+              isLoadingPlanned={journal.isLoadingPlannedSessions}
+              deletingSessionId={journal.deletingPlannedSessionId}
+              onContinueCoach={(sessionId) => void journal.handleContinuePlannedCoach(sessionId)}
+              onConvertToTrade={(sessionId) => void journal.handleConvertPlannedTrade(sessionId)}
+              onDeletePlanned={(sessionId) => void journal.handleDeletePlannedSession(sessionId)}
+              onNewCoach={() => void journal.handleOpenCoach(buildEmptyPlannedContext())}
+              onEditTrade={journal.handleEditTrade}
+              onDeleteTrade={journal.handleDeleteClick}
+              onViewTrade={(trade) => journal.setSelectedTrade(trade)}
+              onScreenshotClick={(trade) =>
+                journal.setScreenshotViewer({ url: trade?.screenshot_url ?? null, label: trade?.pair ?? "Trade" })
+              }
+              onClearJournalCsvDay={(dateKey) => void journal.handleClearJournalCsvDay(dateKey)}
+              onLogTrade={journal.openManualTrade}
+              headerActions={
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => journal.setIsJournalImportOpen(true)}
+                    className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
+                  >
+                    <FileUp className="mr-2 size-4" />
+                    Import CSV
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => journal.openPlanTrade()}
+                    className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
+                  >
+                    <ClipboardCheck className="mr-2 size-4" />
+                    Setup scoring
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => journal.openManualTrade()}
+                    className="h-9 w-full btn-primary sm:w-auto"
+                  >
+                    <Plus className="mr-2 size-4" />
+                    New trade
+                  </Button>
+                </div>
+              }
             />
-          </CollapsibleDashboardSection>
-
-          <LazyJournalCommandCenter
-            trades={data.accountTrades}
-            startingBalance={startingBalance}
-            viewingClosedTradeId={null}
-            plannedSessions={journal.plannedSessions}
-            isLoadingPlanned={journal.isLoadingPlannedSessions}
-            deletingSessionId={journal.deletingPlannedSessionId}
-            onContinueCoach={(sessionId) => void journal.handleContinuePlannedCoach(sessionId)}
-            onConvertToTrade={(sessionId) => void journal.handleConvertPlannedTrade(sessionId)}
-            onDeletePlanned={(sessionId) => void journal.handleDeletePlannedSession(sessionId)}
-            onNewCoach={() => void journal.handleOpenCoach(buildEmptyPlannedContext())}
-            onEditTrade={journal.handleEditTrade}
-            onDeleteTrade={journal.handleDeleteClick}
-            onViewTrade={(trade) => journal.setSelectedTrade(trade)}
-            onScreenshotClick={(trade) =>
-              journal.setScreenshotViewer({ url: trade?.screenshot_url ?? null, label: trade?.pair ?? "Trade" })
-            }
-            onClearJournalCsvDay={(dateKey) => void journal.handleClearJournalCsvDay(dateKey)}
-            onLogTrade={journal.openManualTrade}
-            headerActions={
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => journal.setIsJournalImportOpen(true)}
-                  className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
-                >
-                  <FileUp className="mr-2 size-4" />
-                  Import CSV
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => journal.openPlanTrade()}
-                  className="h-9 w-full border border-[var(--border-subtle)] bg-transparent text-text-secondary hover:bg-white/[0.04] sm:w-auto"
-                >
-                  <ClipboardCheck className="mr-2 size-4" />
-                  Setup scoring
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => journal.openManualTrade()}
-                  className="h-9 w-full btn-primary sm:w-auto"
-                >
-                  <Plus className="mr-2 size-4" />
-                  New trade
-                </Button>
-              </div>
-            }
-          />
-        </div>
+          </div>
+        )}
       </AppTabShell>
 
       <TradeRiskGuardModal
@@ -406,5 +451,13 @@ export default function TradePage() {
       <VyronisCommandCenter />
       <Toaster />
     </AIContextProvider>
+  )
+}
+
+export default function TradePage() {
+  return (
+    <Suspense fallback={null}>
+      <TradePageContent />
+    </Suspense>
   )
 }
