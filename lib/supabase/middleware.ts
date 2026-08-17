@@ -7,6 +7,7 @@ import {
   isPublicMarketingPath,
   sanitizeRedirectPath,
 } from "@/lib/auth-routes"
+import { resolveLegacyRouteRedirect } from "@/lib/legacy-route-redirects"
 import { assertProductionEnv, getPublicEnv } from "@/lib/env"
 
 export async function updateSession(request: NextRequest) {
@@ -22,6 +23,18 @@ export async function updateSession(request: NextRequest) {
       APP_PRODUCTION_URL,
     )
     return NextResponse.redirect(target, 308)
+  }
+
+  const legacyRedirect = resolveLegacyRouteRedirect(
+    request.nextUrl.pathname,
+    request.nextUrl.searchParams,
+  )
+  if (legacyRedirect) {
+    const url = request.nextUrl.clone()
+    const [legacyPath, legacyQuery] = legacyRedirect.split("?")
+    url.pathname = legacyPath
+    url.search = legacyQuery ? `?${legacyQuery}` : ""
+    return NextResponse.redirect(url)
   }
 
   let supabaseResponse = NextResponse.next({

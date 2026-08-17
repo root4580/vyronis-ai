@@ -1,11 +1,12 @@
-import { APP_HOME_PATH } from "@/lib/branding"
+import { APP_HOME_PATH, LEGACY_APP_HOME_PATH } from "@/lib/branding"
 
 /**
  * Authenticated app routes — require Supabase session (middleware).
- * Public marketing lives at `/`; product shell at `/hq`.
+ * Public marketing lives at `/`; product shell now at `/home`.
  */
 export const PROTECTED_PATHS = [
   APP_HOME_PATH,
+  LEGACY_APP_HOME_PATH,
   "/analytics",
   "/strategy",
   "/profile",

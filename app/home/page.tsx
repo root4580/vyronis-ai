@@ -1,6 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { SigningOutScreen } from "@/components/auth/signing-out-screen"
 import { AppTabShell } from "@/components/shell/app-tab-shell"
@@ -10,8 +11,9 @@ import { RiskGuardBanner } from "@/components/dashboard/risk-guard-banner"
 import { useDashboardChrome } from "@/hooks/use-dashboard-chrome"
 import { useHomeDashboardData } from "@/hooks/use-home-dashboard-data"
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const chrome = useDashboardChrome({ loginNextPath: "/home" })
 
   const data = useHomeDashboardData({
@@ -21,6 +23,20 @@ export default function HomePage() {
     activeAccountId: chrome.activeAccountId,
     legacyAccountId: chrome.legacyTradeAccountId,
   })
+
+  // Old `/hq?action=new-trade` / `?trade=<id>` deep links land here via
+  // lib/legacy-route-redirects.ts — forward them on to the Trade tab,
+  // which is where trade CRUD actually lives now.
+  useEffect(() => {
+    const action = searchParams.get("action")
+    const tradeId = searchParams.get("trade")
+    if (action !== "new-trade" && !tradeId) return
+
+    const params = new URLSearchParams()
+    if (action === "new-trade") params.set("action", action)
+    if (tradeId) params.set("trade", tradeId)
+    router.replace(`/trade?${params.toString()}`)
+  }, [searchParams, router])
 
   if (chrome.isLoggingOut) {
     return <SigningOutScreen />
@@ -84,5 +100,13 @@ export default function HomePage() {
       {chrome.tradingRulesModal}
       <Toaster />
     </>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageContent />
+    </Suspense>
   )
 }

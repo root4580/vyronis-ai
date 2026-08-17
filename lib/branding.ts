@@ -1,8 +1,16 @@
 /** Canonical production host (custom domain). */
 export const APP_PRODUCTION_URL = "https://vyronishq.com"
 
-/** Authenticated product home (dashboard shell). */
-export const APP_HOME_PATH = "/hq"
+/**
+ * Authenticated product home. Points at the new 5-tab redesign's Home tab.
+ * The old dashboard shell (/hq) still exists as a component but is now
+ * intercepted by middleware (lib/legacy-route-redirects.ts) before it ever
+ * renders, so this constant is the single source of truth for "go home".
+ */
+export const APP_HOME_PATH = "/home"
+
+/** The old dashboard shell path — kept as a literal for auth/redirect plumbing that still needs to recognize it. */
+export const LEGACY_APP_HOME_PATH = "/hq"
 
 export const APP_NAME = "Vyronis HQ"
 export const APP_TAGLINE = "AI-assisted trading operating system"

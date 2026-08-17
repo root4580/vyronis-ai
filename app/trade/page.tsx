@@ -1,7 +1,7 @@
 "use client"
 
-import { Suspense, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { FileUp, ClipboardCheck, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/toaster"
@@ -78,6 +78,7 @@ function TradeViewModeToggle({
  */
 function TradePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const chrome = useDashboardChrome({ loginNextPath: "/trade" })
   const { toast } = useToast()
   const [viewMode, setViewMode] = useState<JournalViewMode>("live")
@@ -120,6 +121,26 @@ function TradePageContent() {
     tradingRules: chrome.tradingRules,
     openPreTradeCoach: (options) => openPreTradeCoachRef.current(options),
   })
+
+  // Deep-link support for old `/hq?action=new-trade` and `?tab=journal&trade=<id>`
+  // links, forwarded here by lib/legacy-route-redirects.ts.
+  useEffect(() => {
+    if (searchParams.get("action") === "new-trade") {
+      journal.openManualTrade()
+      router.replace("/trade")
+      return
+    }
+
+    const tradeId = searchParams.get("trade")
+    if (tradeId && data.accountTrades.length > 0) {
+      const trade = data.accountTrades.find((t) => t.id === tradeId)
+      if (trade) {
+        journal.setSelectedTrade(trade)
+        router.replace("/trade")
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, data.accountTrades])
 
   if (chrome.isLoggingOut) {
     return <SigningOutScreen />
