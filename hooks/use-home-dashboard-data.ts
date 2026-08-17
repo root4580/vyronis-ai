@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { createClient } from "@/lib/supabase/client"
 import { filterTradesForAccount } from "@/lib/account-status"
 import { journalTradesOrFilter } from "@/lib/analytics/trade-scope"
@@ -112,24 +112,16 @@ export function useHomeDashboardData({
   const [settingsForm, setSettingsForm] = useState<UserSettingsForm>(DEFAULT_USER_SETTINGS)
   const [userProfile, setUserProfile] = useState<UserProfileForm>(DEFAULT_USER_PROFILE)
 
-  useEffect(() => {
-    if (!userId) return
-    const uid = userId
+  const refetchTrades = useCallback(
+    async (targetUserId?: string) => {
+      const uid = targetUserId ?? userId
+      if (!uid) return
 
-    let cancelled = false
+      type TradesQueryResult = Promise<{
+        data: HomeDashboardTrade[] | null
+        error: { message: string; code?: string } | null
+      }>
 
-    const cached = readCachedTrades<HomeDashboardTrade>(uid)
-    if (cached.length > 0) setTrades(cached)
-
-    const cachedProfile = readCachedUserProfile(uid)
-    if (cachedProfile) setUserProfile(cachedProfile)
-
-    type TradesQueryResult = Promise<{
-      data: HomeDashboardTrade[] | null
-      error: { message: string; code?: string } | null
-    }>
-
-    async function fetchTrades() {
       try {
         const query = supabase
           .from("trades")
@@ -177,17 +169,29 @@ export function useHomeDashboardData({
           error = retry.error
         }
 
-        if (cancelled) return
-
         const nextTrades = data ?? []
         setTrades(nextTrades)
         writeCachedTrades(uid, nextTrades)
       } catch {
         // keep cached/last-known trades on failure
       } finally {
-        if (!cancelled) setIsLoadingTrades(false)
+        setIsLoadingTrades(false)
       }
-    }
+    },
+    [supabase, userId],
+  )
+
+  useEffect(() => {
+    if (!userId) return
+    const uid = userId
+
+    let cancelled = false
+
+    const cached = readCachedTrades<HomeDashboardTrade>(uid)
+    if (cached.length > 0) setTrades(cached)
+
+    const cachedProfile = readCachedUserProfile(uid)
+    if (cachedProfile) setUserProfile(cachedProfile)
 
     async function fetchSettings() {
       try {
@@ -223,14 +227,14 @@ export function useHomeDashboardData({
       }
     }
 
-    void fetchTrades()
+    void refetchTrades(uid)
     void fetchSettings()
     void fetchProfile()
 
     return () => {
       cancelled = true
     }
-  }, [supabase, userId, userMetadata])
+  }, [supabase, userId, userMetadata, refetchTrades])
 
   const accountTrades = useMemo(
     () => filterTradesForAccount(trades, activeAccountId, legacyAccountId),
@@ -245,10 +249,14 @@ export function useHomeDashboardData({
 
   return {
     trades,
+    setTrades,
+    refetchTrades,
     accountTrades,
     isLoadingTrades,
     userSettings,
+    setUserSettings,
     settingsForm,
+    setSettingsForm,
     userProfile,
     winRate,
   }
