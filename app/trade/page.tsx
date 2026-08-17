@@ -123,11 +123,14 @@ function TradePageContent() {
   })
 
   // Deep-link support for old `/hq?action=new-trade` and `?tab=journal&trade=<id>`
-  // links, forwarded here by lib/legacy-route-redirects.ts.
+  // links, forwarded here by lib/legacy-route-redirects.ts. Uses the raw
+  // History API to strip the query param — router.replace("/trade") from
+  // next/navigation was observed not reliably clearing search params when
+  // the pathname itself doesn't change, in production testing.
   useEffect(() => {
     if (searchParams.get("action") === "new-trade") {
       journal.openManualTrade()
-      router.replace("/trade")
+      window.history.replaceState(null, "", "/trade")
       return
     }
 
@@ -136,7 +139,7 @@ function TradePageContent() {
       const trade = data.accountTrades.find((t) => t.id === tradeId)
       if (trade) {
         journal.setSelectedTrade(trade)
-        router.replace("/trade")
+        window.history.replaceState(null, "", "/trade")
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
