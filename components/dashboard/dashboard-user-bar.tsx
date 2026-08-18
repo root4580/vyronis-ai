@@ -27,11 +27,11 @@ export function DashboardUserBar({
   return (
     <div className="dashboard-container px-4 pt-4 md:px-6 md:pt-5">
       <div className="dashboard-user-bar">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[180px] flex-1 basis-auto">
           <UserProfileCard {...profileCard} />
           {showProfileEmptyHint && <UserProfileCardEmptyHint />}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2 basis-auto">
           {accountSwitcher}
           <div className="flex items-center gap-1.5">
           <button
